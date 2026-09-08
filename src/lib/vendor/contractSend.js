@@ -23,6 +23,26 @@
 'use strict';
 
 const { sendWa } = require('../sendWa');
+const cap = require('../capabilities');
+
+// ── THE SWITCHBOARD KEYS, EACH NAMED ONCE (CE-41 seat C, R-41.8) ─────────────
+// Until CE-41 these were the env vars `CONTRACT_SIGN_SEND_ENABLED` (read at TWO
+// doors, `api/sign.js` and `api/vendor/contracts.js`) and `CONTRACT_COPY_SEND_ENABLED`
+// (read here). The env reads are deleted; the rows are the one home, and the two
+// sign doors now ask ONE function in the file that owns contract sends.
+const SIGN_CAP_KEY = 'flag.contract_sign_send';
+const COPY_CAP_KEY = 'flag.contract_copy_send';
+
+/** The sign-link / sign-OTP gate, one home for both doors. `{ on, reason }`. */
+async function signSendGate() {
+  const on = cap.on(SIGN_CAP_KEY);
+  return { on, reason: on ? null : cap.reason(SIGN_CAP_KEY) };
+}
+/** The sealed-copy gate. `{ on, reason }`. */
+async function copySendGate() {
+  const on = cap.on(COPY_CAP_KEY);
+  return { on, reason: on ? null : cap.reason(COPY_CAP_KEY) };
+}
 
 const TEMPLATE_KEY = 'contract_copy';
 
@@ -153,16 +173,17 @@ async function sendSealedCopy(supabase, {
 }) {
   // ── TWO GATES, NAMED SEPARATELY ──────────────────────────────────────────
   // This one and Meta's `isApproved` inside `sendWa` fail for DIFFERENT reasons,
-  // and a walk must be able to say which refused. `CONTRACT_SIGN_SEND_ENABLED`
-  // is the sibling shape at `sign.js:137`.
+  // and a walk must be able to say which refused. `signSendGate` above is the
+  // sibling shape the two sign doors read.
   //
   // ⚠ NO ROW IS WRITTEN WHEN THE FLAG IS DARK. A `contract_sends` row means the
   // estate ATTEMPTED a send; a flag that is off means it never reached the door.
   // Writing rows for a feature that is switched off would fill the table with
   // evidence of nothing and make the real refusals harder to find.
-  if (String(process.env.CONTRACT_COPY_SEND_ENABLED || '') !== '1') {
-    console.log(`[contractSend] dark: CONTRACT_COPY_SEND_ENABLED is not set (contract=${contractId})`);
-    return { attempted: false, reason: 'CONTRACT_COPY_SEND_ENABLED is not set', results: [] };
+  const gate = await copySendGate();
+  if (!gate.on) {
+    console.log(`[contractSend] dark: ${gate.reason} (contract=${contractId})`);
+    return { attempted: false, reason: gate.reason, results: [] };
   }
 
   // ⚠ THE LINK IS MADE ONCE AND BOTH SENDS SHARE IT. One home for one fact.
@@ -331,4 +352,5 @@ async function sendSignLink(supabase, { contractId, vendorId, toPhone, owner, fu
   }
 }
 
-module.exports = { sendSealedCopy, sendSignLink, recordOtpSend, publishSealedForMeta, awaitReadable, TEMPLATE_KEY, SIGN_TEMPLATE_KEY, SIGNED_URL_TTL, WA_MEDIA_BUCKET };
+module.exports = {
+  signSendGate, copySendGate, SIGN_CAP_KEY, COPY_CAP_KEY, sendSealedCopy, sendSignLink, recordOtpSend, publishSealedForMeta, awaitReadable, TEMPLATE_KEY, SIGN_TEMPLATE_KEY, SIGNED_URL_TTL, WA_MEDIA_BUCKET };

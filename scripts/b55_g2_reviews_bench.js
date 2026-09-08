@@ -39,6 +39,23 @@ function fresh(mod) {
   return require(p);
 }
 
+// ── CE-41 C1 AMENDMENT (labeled, ratify-or-revert; R-38.19's bench-follows-the-law) ──
+// `REVIEW_ASK_SEND_ENABLED` became `flag.review_ask_send` on the switchboard
+// (`src/lib/capabilities.js`, R-41.8). Cells keep their names and questions; the
+// LEVER is the register's bind seam. `switchboard({})` = every gate shut.
+const cap = require(R('src/lib/capabilities.js'));
+function capDouble(states) {
+  return { from: () => { let key = null; const api = {
+    select() { return api; }, order() { return api; }, update() { return api; },
+    eq(_c, v) { key = v; return api; },
+    maybeSingle: async () => ({ data: key in states ? { key, kind: 'flag', status: states[key], evidence: null, auto_on: false, walk_ref: null } : null, error: null }),
+    // list() reads through here: answer the same rows the prime did, so the
+    // bind's async warm cannot wipe the table a tick after `switchboard()` set it.
+    then(res) { return Promise.resolve({ data: Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status, evidence: null, auto_on: false, walk_ref: null })), error: null }).then(res); },
+  }; return api; } };
+}
+function switchboard(states) { cap._resetCapabilitiesCache(); cap.bind(capDouble(states)); cap._prime(Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status }))); }
+
 // ═══ §1 · THE BUILDER'S ARM IS OFF BY CONSTRUCTION FOR EVERY OTHER ENTRY ════
 sec('\u00a71 \u00b7 buildTemplatePayload \u2014 the sixteen-entry snapshot (R-G2.6)');
 
@@ -196,24 +213,25 @@ cell('a missing button variable is refused loudly, not sent silently', () => {
 // ═══ §3 · THE SEND IS DARK, AND THE FLAG IS THE ONLY THING HOLDING IT ═══════
 sec('\u00a73 \u00b7 the two gates (build-dark law)');
 
-cell('both gates shut with the flag unset', () => {
-  delete process.env.REVIEW_ASK_SEND_ENABLED;
+(async () => {
+await (async () => {
+  switchboard({});
   const RA = fresh('src/lib/vendor/reviewAsk.js');
-  const g = RA.sendGate();
-  if (g.open) return 'the gate is OPEN with no flag set';
-  if (!/REVIEW_ASK_SEND_ENABLED/.test(g.reason)) return `reason does not name the flag: ${g.reason}`;
-  return true;
-});
+  const g = await RA.sendGate();
+  if (g.open) return no('both gates shut with the flag unset', 'the gate is OPEN with no flag set');
+  if (!/flag\.review_ask_send/.test(g.reason)) return no('both gates shut with the flag unset', `reason does not name the flag: ${g.reason}`);
+  ok('both gates shut with the flag unset');
+})();
 
-cell('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', () => {
+await (async () => {
   // Stated as a cell because it is the one asymmetry with G1.1's credit invite,
   // whose registry status is `pending` and does half the holding.
   const RA = fresh('src/lib/vendor/reviewAsk.js');
-  return RA.sendGate().approved === true ? true : 'template is not approved; this cell\u2019s premise has changed';
-});
+  if ((await RA.sendGate()).approved === true) ok('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold');
+  else no('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', 'template is not approved; this cell\u2019s premise has changed');
+})();
 
-(async () => {
-  delete process.env.REVIEW_ASK_SEND_ENABLED;
+  switchboard({});
   const RA = fresh('src/lib/vendor/reviewAsk.js');
   let sendWaCalled = false;
   const out = await RA.sendReviewAsk(
@@ -225,14 +243,14 @@ cell('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', ()
   else ok('a shut gate never reaches the transport');
 
   // ── the open gate declares nudgeClass and the couple lane ────────────────
-  process.env.REVIEW_ASK_SEND_ENABLED = '1';
+  switchboard({ 'flag.review_ask_send': 'on' });
   const RA2 = fresh('src/lib/vendor/reviewAsk.js');
   let seen = null;
   await RA2.sendReviewAsk(
     { to: '919888294440', couple: 'A', vendor: 'B', code: 'DEV440' },
     { sendWa: async (o) => { seen = o; return { sent: true, result: { wamid: 'w1' } }; } },
   );
-  delete process.env.REVIEW_ASK_SEND_ENABLED;
+  switchboard({});
 
   if (!seen) no('an open gate routes through sendWa', 'sendWa was never called');
   else {
@@ -241,10 +259,10 @@ cell('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', ()
     cell('the code reaches the payload lowercased', () => seen.vars.code === 'dev440' ? true : `code is ${seen.vars.code}`);
   }
 
-  process.env.REVIEW_ASK_SEND_ENABLED = '1';
+  switchboard({ 'flag.review_ask_send': 'on' });
   const RA3 = fresh('src/lib/vendor/reviewAsk.js');
   const nh = await RA3.sendReviewAsk({ to: '91', couple: 'A', vendor: 'B', code: '' }, { sendWa: async () => ({ sent: true }) });
-  delete process.env.REVIEW_ASK_SEND_ENABLED;
+  switchboard({});
   if (nh.sent) no('no routing_handle is refused', 'it sent'); else ok('no routing_handle is refused');
 
   // ═══ §4 · THE SEAL'S ARITHMETIC ══════════════════════════════════════════
@@ -498,8 +516,8 @@ cell('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', ()
     const from = src.indexOf("router.get('/google-reviews'");
     const to   = src.indexOf('router.get(', from + 10);
     const block = src.slice(from, to);
-    if (!/sendGate\(\)\.open/.test(block)) return 'the door does not read sendGate';
-    if (/REVIEW_ASK_SEND_ENABLED/.test(block)) return 'the door reads the env var directly \u2014 a second home for the gate';
+    if (!/\(await sendGate\(\)\)\.open/.test(block)) return 'the door does not read sendGate';
+    if (/REVIEW_ASK_SEND_ENABLED|process\.env/.test(block)) return 'the door reads the env var directly \u2014 a second home for the gate';
     return true;
   });
 

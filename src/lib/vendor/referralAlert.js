@@ -27,6 +27,9 @@
 'use strict';
 
 const { sendWa } = require('../sendWa');
+const cap = require('../capabilities');
+/** The switchboard key, named once (CE-41 seat C, R-41.8). */
+const CAP_KEY = 'flag.referral_alert_send';
 const VENDOR_LEADS_URL = require('../pwaPaths').vendorUrl('leadsList');
 
 /**
@@ -49,18 +52,20 @@ const TEMPLATE_KEY = 'referral_alert';
 /**
  * ── THE FLAG ───────────────────────────────────────────────────────────────
  * Two gates stand between this file and a real handset, and BOTH must open:
- *   1. `REFERRAL_ALERT_SEND_ENABLED` — unset in every environment today.
+ *   1. `flag.referral_alert_send` on the switchboard (`src/lib/capabilities.js`,
+ *      CE-41 seat C) — read at the door with `cap.on(...)`. Until CE-41 this
+ *      was the env var `REFERRAL_ALERT_SEND_ENABLED`; the env read is deleted.
  *   2. `sendWa`'s own `isApproved(templateKey)`, which reads the registry —
  *      `referral_alert` ships `status: 'pending'` until Meta returns Active.
  * Named separately because they fail for different reasons and a walk must be
  * able to say which one refused. `reviewAsk.js:56` and `paymentReminders.js:81`
  * are the two precedents and this is their shape.
  */
-function sendGate() {
-  const flagOn = String(process.env.REFERRAL_ALERT_SEND_ENABLED || '') === '1';
+async function sendGate() {
+  const flagOn = cap.on(CAP_KEY);
   return {
     on: flagOn,
-    reason: flagOn ? null : 'REFERRAL_ALERT_SEND_ENABLED is not set',
+    reason: flagOn ? null : cap.reason(CAP_KEY),
   };
 }
 
@@ -101,7 +106,7 @@ async function recordAlert(supabase, row) {
  * @returns {{sent: boolean, reason: string|null, wamid: string|null}}
  */
 async function alertPeerOfReferral(supabase, { referralId, toVendorId, referrerName }) {
-  const gate = sendGate();
+  const gate = await sendGate();
   if (!gate.on) {
     // ⚠ NO ROW WHEN THE FLAG IS DOWN, and this is the one deliberate asymmetry
     // with `weddingLeadAlert`. A dark flag is not an outcome of a send — it is
@@ -271,5 +276,6 @@ module.exports = {
   // against, and a cell that re-declares them has stopped testing this file.
   recordAlert,
   sendGate,
+  CAP_KEY,
   TEMPLATE_KEY,
 };

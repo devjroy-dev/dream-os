@@ -1,0 +1,35 @@
+# scripts/floor-manifest-ce41-c1.txt
+# CE-41 · SEAT C · C1 — THE SWITCHBOARD, dream-os half (R-41.8, R-41.35–.43).
+# BASE: 2159cd3bb2a6a16769c7612645eddac2f58d3370 — re-derived at the cut (fetch-first).
+# Built at 57d12d4; the carry through 38a70b0→1feb1cc→e62ba2a→2159cd3 is in the handover.
+# db/migrations/0149_capabilities.sql — the number derived at 2159cd3 (ladder tail 0148).
+# Seeds: the founder's Railway read 2026-09-08 (R-41.40, R-41.46).
+src/lib/capabilities.js
+src/capabilitiesSweep.js
+src/api/admin/capabilities.js
+src/api/router.js
+src/index.js
+src/lib/metaInbound.js
+src/lib/vendor/reviewAsk.js
+src/lib/vendor/paymentReminders.js
+src/lib/vendor/referralAlert.js
+src/lib/vendor/creditInvite.js
+src/lib/vendor/contractSend.js
+src/api/sign.js
+src/api/vendor/contracts.js
+src/api/vendor/reminders.js
+src/api/vendor/solutions/index.js
+src/api/vendor/studio/weddings.js
+scripts/b61_switchboard_bench.js
+scripts/b61_mutations.js
+scripts/b51_referrals_bench.js
+scripts/b53_g11_wedding_pages_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/b56_contract_bench.js
+scripts/b57_g13_team_bench.js
+scripts/b59_g34_reminders_bench.js
+scripts/b59_mutations.js
+scripts/floor-manifest-ce41-c1.txt
+db/migrations/0149_capabilities.sql
+scripts/b20_a2_assistance_bench.js
+docs/TDW_CE41_C1_SWITCHBOARD_HANDOVER.md

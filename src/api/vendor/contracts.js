@@ -33,7 +33,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const C = require('../../lib/vendor/contracts');
 const { getUploadUrl, finalizeContract, getDownloadUrl } = C;
 const { renderContract, renderStandardAgreement, contractPdfSource } = require('../../lib/vendor/contractSource');
-const { sendSignLink } = require('../../lib/vendor/contractSend');
+const { sendSignLink, signSendGate } = require('../../lib/vendor/contractSend');
 const { formatDate } = require('../../lib/format');
 const { siteBase } = require('../../lib/vendor/creditInvite');
 // ── THE MAP'S ONE HOME (F4). Read by this door and by the pure renderer, and
@@ -377,10 +377,12 @@ router.post('/:contractId/send-to-couple', ...authMw, asyncHandler(async (req, r
   // set in production and no message existed to send. The flag now does what
   // its name says; the result is the send's, never assumed. NEVER A FALSE DONE
   // still holds: `sent` is Meta's answer, and a refusal comes back as a reason.
-  const flagOn = String(process.env.CONTRACT_SIGN_SEND_ENABLED || '') === '1';
-  if (!flagOn) {
+  // CE-41 seat C: `flag.contract_sign_send` on the switchboard, one home in
+  // `contractSend.js` shared with `api/sign.js` — the env read is deleted.
+  const gate = await signSendGate();
+  if (!gate.on) {
     return okRes(res, { contract_id: req.params.contractId, sign_url, sent: false,
-                        reason: 'CONTRACT_SIGN_SEND_ENABLED is not set' });
+                        reason: gate.reason });
   }
   const src = await contractPdfSource(supabase, req.vendor.id, req.params.contractId);
   const owner = (src.ok && src.vendor && src.vendor.business_name) || null;

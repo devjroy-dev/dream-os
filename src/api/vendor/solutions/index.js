@@ -276,7 +276,7 @@ router.get('/google-reviews', requireAuth, resolveVendor(), asyncHandler(async (
     // number we already know. When it passes, the row goes live and this field
     // retires with the band it feeds.
     gbpAvailableFrom: '2026-10-27',
-    sendEnabled:      sendGate().open,
+    sendEnabled:      (await sendGate()).open,
   }, 'googleReviews');
 }));
 

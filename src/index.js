@@ -18,6 +18,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { runCoupleAgenticTurn } = require('./agent/engine');
 const { buildBriefing } = require('./agent/briefing');
 const { startCronJobs } = require('./cron');
+const { startCapabilitiesSweep } = require('./capabilitiesSweep'); // CE-41 seat C: the switchboard's nightly reconciler
 const { sendWhatsApp } = require('./lib/whatsapp');
 const webhookCore = require('./lib/webhookCore'); // TDW_05 P1a: shared inbound/callback transport
 const { generateInvoiceForBinder } = require('./api/vendor/invoices');
@@ -192,6 +193,18 @@ app.post('/webhook/meta', async (req, res) => {
       const inputs = metaInputsFrom(msg, req.body, resolvedMedia);
       await processVendorInbound(inputs, vendorInboundDeps);
     }
+    // ── CE-41 SEAT C · THE SWITCHBOARD'S FAST PATH (R-41.37) ─────────────────
+    // Meta's `message_template_status_update` field lands on this same receiver
+    // once the founder subscribes it on the WABA (a dashboard step in the C1
+    // packet note). A template row moves within seconds of Meta's word; the
+    // nightly sweep reconciles. Unknown names are ignored inside the seam.
+    for (const v of metaInbound.extractTemplateStatusUpdates(req.body)) {
+      try {
+        const { applyTemplateStatusEvent } = require('./capabilitiesSweep');
+        const r = await applyTemplateStatusEvent(supabase, v);
+        console.log(`[webhook:meta] template status ${v.message_template_name}=${v.event} → ${r.applied ? 'applied' : r.reason}`);
+      } catch (e) { console.warn('[webhook:meta] template status seam', e && e.message); }
+    }
     for (const s of metaInbound.extractStatuses(req.body)) {
       // ── TDW_06 · F-06.143's SECOND LIMB DIES HERE (fork 3(b), chair-ruled) ──
       // This was a BLIND update: no `.select()`, no count, wrapped in a
@@ -321,4 +334,5 @@ app.listen(PORT, () => {
   console.log(`[dream-os] listening on :${PORT}`);
   webhookCore.probeMessageSidColumn(supabase, { prefix: '[dream-os]' }); // TDW_05 P1b: durable-dedupe capability probe
   startCronJobs({ supabase });
+  startCapabilitiesSweep({ supabase }); // binds src/lib/capabilities.js's client; 03:50 IST
 });

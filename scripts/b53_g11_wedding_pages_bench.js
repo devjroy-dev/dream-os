@@ -34,6 +34,23 @@ const PUBDOOR   = 'src/api/public/weddingPage.js';
 const STUDIO    = 'src/api/vendor/studio/weddings.js';
 const CREDITS   = 'src/api/credits.js';
 const INVITE    = 'src/lib/vendor/creditInvite.js';
+// ── CE-41 C1 AMENDMENT (labeled, ratify-or-revert; R-38.19's bench-follows-the-law) ──
+// The flag this bench read through `process.env` now lives on the switchboard
+// (`src/lib/capabilities.js`, R-41.8). Cells keep their names and questions; the
+// LEVER is the register's bind seam. `switchboard({})` = every gate shut.
+const cap = require(path.join(ROOT, 'src/lib/capabilities.js'));
+function capDouble(states) {
+  return { from: () => { let key = null; const api = {
+    select() { return api; }, order() { return api; }, update() { return api; },
+    eq(_c, v) { key = v; return api; },
+    maybeSingle: async () => ({ data: key in states ? { key, kind: 'flag', status: states[key], evidence: null, auto_on: false, walk_ref: null } : null, error: null }),
+    // list() reads through here: answer the same rows the prime did, so the
+    // bind's async warm cannot wipe the table a tick after `switchboard()` set it.
+    then(res) { return Promise.resolve({ data: Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status, evidence: null, auto_on: false, walk_ref: null })), error: null }).then(res); },
+  }; return api; } };
+}
+function switchboard(states) { cap._resetCapabilitiesCache(); cap.bind(capDouble(states)); cap._prime(Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status }))); }
+
 // ── G1.2's own subjects ─────────────────────────────────────────────────────
 const SIGN      = 'src/lib/cloudinarySign.js';
 const CONSENT   = 'src/api/consent.js';
@@ -62,6 +79,10 @@ const fresh = (rel) => { delete require.cache[P(rel)]; return require(P(rel)); }
 const W = fresh(LIB);
 const S = fresh(SEASON);
 
+// ── C1 AMENDMENT (labeled): the body runs inside one async IIFE so the two gate
+// cells in C7 may `await` the switchboard read; every other line is byte-identical
+// and runs in the same order it always did. ────────────────────────────────────
+(async () => {
 // ── C1 · THE SLUG RULE MATCHES THE RATIFIED FRAMES ──────────────────────────
 // The sitting's best catch. A first cut expanded `&` to ` and `, which is the
 // tidier rule and would have shipped `priya-and-arjun` while every ratified
@@ -236,11 +257,12 @@ sec('C7 \u00b7 approved is not live \u2014 the second gate carries it (F-40.21)'
   ok('it declares exactly four variables',
     JSON.stringify(t.getTemplate('wedding_credit').variables) === JSON.stringify(['owner','role','wedding','link']));
   const inv = fresh(INVITE);
-  const gate = inv.sendGate();
+  switchboard({}); // C1: both flags shut on the switchboard
+  const gate = await inv.sendGate();
   // THE CELL THAT MATTERS NOW: approved, and still shut.
   ok('the send gate is SHUT DESPITE approval', gate.open === false && gate.approved === true);
   ok('the flag is the gate that holds, and it NAMES itself',
-    gate.flagOn === false && /WEDDING_CREDIT_SEND_ENABLED/.test(gate.reason));
+    gate.flagOn === false && /flag\.wedding_credit_send/.test(gate.reason));
   ok('claimUrl is live even while the send is dark (the founder pastes it)',
     /\/credits\/8f2c41a9$/.test(inv.claimUrl('8f2c41a9')));
 
@@ -251,7 +273,7 @@ sec('C7 \u00b7 approved is not live \u2014 the second gate carries it (F-40.21)'
   ok('wedding_consent is registered and approved', t.isApproved('wedding_consent') === true);
   ok('it declares exactly three variables',
     JSON.stringify(t.getTemplate('wedding_consent').variables) === JSON.stringify(['owner','wedding','link']));
-  const cgate = inv.consentSendGate();
+  const cgate = await inv.consentSendGate();
   ok('the consent send is SHUT DESPITE approval', cgate.open === false && cgate.approved === true);
   // ⚠ THIS CELL WAS TOO WEAK ON ITS FIRST CUT AND THE MUTATION PASS SAID SO.
   // It asserted only `cgate.reason`, which is a LITERAL string — so a gate that
@@ -262,12 +284,12 @@ sec('C7 \u00b7 approved is not live \u2014 the second gate carries it (F-40.21)'
   // claims. Now the SOURCE is read: the consent gate must consult its own
   // variable, and the two gates must consult different ones.
   const invSrc = read(INVITE);
-  const consentFn = invSrc.slice(invSrc.indexOf('function consentSendGate'),
+  const consentFn = invSrc.slice(invSrc.indexOf('async function consentSendGate'),
                                  invSrc.indexOf('async function sendConsentInvite'));
   ok('the consent gate READS its own variable, not the credit one',
-    /WEDDING_CONSENT_SEND_ENABLED/.test(consentFn)
-    && !/WEDDING_CREDIT_SEND_ENABLED/.test(consentFn));
-  ok('and it reports the same one it reads', /WEDDING_CONSENT_SEND_ENABLED/.test(cgate.reason));
+    /cap\.on\(CONSENT_CAP_KEY\)/.test(consentFn)
+    && !/CREDIT_CAP_KEY/.test(consentFn));
+  ok('and it reports the same one it reads', /flag\.wedding_consent_send/.test(cgate.reason));
   // NO REGISTERED BODY MAY OPEN OR CLOSE ON A VARIABLE — F-40.91. Meta refuses
   // both ("Variables can't be at the start or end of the template"), the founder
   // hit that wall in the Manager, and a census found exactly one violator among
@@ -728,12 +750,12 @@ if (process.argv.includes('--mutate')) {
     // would open live traffic to real numbers and nothing else would object.
     ['src/lib/vendor/creditInvite.js',
       'the credit send drops its flag gate \u2014 approval alone opens live traffic',
-      "  const flagOn   = String(process.env.WEDDING_CREDIT_SEND_ENABLED || '') === '1';",
+      "  const flagOn   = await cap.on(CREDIT_CAP_KEY);",
       "  const flagOn   = true;"],
     ['src/lib/vendor/creditInvite.js',
       'the consent send borrows the credit flag \u2014 one switch opens two audiences',
-      "  const flagOn   = String(process.env.WEDDING_CONSENT_SEND_ENABLED || '') === '1';",
-      "  const flagOn   = String(process.env.WEDDING_CREDIT_SEND_ENABLED || '') === '1';"],
+      "  const flagOn   = await cap.on(CONSENT_CAP_KEY);",
+      "  const flagOn   = await cap.on(CREDIT_CAP_KEY);"],
     // F-40.91: the placement rule the estate met exactly once and had no cell for.
     ['src/lib/templates.js',
       'a registered body opens on a variable again \u2014 Meta refuses it (F-40.91)',
@@ -883,3 +905,4 @@ if (process.argv.includes('--mutate')) {
 console.log('\n' + (fail === 0 ? 'GREEN' : 'RED') + ' \u2014 b53 g11 wedding pages ' +
   pass + '/' + (pass + fail));
 process.exit(fail === 0 ? 0 : 1);
+})().catch((e) => { console.error('BENCH ERROR', e); process.exit(1); });

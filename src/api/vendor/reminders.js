@@ -135,7 +135,7 @@ router.get('/', ...authMw, asyncHandler(async (req, res) => {
       due_date:     m.due_date,
     }));
 
-  const gate = sendGate();
+  const gate = await sendGate();
   return okRes(res, {
     asked,
     sent_count: asked.filter((a) => a.sent).length,

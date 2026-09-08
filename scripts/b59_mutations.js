@@ -95,7 +95,7 @@ const MUTATIONS = [
    "  const wamid = res && res.result && res.result.wamid;",
    "  const wamid = res && res.wamid;"],
   ['§11 SELF-TEST — syntax broken on purpose', 'src/lib/vendor/paymentReminders.js',
-   "function sendGate() {", "function sendGate( {"],
+   "async function sendGate() {", "async function sendGate( {"], // C1 amendment (labeled): the gate is async now
 ];
 
 function runBench() {

@@ -10,8 +10,11 @@
 // and nothing else moves.
 //
 // TWO GATES, BOTH CLOSED, AND DELIBERATELY NOT ONE:
-//   1. `WEDDING_CREDIT_SEND_ENABLED` — the named flag. Unset in every
-//      environment today. This is the founder's switch.
+//   1. `flag.wedding_credit_send` on the switchboard (`src/lib/capabilities.js`,
+//      CE-41 seat C, R-41.8) — the founder's switch, read at the door with
+//      `cap.on(...)`. Until CE-41 this was the env var
+//      `WEDDING_CREDIT_SEND_ENABLED` (set 2026-09-05 after the G1.3 walk); the
+//      env read is deleted and the seed row carries that state.
 //   2. `isApproved('wedding_credit')` — the registry's own status, which reads
 //      `pending` because F-40.21's template does not exist on either WABA.
 // One gate would be enough to stop a send. Two are here because they fail for
@@ -26,6 +29,10 @@
 'use strict';
 
 const { isApproved } = require('../templates');
+const cap = require('../capabilities');
+/** The two switchboard keys, each named once (CE-41 seat C). */
+const CREDIT_CAP_KEY  = 'flag.wedding_credit_send';
+const CONSENT_CAP_KEY = 'flag.wedding_consent_send';
 
 /** The public base. One home; the same default the public card door uses. */
 function siteBase() {
@@ -52,8 +59,8 @@ function consentUrl(token) {
 }
 
 /** Why the send is dark right now, in words a handover can quote. */
-function sendGate() {
-  const flagOn   = String(process.env.WEDDING_CREDIT_SEND_ENABLED || '') === '1';
+async function sendGate() {
+  const flagOn   = cap.on(CREDIT_CAP_KEY);
   const approved = isApproved('wedding_credit');
   return {
     open: flagOn && approved,
@@ -61,7 +68,7 @@ function sendGate() {
     approved,
     reason: flagOn
       ? (approved ? null : 'template tdw_wedding_credit is not approved on the sending WABA')
-      : 'WEDDING_CREDIT_SEND_ENABLED is not set',
+      : cap.reason(CREDIT_CAP_KEY),
   };
 }
 
@@ -99,7 +106,7 @@ function sendGate() {
  * the credit is written either way, and the room reports the send honestly.
  */
 async function sendCreditInvite({ to, owner, role, wedding, token, supabase }) {
-  const gate = sendGate();
+  const gate = await sendGate();
   if (!gate.open) return { ok: false, sent: false, skipped: true, reason: gate.reason };
 
   const { sendWa } = require('../sendWa');
@@ -129,15 +136,15 @@ async function sendCreditInvite({ to, owner, role, wedding, token, supabase }) {
 /**
  * THE CONSENT ASK — G1.2's send, dark behind its OWN flag.
  *
- * A SECOND FLAG AND NOT A SHARED ONE. `WEDDING_CREDIT_SEND_ENABLED` opens
+ * A SECOND FLAG AND NOT A SHARED ONE. `flag.wedding_credit_send` opens
  * messages to VENDORS who were credited; this opens messages to COUPLES who are
  * not on the platform. They are different audiences, different templates and
  * different review outcomes — Meta may approve one and reclassify the other —
  * so one switch governing both would mean the founder cannot open the safer one
  * without opening the other.
  */
-function consentSendGate() {
-  const flagOn   = String(process.env.WEDDING_CONSENT_SEND_ENABLED || '') === '1';
+async function consentSendGate() {
+  const flagOn   = cap.on(CONSENT_CAP_KEY);
   const approved = isApproved('wedding_consent');
   return {
     open: flagOn && approved,
@@ -145,12 +152,12 @@ function consentSendGate() {
     approved,
     reason: flagOn
       ? (approved ? null : 'template tdw_wedding_consent is not approved on the sending WABA')
-      : 'WEDDING_CONSENT_SEND_ENABLED is not set',
+      : cap.reason(CONSENT_CAP_KEY),
   };
 }
 
 async function sendConsentInvite({ to, owner, wedding, token, supabase }) {
-  const gate = consentSendGate();
+  const gate = await consentSendGate();
   if (!gate.open) return { ok: false, sent: false, skipped: true, reason: gate.reason };
 
   const { sendWa } = require('../sendWa');
@@ -178,4 +185,5 @@ async function sendConsentInvite({ to, owner, wedding, token, supabase }) {
 module.exports = {
   claimUrl, consentUrl, sendGate, sendCreditInvite,
   consentSendGate, sendConsentInvite, siteBase,
+  CREDIT_CAP_KEY, CONSENT_CAP_KEY,
 };

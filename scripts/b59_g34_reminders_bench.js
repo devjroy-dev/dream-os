@@ -55,6 +55,24 @@ const section = (t) => console.log(`\n── ${t} ──`);
 
 const VENDOR = 'vendor-dev440';
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+// ── CE-41 C1 AMENDMENT (labeled, ratify-or-revert; R-38.19's bench-follows-the-law) ──
+// `PAYMENT_REMINDER_SEND_ENABLED` became `flag.payment_reminder_send` on the
+// switchboard (`src/lib/capabilities.js`, R-41.8). Every env toggle below is now
+// `switchboard({...})`; cells keep their names and questions. `switchboard({})` = shut.
+const cap = require(path.join(ROOT, 'src/lib/capabilities.js'));
+function capDouble(states) {
+  return { from: () => { let key = null; const api = {
+    select() { return api; }, order() { return api; }, update() { return api; },
+    eq(_c, v) { key = v; return api; },
+    maybeSingle: async () => ({ data: key in states ? { key, kind: 'flag', status: states[key], evidence: null, auto_on: false, walk_ref: null } : null, error: null }),
+    // list() reads through here: answer the same rows the prime did, so the
+    // bind's async warm cannot wipe the table a tick after `switchboard()` set it.
+    then(res) { return Promise.resolve({ data: Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status, evidence: null, auto_on: false, walk_ref: null })), error: null }).then(res); },
+  }; return api; } };
+}
+function switchboard(states) { cap._resetCapabilitiesCache(); cap.bind(capDouble(states)); cap._prime(Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status }))); }
+const FLAG_ON = { 'flag.payment_reminder_send': 'on' };
+
 // ⚠ CELLS THAT ASSERT ABSENCE MUST READ CODE, NOT PROSE. This file's own header
 // names `nudgeClass: true` and `state = 'unpaid'` while asserting neither is
 // present in production. A grep over raw text would go RED on the comments that
@@ -188,16 +206,15 @@ section('3. the due date reads as a client reads it, and is UTC-parsed');
 
 section('4. two gates, and they fail for different reasons');
 {
-  const before = process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  delete process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  const shut = PR.sendGate();
+  switchboard({});
+  const shut = await PR.sendGate();
   ok('shut by default', shut.open === false);
   ok('the template IS approved — Meta returned Active/Utility 2026-09-06', shut.approved === true);
   ok('so the FLAG is named as the reason, not the template',
-     shut.reason === 'PAYMENT_REMINDER_SEND_ENABLED is not set');
+     shut.reason === 'flag.payment_reminder_send has no row on the switchboard');
 
-  process.env.PAYMENT_REMINDER_SEND_ENABLED = '1';
-  const open = PR.sendGate();
+  switchboard(FLAG_ON);
+  const open = await PR.sendGate();
   ok('flag on + approved ⇒ open', open.open === true && open.reason === null);
 
   // ⚠ A SOURCE ASSERTION, AND IT IS HERE BECAUSE THE BEHAVIOURAL ONE CANNOT EXIST TODAY.
@@ -214,10 +231,9 @@ section('4. two gates, and they fail for different reasons');
      /open:\s*flagOn\s*&&\s*approved/.test(code('src/lib/vendor/paymentReminders.js')));
   ok('and the reason distinguishes WHICH gate is shut',
      /is not approved on the sending WABA/.test(code('src/lib/vendor/paymentReminders.js')) &&
-     /PAYMENT_REMINDER_SEND_ENABLED is not set/.test(code('src/lib/vendor/paymentReminders.js')));
+     /(^|[^.\w])cap\.reason\(CAP_KEY\)/.test(code('src/lib/vendor/paymentReminders.js')));
 
-  if (before === undefined) delete process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  else process.env.PAYMENT_REMINDER_SEND_ENABLED = before;
+  switchboard({});
 }
 
 section('5. the row is written BEFORE the send, and a failed send still leaves it');
@@ -226,8 +242,7 @@ section('5. the row is written BEFORE the send, and a failed send still leaves i
   // THE FLAG MUST BE ON HERE. This cell is about a TRANSPORT failure; with the gate shut
   // the writer refuses before it ever dispatches and the reason under test is never
   // reached. The first cut asserted the transport's message against the gate's.
-  const _before5 = process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  process.env.PAYMENT_REMINDER_SEND_ENABLED = '1';
+  switchboard(FLAG_ON); // C1: was `_before5 = process.env.PAYMENT_REMINDER_SEND_ENABLED; ... = '1'`
   const out = await PR.sendOneReminder(db, {
     vendorId: VENDOR, milestone: MS(), invoice: INV,
     vendorName: 'Dev Roy Photography', source: 'vendor_tap',
@@ -239,8 +254,7 @@ section('5. the row is written BEFORE the send, and a failed send still leaves i
      db._t.payment_reminders.length === 1);
   ok('wamid is NULL, which IS the record that it never reached Meta',
      db._t.payment_reminders[0].wamid === null);
-  if (_before5 === undefined) delete process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  else process.env.PAYMENT_REMINDER_SEND_ENABLED = _before5;
+  switchboard({});
 }
 
 section('6. once per milestone is the UNIQUE key, not the code');
@@ -252,8 +266,7 @@ section('6. once per milestone is the UNIQUE key, not the code');
   };
   const spy = { calls: 0 };
   const fakeWa = async (p) => { spy.calls++; return { sent: true, result: { wamid: 'wamid-1' } }; };
-  const before = process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  process.env.PAYMENT_REMINDER_SEND_ENABLED = '1';
+  switchboard(FLAG_ON); // C1: was `before = process.env.PAYMENT_REMINDER_SEND_ENABLED; ... = '1'`
 
   const first  = await PR.sendOneReminder(db, args, { sendWa: fakeWa });
   const second = await PR.sendOneReminder(db, args, { sendWa: fakeWa });
@@ -264,16 +277,14 @@ section('6. once per milestone is the UNIQUE key, not the code');
   ok('exactly one row exists', db._t.payment_reminders.length === 1);
   ok('the wamid was written back on success', db._t.payment_reminders[0].wamid === 'wamid-1');
 
-  if (before === undefined) delete process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  else process.env.PAYMENT_REMINDER_SEND_ENABLED = before;
+  switchboard({});
 }
 
 section('7. what is handed to sendWa — the lane, the vars, the class');
 {
   const db = makeDb();
   let seen = null;
-  const before = process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  process.env.PAYMENT_REMINDER_SEND_ENABLED = '1';
+  switchboard(FLAG_ON); // C1: was `before = process.env.PAYMENT_REMINDER_SEND_ENABLED; ... = '1'`
   await PR.sendOneReminder(db, {
     vendorId: VENDOR, milestone: MS(), invoice: INV,
     vendorName: 'Dev Roy Photography', source: 'vendor_tap',
@@ -301,8 +312,7 @@ section('7. what is handed to sendWa — the lane, the vars, the class');
   ok('the Meta name is tdw_payment_reminder, not tdw_payment_due',
      payload.name === 'tdw_payment_reminder');
 
-  if (before === undefined) delete process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  else process.env.PAYMENT_REMINDER_SEND_ENABLED = before;
+  switchboard({});
 }
 
 section('8. silence never means yes — BOTH the tap and the switch are required');
@@ -443,15 +453,13 @@ section('11c. the wamid is read off sendWa\'s ACTUAL return shape (F-40.210)');
 
   // And behaviourally, driven through the real writer with sendWa's real shape.
   const db = makeDb();
-  const before = process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  process.env.PAYMENT_REMINDER_SEND_ENABLED = '1';
+  switchboard(FLAG_ON); // C1: was `before = process.env.PAYMENT_REMINDER_SEND_ENABLED; ... = '1'`
   await PR.sendOneReminder(db, {
     vendorId: VENDOR, milestone: MS(), invoice: INV,
     vendorName: 'Dev Roy Photography', source: 'vendor_tap',
   }, { sendWa: async () => ({ sent: true, mode: 'template', key: PR.TEMPLATE_KEY, result: { wamid: 'wamid.REAL' } }) });
   ok('the wamid reaches the row, not a null', db._t.payment_reminders[0].wamid === 'wamid.REAL');
-  if (before === undefined) delete process.env.PAYMENT_REMINDER_SEND_ENABLED;
-  else process.env.PAYMENT_REMINDER_SEND_ENABLED = before;
+  switchboard({});
 }
 
 section('11d. the schedule door: an empty state is not a 404, and the control reads the row');

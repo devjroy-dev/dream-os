@@ -676,8 +676,9 @@ sec('C7 \u00b7 the reel probe (R-G13.10)');
     /spawn\('ffmpeg'/.test(sst));
   ok('it carries a timeout (a probe that can hang is a room that can hang)',
     /setTimeout/.test(sst) && /SIGKILL/.test(sst));
+  // C1 amendment (labeled): the flag is `flag.wedding_reel` on the switchboard (R-41.38).
   ok('reel_enabled is NOT just probe.present — the flag still governs (build-dark law)',
-    /WEDDING_REEL_ENABLED/.test(sst));
+    /(^|[^.\w])cap\.on\(REEL_CAP_KEY\)/.test(sst) && /'flag\.wedding_reel'/.test(sst));
   ok('a missing binary is an ANSWER, never a 500', /not_installed/.test(sst));
   // ── THE CARRY (the em dash) ──────────────────────────────────────────────
   // The record drew 「—」 until a vendor tapped `Check again`, and forgot again on
@@ -687,9 +688,9 @@ sec('C7 \u00b7 the reel probe (R-G13.10)');
     /async function readFfmpeg\(/.test(sst)
     && (sst.match(/readFfmpeg\(\)/g) || []).length >= 2);
   ok('the list door carries the reel shape, so the record needs no tap',
-    /weddings: rows, reel: reelShape\(await readFfmpeg\(\)\)/.test(sst));
+    /weddings: rows, reel: await reelShape\(await readFfmpeg\(\)\)/.test(sst));
   ok('the flag rule has one home too \u2014 reelShape, not two spellings',
-    (sst.match(/WEDDING_REEL_ENABLED/g) || []).length === 1);
+    (sst.match(/cap\.on\(REEL_CAP_KEY\)/g) || []).length === 1);
 }
 
 // ── C8 · 0137 AND THE DATE PAIR ─────────────────────────────────────────────
@@ -793,7 +794,7 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       [MIG137, '(wedding_date IS NULL) = (wedding_date_precision IS NULL)', 'true'],
       // 10 · the reel flag collapsed onto the probe — an image change would turn
       //      a dark feature on with nobody ruling it.
-      [STUDIO, "reel_enabled: String(process.env.WEDDING_REEL_ENABLED || '') === '1' && probe.present === true,",
+      [STUDIO, "reel_enabled: cap.on(REEL_CAP_KEY) && probe.present === true,",
                'reel_enabled: probe.present === true,'],
     ];
     let bit = 0;

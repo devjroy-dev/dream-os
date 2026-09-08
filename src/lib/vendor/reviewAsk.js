@@ -9,8 +9,11 @@
 //
 // TWO GATES, BOTH CLOSED, AND DELIBERATELY NOT ONE — creditInvite.js's shape,
 // which is the estate's precedent for exactly this:
-//   1. `REVIEW_ASK_SEND_ENABLED` — the named flag. Unset everywhere today. The
-//      founder's switch, and the thing 2026-10-27 flips.
+//   1. `flag.review_ask_send` on the switchboard (`src/lib/capabilities.js`,
+//      CE-41 seat C, R-41.8) — the founder's switch, read at the door with
+//      `cap.on(...)`. Until CE-41 this was the env var
+//      `REVIEW_ASK_SEND_ENABLED`; the env read is deleted, the row is the one home.
+//      Off by design until G2 s2 (2026-10-27) — his tap on the admin card flips it.
 //   2. `isApproved('review_request')` — the registry's status.
 // They fail for DIFFERENT REASONS: the flag says "we have not decided to send
 // yet", the status says "Meta has not approved the words". A careless edit to
@@ -42,6 +45,10 @@
 
 const { isApproved } = require('../templates');
 const { sendWa } = require('../sendWa');
+const cap = require('../capabilities');
+
+/** The switchboard key, named once. */
+const CAP_KEY = 'flag.review_ask_send';
 
 /** The registry key and the lane, each named once. */
 const TEMPLATE_KEY = 'review_request';
@@ -52,8 +59,8 @@ const LANE = 'bride';
  * Returned rather than logged so the caller reports the reason instead of
  * inventing one.
  */
-function sendGate() {
-  const flagOn   = String(process.env.REVIEW_ASK_SEND_ENABLED || '') === '1';
+async function sendGate() {
+  const flagOn   = cap.on(CAP_KEY);
   const approved = isApproved(TEMPLATE_KEY);
   return {
     open: flagOn && approved,
@@ -61,7 +68,7 @@ function sendGate() {
     approved,
     reason: flagOn
       ? (approved ? null : `template ${TEMPLATE_KEY} is not approved on the sending WABA`)
-      : 'REVIEW_ASK_SEND_ENABLED is not set',
+      : cap.reason(CAP_KEY),
   };
 }
 
@@ -94,7 +101,7 @@ function reviewCode(routingHandle) {
  * gets made.
  */
 async function sendReviewAsk({ to, couple, vendor, code }, deps = {}) {
-  const gate = sendGate();
+  const gate = await sendGate();
   if (!gate.open) return { ok: false, sent: false, skipped: true, reason: gate.reason };
 
   const suffix = reviewCode(code);
@@ -125,4 +132,4 @@ async function sendReviewAsk({ to, couple, vendor, code }, deps = {}) {
   return { ok: true, sent: true, result: res };
 }
 
-module.exports = { sendGate, sendReviewAsk, reviewCode, TEMPLATE_KEY, LANE };
+module.exports = { sendGate, sendReviewAsk, reviewCode, TEMPLATE_KEY, LANE, CAP_KEY };

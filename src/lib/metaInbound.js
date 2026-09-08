@@ -248,6 +248,23 @@ function extractStatuses(body) {
 // which the flat normalizer drops. One POST can batch several changes with DIFFERENT recipient
 // PNIDs, so the fork is per-CHANGE, not per-POST. changesWithPnid surfaces { phoneNumberId,
 // entryId, change } for every change, order-preserving; unknown metadata → phoneNumberId:null.
+/**
+ * CE-41 seat C — the `message_template_status_update` field (R-41.37). Returns
+ * every such change's `value` in the POST. A `messages` field never has
+ * `message_template_name`, so the two extractors cannot cross.
+ */
+function extractTemplateStatusUpdates(body) {
+  const out = [];
+  const entries = body && Array.isArray(body.entry) ? body.entry : [];
+  for (const entry of entries) {
+    const changes = Array.isArray(entry.changes) ? entry.changes : [];
+    for (const ch of changes) {
+      if (ch && ch.field === 'message_template_status_update' && ch.value && ch.value.message_template_name) out.push(ch.value);
+    }
+  }
+  return out;
+}
+
 function changesWithPnid(body) {
   const out = [];
   const entries = (body && Array.isArray(body.entry)) ? body.entry : [];
@@ -286,6 +303,7 @@ function laneForPnid(pnid, env = process.env) {
 }
 
 module.exports = {
+  extractTemplateStatusUpdates,
   handleVerifyChallenge,
   verifyMetaSignature,
   normalizeMetaInbound,

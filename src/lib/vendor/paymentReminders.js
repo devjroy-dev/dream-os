@@ -9,8 +9,11 @@
 //
 // TWO GATES, BOTH CLOSED, AND DELIBERATELY NOT ONE — creditInvite.js's shape,
 // which is the estate's precedent for exactly this:
-//   1. `PAYMENT_REMINDER_SEND_ENABLED` — the named flag. Unset everywhere. The
-//      founder's switch.
+//   1. `flag.payment_reminder_send` on the switchboard (`src/lib/capabilities.js`,
+//      CE-41 seat C, R-41.8) — the founder's switch, read at the door with
+//      `cap.on(...)`. Until CE-41 this was the env var
+//      `PAYMENT_REMINDER_SEND_ENABLED` (set at beta after the G3.4 s1 walk,
+//      R-40.96); the env read is deleted and the seed row carries that state.
 //   2. `isApproved('payment_reminder_couple')` — the registry's status.
 // They fail for DIFFERENT REASONS: the flag says "we have not decided to send
 // yet", the status says "Meta has not passed these words". A careless edit to
@@ -51,6 +54,9 @@
 'use strict';
 
 const { isApproved } = require('../templates');
+const cap = require('../capabilities');
+/** The switchboard key, named once (CE-41 seat C). */
+const CAP_KEY = 'flag.payment_reminder_send';
 const { sendWa } = require('../sendWa');
 // ⚠ THE ESTATE'S ONE PHONE NORMALISER, NOT A LOCAL ONE. F-40.185's lesson from
 // the G3.2 lane: a seat wrote its own cleaner, handed Meta ten digits, and Meta
@@ -77,8 +83,8 @@ const WINDOW_DAYS = 3;
  * Returned rather than logged so the caller reports the reason instead of
  * inventing one.
  */
-function sendGate() {
-  const flagOn   = String(process.env.PAYMENT_REMINDER_SEND_ENABLED || '') === '1';
+async function sendGate() {
+  const flagOn   = cap.on(CAP_KEY);
   const approved = isApproved(TEMPLATE_KEY);
   return {
     open: flagOn && approved,
@@ -86,7 +92,7 @@ function sendGate() {
     approved,
     reason: flagOn
       ? (approved ? null : `template ${TEMPLATE_KEY} is not approved on the sending WABA`)
-      : 'PAYMENT_REMINDER_SEND_ENABLED is not set',
+      : cap.reason(CAP_KEY),
   };
 }
 
@@ -287,7 +293,7 @@ async function resolveClientPhone(supabase, invoice) {
  * `sendWa`, and is not optional here or anywhere.
  */
 async function sendOneReminder(supabase, { vendorId, milestone, invoice, vendorName, source }, deps = {}) {
-  const gate = sendGate();
+  const gate = await sendGate();
   const _sendWa = deps.sendWa || sendWa;
 
   // ── R-G34.3'S TWO HOMES, AND THE FIRST CUT READ ONLY ONE (F-40.183) ───────
@@ -474,6 +480,7 @@ async function runReminderSweep(supabase, deps = {}) {
 
 module.exports = {
   sendGate,
+  CAP_KEY,
   sendOneReminder,
   runReminderSweep,
   autoSendOn,

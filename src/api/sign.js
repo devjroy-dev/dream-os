@@ -51,7 +51,7 @@ const { renderContract } = require('../lib/vendor/contractSource');
 // F-40.196 — clause 16.2's promise. Dark until CONTRACT_COPY_SEND_ENABLED and
 // Meta's Active both move; never throws, so a failed notification cannot turn a
 // completed signature into a 500.
-const { sendSealedCopy, recordOtpSend } = require('../lib/vendor/contractSend');
+const { sendSealedCopy, recordOtpSend, signSendGate } = require('../lib/vendor/contractSend');
 const { sendOtpCode } = require('../lib/otpSend');
 // ⚠ ONE HOME, IMPORTED — NEVER A LOCAL NORMALISER (F-40.185). `src/lib/phone.js`'s
 // own header says it was MOVED rather than rewritten, byte-identical to the three
@@ -138,9 +138,12 @@ router.post('/:token/code', asyncHandler(async (req, res) => {
   // `tdw_vendor_login_otp`, whose body is Meta's preset `{{1}} is your verification
   // code.` — a code and nothing else, naming no account. `tdw_contract_sign_otp` is
   // submitted in parallel and the key re-points on approval.
-  const flagOn = String(process.env.CONTRACT_SIGN_SEND_ENABLED || '') === '1';
+  // CE-41 seat C: the switchboard's `flag.contract_sign_send`, read through the
+  // one home in `contractSend.js` — never an env var, never a literal.
+  const gate = await signSendGate();
+  const flagOn = gate.on;
   let sent = false;
-  let reason = flagOn ? null : 'CONTRACT_SIGN_SEND_ENABLED is not set';
+  let reason = flagOn ? null : gate.reason;
   if (flagOn) {
     try {
       // `clients.phone` is stored as a vendor typed it — often bare ten digits.

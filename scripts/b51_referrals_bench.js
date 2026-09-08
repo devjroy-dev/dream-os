@@ -71,6 +71,23 @@ sendWaMod.sendWa = async (opts) => {
 const referrals = require(path.join(ROOT, 'src/lib/vendor/referrals.js'));
 const leadsLib  = require(path.join(ROOT, 'src/lib/vendor/leads.js'));
 const alertLib  = require(path.join(ROOT, 'src/lib/vendor/referralAlert.js'));
+// ── CE-41 C1 AMENDMENT (labeled, ratify-or-revert; R-38.19's bench-follows-the-law) ──
+// The flag this bench toggled through `process.env` now lives on the switchboard
+// (`src/lib/capabilities.js`, R-41.8). The cells below keep their names and their
+// questions; the LEVER is the register's bind seam instead of the env var.
+const cap = require(path.join(ROOT, 'src/lib/capabilities.js'));
+function capDouble(states) {
+  return { from: () => { let key = null; const api = {
+    select() { return api; }, order() { return api; }, update() { return api; },
+    eq(_c, v) { key = v; return api; },
+    maybeSingle: async () => ({ data: key in states ? { key, kind: 'flag', status: states[key], evidence: null, auto_on: false, walk_ref: null } : null, error: null }),
+    // list() reads through here: answer the same rows the prime did, so the
+    // bind's async warm cannot wipe the table a tick after `switchboard()` set it.
+    then(res) { return Promise.resolve({ data: Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status, evidence: null, auto_on: false, walk_ref: null })), error: null }).then(res); },
+  }; return api; } };
+}
+function switchboard(states) { cap._resetCapabilitiesCache(); cap.bind(capDouble(states)); cap._prime(Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status }))); }
+
 const templates = require(path.join(ROOT, 'src/lib/templates.js'));
 
 // COMMENT-STRIPPED SOURCE. Three cells in sitting 1 read PROSE AS CODE — a
@@ -847,10 +864,9 @@ section('10. the picker became a search — groups, predicate, budget');
 // on the catch path → the opted-out row vanishes → RED.
 section('11. the peer is told, and every outcome is written down');
 {
-  const OLD = process.env.REFERRAL_ALERT_SEND_ENABLED;
-
   // ── THE FLAG IS THE FIRST GATE, AND IT IS DOWN EVERYWHERE TODAY.
-  delete process.env.REFERRAL_ALERT_SEND_ENABLED;
+  // (C1 amendment: `flag.referral_alert_send` off on the switchboard, not an env var.)
+  switchboard({ 'flag.referral_alert_send': 'off' });
   waCalls = []; waBehaviour = 'ok';
   const dark = makeDb(seedBase());
   const rDark = await referrals.forwardLead(dark, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: 'Overflow.' });
@@ -859,10 +875,10 @@ section('11. the peer is told, and every outcome is written down');
   ok('and no row was written for a decision about the feature, not about this peer',
      dark._tables.referral_alerts.length === 0);
   ok('the gate names itself so a walk can say WHICH gate refused',
-     alertLib.sendGate().on === false && /REFERRAL_ALERT_SEND_ENABLED/.test(alertLib.sendGate().reason));
+     (await alertLib.sendGate()).on === false && /flag\.referral_alert_send/.test((await alertLib.sendGate()).reason));
 
   // ── FLAG UP: the send, the row, the wamid.
-  process.env.REFERRAL_ALERT_SEND_ENABLED = '1';
+  switchboard({ 'flag.referral_alert_send': 'on' });
   waCalls = []; waBehaviour = 'ok';
   const db = makeDb(seedBase());
   const r = await referrals.forwardLead(db, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: 'Overflow.' });
@@ -929,8 +945,7 @@ section('11. the peer is told, and every outcome is written down');
   ok('nothing was sent', waCalls.length === 0);
   ok('and the reason is on the record', dNo._tables.referral_alerts[0].status === 'no_phone');
 
-  if (OLD === undefined) delete process.env.REFERRAL_ALERT_SEND_ENABLED;
-  else process.env.REFERRAL_ALERT_SEND_ENABLED = OLD;
+  switchboard({});
 }
 
 // ══ §12 — THE 「Told」 STATE ═════════════════════════════════════════════════

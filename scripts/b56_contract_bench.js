@@ -52,6 +52,24 @@ const section = (t) => console.log(`\n── ${t} ──`);
 
 const VENDOR = 'vendor-dev440';
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+// ── CE-41 C1 AMENDMENT (labeled, ratify-or-revert; R-38.19's bench-follows-the-law) ──
+// `CONTRACT_SIGN_SEND_ENABLED` / `CONTRACT_COPY_SEND_ENABLED` became
+// `flag.contract_sign_send` / `flag.contract_copy_send` on the switchboard
+// (`src/lib/capabilities.js`, R-41.8). Cells keep their names; the LEVER is the
+// register's bind seam. `switchboard({})` = every gate shut.
+const cap = require(path.join(ROOT, 'src/lib/capabilities.js'));
+function capDouble(states) {
+  return { from: () => { let key = null; const api = {
+    select() { return api; }, order() { return api; }, update() { return api; },
+    eq(_c, v) { key = v; return api; },
+    maybeSingle: async () => ({ data: key in states ? { key, kind: 'flag', status: states[key], evidence: null, auto_on: false, walk_ref: null } : null, error: null }),
+    // list() reads through here: answer the same rows the prime did, so the
+    // bind's async warm cannot wipe the table a tick after `switchboard()` set it.
+    then(res) { return Promise.resolve({ data: Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status, evidence: null, auto_on: false, walk_ref: null })), error: null }).then(res); },
+  }; return api; } };
+}
+function switchboard(states) { cap._resetCapabilitiesCache(); cap.bind(capDouble(states)); cap._prime(Object.entries(states).map(([key, status]) => ({ key, kind: 'flag', status }))); }
+
 // ⚠ CELLS THAT ASSERT ABSENCE MUST READ CODE, NOT PROSE.
 // The first cut of §5 and §8 grepped whole files for `supabase` and
 // `linked_binder_id` and went RED on the COMMENTS that explain why neither is used —
@@ -777,9 +795,10 @@ section('10. the send is dark, and says so');
   // document-and-record divergence class, and the message is the home that cannot be
   // edited after the fact. This cell reds if the server drifts off what she reads.
   ok('OTP_TTL_MS is five minutes, matching the filed expiry', C.OTP_TTL_MS === 5 * 60 * 1000);
-  // THE SECOND GATE. The flag is unset in every environment.
-  ok('CONTRACT_SIGN_SEND_ENABLED is unset here', String(process.env.CONTRACT_SIGN_SEND_ENABLED || '') !== '1');
-  ok('the door names the flag rather than sending', /CONTRACT_SIGN_SEND_ENABLED/.test(read('src/api/sign.js')));
+  // THE SECOND GATE. The flag is shut on the switchboard in this bench.
+  switchboard({});
+  ok('CONTRACT_SIGN_SEND_ENABLED is unset here', (await cap.on('flag.contract_sign_send')) === false);
+  ok('the door names the flag rather than sending', /await signSendGate\(\)/.test(read('src/api/sign.js')) && !/process\.env\.CONTRACT_SIGN_SEND_ENABLED/.test(read('src/api/sign.js')));
 }
 
 // ══ §9b — R-40.80 · EVERY SELECTED COLUMN EXISTS ON ITS TABLE ══════════════
@@ -1406,7 +1425,8 @@ section('16. the sign link is sent, recorded, and E.164');
   const SEND = require(path.join(ROOT, 'src/lib/vendor/contractSend.js'));
   const door = code('src/api/vendor/contracts.js');
   const sendSrc = code('src/lib/vendor/contractSend.js');
-  ok('the door sends when the flag is on', /if \(!flagOn\) \{[\s\S]{0,300}\}\s*const src = await contractPdfSource[\s\S]{0,900}await sendSignLink\(supabase/.test(door));
+  // C1 amendment (labeled): the door reads `gate.on` from `signSendGate()`, not `flagOn` from env.
+  ok('the door sends when the flag is on', /if \(!gate\.on\) \{[\s\S]{0,300}\}\s*const src = await contractPdfSource[\s\S]{0,900}await sendSignLink\(supabase/.test(door));
   ok('the hardcoded template sentence is gone', !/not approved on the sending WABA/.test(door));
   ok('sent is the send\u2019s answer, never a literal', /sent: s\.sent, reason: s\.reason/.test(door) && !/sent: false,\s*reason: flagOn/.test(door));
   ok('functions come from the one home', /src\.functions \|\| \[\]/.test(door) && /contractPdfSource\(supabase, req\.vendor\.id, req\.params\.contractId\)/.test(door));
@@ -1454,11 +1474,11 @@ section('17. the signed copy is E.164 and publicly fetchable; the OTP send has a
   const rows = [];
   const db = { from: () => ({ insert: async (r) => { rows.push(r); return {}; } }) };
   // sendOne is internal; drive it through sendSealedCopy with the flag on and a fake storage that rehosts
-  const prev = process.env.CONTRACT_COPY_SEND_ENABLED; process.env.CONTRACT_COPY_SEND_ENABLED = '1';
+  switchboard({ 'flag.contract_copy_send': 'on' });
   const realFetch = global.fetch; global.fetch = async () => ({ status: 200 });   // the public link answers at once in this cell
   const out = await SEND.sendSealedCopy({ storage, from: db.from }, { contractId: 'k1', vendorId: VENDOR, sealedPath: 'v1/k1.signed.pdf', reference: 'DEV440/2026/0007', vendorName: 'V', vendorPhone: '+919888294440', clientName: 'C', clientPhone: '8595356978' });
   global.fetch = realFetch;
-  if (prev === undefined) delete process.env.CONTRACT_COPY_SEND_ENABLED; else process.env.CONTRACT_COPY_SEND_ENABLED = prev;
+  switchboard({});
   ok('both sends were attempted', out.attempted === true && out.results.length === 2);
   ok('the client row carries +91 (F-40.257\u2019s client half)', rows.some(r => r.recipient === 'client' && r.to_phone === '+918595356978'));
   ok('neither refusal is the E.164 one any more', out.results.every(r => !/E\.164/.test(String(r.reason))));

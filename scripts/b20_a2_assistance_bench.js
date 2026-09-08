@@ -141,7 +141,14 @@ const ADMIN  = 'src/api/admin/assistance.js';
   section('§2 · MIGRATION 0148 — the shape the rulings named');
   const mig = exists(MIG) ? read(MIG) : '';
   const migCode = mig.split('\n').filter(l => !l.trim().startsWith('--')).join('\n');
-  ok('0148 exists and is the ladder tail + 1', exists(MIG) && fs.readdirSync(P('db/migrations')).filter(f => /^\d{4}/.test(f)).sort().pop() === path.basename(MIG));
+  // c-41.10 · replaces `0148 exists and is the ladder tail + 1` (a cell pinned to the tail
+  // reds on the next seat's migration by construction — 0149 landed one packet later).
+  // The tail-independent form of the same question: 0148 exists, and 0147 is the number
+  // immediately below it on the ladder.
+  ok('0148 exists and sits immediately above 0147 on the ladder', exists(MIG) && (() => {
+    const nums = fs.readdirSync(P('db/migrations')).filter(f => /^\d{4}/.test(f)).map(f => f.slice(0, 4)).sort();
+    return nums[nums.indexOf('0148') - 1] === '0147';
+  })());
   ok('new tables only — no ALTER TABLE, no DROP, on any existing table', !/alter\s+table|drop\s+/i.test(migCode));
   const afBlock = (migCode.match(/create table if not exists public\.assistance_forwards\s*\(([\s\S]*?)\);/i) || [])[1] || '';
   ok('assistance_forwards carries wamid + status + updated_at + error_code + error_title (R-41.15)', ['wamid', 'status', 'updated_at', 'error_code', 'error_title'].every(c => new RegExp(`^\\s*${c}\\s`, 'm').test(afBlock)));
@@ -160,8 +167,13 @@ const ADMIN  = 'src/api/admin/assistance.js';
   let cap = null; try { cap = require(P(CAPS)); } catch (e) { cap = null; }
   ok('src/lib/capabilities.js exists and exports on()', !!cap && typeof cap.on === 'function');
   ok('on() answers false for the assist key and for nonsense', !!cap && cap.on('template.tdw_assist_lead_outside') === false && cap.on('anything.else') === false && cap.on() === false);
-  ok('it declares itself a stub (IS_STUB) — seat C replaces file-for-file', !!cap && cap.IS_STUB === true);
-  ok('it reads no env and no table', !!cap && !/process\.env|\.from\(/.test(strip(read(CAPS))));
+  // ── c-41.10 · CROSS-SEAT AMENDMENT BY SEAT C (labeled, ratify-or-revert at seat A's next cut) ──
+  // Seat C replaced the stub file-for-file (C1, 0149). The two cells below assert the
+  // register the stub anticipated; the contract cell above them is untouched.
+  // Replaces: `it declares itself a stub (IS_STUB) — seat C replaces file-for-file` (IS_STUB === true).
+  ok('it is the register, not the stub (IS_STUB false) — seat C replaced it file-for-file', !!cap && cap.IS_STUB === false);
+  // Replaces: `it reads no env and no table` — the register reads ONE table, and still no env.
+  ok('it reads no env, and the one table it reads is public.capabilities', !!cap && !/process\.env/.test(strip(read(CAPS))) && /from\(TABLE\)/.test(strip(read(CAPS))) && /const TABLE = 'capabilities'/.test(strip(read(CAPS))));
 
   // ═══ §4 ═══
   section('§4 · normalizePhone — the one home (R-41.29)');
@@ -272,7 +284,9 @@ const ADMIN  = 'src/api/admin/assistance.js';
     let db = seededDb(); let s = await seedRequest(db);
     const sendSpy = { called: 0 };
     let f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '+91 98111 22333', ig_handle: '@rahulshoots', name: 'Rahul' } }, { createLead: async () => { throw new Error('must not create a lead for an outsider'); } });
-    ok('the outsider forward succeeds and reports dark with a reason', f.ok && f.dark && /capabilities register/.test(f.dark.reason) && /stub/.test(f.dark.reason));
+    // c-41.10 · replaces `... && /stub/.test(f.dark.reason)`: the register is real, the row seeds
+    // `approved` ("Meta yes, the founder not yet") and the reason no longer says stub.
+    ok('the outsider forward succeeds and reports dark with a reason', f.ok && f.dark && /capabilities register/.test(f.dark.reason) && !/stub/.test(f.dark.reason));
     const pr = db._t.prospects;
     ok('ONE prospects row: source manual, state cold (R-41.14), phone 91+last ten (prospects.js:94\'s format), handle without @', pr.length === 1 && pr[0].source === 'manual' && pr[0].state === 'cold' && pr[0].phone === '919811122333' && pr[0].ig_handle === 'rahulshoots' && pr[0].name === 'Rahul');
     ok('prospects.category = the item\'s trade, city = the request\'s, notes name the item as a courtesy', pr[0].category === 'photography' && pr[0].city === 'Delhi' && pr[0].notes.includes(s.photo.id));

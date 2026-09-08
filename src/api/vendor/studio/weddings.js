@@ -24,6 +24,9 @@ const requireAuth   = require('../../middleware/requireAuth');
 const resolveVendor = require('../../middleware/resolveVendor');
 const asyncHandler  = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
+const cap = require('../../../lib/capabilities');
+/** The switchboard key, named once (CE-41 seat C, R-41.38). */
+const REEL_CAP_KEY = 'flag.wedding_reel';
 const { signUpload, uploadUrl, nowTimestamp } = require('../../../lib/cloudinarySign');
 // ⚠ `siteBase` IS IN THIS LIST BECAUSE THE CARD DOOR CALLS IT AND ONCE DID NOT
 // HAVE IT (F-40.150). The door shipped in G1.3 reading `siteBase()` with no
@@ -58,7 +61,7 @@ router.get('/', ...mw, asyncHandler(async (req, res) => {
   //
   // It costs one `ffmpeg -version` spawn per list read, capped at 2s by its own
   // timeout, and it never throws — an ENOENT IS the answer.
-  return okRes(res, { weddings: rows, reel: reelShape(await readFfmpeg()) });
+  return okRes(res, { weddings: rows, reel: await reelShape(await readFfmpeg()) });
 }));
 
 // ⚠ THE PROBE IS DECLARED ABOVE `GET /:id` AND THAT IS LOAD-BEARING, NOT TIDY.
@@ -130,15 +133,17 @@ async function readFfmpeg() {
  * image change, filed F-40.149 to infra, and until it lands this returns false
  * on both terms.
  */
-function reelShape(probe) {
+async function reelShape(probe) {
+  // CE-41 seat C: `flag.wedding_reel` on the switchboard replaces the env var
+  // `WEDDING_REEL_ENABLED`; the probe stays the second, necessary condition.
   return {
     ffmpeg: probe,
-    reel_enabled: String(process.env.WEDDING_REEL_ENABLED || '') === '1' && probe.present === true,
+    reel_enabled: cap.on(REEL_CAP_KEY) && probe.present === true,
   };
 }
 
 router.get('/reel-probe', ...mw, asyncHandler(async (req, res) => {
-  return okRes(res, reelShape(await readFfmpeg()));
+  return okRes(res, await reelShape(await readFfmpeg()));
 }));
 
 // GET /:id — one page with its roll and photos
