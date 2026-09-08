@@ -1,0 +1,51 @@
+CE-41 · SEAT D · D0 (dream-os) · FLOOR MANIFEST
+base: c4733904f567ae3b7e97af9d310a612306e849eb   (seat F's F1)
+run:  the seat's container, node, after `npm install`
+
+FLOOR = NAMED BASE, no delta.
+
+── this rider's benches ──────────────────────────────────────────────────────
+b64_template_slots_bench          GREEN  105/105     NEW (R-41.97)
+b64_mutations                     GREEN    6/6       NEW — 5 convict, 1 declared survivor
+b20_a2_assistance_bench           GREEN  126/126     3 cells re-cut (c-41.39); COUNT UNCHANGED
+
+  b20_a2 both-ways, by command:
+    cured tree   GREEN 126/126
+    uncured tree RED   124/126   (the two behavioural cells; :405's is textual)
+
+  b64 both-ways, by command:
+    cured tree   GREEN 105/105
+    uncured tree RED   on 1.c, 2.a, 2.c
+    ⚠ AT THE UNCURED TREE 1.a (tokens) AND 1.b (length) BOTH PASS. Both bodies were
+      {{1}}..{{5}}, sequential, length 5. A tokens-against-the-index cell would have
+      been GREEN on the live defect. Seat B's correction is why this bench convicts.
+
+── carried, unchanged by this rider ─────────────────────────────────────────
+b61_switchboard_bench             exit 0
+b62_g34_s2_bench                  exit 0
+b62_mutations                     exit 0
+b63_mutations                     GREEN   20/20      (seat F's)
+
+── INHERITED RED, NOT THIS SEAT'S, NOT TOUCHED ──────────────────────────────
+b39_telemetry_bench    exit 1   REDS: 3.1, 3.2, 3.3, 3.4, 5.3
+    F-41.64. Five cells, not the two the s1 close note reported. Seat C's plane.
+b61_mutations          exit 1   M8 "target matched 0 times"
+    F-41.65. A DEAD ANCHOR, not a red of its subject: M8 anchors on
+    `[capabilities] founder notice (withheld until tdw_capability_armed)`, a string
+    that no longer exists — the notice went AWAKE under R-41.41 and the line is now
+    capabilitiesSweep.js:284. Seat C's bench.
+
+── CONTAINER GAP, NOT A RED — DECLARED, NOT ABSORBED ────────────────────────
+b63_f1_model_routes_bench         exit 1
+    Two cells fail with `Cannot find module '../../engine/dist/core/loop'`. The
+    engine's dist is not built in this container. VERIFIED IDENTICAL AT THE UNCURED
+    ORIGIN by command, so it is not caused by this rider and is not seat F's defect
+    either — this container cannot drive those two cells. The founder's gate can.
+    Precedent this sitting: the same class produced false FAILs on b39/b61/b62
+    before `npm install`, which is why `npm ci` runs before a floor.
+
+── what moved, and what did not ─────────────────────────────────────────────
+COUNT MOVEMENTS: none. b20_a2 stays 126/126 — three cells were re-cut in place,
+none added, none removed. b64 and b64_mutations are new files and new counts.
+No bench outside this seat's radius was edited. No migration in this rider
+(seat F took 0153; the ladder tail is 0153 and nothing here needs 0154).

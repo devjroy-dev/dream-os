@@ -389,7 +389,12 @@ const ADMIN  = 'src/api/admin/assistance.js';
       { cap: { on: () => true }, sendWa: async (o) => { sends.push(o); return { sent: true, mode: 'template', result: { wamid: 'wamid.OUT1' } }; } });
     const oc = sends[0] || {};
     ok('key ON → ONE send on the MARKETING line to the prospect number, template assist_lead_outside', f.ok && sends.length === 1 && oc.line === 'marketing' && oc.to === '919811122333' && oc.templateKey === 'assist_lead_outside');
-    ok('five vars in the filed order: name · city · trade in words · month and year · budget in Indian grouping, no glyph', Array.isArray(oc.vars) && oc.vars.length === 5 && oc.vars[0] === 'Rahul' && oc.vars[1] === 'Delhi' && oc.vars[2] === 'a photographer' && oc.vars[3] === 'February 2027' && oc.vars[4] === '2,50,000' && !/\u20b9/.test(JSON.stringify(oc.vars)));
+    // c-41.39, THIRD CELL. This asserted the PRE-F-41.63 order — city at {{2}}, the
+    // trade at {{3}}, the month at {{4}} — and so held the defect in place as a
+    // REQUIREMENT. A sealed cell can encode a bug; this one did, and it is why the
+    // garbled send survived a green bench. Meta's order (docs/TEMPLATES.md §2 row 10,
+    // the founder's Manager screenshot) is name · month and year · city · trade · budget.
+    ok('five vars in META\'s order: name · month and year · city · trade in words · budget in Indian grouping, no glyph', Array.isArray(oc.vars) && oc.vars.length === 5 && oc.vars[0] === 'Rahul' && oc.vars[1] === 'February 2027' && oc.vars[2] === 'Delhi' && oc.vars[3] === 'a photographer' && oc.vars[4] === '2,50,000' && !/\u20b9/.test(JSON.stringify(oc.vars)));
     ok('NO phone of the couple rides the body (roadmap §7, the standing refusal)', !JSON.stringify(oc.vars || []).includes('9625759924') && !JSON.stringify(oc.vars || []).includes('+91'));
     ok('the wamid lands on assistance_forwards.wamid with status sent + sent_at', db._t.assistance_forwards[0].wamid === 'wamid.OUT1' && db._t.assistance_forwards[0].status === 'sent' && !!db._t.assistance_forwards[0].sent_at && f.alert.sent === true);
     ok('the registry entry is Marketing, approved, marketing line, five variables; the writer names Meta id', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate('assist_lead_outside'); return t.isApproved('assist_lead_outside') && e.category === 'MARKETING' && e.line === 'marketing' && e.variables.length === 5 && A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131'; })());
@@ -401,8 +406,14 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } },
       { cap: { on: () => true }, sendWa: async () => { const e = new Error('paused'); e.name = 'WaTemplateNotApprovedError'; throw e; } });
     ok('a named sendWa throw lands as failed + its name', db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'WaTemplateNotApprovedError');
-    ok('the send is logged in the estate grammar (R-41.90 logWaSend, masked recipient), never a hand-rolled line', /logWaSend\('marketing', \{/.test(code) && (code.match(/logWaSend\(/g) || []).length === 2 && !/\[sendWa:template\]/.test(code));
-    ok('the marketing lane receipts are NAMED as unrouted in-file (marketingIndex logs, never applyStatusEvent)', /marketingIndex\.js:98-100[\s\S]{0,240}applyStatusEvent/.test(read(ASSIST)));
+    // c-41.39: the `=== 2` call-site COUNT is struck. F-41.61 legitimately removed the
+    // success-path call and the count convicted an honest change — F-41.65's class, the
+    // second specimen this sprint. The cell now asserts the GRAMMAR its label claims.
+    ok('the send is logged in the estate grammar (R-41.90 logWaSend, masked recipient), never a hand-rolled line', /logWaSend\('marketing', \{/.test(code) && !/\[sendWa:template\]/.test(code));
+    // c-41.39: this cell asserted the SPELLING of a comment, and the comment went false
+    // when F-41.60 landed (marketingIndex now calls applyStatusEvent). R-40.94's class.
+    // It now asserts the cured claim, and that the struck sentence is gone.
+    ok('the marketing lane receipts are named as ROUTING in-file (F-41.60 landed; the old "marketing does not" sentence is gone)', /RECEIPTS ROUTE[\s\S]{0,400}applyStatusEvent/.test(read(ASSIST)) && !/marketing does not/.test(read(ASSIST)));
   } else { for (let i = 0; i < 13; i++) ok('§7 cell (writer absent)', false); }
 
   // ═══ §8 ═══

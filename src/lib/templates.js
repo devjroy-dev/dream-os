@@ -765,9 +765,24 @@ const TEMPLATES = {
   // ── BLOCK 20 · CONCIERGE s1 · the OUTSIDER's join alert (A10, R-41.83) ─────
   // Filed by seat B, Meta id 1627376372249131, MARKETING — it goes to someone who
   // has never written to us, so no window exists and only a template can reach.
-  // Rides MARKETING_PHONE_NUMBER_ID (sendWa.js:129). Body byte-for-byte as filed.
-  // ⚠ Its receipts do NOT route today: src/marketingIndex.js:98-100 logs status
-  // events without applyStatusEvent (F-41.59's sibling, named in A10's handover).
+  // Rides MARKETING_PHONE_NUMBER_ID (sendWa.js:129).
+  //
+  // ⚠ F-41.63 — THIS ENTRY WAS WRONG IN BODY AND IN SLOT ORDER, AND IT SENT.
+  // The founder's WhatsApp Manager screenshot (2026-09-09 01:30) shows what Meta
+  // actually holds; it is docs/TEMPLATES.md §2 row 10, and it is NOT what this
+  // entry carried. The old body opened "Hello {{1}}, this is The Dream Wedding"
+  // and ordered the slots name/city/category/month/budget. Meta holds month at
+  // {{2}} and city at {{3}}. Meta substitutes POSITIONALLY, so A10's live send to
+  // the founder's handset arrived garbled — the city rendered where the month
+  // belonged. Body below is byte-for-byte §2 row 10; `variables` is Meta's order;
+  // forwardToProspect's `vars` array was reordered in the same rider to match.
+  // [F-06.85: this paragraph is conditioned on §2 row 10 being Meta's word. If the
+  //  Manager is re-read and disagrees, this entry is wrong again and the two cells
+  //  in scripts/b64_template_slots_bench.js compare the two DOCUMENTS, not Meta.]
+  //
+  // Receipts DO route: F-41.60/R-41.92 landed at 1a37bbc and marketingIndex's
+  // status loop now calls applyStatusEvent as index.js and brideIndex do. The
+  // earlier note here said they did not; that was true until that commit.
   // NO PHONE OF THE COUPLE'S RIDES THIS BODY (roadmap §7, the standing refusal).
   assist_lead_outside: {
     key: 'assist_lead_outside',
@@ -775,11 +790,12 @@ const TEMPLATES = {
     language: TEMPLATE_LANGUAGE,
     line: 'marketing',
     category: 'MARKETING',
-    variables: ['name', 'city', 'category_words', 'month_year', 'budget_rs'],
+    variables: ['name', 'month_year', 'city', 'category_words', 'budget_rs'],
     body:
-      "Hello {{1}}, this is The Dream Wedding. A couple in {{2}} is looking for {{3}} " +
-      "for a wedding in {{4}}, with a budget around Rs {{5}}. Join The Dream Wedding to " +
-      "see the request and reply to them from your own account.",
+      "Hi {{1}}, a couple planning a {{2}} wedding in {{3}} asked The Dream Wedding to " +
+      "find them a {{4}}, and their request has been matched to you with a budget of " +
+      "about Rs {{5}}. The request is held on the page below. Reply STOP REQUESTS if " +
+      "you would rather not receive these.",
     status: 'approved',
   },
 

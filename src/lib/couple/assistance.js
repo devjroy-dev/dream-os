@@ -525,11 +525,13 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
   // there is no second gate, which is why the packet's first founder step is to
   // shut the key before applying and the walk's first step is to open it.
   // The wamid lands on assistance_forwards.wamid (the R-40.110 home 0148 built).
-  // ⚠ RECEIPTS: this rides the MARKETING lane, and src/marketingIndex.js:98-100
-  // LOGS status events without calling applyStatusEvent — the vendor and bride
-  // services route, marketing does not. So `sent` is where this row stops until
-  // that service gains the arm (F-41.59's sibling, named in the handover, not
-  // cured here). R-41.30 still holds for the SYNCHRONOUS refusal below.
+  // RECEIPTS ROUTE. This rides the MARKETING lane, and since F-41.60/R-41.92
+  // (dream-os 1a37bbc) src/marketingIndex.js's status loop calls applyStatusEvent
+  // exactly as index.js:225 and brideIndex.js do. So the row reaches `delivered`
+  // and `read`, and an ASYNCHRONOUS failure lands too. The note that stood here
+  // said the opposite; it was true until that commit and false after it.
+  // R-41.30 still holds for the SYNCHRONOUS refusal below, which no webhook can
+  // ever report and which only the catch arm can write.
   const capFn = (deps.cap && deps.cap.on) || cap.on;
   const reasonFn = (deps.cap && deps.cap.reason) || cap.reason;
   const armed = capFn(cap.CAPABILITY_KEYS.TDW_ASSIST_LEAD_OUTSIDE) === true;
@@ -547,25 +549,32 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     return { ok: true, forward: forward.row, prospect, dark: { reason: darkReason } };
   }
 
-  // The join message. Its five variables are the filed body's, in order
-  // (docs/mocks/TDW_20_CONCIERGE/TEMPLATE_BODIES.txt §1, superseded by seat B's
-  // filing but variable-for-variable the same): name, city, the trade in plain
-  // words, the month and year, the budget in Indian grouping (`Rs` is in the body).
+  // The join message. F-41.63: its five variables are META'S order, taken from
+  // docs/TEMPLATES.md §2 row 10 (the founder's Manager screenshot, 2026-09-09) —
+  //   {{1}} name · {{2}} month and year · {{3}} city · {{4}} the trade in plain
+  //   words · {{5}} the budget in Indian grouping (`Rs` is in the body).
+  // The old array read name/city/trade/month/budget and A10's live send arrived
+  // garbled, because Meta substitutes by POSITION and never by name. This array's
+  // order is bound to templates.js's `variables` by a cell
+  // (scripts/b64_template_slots_bench.js §2); permute either and it reds.
+  // TEMPLATE_BODIES.txt is the A1 record and is NOT the witness — it is superseded.
   const sendWaFn = deps.sendWa || require('../sendWa').sendWa;
   const t = TEMPLATE_REFS.lead_outside;
   const to = prospect.phone;
   const vars = [
-    prospect.name || 'there',
-    request.city || 'India',
-    categoryWords(item.category),
-    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided',
-    formatRs(item.budget_rs || 0),
+    prospect.name || 'there',                                                                        // {{1}} name
+    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}} month_year
+    request.city || 'India',                                                                          // {{3}} city
+    categoryWords(item.category),                                                                     // {{4}} category_words
+    formatRs(item.budget_rs || 0),                                                                    // {{5}} budget_rs
   ];
   try {
     const out = await sendWaFn({ line: t.line === 'marketing' ? 'marketing' : t.line, to, templateKey: 'assist_lead_outside', vars, supabase });
     const sent = !!(out && out.sent === true);
     const wamid = sent && out.result && out.result.wamid ? String(out.result.wamid) : null;
-    logWaSend('marketing', { site: 'assistance:outsider', mode: 'template', templateKey: 'assist_lead_outside', to, out, ctx: `item=${item.id}` });
+    // F-41.61: no logWaSend here. `sendWa` already logs its own SENT line at the
+    // dispatch seam, and this call duplicated it — two SENT lines per send. The
+    // THROW path below keeps its call, because a throw never reaches that seam.
     if (!sent) {
       await recordForwardOutcome(supabase, forward.row.id, { status: 'failed', error_code: 'unknown' });
       return { ok: true, forward: { ...forward.row, status: 'failed' }, prospect, alert: { sent: false, refusal: 'unknown' } };
