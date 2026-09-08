@@ -163,6 +163,22 @@ const LANES = Object.freeze([
     roles: Object.freeze(['provider']), reachable: true },
   { key: 'model.harvest.default', surface: 'harvest', tier: 'default',
     roles: Object.freeze(['provider']), reachable: true },
+  // ── CE-41 F1b — THE BRIDE APP LANE, READ-ONLY BY CONSTRUCTION ──────────────
+  // Eliza in the couple's own app is the one lane in the estate that is NOT a row:
+  // `src/lib/brideLlmClient.js` reads `BRIDE_LLM_PROVIDER` off the environment and
+  // falls to anthropic when it is unset, empty or unknown. It is carried in this
+  // registry so the panel can SHOW it — a lane the founder cannot see is a lane he
+  // cannot reason about — and it carries NO ROLES, so the write door refuses it
+  // before it can reach a row that does not exist.
+  //
+  // This is the line seat E's veto sheet §D-34 was reaching for when it marked the
+  // COUPLE lane `Set on the server`. `model.wa_couple.default` is a real row and is
+  // switchable (R-41.103 ②); this one is the genuine env lane, and it is the only
+  // read-only row on the panel that is read-only because of where its value lives.
+  { key: 'model.bride_app.default', surface: 'bride_app', tier: 'default',
+    roles: Object.freeze([]), reachable: true,
+    env: 'BRIDE_LLM_PROVIDER',
+    read_only_because: 'this lane is set on the server, not in a row' },
   // Live, well-formed, and asked for by nothing. Read-only on the glass.
   { key: 'model.pwa_vendor.trial', surface: 'pwa_vendor', tier: 'trial',
     roles: Object.freeze([]), reachable: false,

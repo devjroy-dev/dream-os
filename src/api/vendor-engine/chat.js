@@ -2832,28 +2832,62 @@ async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendo
   // prints ONLY when a split is live, so its ABSENCE is itself the record that she
   // follows Victor — which is exactly what the basic tier needs (F0 §4: no row, no
   // default, no split, and until now no way to see it).
-  console.log(`[model] surface=${surface} tier=${routeTier} role=victor `
-    + `provider=${route.provider} model=${route.model}`);
-  if (route.donna_provider) {
-    console.log(`[model] surface=${surface} tier=${routeTier} role=donna `
-      + `provider=${route.donna_provider} model=${route.donna_model}`);
-  }
   const tierOverride = ENGINE_TIER_MAP[productTier] || 'entry';
   // TDW_02 P7 (Amendment Two): optional per-role split — donna_provider/donna_model
-  // route HER hand separately. Anthropic donna split => no donna transport (her own
-  // pre-facade Haiku path, byte-identical).
+  // route HER hand separately.
+  //
+  // ── CE-41 F1b · F-41.96 — AN ANTHROPIC DONNA NEEDS A WIRE OF HER OWN ───────
+  // THIS BRANCH USED TO SET `donnaTransport = undefined` FOR AN EXPLICIT ANTHROPIC
+  // DONNA, on the reasoning that no transport means her own pre-facade Haiku path.
+  // That is true only when VICTOR is also Anthropic. When he is not, the engine
+  // reads `args.donnaTransport ?? transport` (`loop.ts:728`) and `undefined` falls
+  // through the `??` to HIS wire — so an Anthropic Donna beside a DeepSeek Victor
+  // was answering on DeepSeek. The founder walked exactly that at 04:37 on the
+  // advisor lane: the flip landed in the row, R-41.87's line printed the ROUTE, and
+  // the transport never moved. A switch whose only witness reports the intent
+  // rather than the wire is the class of defect this seat exists to close.
+  //
+  // So: an Anthropic Donna beside a NON-Anthropic Victor now gets an EXPLICIT
+  // anthropic transport, built exactly as the non-anthropic arm builds its own.
+  // Nothing in `src/engine` moves — the `??` is left alone and simply stops being
+  // reached, which is the smaller change and keeps the seam where the engine seat
+  // put it.
+  //
+  // WHEN VICTOR IS ALREADY ANTHROPIC the outer `!==` guard means this branch is
+  // never entered: both hands ride the same native path, no transport object
+  // exists for either, and that is CORRECT AND UNCHANGED (c-41.50 — the chair's
+  // withdrawn "shared transport records no hands" mechanism; `donna.ts:455` records
+  // every hand on one shared recorder with no transport branch). Named here so the
+  // next sitting does not re-derive the same wrong cure.
   const donnaWiring = {};
   if (route.donna_provider && route.donna_provider !== route.provider) {
-    if (route.donna_provider === 'anthropic') {
-      donnaWiring.donnaTransport = undefined; donnaWiring.donnaModelOverride = undefined;
-    } else {
-      donnaWiring.donnaTransport = {
-        provider: route.donna_provider,
-        stream: (p) => llmStream(route.donna_provider, p),
-        create: (p) => llmCreate(route.donna_provider, p),
-      };
-      donnaWiring.donnaModelOverride = route.donna_model;
-    }
+    donnaWiring.donnaTransport = {
+      provider: route.donna_provider,
+      stream: (p) => llmStream(route.donna_provider, p),
+      create: (p) => llmCreate(route.donna_provider, p),
+    };
+    donnaWiring.donnaModelOverride = route.donna_model;
+  }
+
+  // ── R-41.87, AMENDED BY F-41.96 — THE LINE NAMES THE WIRE, NOT THE INTENT ──
+  // It now prints AFTER the wiring is built and reports what was actually chosen:
+  //   transport=facade  a transport object of this hand's own
+  //   transport=native  no object because the provider IS anthropic — the engine's
+  //                     own pre-facade path, which is the right absence
+  //   transport=shared  no object of her own, so `loop.ts:728`'s `??` hands her
+  //                     Victor's wire. After this packet that can only happen when
+  //                     she has no split at all, and then no donna line prints —
+  //                     so `shared` appearing beside a named provider is itself a
+  //                     finding, and the line is built to be able to say it.
+  const victorWire = route.provider === 'anthropic' ? 'native' : 'facade';
+  console.log(`[model] surface=${surface} tier=${routeTier} role=victor `
+    + `provider=${route.provider} model=${route.model} transport=${victorWire}`);
+  if (route.donna_provider) {
+    const donnaWire = donnaWiring.donnaTransport
+      ? 'facade'
+      : (route.donna_provider === route.provider && route.provider === 'anthropic' ? 'native' : 'shared');
+    console.log(`[model] surface=${surface} tier=${routeTier} role=donna `
+      + `provider=${route.donna_provider} model=${route.donna_model} transport=${donnaWire}`);
   }
   if (route.provider === 'anthropic') {
     // Victor anthropic (byte-identical); Donna may still split to a cheap provider.

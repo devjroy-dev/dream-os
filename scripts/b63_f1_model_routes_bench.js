@@ -490,6 +490,180 @@ const LIVE_MARKETING = { provider: 'anthropic', model: 'claude-haiku-4-5-2025100
       && /vendors_tier_check/.test(m) && /LIVE[\s\S]{0,12}BEHAVIOUR CHANGE/.test(m) ? true : 'an unexplained absence';
   });
 
+  // ═════ §9 · F1b — F-41.96, THE ANTHROPIC DONNA'S OWN WIRE ═════════════════
+  sec('§9 F-41.96 — an Anthropic Donna beside a non-Anthropic Victor');
+
+  await cell('she gets a transport OBJECT of her own, named anthropic', async () => {
+    const chat = req('src/api/vendor-engine/chat.js');
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    // Victor deepseek, Donna anthropic — the exact state the founder walked at 04:37.
+    const db = makeDb({ 'model.pwa_vendor.advisor': { provider: 'deepseek', model: 'deepseek-v4-flash', donna_provider: 'anthropic', donna_model: 'claude-haiku-4-5-20251001' } });
+    db.schema = () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { victor_mode: 'advisor' } }) }) }) }) });
+    const c = capture();
+    const w = await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1', surface: 'wa_vendor' });
+    c.done();
+    if (!w.donnaTransport) return 'donnaTransport is absent — loop.ts:728\'s ?? hands her Victor\'s wire';
+    if (w.donnaTransport.provider !== 'anthropic') return `donnaTransport.provider=${w.donnaTransport.provider}`;
+    return typeof w.donnaTransport.stream === 'function' && typeof w.donnaTransport.create === 'function'
+      ? true : 'the transport carries no stream/create';
+  });
+
+  await cell('her wire is NOT Victor\'s — the two objects are distinct providers', async () => {
+    const chat = req('src/api/vendor-engine/chat.js');
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': { provider: 'deepseek', model: 'deepseek-v4-flash', donna_provider: 'anthropic', donna_model: 'claude-haiku-4-5-20251001' } });
+    db.schema = () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { victor_mode: 'business' } }) }) }) }) });
+    const c = capture();
+    const w = await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1' });
+    c.done();
+    return w.transport && w.transport.provider === 'deepseek'
+      && w.donnaTransport && w.donnaTransport.provider === 'anthropic' ? true : JSON.stringify({ v: w.transport && w.transport.provider, d: w.donnaTransport && w.donnaTransport.provider });
+  });
+
+  await cell('both hands Anthropic: NO transport object for either — the native path, unchanged', async () => {
+    const chat = req('src/api/vendor-engine/chat.js');
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', donna_provider: 'anthropic', donna_model: 'claude-haiku-4-5-20251001' } });
+    db.schema = () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { victor_mode: 'business' } }) }) }) }) });
+    const c = capture();
+    const w = await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1' });
+    const lines = c.done();
+    return !w.transport && !w.donnaTransport
+      && lines.some(l => /role=donna .*transport=native/.test(l)) ? true : JSON.stringify({ t: !!w.transport, d: !!w.donnaTransport, lines: lines.filter(l => /\[model\]/.test(l)) });
+  });
+
+  await cell('R-41.87 names the WIRE, not the intent', async () => {
+    const chat = req('src/api/vendor-engine/chat.js');
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': { provider: 'deepseek', model: 'deepseek-v4-flash', donna_provider: 'anthropic', donna_model: 'claude-haiku-4-5-20251001' } });
+    db.schema = () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { victor_mode: 'business' } }) }) }) }) });
+    const c = capture();
+    await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1', surface: 'wa_vendor' });
+    const lines = c.done().filter(l => /\[model\]/.test(l));
+    return lines.some(l => /role=victor .*provider=deepseek .*transport=facade/.test(l))
+      && lines.some(l => /role=donna .*provider=anthropic .*transport=facade/.test(l))
+      ? true : lines.join(' | ');
+  });
+
+  await cell('no engine byte moved — the ?? at loop.ts:728 is untouched', () => {
+    const src = read('src/engine/src/core/loop.ts');
+    return /args\.donnaTransport \?\? \(providerDowngrade \? undefined : \(transport \?\? undefined\)\)/.test(src)
+      ? true : 'the engine seam moved — F1b was door-side only';
+  });
+
+  // ═════ §10 · F-41.93 — THE STAMP BELONGS TO THE HAND THAT MOVED ═══════════
+  sec('§10 F-41.93 — per-role stamps');
+
+  await cell('a donna flip stamps DONNA and leaves Victor unstamped', async () => {
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': LIVE_ESSENTIAL });
+    const { payload } = await driveDoor(req(doorPath), 'post', 'model.pwa_vendor.essential', { role: 'donna', provider: 'anthropic' }, db);
+    const v = payload.value;
+    return v.changed_at_donna && v.changed_by_donna && !v.changed_at_provider && !v.changed_by_provider
+      ? true : JSON.stringify(v);
+  });
+
+  await cell('the GET serves roles_changed, and only for the role that moved', async () => {
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': LIVE_ESSENTIAL });
+    await driveDoor(req(doorPath), 'post', 'model.pwa_vendor.essential', { role: 'donna', provider: 'anthropic' }, db);
+    const { payload } = await driveDoor(req(doorPath), 'get', null, null, db);
+    const lane = payload.lanes.find(l => l.key === 'model.pwa_vendor.essential');
+    return lane.roles_changed.donna && /^admin:[0-9a-f]{8}$/.test(lane.roles_changed.donna.by)
+      && !lane.roles_changed.provider ? true : JSON.stringify(lane.roles_changed);
+  });
+
+  await cell('a second flip on the other hand stamps it WITHOUT clearing the first', async () => {
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': LIVE_ESSENTIAL });
+    await driveDoor(req(doorPath), 'post', 'model.pwa_vendor.essential', { role: 'donna', provider: 'anthropic' }, db);
+    const { payload } = await driveDoor(req(doorPath), 'post', 'model.pwa_vendor.essential', { role: 'provider', provider: 'deepseek' }, db);
+    return payload.value.changed_at_donna && payload.value.changed_at_provider ? true : JSON.stringify(payload.value);
+  });
+
+  await cell('the stamps read as KNOWN fields, never as junk on the glass', async () => {
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': LIVE_ESSENTIAL });
+    await driveDoor(req(doorPath), 'post', 'model.pwa_vendor.essential', { role: 'donna', provider: 'anthropic' }, db);
+    const { payload } = await driveDoor(req(doorPath), 'get', null, null, db);
+    const lane = payload.lanes.find(l => l.key === 'model.pwa_vendor.essential');
+    return lane.unknown_fields.length === 0 ? true : lane.unknown_fields.join(', ');
+  });
+
+  await cell('the router still ignores them — six stamps disturb no route', async () => {
+    const { _resetRouteCache, resolveModel } = mr(); _resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.essential': { ...LIVE_ESSENTIAL, changed_at_donna: '2026-09-09T00:00:00.000Z', changed_by_donna: 'admin:deadbeef' } });
+    const got = await resolveModel(db, 'pwa_vendor', 'essential');
+    return got.provider === 'anthropic' && got.donna_provider === 'deepseek' ? true : JSON.stringify(got);
+  });
+
+  // ═════ §11 · THE BRIDE APP LANE ═══════════════════════════════════════════
+  sec('§11 the one lane that is not a row');
+
+  await cell('it is registered, carries no roles, and names its env var', () => {
+    const { LANE_BY_KEY } = mr();
+    const lane = LANE_BY_KEY.get('model.bride_app.default');
+    return !!lane && lane.roles.length === 0 && lane.env === 'BRIDE_LLM_PROVIDER'
+      && /set on the server/.test(lane.read_only_because || '') ? true : JSON.stringify(lane);
+  });
+
+  await cell('the GET derives its value from the bride client, with provenance `server`', async () => {
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const prev = process.env.BRIDE_LLM_PROVIDER; delete process.env.BRIDE_LLM_PROVIDER;
+    try {
+      const { payload } = await driveDoor(req(doorPath), 'get', null, null, makeDb({}));
+      const lane = payload.lanes.find(l => l.key === 'model.bride_app.default');
+      return lane && lane.provenance === 'server' && lane.env_set === false
+        && lane.effective.provider === 'anthropic' && lane.has_row === false ? true : JSON.stringify(lane);
+    } finally { if (prev !== undefined) process.env.BRIDE_LLM_PROVIDER = prev; }
+  });
+
+  await cell('set the env and the lane follows it — the panel cannot disagree with the lane', async () => {
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const prev = process.env.BRIDE_LLM_PROVIDER; process.env.BRIDE_LLM_PROVIDER = 'deepseek';
+    try {
+      const { payload } = await driveDoor(req(doorPath), 'get', null, null, makeDb({}));
+      const lane = payload.lanes.find(l => l.key === 'model.bride_app.default');
+      return lane.effective.provider === 'deepseek' && lane.env_set === true ? true : JSON.stringify(lane.effective);
+    } finally { if (prev === undefined) delete process.env.BRIDE_LLM_PROVIDER; else process.env.BRIDE_LLM_PROVIDER = prev; }
+  });
+
+  await cell('the value is the bride client\'s own answer, not a second copy of it', () => {
+    const src = codeOf(doorPath);
+    return /require\('\.\.\/\.\.\/lib\/brideLlmClient'\)/.test(src)
+      && /resolveBrideProvider\(process\.env\)/.test(src)
+      && !/BRIDE_LLM_PROVIDER['"]\s*\]/.test(src) ? true : 'the door re-derives the env itself';
+  });
+
+  await cell('c-41.53: it never serves a blank model — CONF answers \'\' for anthropic', async () => {
+    const { _resetRouteCache, HAIKU } = mr(); _resetRouteCache();
+    const { wireModelFor } = req('src/lib/brideLlmClient.js');
+    // THE ASYMMETRY IS REAL AND IS ASSERTED, not assumed: if CONF ever starts
+    // answering for anthropic this cell should be revisited, not silently passed.
+    if (wireModelFor('anthropic') !== '') return 'CONF no longer answers empty — revisit the fallback';
+    const prev = process.env.BRIDE_LLM_PROVIDER; delete process.env.BRIDE_LLM_PROVIDER;
+    try {
+      const { payload } = await driveDoor(req(doorPath), 'get', null, null, makeDb({}));
+      const lane = payload.lanes.find(l => l.key === 'model.bride_app.default');
+      return lane.effective.model === HAIKU ? true : `model=${JSON.stringify(lane.effective.model)}`;
+    } finally { if (prev !== undefined) process.env.BRIDE_LLM_PROVIDER = prev; }
+  });
+
+  await cell('c-41.53: the fallback is a LOOKUP in the served set, not a branch on a name', () => {
+    const src = codeOf(doorPath);
+    return /wireModelFor\(provider\) \|\| SWITCHABLE\[provider\] \|\| null/.test(src)
+      && !/'anthropic'/.test(src) && !/claude-haiku/.test(src)
+      ? true : 'the fallback names a provider or a model';
+  });
+
+  await cell('the write door REFUSES it — there is no row to write', async () => {
+    const { _resetRouteCache } = mr(); _resetRouteCache();
+    const db = makeDb({});
+    const r = await driveDoor(req(doorPath), 'post', 'model.bride_app.default', { role: 'provider', provider: 'deepseek' }, db);
+    return r.status === 409 && /set on the server/.test(r.payload.error || '') && db.t.admin_config.length === 0
+      ? true : JSON.stringify(r);
+  });
+
   console.log(`\n  b63_f1_model_routes  ${pass}/${pass + fail}`);
   if (fail) console.log('  FAILED: ' + fails.join(' · '));
   process.exit(fail ? 1 : 0);

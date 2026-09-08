@@ -62,6 +62,13 @@ const {
   LANES, LANE_BY_KEY, SWITCHABLE, DEFAULTS, CACHE_MS,
   resolveModel, fallbackSurfaceFor, bustRouteCache,
 } = require('../../lib/modelRouter');
+// CE-41 F1b — the bride app lane's value lives in the environment, and its two
+// readers are IMPORTED rather than re-derived: `resolveBrideProvider` already
+// handles unset, empty, unknown and case, and `wireModelFor` takes the model
+// string off `CONF` rather than restating it. A second copy of either here would
+// be a second answer to "what is the bride lane on", and the panel would show one
+// while the lane ran the other.
+const { resolveBrideProvider, wireModelFor, ENV_VAR: BRIDE_ENV } = require('../../lib/brideLlmClient');
 
 const TABLE = 'admin_config';
 
@@ -102,7 +109,48 @@ function driftFields(live, code) {
 // chair can file one if it ever appears. (None on any live row at F1's cut.)
 function unknownFields(live) {
   if (!live) return [];
-  return Object.keys(live).filter((k) => !/^(provider|model|donna_provider|donna_model|nudge_provider|nudge_model|changed_by|changed_at)$/.test(k)).sort();
+  // F-41.93: the per-role stamps join the known set. The row-level pair stays known
+  // too — rows written before F1b carry it and must not start reading as junk.
+  return Object.keys(live).filter((k) => !/^(provider|model|donna_provider|donna_model|nudge_provider|nudge_model|changed_by|changed_at|changed_(by|at)_(provider|donna|nudge))$/.test(k)).sort();
+}
+
+// ── c-41.53 (seat F, self-caught) — THE BRIDE LANE'S BLANK MODEL ────────────
+// `wireModelFor` takes the wire string off `CONF`, which is right, and `CONF` is
+// ASYMMETRIC: `deepseek.model` is `(m) => m || 'deepseek-v4-flash'` and answers,
+// while `anthropic.model` is `(m) => m` and answers the EMPTY STRING when called
+// with '' — which is how the bride client calls it. So the read door would have
+// served this lane as `{provider: 'anthropic', model: ''}`: the provider true, the
+// model blank.
+//
+// IT WOULD NEVER HAVE BEEN SEEN. The panel renders providers, not models, so the
+// blank never reaches the glass, and no cell asked the question because the
+// provider — the thing the founder switches — was correct. That is precisely the
+// shape of a value that rots quietly: true where anyone looks, empty where nobody
+// does. Caught while benching §11, cured here, and given its own cell so the
+// asymmetry cannot come back through the same door.
+//
+// THE FALLBACK NAMES NO PROVIDER AND NO MODEL. A first cut wrote
+// `provider === 'anthropic' ? HAIKU : null` and the one-home cell refused it,
+// correctly: a provider literal in this door is the first brick of a second
+// routing map. `SWITCHABLE` already maps every provider this estate offers to its
+// canonical wire string and is built from the router's own classes, so the
+// fallback is a LOOKUP rather than a branch — and it answers for any provider the
+// set gains tomorrow without this line being touched.
+function brideWireModel(provider) {
+  return wireModelFor(provider) || SWITCHABLE[provider] || null;
+}
+
+// F-41.93 — what each role's own stamp says, or nothing. Read as a map rather than
+// six flat fields so the panel loops roles instead of naming them one at a time.
+function rolesChanged(live) {
+  const out = {};
+  if (!live) return out;
+  for (const role of Object.keys(ROLE_FIELDS)) {
+    const at = live[`changed_at_${role}`] || null;
+    const by = live[`changed_by_${role}`] || null;
+    if (at || by) out[role] = { at, by };
+  }
+  return out;
 }
 
 // A live value the panel cannot express as one of its two switches. Rendered
@@ -135,6 +183,27 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
 
   const lanes = [];
   for (const lane of LANES) {
+    // ── THE ENV LANE (F1b) ────────────────────────────────────────────────────
+    // No row, no router call, no switch. Its value is derived by the bride client's
+    // own resolver so the panel cannot disagree with the lane, and its provenance is
+    // `server` — a fifth word beside default · borrowed · seeded · changed, and the
+    // only one that answers "where did this come from" with somewhere that is not a
+    // row at all.
+    if (lane.env) {
+      const provider = resolveBrideProvider(process.env);
+      lanes.push({
+        key: lane.key, surface: lane.surface, tier: lane.tier,
+        roles: lane.roles, reachable: true,
+        unreachable_because: null, read_only_because: lane.read_only_because || null,
+        env: lane.env, env_set: !!String(process.env[lane.env] || '').trim(),
+        fallback_surface: null, has_row: false, live: null, code_default: null,
+        effective: { provider, model: brideWireModel(provider) },
+        borrowed: false, provenance: 'server',
+        differs: [], unknown_fields: [], outside_switchable: [],
+        changed_by: null, changed_at: null, roles_changed: {}, updated_at: null,
+      });
+      continue;
+    }
     const row  = rows.get(lane.key) || null;
     const live = row ? parseValue(row.value) : null;
     const code = codeDefaultFor(lane.key);
@@ -156,8 +225,16 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
       differs: driftFields(live, code),
       unknown_fields: unknownFields(live),
       outside_switchable: outsideSwitchable(live),
+      // F-41.93 — PER-ROLE STAMPS. The row-level pair said only that SOMETHING on
+      // this row moved, and the panel rendered it beside every hand: flipping Donna
+      // made Victor's line read `changed 9 Sept` too, attributing an edit to a hand
+      // that had not moved. Each role now carries its own, and the row-level pair is
+      // still served so rows written before F1b keep whatever truth they have.
       changed_by: (live && live.changed_by) || null,
       changed_at: (live && live.changed_at) || null,
+      roles_changed: rolesChanged(live),
+      provenance: null,   // the panel derives it; only the env lane is served one
+      read_only_because: null, env: null, env_set: false,
       updated_at: row ? row.updated_at : null,
     });
   }
@@ -184,6 +261,9 @@ router.post('/:key', requireAdmin, asyncHandler(async (req, res) => {
   if (lane.reachable === false) {
     return errRes(res, 409, `this row is not reachable by any lane — ${lane.unreachable_because}`);
   }
+  // The env lane holds no row to merge into and no role to move. Refused with the
+  // reason on the wire, so the glass can say it in the founder's words.
+  if (lane.env) return errRes(res, 409, lane.read_only_because || `this lane is set on the server (${lane.env}).`);
   const role = String(body.role || '');
   if (!ROLE_FIELDS[role]) return errRes(res, 400, 'role must be one of: ' + Object.keys(ROLE_FIELDS).join(', '));
   if (!lane.roles.includes(role)) return errRes(res, 400, `this lane has no ${role} role.`);
@@ -226,8 +306,16 @@ router.post('/:key', requireAdmin, asyncHandler(async (req, res) => {
   // has no columns for either stamp (four columns: key, value, description,
   // updated_at — PUBLIC_SCHEMA.md:43-49), so both ride inside the value JSON,
   // which is charter (c)'s own instruction. Nothing reads them but the panel.
-  next.changed_at = new Date().toISOString();
-  next.changed_by = whoFlipped(req);
+  // F-41.93 — the stamp belongs to the ROLE that moved, not to the row. The
+  // row-level pair is written too, because it is what pre-F1b rows carry and the
+  // read door still serves it as a fallback; the per-role pair is what the panel
+  // renders beside each hand.
+  const stampedAt = new Date().toISOString();
+  const stampedBy = whoFlipped(req);
+  next.changed_at = stampedAt;
+  next.changed_by = stampedBy;
+  next[`changed_at_${role}`] = stampedAt;
+  next[`changed_by_${role}`] = stampedBy;
 
   const payload = JSON.stringify(next);
   const now = new Date().toISOString();
@@ -262,6 +350,7 @@ router.post('/:key', requireAdmin, asyncHandler(async (req, res) => {
   return okRes(res, {
     key, role, seeded_from, created: !existing,
     value: parseValue(wrote.value), updated_at: wrote.updated_at,
+    roles_changed: rolesChanged(parseValue(wrote.value)),
     effective,
     forced: String(process.env.LLM_PROVIDER || '').trim() || null,
   });

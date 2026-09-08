@@ -1,0 +1,31 @@
+# scripts/floor-manifest-ce41-f1b.txt
+# CE-41 · F1b — three door-side cures on the model-routes plane:
+#   F-41.96  an Anthropic Donna beside a non-Anthropic Victor gets a wire of her own
+#   F-41.93  per-role stamps (changed_at_* / changed_by_*), read by the panel in F2b
+#   bride app lane read-only in the read door (surface bride_app, provenance server)
+#   c-41.53  the bride lane's blank model, self-caught while benching §11
+# BASE c52e92a68889f8ad88f6822426061f9471cd61b9, re-derived at the cut.
+# NO MIGRATION: no schema, no seed, no PUBLIC_SCHEMA regen. NO ENGINE BYTE.
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+
+docs/TDW_CE41_F1B_HANDOVER.md
+scripts/b63_f1_model_routes_bench.js
+scripts/b63_mutations.js
+scripts/floor-manifest-ce41-f1b.txt
+src/api/admin/modelRoutes.js
+src/api/vendor-engine/chat.js
+src/lib/modelRouter.js
+
+# FLOOR at the cured tree, `scripts/floor-batch.sh 1..20 20` (R-40.63 — a seat runs
+# a floor that FITS ITS CALL; the founder's single `run-floor.sh --delivery ... --check`
+# is the floor of record and is the verify block's last floor line):
+#   23 non-green RED/ERROR + 4 env refusals.
+# scripts/floor-base.txt names 21. COMPARED BY NAME (LESSON 2):
+#   ABOVE — 2: b39_telemetry_bench · b61_mutations. Both A10's, both re-run RED at the
+#     UNCURED tip c52e92a with this packet absent and node_modules resolving.
+#   BELOW — 0.
+# F1's two cures HELD: b62_g34_s2 and tdw10_combined_cap are green in the tree and
+# no longer above the base. FLOOR = NAMED BASE + A10's two, no delta.
+# The chair still owes the 21 -> 23 re-base, or these two ride every packet.
+#
+# b63_f1_model_routes 57/57 (43/57 at the uncured tree); b63_mutations 30/30.
