@@ -33,7 +33,7 @@ const TPL = 'src/lib/templates.js';
 const ARM = 'src/lib/couple/assistance.js';
 const BEN = 'scripts/b64_template_slots_bench.js';
 
-const CURED_VARS = "    variables: ['name', 'month_year', 'city', 'category_words', 'budget_rs'],";
+const CURED_VARS = "    variables: ['name', 'month_year', 'city', 'category_noun', 'budget_rs'],";
 const CURED_BODY =
   '    body:\n' +
   '      "Hi {{1}}, a couple planning a {{2}} wedding in {{3}} asked The Dream Wedding to " +\n' +
@@ -66,7 +66,7 @@ const MUT = [
     cell: 'literal subsequences identical' },
 
   { id: 'M2 the variables array is permuted, the body untouched (§1 cannot see it; §2 must)',
-    edits: [[TPL, CURED_VARS, "    variables: ['name', 'city', 'month_year', 'category_words', 'budget_rs'],"]],
+    edits: [[TPL, CURED_VARS, "    variables: ['name', 'city', 'month_year', 'category_noun', 'budget_rs'],"]],
     cell: 'vars order is bound to templates.js variables' },
 
   { id: "M3 the send arm's expressions are swapped, annotations carried along (the live defect)",
@@ -89,9 +89,15 @@ const MUT = [
   // expression still sits at the index its variable names). Every source inside
   // the estate agrees. Meta does not — {{2}} now carries the city into a body that
   // reads "a {{2}} wedding". Nothing here can see that. The Manager can.
+  { id: 'M7 F-41.80 returns — the article goes back into the value (the doubled article)',
+    edits: [['src/lib/couple/assistance.js',
+      "  makeup: 'makeup artist', hairstylist: 'hairstylist', jewellery: 'jeweller', decor: 'decorator',",
+      "  makeup: 'a makeup artist', hairstylist: 'a hairstylist', jewellery: 'a jeweller', decor: 'a decorator',"]],
+    cell: 'no doubled article' },
+
   { id: 'M6 DECLARED SURVIVOR — registry variables and the send arm permuted together (M2+M3, cancelling)',
     edits: [
-      [TPL, CURED_VARS, "    variables: ['name', 'city', 'month_year', 'category_words', 'budget_rs'],"],
+      [TPL, CURED_VARS, "    variables: ['name', 'city', 'month_year', 'category_noun', 'budget_rs'],"],
       [ARM, ARM_23, ARM_23_CONSISTENT],
     ],
     survives: true },

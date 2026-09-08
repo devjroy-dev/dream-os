@@ -193,6 +193,9 @@ async function sendWa(opts, deps = {}) {
     windowOpen, conversationId, supabase, mediaUrls,
     nudgeClass,   // TDW_05 P4 / F-05.22 — opt-in flag; absent ⇒ pre-cure behaviour
     site,         // R-41.90 — the caller's name for the one log line; optional
+    ctx,          // CROSS-SEAT (CE-41 seat D, F-41.78) — the caller's correlation token for the
+                  // one log line; optional, opaque here, forwarded verbatim to logWaSend. Without
+                  // it a SENT line cannot name WHICH item/lead/contract it belongs to.
   } = opts || {};
 
   const sendText       = deps.sendText       || defaultSendText;
@@ -259,7 +262,7 @@ async function sendWa(opts, deps = {}) {
     // c-41.26). It is ROUTED through the one home: same facts, masked recipient,
     // `site` from the caller when it names itself. The four explicit callers drop
     // their own line in this packet (c-41.25) so nothing logs twice.
-    logWaSend(line, { site: site || 'sendWa:template', mode: 'template', templateKey, to, out: { sent: true, result: res } });
+    logWaSend(line, { site: site || 'sendWa:template', mode: 'template', templateKey, to, ctx, out: { sent: true, result: res } });
     return { sent: true, mode: 'template', key: templateKey, from, to, payload, result: res };
   }
 

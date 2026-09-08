@@ -289,14 +289,28 @@ function monthYearOnly(iso) {
   return `${parts[1]} ${parts[2]}`;
 }
 
-// The trade as the outsider's body wants it: "a photographer", "a makeup artist".
-const CATEGORY_ARTICLE = Object.freeze({
-  planning: 'a wedding planner', designer: 'an outfit designer', photography: 'a photographer',
-  makeup: 'a makeup artist', hairstylist: 'a hairstylist', jewellery: 'a jeweller', decor: 'a decorator',
-  venue_catering: 'a venue and caterer', performer: 'a performer', content_creator: 'a content creator',
-  other: 'a mehendi artist or similar',
+// ── F-41.80 · THE BODY SUPPLIES THE ARTICLE, SO THE VALUE MUST NOT ──────────
+// Meta's body reads "...to find them a {{4}}" (docs/TEMPLATES.md §2 row 10, and
+// the founder's Manager preview renders the filed sample as "a makeup artist",
+// i.e. Meta's own sample for {{4}} is the BARE NOUN). The map below used to be
+// CATEGORY_ARTICLE and carried the article in the VALUE — correct against the
+// PRE-F-41.63 body, which read "is looking for {{3}}" with no article of its own.
+// F-41.63 replaced the body and did not re-read the values the new body expects,
+// so every outsider join alert rendered "find them a a makeup artist". Live on
+// real outsiders until this rider. THE LESSON, NAMED: a literal and its value
+// COMPOSE; a slot-order cure that treats literals as inert is one layer short.
+// [F-06.85: this map is conditioned on the body supplying the article. If the
+//  body ever loses its "a ", these values are wrong again — b64 §3 composes the
+//  two and reds on "a a"/"a an", so the next sitting is forced to re-read this.]
+// Sole reader: categoryNoun below. Derived by command at 18e46be — CATEGORY_WORDS
+// and categoriesWords (the founder's notify) are a SEPARATE home and untouched.
+const CATEGORY_NOUN = Object.freeze({
+  planning: 'wedding planner', designer: 'outfit designer', photography: 'photographer',
+  makeup: 'makeup artist', hairstylist: 'hairstylist', jewellery: 'jeweller', decor: 'decorator',
+  venue_catering: 'venue and caterer', performer: 'performer', content_creator: 'content creator',
+  other: 'mehendi artist or similar',
 });
-function categoryWords(token) { return CATEGORY_ARTICLE[token] || 'a vendor'; }
+function categoryNoun(token) { return CATEGORY_NOUN[token] || 'vendor'; }
 
 function categoriesWords(tokens) {
   const w = (tokens || []).map(t => CATEGORY_WORDS[t] || t);
@@ -565,11 +579,16 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     prospect.name || 'there',                                                                        // {{1}} name
     monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}} month_year
     request.city || 'India',                                                                          // {{3}} city
-    categoryWords(item.category),                                                                     // {{4}} category_words
+    categoryNoun(item.category),                                                                      // {{4}} category_noun
     formatRs(item.budget_rs || 0),                                                                    // {{5}} budget_rs
   ];
   try {
-    const out = await sendWaFn({ line: t.line === 'marketing' ? 'marketing' : t.line, to, templateKey: 'assist_lead_outside', vars, supabase });
+    // F-41.78: `sendWa` logs the one SENT line (R-41.90) and its own default names
+    // neither the site nor the item. A10's line read `site=sendWa:template ctx=-`,
+    // so the estate had no success-path byte tying a send to its assistance item.
+    // `site` was always accepted and never passed; `ctx` is new on sendWa this rider.
+    const out = await sendWaFn({ line: t.line === 'marketing' ? 'marketing' : t.line, to, templateKey: 'assist_lead_outside', vars, supabase,
+      site: 'assistance:outsider', ctx: `item=${item.id}` });
     const sent = !!(out && out.sent === true);
     const wamid = sent && out.result && out.result.wamid ? String(out.result.wamid) : null;
     // F-41.61: no logWaSend here. `sendWa` already logs its own SENT line at the
@@ -636,6 +655,39 @@ async function recordForwardOutcome(supabase, forwardId, { status, error_code, e
     .single();
   if (error) return { ok: false, error: error.message };
   return { ok: true, row: data };
+}
+
+// ── reconcileStrandedForwards — F-41.81, `queued` is not a resting state ────
+// `queued` is written ONCE, at the insert, when the gate is armed. From there the
+// arm writes `sent`/`sent_no_wamid` or its catch writes `failed`. If the process
+// dies between the insert and either write — a deploy, an OOM, a Railway restart
+// mid-send — the row stays `queued` FOREVER: no wamid, no error, no sent_at, and
+// nothing in the estate reads it. Two such rows exist from 2026-09-08 17:14 and
+// 17:16. The admin queue renders the status verbatim, so the founder read the
+// word `queued` as "still going out" when it was already terminal.
+//
+// This runs at BOOT, which is exactly the moment after the process that dropped
+// them came back. Ten minutes is the grace: a live send resolves in seconds, so a
+// `queued` row older than that had its writer taken away. The row is marked
+// `failed` with `error_title='interrupted'` — NOT a Meta code, because Meta never
+// answered; that is the honest word for it and it must not be mistaken for 131049.
+async function reconcileStrandedForwards(supabase, { olderThanMs = 10 * 60 * 1000 } = {}) {
+  const cutoff = new Date(Date.now() - olderThanMs).toISOString();
+  const { data, error } = await supabase
+    .from('assistance_forwards')
+    .update({ status: 'failed', error_code: 'interrupted', error_title: 'interrupted', updated_at: new Date().toISOString() })
+    .eq('status', 'queued')
+    .lt('created_at', cutoff)
+    .select('id, item_id, created_at');
+  if (error) {
+    console.error(`[assistance:reconcile] could not sweep stranded queued forwards: ${error.message}`);
+    return { ok: false, error: error.message, swept: 0 };
+  }
+  const rows = data || [];
+  // NAMED, NEVER SILENT (R-37.57's class): zero is a reading, not an absence.
+  console.log(`[assistance:reconcile] stranded queued forwards older than ${Math.round(olderThanMs / 60000)}m marked failed: ${rows.length}`
+    + (rows.length ? ` (${rows.map(r => r.id).join(', ')})` : ''));
+  return { ok: true, swept: rows.length, rows };
 }
 
 // ── closeAssistanceRequest — the founder's hand ─────────────────────────────
@@ -812,5 +864,5 @@ module.exports = {
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
   TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE,
-  ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryWords, monthYearOnly,
+  ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

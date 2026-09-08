@@ -16,7 +16,10 @@ const MUT = [
   ['M5 the register key leaks onto the glass (F-41.17 returns)', 'src/lib/vendor/paymentReminders.js',
     "  if (reason.startsWith(CAP_KEY)) return 'Reminders are switched off for now.';", "  ", 'the shut gate hands both'],
   ['M6 sendWa returns to its own grammar', 'src/lib/sendWa.js',
-    "logWaSend(line, { site: site || 'sendWa:template', mode: 'template', templateKey, to, out: { sent: true, result: res } });",
+    // c-41.40 (CE-41 seat D): anchor re-derived. F-41.78 added `ctx` to this call, and
+    // the old anchor matched 0 times — a dead anchor, F-41.65's class. The cell it
+    // guards is unchanged; only the string it reaches for moved.
+    "logWaSend(line, { site: site || 'sendWa:template', mode: 'template', templateKey, to, ctx, out: { sent: true, result: res } });",
     "console.log(`[sendWa:template] ${normalizeTo(to)} <- ${templateKey} (${res && res.wamid ? res.wamid : null}) [line=${line}]`);", 'sendWa logs its success through logWaSend'],
   ['M7 the sixth arm updates blind', 'src/lib/vendor/relayStatus.js',
     "        .select('id, vendor_id, milestone_id, invoice_id, status');", "        ;const _x=1;", 'the arm exists, is APPENDED'],

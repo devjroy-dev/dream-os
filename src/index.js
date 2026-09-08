@@ -335,4 +335,8 @@ app.listen(PORT, () => {
   webhookCore.probeMessageSidColumn(supabase, { prefix: '[dream-os]' }); // TDW_05 P1b: durable-dedupe capability probe
   startCronJobs({ supabase });
   startCapabilitiesSweep({ supabase }); // binds src/lib/capabilities.js's client; 03:50 IST
+  // F-41.81: a forward left `queued` by a process that died mid-send is terminal
+  // and unread by anything. Boot is the moment after that process came back.
+  require('./lib/couple/assistance').reconcileStrandedForwards(supabase)
+    .catch(e => console.error(`[assistance:reconcile] boot sweep threw: ${e && e.message}`));
 });

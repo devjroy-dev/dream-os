@@ -790,7 +790,7 @@ const TEMPLATES = {
     language: TEMPLATE_LANGUAGE,
     line: 'marketing',
     category: 'MARKETING',
-    variables: ['name', 'month_year', 'city', 'category_words', 'budget_rs'],
+    variables: ['name', 'month_year', 'city', 'category_noun', 'budget_rs'],
     body:
       "Hi {{1}}, a couple planning a {{2}} wedding in {{3}} asked The Dream Wedding to " +
       "find them a {{4}}, and their request has been matched to you with a budget of " +

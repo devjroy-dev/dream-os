@@ -394,7 +394,9 @@ const ADMIN  = 'src/api/admin/assistance.js';
     // REQUIREMENT. A sealed cell can encode a bug; this one did, and it is why the
     // garbled send survived a green bench. Meta's order (docs/TEMPLATES.md §2 row 10,
     // the founder's Manager screenshot) is name · month and year · city · trade · budget.
-    ok('five vars in META\'s order: name · month and year · city · trade in words · budget in Indian grouping, no glyph', Array.isArray(oc.vars) && oc.vars.length === 5 && oc.vars[0] === 'Rahul' && oc.vars[1] === 'February 2027' && oc.vars[2] === 'Delhi' && oc.vars[3] === 'a photographer' && oc.vars[4] === '2,50,000' && !/\u20b9/.test(JSON.stringify(oc.vars)));
+    // F-41.80: the trade is now a BARE NOUN — the body supplies the article
+    // ("...to find them a {{4}}"), so 'a photographer' here rendered "a a photographer".
+    ok('five vars in META\'s order, the trade a bare noun: name · month and year · city · trade · budget in Indian grouping, no glyph', Array.isArray(oc.vars) && oc.vars.length === 5 && oc.vars[0] === 'Rahul' && oc.vars[1] === 'February 2027' && oc.vars[2] === 'Delhi' && oc.vars[3] === 'photographer' && oc.vars[4] === '2,50,000' && !/\u20b9/.test(JSON.stringify(oc.vars)));
     ok('NO phone of the couple rides the body (roadmap §7, the standing refusal)', !JSON.stringify(oc.vars || []).includes('9625759924') && !JSON.stringify(oc.vars || []).includes('+91'));
     ok('the wamid lands on assistance_forwards.wamid with status sent + sent_at', db._t.assistance_forwards[0].wamid === 'wamid.OUT1' && db._t.assistance_forwards[0].status === 'sent' && !!db._t.assistance_forwards[0].sent_at && f.alert.sent === true);
     ok('the registry entry is Marketing, approved, marketing line, five variables; the writer names Meta id', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate('assist_lead_outside'); return t.isApproved('assist_lead_outside') && e.category === 'MARKETING' && e.line === 'marketing' && e.variables.length === 5 && A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131'; })());

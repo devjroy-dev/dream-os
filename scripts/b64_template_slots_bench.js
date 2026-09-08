@@ -65,10 +65,21 @@
 // The binding rule, derived and not transcribed: fold the registry variable name
 // and the expression to lowercase alphanumerics, and require the expression to
 // contain the folded name. `month_year` → `monthyear` ⊂ `monthYearOnly(...)`;
-// `city` ⊂ `request.city`; `category_words` → `categorywords` ⊂ `categoryWords(...)`;
+// `city` ⊂ `request.city`; `category_noun` → `categorynoun` ⊂ `categoryNoun(...)`;
 // `budget_rs` → `budgetrs` ⊂ `formatRs(item.budget_rs || 0)`; `name` ⊂
 // `prospect.name`. No per-site expected list, so there is no second home for the
 // order — the registry remains the only one.
+//
+// ── §3 · LITERAL + VALUE COMPOSE (F-41.80, added after the defect it missed) ──
+// §1 compares literals between two documents. §2 binds array order. NEITHER
+// COMPOSES A LITERAL WITH THE VALUE THAT FOLLOWS IT, and F-41.80 lived in exactly
+// that gap: Meta's body reads "...to find them a {{4}}" and the send arm passed
+// "a makeup artist", so every outsider join alert rendered "find them a a makeup
+// artist" while this bench was green. The body was right, the array order was
+// right, and the message was wrong.
+// §3 renders each body with the arm's own value functions and asserts no doubled
+// article survives. It is still not Meta — but it is the first cell here that
+// reads what a HUMAN would read rather than what a document says.
 //
 // ── THE RESIDUE, STATED PRECISELY (rule 6) ────────────────────────────────────
 // Permute the registry `variables` AND permute the send arm's expressions to
@@ -218,28 +229,73 @@ for (const site of WIRE_SITES) {
      exprs.length === vars.length && exprs.every((e, i) => fold(e).includes(fold(vars[i]))));
 }
 
-section('3. the other direction — a §2 heading with no registry entry');
+section('3. literal + value compose — no doubled article reaches a handset (F-41.80)');
+
+// Render each comparable body with the arm's OWN value functions, over every
+// canonical category, and read the result the way a person would. The check is
+// deliberately blunt: a doubled article is the failure that shipped, and a blunt
+// cell that catches the real defect beats a clever one that admires it.
+const A = require(P('src/lib/couple/assistance.js'));
+const { VENDOR_CATEGORIES } = require(P('src/agent/categories.js'));
+const DOUBLED = /\b(a|an|the)\s+(a|an|the)\b/i;
+
+// ⚠ THE SLOT IS FOUND BY SHAPE, NOT BY ITS CURRENT NAME. The first cut of §3 did
+// `vars.indexOf('category_noun')` — the name this rider introduced — so at the
+// UNCURED tree, where the variable is still `category_words`, the slot was -1 and
+// THE WHOLE SECTION SKIPPED. It would have been green on the defect it exists for:
+// vacuous, not passing. Matching /categor/ finds the trade slot under either name
+// and under whatever the next seat calls it.
+const tradeSlot = (vars) => vars.findIndex(v => /categor/i.test(String(v)));
+// The arm's value function, under either name. A cell that cannot see its subject
+// must FAIL, never throw (seat A's close note §6, and its own four specimens).
+const nounFn = A.categoryNoun || A.categoryWords || null;
+ok('3.0 the arm exposes a category value function this cell can drive', typeof nounFn === 'function');
+
+for (const k of regKeys) {
+  const name = REG[k].name;
+  if (!S2[name] || !Array.isArray(REG[k].variables)) continue;
+  const vars = REG[k].variables;
+  const slot = tradeSlot(vars);
+  if (slot === -1) continue;          // only the bodies that carry a trade
+  let worst = null;
+  for (const cat of VENDOR_CATEGORIES) {
+    const filled = norm(REG[k].body).replace(/\{\{(\d+)\}\}/g, (m, n) => {
+      const v = vars[Number(n) - 1];
+      return (Number(n) - 1) === slot ? String(nounFn ? nounFn(cat) : '') : `\u2039${v}\u203a`;
+    });
+    if (DOUBLED.test(filled)) { worst = { cat, filled }; break; }
+  }
+  ok(`3.a ${name} \u00b7 no doubled article for any of the ${VENDOR_CATEGORIES.length} categories`
+     + (worst ? ` \u2014 ${worst.cat}: "${worst.filled.match(DOUBLED)[0]}"` : ''), worst === null);
+  // The article lives in the BODY, so the value must be a bare noun. Asserted
+  // directly, so the day someone re-adds one to the map this reds by name.
+  const leading = nounFn ? VENDOR_CATEGORIES.filter(c => /^(a|an|the)\s/i.test(String(nounFn(c)))) : ['(no value function)'];
+  ok(`3.b ${name} \u00b7 every category value is a bare noun, no leading article`
+     + (leading.length ? ` \u2014 ${leading.join(', ')}` : ''), leading.length === 0);
+}
+
+section('4. the other direction — a §2 heading with no registry entry');
 
 const regNames = new Set(regKeys.map(k => REG[k].name));
 for (const name of Object.keys(S2)) {
   if (regNames.has(name)) continue;
-  ok(`3.p ${name} has a §2 entry, no registry entry, and is named on NOT_YET_REGISTERED`,
+  ok(`4.p ${name} has a §2 entry, no registry entry, and is named on NOT_YET_REGISTERED`,
      NOT_YET_REGISTERED.includes(name));
 }
 // The partition's other edge: a name on the list that HAS been registered must leave it.
 for (const name of NOT_YET_REGISTERED) {
-  ok(`3.q ${name} is on NOT_YET_REGISTERED and is still unregistered`, !regNames.has(name));
+  ok(`4.q ${name} is on NOT_YET_REGISTERED and is still unregistered`, !regNames.has(name));
 }
 for (const name of NO_S2_WITNESS) {
-  ok(`3.r ${name} is on NO_S2_WITNESS and still has no §2 entry`, !S2[name]);
+  ok(`4.r ${name} is on NO_S2_WITNESS and still has no §2 entry`, !S2[name]);
 }
 
-section('4. the partition is total — nothing is silently uncompared');
-ok(`4.1 every registry tdw_ entry is either compared or named (compared ${compared.length} + named ${NO_S2_WITNESS.length} = ${regKeys.length})`,
+section('5. the partition is total — nothing is silently uncompared');
+ok(`5.1 every registry tdw_ entry is either compared or named (compared ${compared.length} + named ${NO_S2_WITNESS.length} = ${regKeys.length})`,
    compared.length + NO_S2_WITNESS.length === regKeys.length);
-ok('4.2 the two named lists do not overlap',
+ok('5.2 the two named lists do not overlap',
    !NO_S2_WITNESS.some(n => NOT_YET_REGISTERED.includes(n)));
-ok('4.3 assist_lead_outside is in the COMPARED set, not on a named list',
+ok('5.3 assist_lead_outside is in the COMPARED set, not on a named list',
    compared.includes('tdw_assist_lead_outside'));
 
 console.log(`\n${fail === 0 ? 'GREEN' : 'RED'} — b64_template_slots_bench ${pass}/${pass + fail}`);
