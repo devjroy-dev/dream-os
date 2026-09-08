@@ -471,8 +471,14 @@ section('11d. the schedule door: an empty state is not a 404, and the control re
      /schedule\.length === 0\) return okRes\(res, \{ schedule: \[\] \}\)/.test(d));
   ok('F-40.209 — the door joins payment_reminders',
      /from\('payment_reminders'\)/.test(d));
+  // c-41.27 (G3.4 s2, seat C, labeled): the door now hands THREE fields — a row
+  // exists (`reminded_at`), it reached Meta (`sent_at`), and it failed
+  // (`reminder_failed`). F-41.15: the record printed "Reminder sent" over a row
+  // whose wamid was null. Same question, one more answer.
   ok('and returns reminded_at per milestone',
-     /reminded_at: remindedAt\.get\(m\.id\) \|\| null/.test(d));
+     /reminded_at:\s+remindedAt\.get\(m\.id\) \|\| null/.test(d));
+  ok('c-41.27 · and sent_at beside it, set only from a wamid (F-41.15)',
+     /sent_at:\s+sentAt\.get\(m\.id\) \|\| null/.test(d) && /if \(r\.wamid\)/.test(d));
   ok('it is scoped to the caller vendor', /\.eq\('vendor_id', req\.vendor\.id\)[\s\S]{0,120}\.in\('milestone_id'/.test(d));
   ok('the door never WRITES payment_reminders — the plane is its sole writer',
      !/from\('payment_reminders'\)[\s\S]{0,200}\.(insert|update|upsert|delete)\(/.test(d));

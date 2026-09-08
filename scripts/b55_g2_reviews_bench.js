@@ -99,9 +99,15 @@ cell('every entry that declares no button renders body-only', () => {
   // the registry, so an appended entry never reds this cell for the wrong reason.
   const buttons = all.filter((k) => T.TEMPLATES[k].button).length;
   const headers = all.filter((k) => T.TEMPLATES[k].header).length;
-  if (buttons !== 1) return `${buttons} entries declare a button; expected exactly 1`;
+  // c-41.28 (G3.4 s2, seat C, labeled): TWO entries declare a button now —
+  // `review_request`'s DYNAMIC url (the only one the builder emits a component
+  // for, gated on `type === 'url'`) and `capability_armed`'s STATIC url, which
+  // Meta renders from the template itself and which the builder must ignore. The
+  // cell's question is unchanged: no plain entry may grow one silently.
+  if (buttons !== 2) return `${buttons} entries declare a button; expected exactly 2`;
   if (headers !== 1) return `${headers} entries declare a header; expected exactly 1`;
-  if (keys.length !== all.length - 2) return `plain set is ${keys.length}, expected ${all.length - 2}`;
+  // c-41.28: the plain set is total minus the button-bearers minus the header-bearer.
+  if (keys.length !== all.length - buttons - headers) return `plain set is ${keys.length}, expected ${all.length - buttons - headers}`;
   for (const k of keys) {
     const e = T.TEMPLATES[k];
     if (e.category === 'AUTHENTICATION') continue;      // its own builder

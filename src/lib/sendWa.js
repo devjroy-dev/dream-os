@@ -38,6 +38,7 @@
 const { isApproved, buildTemplatePayload, getTemplate } = require('./templates');
 const { sendMetaTemplate, normalizeTo } = require('./metaCloud');
 const { isNudgeOptedOut } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
+const { logWaSend } = require('./waSendLog');            // R-41.90 — the one log home
 
 // ── typed errors ────────────────────────────────────────────────────────────
 class WaError extends Error {
@@ -191,6 +192,7 @@ async function sendWa(opts, deps = {}) {
     line, to, text, templateKey, vars,
     windowOpen, conversationId, supabase, mediaUrls,
     nudgeClass,   // TDW_05 P4 / F-05.22 — opt-in flag; absent ⇒ pre-cure behaviour
+    site,         // R-41.90 — the caller's name for the one log line; optional
   } = opts || {};
 
   const sendText       = deps.sendText       || defaultSendText;
@@ -248,7 +250,16 @@ async function sendWa(opts, deps = {}) {
     // the wamid is sendTemplate's own return (metaCloud.js:99), never inferred.
     // The BODY is deliberately absent: a template body is the registry's, not the
     // caller's, and logging rendered vars would put customer data in the log.
-    console.log(`[sendWa:template] ${normalizeTo(to)} <- ${templateKey} (${res && res.wamid ? res.wamid : null}) [line=${line}]`);
+    // ── R-41.90 · ONE LOG HOME, AND IT IS `logWaSend` (F-41.21) ──────────────
+    // This line was `[sendWa:template] <bare number> <- key (wamid) [line=…]`, a
+    // second grammar beside `logWaSend`'s `[wa:<lane>]` for one event, with a
+    // customer's phone in plain text in Railway. It is not deleted: TWENTY call
+    // sites reach this seam and only four log for themselves, so deleting it
+    // would silence sixteen send paths (the charter's literal wording, refused —
+    // c-41.26). It is ROUTED through the one home: same facts, masked recipient,
+    // `site` from the caller when it names itself. The four explicit callers drop
+    // their own line in this packet (c-41.25) so nothing logs twice.
+    logWaSend(line, { site: site || 'sendWa:template', mode: 'template', templateKey, to, out: { sent: true, result: res } });
     return { sent: true, mode: 'template', key: templateKey, from, to, payload, result: res };
   }
 

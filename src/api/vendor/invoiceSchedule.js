@@ -93,24 +93,43 @@ router.get('/:invoiceId/schedule', ...authMw, asyncHandler(async (req, res) => {
   // it describes a milestone that no longer exists.
   const ids = schedule.map((m) => m.id);
   const remindedAt = new Map();
+  const sentAt = new Map();
+  const failed = new Map();
   if (ids.length) {
     const { data: rem, error: remErr } = await supabase
       .from('payment_reminders')
-      .select('milestone_id, created_at')
+      .select('milestone_id, created_at, wamid, status')
       .eq('vendor_id', req.vendor.id)
       .in('milestone_id', ids);
     // A failed join must not cost her the schedule. It costs the CONTROL's
     // knowledge, and the record then behaves as it did before this cure — the
     // UNIQUE key is still the guarantee, so the worst case is a 409 she can read.
     if (remErr) console.error(`[invoiceSchedule] reminder join failed for ${req.params.invoiceId}: ${remErr.message}`);
+    // ── F-41.15 · `reminded_at` IS NOT `sent_at` ─────────────────────────────
+    // The record printed **Reminder sent** on the strength of a ROW EXISTING,
+    // and the founder's walk of 2026-09-08 put that word over a row whose wamid
+    // was null — a reminder decided and never dispatched (F-40.210's class). The
+    // door now hands back both: `reminded_at` (a row exists — the control is
+    // spent) and `sent_at` (a wamid exists — it reached Meta). The record reads
+    // `sent_at` for the word and `status` for the third state.
     for (const r of (rem || [])) {
       const prev = remindedAt.get(r.milestone_id);
       if (!prev || r.created_at < prev) remindedAt.set(r.milestone_id, r.created_at);
+      if (r.wamid) {
+        const ps = sentAt.get(r.milestone_id);
+        if (!ps || r.created_at < ps) sentAt.set(r.milestone_id, r.created_at);
+      }
+      if (r.status === 'failed' && !failed.has(r.milestone_id)) failed.set(r.milestone_id, true);
     }
   }
 
   return okRes(res, {
-    schedule: schedule.map((m) => ({ ...m, reminded_at: remindedAt.get(m.id) || null })),
+    schedule: schedule.map((m) => ({
+      ...m,
+      reminded_at:     remindedAt.get(m.id) || null,
+      sent_at:         sentAt.get(m.id) || null,
+      reminder_failed: !sentAt.get(m.id) && !!failed.get(m.id),
+    })),
   });
 }));
 

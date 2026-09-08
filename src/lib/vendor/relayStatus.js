@@ -328,6 +328,37 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: anRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE SIXTH HOME — public.payment_reminders (0139, receipts by 0152) ───
+      // F-40.229 / R-40.110: the table has held a `wamid` since G3.4 s1 with no
+      // arm, so every reminder receipt fell to the orphan line below — the same
+      // defect F-40.177 recorded for `lead_alerts` and F-40.190 for
+      // `referral_alerts`, a third time. APPENDED, never reordered: each home is
+      // tried only on a miss, so the five above cost nothing and their behaviour
+      // is unchanged (LD-8's spirit for a ladder that is not a migration).
+      //
+      // `.select()`ed for F-06.143's reason: a blind update cannot tell one row
+      // from none. 0152's `uq_payment_reminders_wamid` is UNIQUE and PARTIAL on
+      // `wamid IS NOT NULL`, so `> 1` is unreachable — checked anyway, because
+      // every arm above checks it and the one that skipped would be the weakest.
+      const pr = await supabase
+        .from('payment_reminders')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, vendor_id, milestone_id, invoice_id, status');
+      const prRows = Array.isArray(pr && pr.data) ? pr.data : [];
+      if (prRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=payment_reminder', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: prRows[0], reason: 'payment_reminder' };
+      }
+      if (prRows.length > 1) {
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=payment_reminder_ambiguous', `matched=${prRows.length}`, errFields(status),
+          '— SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: prRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

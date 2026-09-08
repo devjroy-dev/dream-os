@@ -144,7 +144,7 @@ router.get('/', ...authMw, asyncHandler(async (req, res) => {
     // The room draws its dark state from the gate rather than guessing. `open`
     // false with `approved` true means the flag alone is shut — which is exactly
     // the state today and the room says so honestly.
-    sending: { open: gate.open, approved: gate.approved, reason: gate.reason },
+    sending: { open: gate.open, approved: gate.approved, reason: gate.reason, reason_text: gate.reason_text },
     window_days: WINDOW_DAYS,
   });
 }));
@@ -205,7 +205,11 @@ router.post('/:milestoneId/send', ...authMw, asyncHandler(async (req, res) => {
   // A SKIPPED SEND IS REPORTED AS SKIPPED, WITH ITS REASON, AND NEVER AS SENT
   // (the never-a-false-done law, F-39.70/.71). The row exists either way and the
   // room shows it under Asked with no Sent state — which is the truth.
-  return okRes(res, { sent: !!out.sent, skipped: !!out.skipped, reason: out.reason || null, id: out.id || null });
+  // F-41.17: `reason` is the register's key — the log's word, kept. `reason_text`
+  // is the sentence the vendor reads. The room prints only the latter.
+  return okRes(res, { sent: !!out.sent, skipped: !!out.skipped, failed: !!out.failed,
+                      reason: out.reason || null, reason_text: out.reason_text || out.reason || null,
+                      id: out.id || null });
 }));
 
 // ═══════════════════════════════════════════════════════════════════════════

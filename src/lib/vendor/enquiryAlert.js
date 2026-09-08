@@ -301,10 +301,10 @@ async function sendVendorEnquiryAlert({
     // The local `wamid` above is left standing because `recordBriefSend` below
     // consumes it; the logger derives its own id through `readSend` rather than
     // trusting a second extraction of the same trap.
-    logWaSend('vendor', {
-      site: 'enquiry:oow', mode: 'template',
-      templateKey: entry.templateKey, to: toPhone, out, ctx,
-    });
+    // c-41.25 (R-41.90, seat C rider; the owning seat ratifies or reverts): removed —
+    // `sendWa` logs this successful template send once, at its dispatch seam,
+    // through `logWaSend`. The REFUSED branch below stays: sendWa throws on a
+    // refusal and its routed line never runs.
     // THE META NAME, not the registry key — the `ringDoorbell` precedent writes
     // `[doorbell] <t.name>`, and a marker naming an internal key would tell a
     // reader of his history nothing about what Meta actually delivered.

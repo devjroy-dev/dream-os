@@ -43,10 +43,10 @@
 // re-armed by the first sweep; a flag born `pending` (a future arm) is.
 //
 // THE FOUNDER NOTICE (R-41.41): one Utility message on ADMIN_PHONE, the vendor
-// lane's PNID, template `tdw_capability_armed` — WITHHELD AND FULLY COMMENTED
-// until seat B files it (the conditional-withheld rule). The uncomment step is
-// stated beside the block. Until then a status reaching `armed`/disarmed is
-// logged and shown on the admin card's evidence line only.
+// lane's PNID, template `tdw_capability_armed` — AWAKE since Meta made that
+// template Active (2026-09-08, ID 1063533856046167). It is itself gated on
+// `template.tdw_capability_armed` in the register: the founder's own notice waits
+// for his tap like every other send.
 //
 // NEVER A LIVE META CALL FROM A BENCH (kickoff §9): every network read goes
 // through `deps.fetch`, which the bench replaces; production passes nothing and
@@ -256,19 +256,48 @@ async function applyReading(row, reading, deps) {
 }
 
 /**
- * THE FOUNDER NOTICE — WITHHELD (R-41.41, conditional-withheld rule).
- * UNCOMMENT STEP: once `tdw_capability_armed` is Active at Meta and registered in
- * `src/lib/templates.js` under key `capability_armed` (vendor lane, one variable —
- * the evidence line), delete the `console.log` line and uncomment the send.
+ * THE FOUNDER NOTICE — AWAKE (R-41.41, R-41.8). Withheld until `tdw_capability_armed`
+ * existed; Meta made it Active 2026-09-08 17:49Z (ID 1063533856046167, Utility)
+ * and seat B's filing closed, so the conditional-withheld block's stated
+ * uncomment step is taken here and the send is live.
+ *
+ * ONE MESSAGE, NO PARAMETERS. The template's body is `Meta approved your
+ * template.` and it declares zero variables; its button is static and carries the
+ * founder to the card, where the sweep has already written the evidence line for
+ * the row that moved. `buildTemplatePayload` emits `components: []` and would
+ * throw on any parameter — a cell asserts both.
+ *
+ * ADMIN_PHONE, one home, as `concierge.js` reads it. The vendor lane's PNID
+ * (R-41.41): the admin number is a vendor-side actor.
+ *
+ * GATED ON THE REGISTER, like every other send in the estate: the founder's own
+ * notice does not leave until he switches `template.tdw_capability_armed` on. A
+ * notice that ignored the switchboard would be the one send the Switchboard did
+ * not govern.
  */
+const NOTICE_KEY = 'template.tdw_capability_armed';
 async function notifyFounder(line, deps = {}) {
-  console.log(`[capabilities] founder notice (withheld until tdw_capability_armed): ${line}`);
-  // const { sendMetaTemplate } = require('./lib/metaCloud');
-  // const { buildTemplatePayload } = require('./lib/templates');
-  // const to = (deps.env || process.env).ADMIN_PHONE;            // one home, as concierge.js reads it
-  // if (!to) return;
-  // await sendMetaTemplate({ to, payload: buildTemplatePayload('capability_armed', [line.slice(0, 200)]) },
-  //                        { lane: 'vendor' });                   // R-41.41: the vendor lane's PNID
+  const env = deps.env || process.env;
+  const to = env.ADMIN_PHONE;
+  if (!to) { console.log(`[capabilities] founder notice: ADMIN_PHONE is not set — ${line}`); return { sent: false, reason: 'no_admin_phone' }; }
+  if (!cap.on(NOTICE_KEY)) {
+    console.log(`[capabilities] founder notice: ${cap.reason(NOTICE_KEY)} — ${line}`);
+    return { sent: false, reason: cap.reason(NOTICE_KEY) };
+  }
+  try {
+    const { sendWa } = deps.sendWa ? { sendWa: deps.sendWa } : require('./lib/sendWa');
+    const out = await sendWa({
+      line: 'vendor', to, templateKey: 'capability_armed',
+      vars: {},                        // zero variables, by the template's own shape
+      site: 'capabilities:armed',      // R-41.90 — sendWa logs this once
+      supabase: deps.supabase,
+    });
+    console.log(`[capabilities] founder notice sent — ${line}`);
+    return { sent: true, out };
+  } catch (err) {
+    console.warn(`[capabilities] founder notice REFUSED (${err && err.code}): ${err && err.message} — ${line}`);
+    return { sent: false, reason: (err && err.message) || 'send failed' };
+  }
 }
 
 /** Every row, or one. Returns the movements; never throws on a single row's failure. */

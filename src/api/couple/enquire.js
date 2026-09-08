@@ -579,7 +579,10 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
         // could not name the template, the recipient, or the wamid, so nothing
         // could be correlated against Meta's own status webhook. Now it can.
         const tplKey = fullAccess ? 'enquiry_alert_vendor' : 'lead_alert_basic';
-        logWaSend('vendor', { site: 'enquire:oow', mode: 'template', templateKey: tplKey, to: user.phone, out: tplOut, ctx: vendor.id });
+        // c-41.25 (R-41.90, seat C rider; the owning seat ratifies or reverts): removed —
+        // `sendWa` logs this successful template send once, at its dispatch seam,
+        // through `logWaSend`. The REFUSED branch below stays: sendWa throws on a
+        // refusal and its routed line never runs.
         vendorNotified = true;
         notifyMode = 'template';
         notifyRefusal = null;

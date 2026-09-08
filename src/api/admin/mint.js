@@ -92,7 +92,10 @@ router.post('/welcome/:vendorId', requireAdmin, asyncHandler(async (req, res) =>
     // the TRANSPORT. They are different facts and the audit has never carried a
     // wamid, so a welcome that Meta accepted and then rejected looked identical
     // in the audit to one that arrived.
-    logWaSend('vendor', { site: 'mint:welcome', mode: 'template', templateKey: 'vendor_welcome', to, out, ctx: vendorId });
+    // c-41.25 (R-41.90, seat C rider; the owning seat ratifies or reverts): removed —
+    // `sendWa` logs this successful template send once, at its dispatch seam,
+    // through `logWaSend`. The REFUSED branch below stays: sendWa throws on a
+    // refusal and its routed line never runs.
     await writeAudit(supabase, 'send_welcome', 'vendor', vendorId, { outcome: 'sent', to });
     return okRes(res, { sent: true });
   } catch (e) {

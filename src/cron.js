@@ -102,7 +102,10 @@ async function routeBriefing({ vendor, user, supabase }, deps = {}) {
         supabase,
         nudgeClass: true,
       });
-      logWaSend('vendor', { site: 'cron:morning:oow', mode: 'template', templateKey: 'morning_nudge_vendor', to: phone, out });
+      // c-41.25 (R-41.90, seat C rider; the owning seat ratifies or reverts): removed —
+      // `sendWa` logs this successful template send once, at its dispatch seam,
+      // through `logWaSend`. The REFUSED branch below stays: sendWa throws on a
+      // refusal and its routed line never runs.
       return { action: 'sent', mode: 'template', phone, key: 'morning_nudge_vendor' };
     } catch (err) {
       logWaSend('vendor', { site: 'cron:morning:oow', mode: 'template', templateKey: 'morning_nudge_vendor', to: phone, err });

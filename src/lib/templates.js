@@ -822,6 +822,31 @@ const TEMPLATES = {
   // [F-06.85: conditioned on a MECHANICAL fact — Meta's review state for
   //  tdw_referral_alert. Mechanism: isApproved at the bottom of this file. When
   //  that fact moves, this paragraph and `status` are re-read together.]
+  // ── CE-41 SEAT C · THE SWITCHBOARD'S OWN NOTICE (R-41.8, R-41.41) ──────────
+  // Filed by seat B and Active at Meta 2026-09-08 17:49Z, ID 1063533856046167,
+  // Utility. ZERO VARIABLES: the notice says only that something was approved and
+  // sends the founder to the card, which carries the evidence line the sweep
+  // wrote. A variable would have put a template name in a Utility body and made
+  // every notice a new approval risk for no gain.
+  //
+  // ⚠ THE BUTTON IS STATIC AND THE BUILDER MUST NOT EMIT A COMPONENT FOR IT.
+  // Meta renders a static URL button from the template itself; a `components`
+  // entry is only for a DYNAMIC suffix (`review_request`'s `{{1}}`). The builder's
+  // arm is gated on `type === 'url'`, so this entry declares `url_static` — the
+  // arm ignores it by construction, the button is on the record, and one cell
+  // asserts the payload carries no button component.
+  capability_armed: {
+    key: 'capability_armed',
+    name: 'tdw_capability_armed',
+    language: 'en',
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: [],
+    body: 'Meta approved your template.',
+    button: { type: 'url_static', index: 0, text: 'Open switchboard', url: 'https://thedreamwedding.in/admin/switchboard' },
+    status: 'approved',
+  },
+
   referral_alert: {
     key: 'referral_alert',
     name: 'tdw_referral_alert',

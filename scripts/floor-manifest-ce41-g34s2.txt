@@ -1,0 +1,29 @@
+# scripts/floor-manifest-ce41-g34s2.txt
+# CE-41 · SEAT C · G3.4 s2 — dream-os half.
+# BASE: 66b4dc673e5e27420448a748865094a159be5c02 — re-derived at the cut (fetch-first).
+# db/migrations/0152_payment_reminders_receipts.sql — number derived at the tip:
+#   `ls db/migrations | grep -E "^[0-9]{4}" | sort | tail -1` → 0151_assist_forward_alert_flag.sql.
+# Findings: F-41.14 (gate before claim) · F-41.15 (sent_at vs reminded_at) · F-41.16
+# (every outcome logs) · F-41.17 (plain words on the glass, the key in the log) ·
+# F-41.21/R-41.90 (one log home) · F-40.229/R-40.110 (the sixth receipt arm) ·
+# R-41.59 (a failed row keeps its place and frees the milestone) · R-41.41 (the notice wakes).
+# Cross-seat, labeled, ratify-or-revert: c-41.25 (four callers' success-branch line),
+# c-41.27 (b59_g34's door cell), c-41.28 (b55's button arithmetic).
+# REGEN OWED after this runs (R-41.9): payment_reminders gains four columns and two indexes.
+db/migrations/0152_payment_reminders_receipts.sql
+src/lib/vendor/paymentReminders.js
+src/lib/vendor/relayStatus.js
+src/lib/sendWa.js
+src/lib/templates.js
+src/capabilitiesSweep.js
+src/api/vendor/reminders.js
+src/api/vendor/invoiceSchedule.js
+src/cron.js
+src/api/admin/mint.js
+src/api/couple/enquire.js
+src/lib/vendor/enquiryAlert.js
+scripts/b62_g34_s2_bench.js
+scripts/b62_mutations.js
+scripts/b59_g34_reminders_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/floor-manifest-ce41-g34s2.txt

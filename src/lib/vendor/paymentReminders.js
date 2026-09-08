@@ -55,6 +55,7 @@
 
 const { isApproved } = require('../templates');
 const cap = require('../capabilities');
+const { logWaSend } = require('../waSendLog');
 /** The switchboard key, named once (CE-41 seat C). */
 const CAP_KEY = 'flag.payment_reminder_send';
 const { sendWa } = require('../sendWa');
@@ -79,6 +80,22 @@ const KIND = 'due_3d';
 const WINDOW_DAYS = 3;
 
 /**
+ * ── F-41.17 · THE LOG KEEPS THE KEY, THE GLASS GETS PLAIN WORDS ─────────────
+ * `gate.reason` is `flag.payment_reminder_send is off on the switchboard` — the
+ * register's own sentence, which is what a log and a handover must quote and
+ * what the founder's walk of 2026-09-08 read on a VENDOR's invoice. A register
+ * key with underscores is admin language on her glass (R-40.88's class). Every
+ * refusal therefore carries BOTH: `reason` (the key, for the log) and
+ * `reason_text` (the sentence she reads). The four non-gate refusals already
+ * spoke plainly and are their own text, unchanged.
+ */
+function plainWords(reason) {
+  if (!reason) return null;
+  if (reason.startsWith(CAP_KEY)) return 'Reminders are switched off for now.';
+  return reason;
+}
+
+/**
  * WHY THE SEND IS DARK RIGHT NOW, in words a handover can quote.
  * Returned rather than logged so the caller reports the reason instead of
  * inventing one.
@@ -93,6 +110,9 @@ async function sendGate() {
     reason: flagOn
       ? (approved ? null : `template ${TEMPLATE_KEY} is not approved on the sending WABA`)
       : cap.reason(CAP_KEY),
+    reason_text: flagOn
+      ? (approved ? null : 'This message is waiting on WhatsApp approval.')
+      : plainWords(cap.reason(CAP_KEY)),
   };
 }
 
@@ -316,6 +336,33 @@ async function sendOneReminder(supabase, { vendorId, milestone, invoice, vendorN
   const phrase    = composeMilestonePhrase(milestone.milestone_label, milestone.amount_due);
   const dueWords  = formatDueDate(milestone.due_date);
 
+  // ── F-41.14 · THE FIVE REFUSALS COME FIRST, AND THE CLAIM SECOND ─────────
+  // The claim used to be written before every check, so a DECISION NOT TO SEND
+  // spent the milestone's one row: the founder's walk of 2026-09-08 tapped Remind
+  // with the switchboard's flag off, the row was written with a null wamid, and
+  // the UNIQUE then answered "already sent" when he switched the flag on. The
+  // ordering was written for a TRANSPORT failure — a send that reached Meta and
+  // fell over must never be retried blindly, and that is still true below — but a
+  // refusal decided HERE never reaches Meta at all and must cost nothing.
+  //
+  // A refused tap is also not consent (R-41.60): `invoiceHasVendorTap` reads
+  // `source = 'vendor_tap'` rows regardless of wamid, so a row written by a
+  // refusal would have told the nightly sweep the vendor had opened this invoice
+  // herself. She had not. Silence never means yes — in either direction.
+  //
+  // Each refusal logs its own line (F-41.16): the skip branch wrote nothing at
+  // all, which is why Railway had no answer for the founder at 15:34.
+  const refuse = (reason, reason_text) => {
+    logWaSend(LANE, { site: `reminders:${source}`, mode: 'template', templateKey: TEMPLATE_KEY,
+                      to: toPhone, err: { code: 'refused', name: reason }, ctx: `milestone=${milestone.id}` });
+    return { ok: false, sent: false, skipped: true, id: null, reason, reason_text: reason_text || reason };
+  };
+  if (!gate.open)  return refuse(gate.reason, gate.reason_text);
+  if (!toPhone)    return refuse('this client has no phone number on the invoice');
+  if (!clientNm)   return refuse('this invoice has no client name');
+  if (!dueWords)   return refuse('this milestone has no due date');
+  if (!vendorName) return refuse('your business name is not set');
+
   // ── CLAIM THE MILESTONE. The insert IS the decision. ────────────────────
   const claim = await supabase
     .from('payment_reminders')
@@ -344,15 +391,6 @@ async function sendOneReminder(supabase, { vendorId, milestone, invoice, vendorN
     return { ok: false, sent: false, reason: claim.error.message };
   }
 
-  // ── THE REFUSALS, EACH NAMED, EACH LEAVING THE ROW STANDING ────────────
-  // A row with a NULL wamid is the honest record of a reminder that was decided
-  // and did not go. None of these pretends to be a send.
-  if (!gate.open)  return { ok: false, sent: false, skipped: true, id: claim.data.id, reason: gate.reason };
-  if (!toPhone)    return { ok: false, sent: false, skipped: true, id: claim.data.id, reason: 'this client has no phone number on the invoice' };
-  if (!clientNm)   return { ok: false, sent: false, skipped: true, id: claim.data.id, reason: 'this invoice has no client name' };
-  if (!dueWords)   return { ok: false, sent: false, skipped: true, id: claim.data.id, reason: 'this milestone has no due date' };
-  if (!vendorName) return { ok: false, sent: false, skipped: true, id: claim.data.id, reason: 'your business name is not set' };
-
   let res;
   try {
     res = await _sendWa({
@@ -365,17 +403,35 @@ async function sendOneReminder(supabase, { vendorId, milestone, invoice, vendorN
       vars: { client: clientNm, milestone: phrase, vendor: vendorName, due: dueWords },
       // R-G34.7 — Utility. Flip to true if and only if the Manager says MARKETING.
       nudgeClass: false,
+      // R-41.90: the one log home is `sendWa`'s single call to `logWaSend`; the
+      // site names this door so the line reads `[wa:bride] SENT site=reminders:vendor_tap`.
+      site: `reminders:${source}`,
       supabase: deps.supabase || supabase,
     });
   } catch (err) {
     // Typed refusals from sendWa (opted out, line not configured, template not
-    // approved) land here. The row stays; the reason is reported, never a false done.
-    return { ok: false, sent: false, id: claim.data.id, reason: (err && err.message) || 'send failed' };
+    // approved) land here — the send was ATTEMPTED and did not go. R-41.59: the
+    // row keeps the attempt on file as `failed`, and 0152's partial UNIQUE
+    // (`WHERE status <> 'failed'`) frees the milestone so she can try again once
+    // the cause is fixed. `sendWa` has already logged its own REFUSED line
+    // through `logWaSend` (R-41.90), so nothing is logged twice here.
+    await supabase.from('payment_reminders')
+      .update({ status: 'failed', error_code: (err && err.code) || null,
+                error_title: err && err.message ? String(err.message).slice(0, 500) : null,
+                updated_at: new Date().toISOString() })
+      .eq('id', claim.data.id);
+    const reason = (err && err.message) || 'send failed';
+    return { ok: false, sent: false, failed: true, id: claim.data.id, reason,
+             reason_text: "The reminder didn't go — try again." };
   }
 
   const wamid = res && res.result && res.result.wamid;
   if (wamid) {
-    await supabase.from('payment_reminders').update({ wamid }).eq('id', claim.data.id);
+    // `sent` is Meta ACCEPTING the message, never her reading it — the receipts
+    // that follow move this to delivered/read through relayStatus.js's sixth arm.
+    await supabase.from('payment_reminders')
+      .update({ wamid, status: 'sent', updated_at: new Date().toISOString() })
+      .eq('id', claim.data.id);
   }
   return { ok: true, sent: true, id: claim.data.id, wamid: wamid || null };
 }
@@ -480,6 +536,7 @@ async function runReminderSweep(supabase, deps = {}) {
 
 module.exports = {
   sendGate,
+  plainWords,
   CAP_KEY,
   sendOneReminder,
   runReminderSweep,
