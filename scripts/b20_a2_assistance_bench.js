@@ -241,9 +241,9 @@ const ADMIN  = 'src/api/admin/assistance.js';
   function seededDb() {
     return makeDb({
       couples: [{ id: 'couple-priya', user_id: 'user-priya', wedding_date: '2027-02-14', wedding_city: 'Delhi' }],
-      users:   [{ id: 'user-priya', phone: '+919625759924', name: 'Priya Sharma' }],
+      users:   [{ id: 'user-priya', phone: '+919625759924', name: 'Priya Sharma' }, { id: 'user-swati', phone: '+918595356978', name: 'Swati' }],
       vendors: [
-        { id: 'v-swati', business_name: 'Makeup by Swati Roy', category: 'makeup', city: 'Delhi', status: 'active', discover_paused: false, peer_discoverable: true, routing_handle: 'MAKEUPBYSWATIROY' },
+        { id: 'v-swati', user_id: 'user-swati', business_name: 'Makeup by Swati Roy', category: 'makeup', city: 'Delhi', status: 'active', discover_paused: false, peer_discoverable: true, routing_handle: 'MAKEUPBYSWATIROY' },
         { id: 'v-paused', business_name: 'Paused Studio', category: 'makeup', city: 'Delhi', status: 'active', discover_paused: true, peer_discoverable: true, routing_handle: 'PAUSED' },
         { id: 'v-hidden', business_name: 'Hidden Studio', category: 'makeup', city: 'Delhi', status: 'active', discover_paused: false, peer_discoverable: false, routing_handle: 'HIDDEN' },
         { id: 'v-gone',   business_name: 'Gone Studio', category: 'makeup', city: 'Delhi', status: 'retired', discover_paused: false, peer_discoverable: true, routing_handle: 'GONE' },
@@ -267,7 +267,8 @@ const ADMIN  = 'src/api/admin/assistance.js';
     ok('the lead phone is the couple\'s E.164 from users, not the last ten', lc.params.phone === '+919625759924');
     ok('budget_max = the item\'s budget; wedding_city/date from the request', lc.params.budget_max === 40000 && lc.params.wedding_city === 'Delhi' && lc.params.wedding_date === '2027-02-14');
     const fw = db._t.assistance_forwards;
-    ok('one assistance_forwards row: kind vendor, vendor_id, lead_id, wamid null, status recorded', fw.length === 1 && fw[0].target_kind === 'vendor' && fw[0].vendor_id === 'v-swati' && fw[0].lead_id === 'lead-1' && fw[0].wamid === null && fw[0].status === 'recorded' && fw[0].prospect_id === null);
+    // F-41.37: with the flag OFF (0151 seed) the forward row reads `dark`, the vendor is not sent to.
+    ok('one assistance_forwards row: kind vendor, vendor_id, lead_id, wamid null, status DARK while flag.assist_forward_alert is off (F-41.37)', fw.length === 1 && fw[0].target_kind === 'vendor' && fw[0].vendor_id === 'v-swati' && fw[0].lead_id === 'lead-1' && fw[0].wamid === null && fw[0].status === 'dark' && fw[0].prospect_id === null && !!f.alert && f.alert.status === 'dark' && /flag\.assist_forward_alert/.test(f.alert.refusal));
     ok('forwarded_count 0 → 1 on the item; the request open → forwarded', db._t.assistance_request_items.find(i => i.id === s.makeup.id).forwarded_count === 1 && db._t.assistance_requests[0].status === 'forwarded');
     for (const [vid, why] of [['v-paused', 'discover_paused'], ['v-hidden', 'peer_discoverable=false'], ['v-gone', 'not active'], ['v-nobody', 'unknown id']]) {
       const before = db._t.assistance_forwards.length;
@@ -290,6 +291,65 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: adm.items[0].id, target: { kind: 'vendor', vendor_id: 'v-swati' } }, { createLead: fakeCreateLead });
     ok('admin-typed request (couple_id NULL) forwards with phone +91 + last ten and the typed name', f.ok && leadCalls[0].params.phone === '+919876543210' && leadCalls[0].params.name === 'Typed Couple' && adm.request.couple_id === null && adm.request.origin === 'admin');
   } else { for (let i = 0; i < 15; i++) ok('§6 cell (writer absent)', false); }
+
+  // ═══ §6b · F-41.37 / R-41.68 — the vendor is told, behind the flag ═══
+  section('§6b · F-41.37 — alertVendorOfForward: dark off, live on, refusals named');
+  if (A) {
+    ok('the flag key and template key are one home each and spelled by the register grammar', A.ASSIST_FORWARD_ALERT_FLAG === 'flag.assist_forward_alert' && A.FORWARD_ALERT_TEMPLATE_KEY === 'lead_alert_utility' && /^flag\.[a-z0-9_.]+$/.test(A.ASSIST_FORWARD_ALERT_FLAG));
+    ok('0151 seeds flag.assist_forward_alert OFF (a live send to real vendors walks first)', /'flag\.assist_forward_alert',\s*'flag',\s*'off'/.test(read('db/migrations/0151_assist_forward_alert_flag.sql')));
+    ok('the registry key it sends is Utility and approved', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate('lead_alert_utility'); return t.isApproved('lead_alert_utility') && e.category === 'UTILITY' && e.line === 'vendor'; })());
+    const okLead = async () => ({ ok: true, lead: { id: 'lead-x' }, deduped: false });
+    // flag ON → sendWa with the enquiry door's three vars, wamid on the forward row
+    let db = seededDb(); let s = await seedRequest(db); let calls = [];
+    let f = await A.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-swati' } },
+      { createLead: okLead, cap: { on: (k) => k === 'flag.assist_forward_alert', reason: () => null }, sendWa: async (o) => { calls.push(o); return { sent: true, mode: 'template', result: { wamid: 'wamid.ALERT1' } }; } });
+    const c = calls[0] || {};   // absent at the uncured tree → the cells FAIL, never throw
+    ok('flag ON → ONE sendWa: vendor line, to the vendor\'s users.phone, template lead_alert_utility', f.ok && calls.length === 1 && c.line === 'vendor' && c.to === '+918595356978' && c.templateKey === 'lead_alert_utility');
+    ok('vars = [business name, the wedding month phrase, the vendor Leads URL] — the enquiry door\'s exact shape', Array.isArray(c.vars) && c.vars[0] === 'Makeup by Swati Roy' && /February 2027|2027/.test(c.vars[1]) && c.vars[2] === 'https://thedreamwedding.in/vendor/leads');
+    ok('the wamid lands on assistance_forwards.wamid with status sent + sent_at (R-40.110 home, fourth arm)', db._t.assistance_forwards[0].wamid === 'wamid.ALERT1' && db._t.assistance_forwards[0].status === 'sent' && !!db._t.assistance_forwards[0].sent_at && !!f.alert && f.alert.sent === true);
+    // flag OFF → dark, reason quoted, no send
+    db = seededDb(); s = await seedRequest(db); calls = [];
+    f = await A.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-swati' } },
+      { createLead: okLead, cap: { on: () => false, reason: (k) => `${k} is off on the switchboard` }, sendWa: async () => { throw new Error('must not send'); } });
+    ok('flag OFF → no send, row dark, the switchboard\'s reason quoted; the lead still exists', f.ok && calls.length === 0 && db._t.assistance_forwards[0].status === 'dark' && !!f.alert && f.alert.refusal === 'flag.assist_forward_alert is off on the switchboard' && db._t.leads.length === 0 && f.lead.id === 'lead-x');
+    // flag ON, sendWa throws a named error → failed + code on the row, the lead untouched
+    db = seededDb(); s = await seedRequest(db);
+    f = await A.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-swati' } },
+      { createLead: okLead, cap: { on: () => true, reason: () => null }, sendWa: async () => { const e = new Error('paused'); e.name = 'WaTemplateNotApprovedError'; throw e; } });
+    ok('flag ON, sendWa throws → row failed + error_code WaTemplateNotApprovedError; the forward and lead stand', f.ok && db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'WaTemplateNotApprovedError' && !!f.alert && f.alert.sent === false);
+    // vendor without a users.phone → failed/no_vendor_phone, no send
+    db = seededDb(); s = await seedRequest(db); db._t.vendors.push({ id: 'v-nophone', user_id: 'user-ghost', business_name: 'Ghost', category: 'makeup', city: 'Delhi', status: 'active', discover_paused: false, peer_discoverable: true, routing_handle: 'GHOST' }); calls = [];
+    f = await A.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-nophone' } },
+      { createLead: okLead, cap: { on: () => true, reason: () => null }, sendWa: async (o) => { calls.push(o); return { sent: true, result: { wamid: 'x' } }; } });
+    ok('a vendor with no users.phone → failed/no_vendor_phone, nothing sent', f.ok && calls.length === 0 && db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'no_vendor_phone');
+    ok('the alert is bound and strict: `const out = await sendWaFn(` twice, `out.sent === true` twice, no bare await', (() => { const code = strip(read(ASSIST)); return (code.match(/const out = await sendWaFn\(/g) || []).length === 2 && (code.match(/out\.sent === true/g) || []).length === 2 && !/^\s*await sendWaFn\(/m.test(code); })());
+  } else { for (let i = 0; i < 9; i++) ok('§6b (writer absent)', false); }
+
+  // ═══ §6c · F-41.43 / R-41.69 — couple_id attached at write by last-ten ═══
+  section('§6c · F-41.43 — an admin-typed request for a known phone is hers at write');
+  if (A) {
+    let db = seededDb();
+    let r = await A.createAssistanceRequest(db, { phone: '96257 59924', name: 'Sarah', origin: 'admin', items: [{ category: 'makeup', budget_rs: 1 }] }, noSend);
+    ok('admin-typed, phone matches one users.phone by last ten → couple_id attached at write', r.ok && r.request.couple_id === 'couple-priya' && r.request.origin === 'admin');
+    r = await A.createAssistanceRequest(db, { phone: '9000000000', origin: 'admin', items: [{ category: 'makeup' }] }, noSend);
+    ok('admin-typed, unknown phone → couple_id null (seat D backfills on join)', r.ok && r.request.couple_id === null);
+    db._t.users.push({ id: 'user-twin', phone: '+449625759924' });
+    r = await A.createAssistanceRequest(db, { phone: '9625759924', origin: 'admin', items: [{ category: 'makeup' }] }, noSend);
+    ok('two users share the last ten → attach nothing rather than guess', r.ok && r.request.couple_id === null);
+    r = await A.createAssistanceRequest(db, { couple_id: 'couple-explicit', phone: '9625759924', origin: 'bride', items: [{ category: 'makeup' }] }, noSend);
+    ok('an explicit couple_id (the bride door\'s session) always wins over the match', r.ok && r.request.couple_id === 'couple-explicit');
+    const mine = await A.getLatestAssistanceForCouple(db, 'couple-priya');
+    ok('F-41.29 + F-41.43 together: her read now sees the admin-typed request', mine.ok && mine.request && mine.request.id === (await (async () => db._t.assistance_requests.filter(x => x.couple_id === 'couple-priya').slice(-1)[0].id)()));
+  } else { for (let i = 0; i < 5; i++) ok('§6c (writer absent)', false); }
+
+  // ═══ §6d · F-41.42 — counts over every request ═══
+  section('§6d · F-41.42 — counts are over the whole table, never the filtered page');
+  if (A) {
+    const db = seededDb();
+    for (const st of ['open', 'open', 'forwarded', 'closed']) db._t.assistance_requests.push({ id: `r-${Math.random()}`, phone: '9', status: st, created_at: new Date().toISOString() });
+    const only = await A.listAssistanceRequests(db, { status: 'forwarded' });
+    ok('filtered to forwarded → the page has 1 row but counts read open 2 · forwarded 1 · closed 1', only.ok && only.requests.length === 1 && only.counts.open === 2 && only.counts.forwarded === 1 && only.counts.closed === 1);
+  } else { ok('§6d (writer absent)', false); }
 
   // ═══ §7 ═══
   section('§7 · FORWARD → PROSPECT — source manual, last-ten join, DARK');
@@ -316,7 +376,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'carrier_pigeon' } }, {});
     ok('an unknown target kind → refused bad_target', !f.ok && f.code === 'bad_target');
     const code = strip(read(ASSIST));
-    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp(; the one live send is sendWa in notifyFounder (admin-facing, R-41.63)', !/sendMetaTemplate\(/.test(code) && !/sendWhatsApp\(/.test(code) && (code.match(/await sendWaFn\(/g) || []).length === 1);
+    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp(; exactly TWO live sendWa sites — notifyFounder (R-41.63) and alertVendorOfForward (R-41.68, flag-gated)', !/sendMetaTemplate\(/.test(code) && !/sendWhatsApp\(/.test(code) && (code.match(/await sendWaFn\(/g) || []).length === 2);
     ok('the send block exists in the RAW file as a comment with its UNCOMMENT STEP stated', /SEND \(uncomment when the register says ON\)/.test(read(ASSIST)) && /UNCOMMENT STEP/i.test(read(ASSIST)) && /sendMetaTemplate\(/.test(read(ASSIST)));
     ok('the read is cap.on() on the one key, never an env var', /cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code));
     ok('the filed template names + Meta ids are recorded once (TEMPLATE_REFS)', A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131' && A.TEMPLATE_REFS.found_vendor.meta_id === '3160852754105015' && A.TEMPLATE_REFS.found_outside.meta_id === '3115277355330375');
@@ -410,6 +470,12 @@ const ADMIN  = 'src/api/admin/assistance.js';
     // M4: the partial UNIQUE removed from the migration text → §2's cell reds
     const mig4 = read(MIG).replace(/CREATE UNIQUE INDEX IF NOT EXISTS uq_assistance_forwards_wamid[\s\S]*?;/, '');
     ok('M4 · UNIQUE struck from 0148 → the R-40.110 cell reds (non-vacuous)', !/create unique index if not exists uq_assistance_forwards_wamid/i.test(mig4));
+    // M5: the flag gate inverted → a forward with the flag OFF would SEND (§6b's dark cell reds)
+    // At the uncured tree the anchor is absent: the mutation cell FAILS (nothing to mutate), never throws.
+    const M5 = (() => { try { return loadMutated(ASSIST, s => { const o = "if (capFn(ASSIST_FORWARD_ALERT_FLAG) !== true) {"; if (!s.includes(o)) throw new Error('M5 anchor missing'); return s.replace(o, "if (capFn(ASSIST_FORWARD_ALERT_FLAG) === true) {"); }); } catch { return null; } })();
+    if (M5) { const db = seededDb(); const s = await seedRequest(db); const calls = [];
+      await M5.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-swati' } }, { createLead: async () => ({ ok: true, lead: { id: 'l' }, deduped: false }), cap: { on: () => false, reason: () => 'off' }, sendWa: async (o) => { calls.push(o); return { sent: true, result: { wamid: 'w' } }; } });
+      ok('M5 · flag gate inverted → the flag-OFF forward SENDS (the dark cell reds; non-vacuous)', calls.length === 1); } else ok('M5 · anchor present to mutate', false);
   } else { for (let i = 0; i < 4; i++) ok('§M (writer absent)', false); }
 
   console.log(`\n${fail ? 'RED' : 'GREEN'} — b20_a2_assistance_bench ${pass}/${pass + fail}`);

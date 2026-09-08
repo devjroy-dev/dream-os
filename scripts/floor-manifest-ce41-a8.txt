@@ -1,0 +1,15 @@
+# scripts/floor-manifest-ce41-a8.txt
+# CE-41 · A8 — Concierge s1 seal riders on dream-os (seat A): F-41.37 the forward alerts the
+# vendor (R-41.68, flag seeded OFF in 0151) · F-41.42 counts over the whole table ·
+# F-41.43 couple_id attached at write by last-ten (R-41.69).
+# BASE fad5e68cbd4fd5e3dedbfb7d980b256b66b714fb, re-derived at the cut.
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+
+db/migrations/0151_assist_forward_alert_flag.sql
+docs/TDW_CE41_A8_HANDOVER.md
+scripts/b20_a2_assistance_bench.js
+scripts/floor-manifest-ce41-a8.txt
+src/lib/couple/assistance.js
+
+# FLOOR at the cured tree: 21 non-green RED/ERROR = scripts/floor-base.txt exactly; + the four
+# env refusals the base excludes. No bench moved. b20_a2 118/118 (was 101); RED 104/118 at fad5e68.

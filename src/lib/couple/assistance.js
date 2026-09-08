@@ -58,11 +58,18 @@ const { createLead } = require('../vendor/leads');
 const { VENDOR_CATEGORIES } = require('../../agent/categories');
 const { normalizeTo } = require('../metaCloud');
 const cap = require('../capabilities');
+const { monthPhrase } = require('../discover/demoLeadAlert');   // its ONE HOME (enquire.js:67 names the same coupling)
+const VENDOR_LEADS_URL = require('../pwaPaths').vendorUrl('leadsList');
 
 const TDW_ASSIST_SOURCE = 'tdw_assist';
 const TDW_REFERRER_NAME = 'The Dream Wedding';
 const DEFAULT_COUNTRY = '91';       // India-only BY RULING (R-41.34); one home for the assumption
 const FANOUT_DEFAULT = 3;           // §6.2 ruled: 3 per category, admin override in the queue
+// F-41.37 / R-41.68 — the vendor is TOLD a concierge forward landed, by the same
+// Utility alert the enquiry door sends (registry key lead_alert_utility), behind a
+// register flag seeded OFF in 0151: a new send to real vendors walks before it is on.
+const ASSIST_FORWARD_ALERT_FLAG = 'flag.assist_forward_alert';
+const FORWARD_ALERT_TEMPLATE_KEY = 'lead_alert_utility';
 const MAX_ITEMS = VENDOR_CATEGORIES.length;
 const MAX_SEARCH = 10;              // R-40.72's ≤10 precedent for a forward list
 
@@ -147,10 +154,17 @@ async function createAssistanceRequest(supabase, params, deps = {}) {
 
   const origin = ['bride', 'admin', 'public'].includes(p.origin) ? p.origin : 'bride';
 
+  // R-41.69 (F-41.43): an admin-typed (or public) request for a phone that already
+  // belongs to a couple attaches her couple_id AT WRITE, so her own read (F-41.29)
+  // sees it. users.phone is E.164 (:1070); couples.user_id (:400) joins it. Seat D's
+  // backfill is for couples who join LATER; this is the one home for the match now.
+  let couple_id = p.couple_id || null;
+  if (!couple_id) couple_id = await findCoupleIdByLastTen(supabase, phone);
+
   const { data: request, error: reqErr } = await supabase
     .from('assistance_requests')
     .insert({
-      couple_id:    p.couple_id || null,
+      couple_id,
       phone,
       name:         p.name ? String(p.name).trim().slice(0, 120) : null,
       city:         p.city ? String(p.city).trim().slice(0, 120) : null,
@@ -283,6 +297,17 @@ function formatRs(n) {
   return `${rest},${last3}`;
 }
 
+// The last-ten → couple_id match (R-41.69). `users.phone` is E.164; `like '%<ten>'`
+// is the same join law prospects use. Two users sharing a last-ten (a country-code
+// twin) → attach nothing rather than guess.
+async function findCoupleIdByLastTen(supabase, lastTen) {
+  if (!lastTen) return null;
+  const { data: users } = await supabase.from('users').select('id, phone').like('phone', `%${lastTen}`).limit(2);
+  if (!Array.isArray(users) || users.length !== 1) return null;
+  const { data: couple } = await supabase.from('couples').select('id, user_id').eq('user_id', users[0].id).maybeSingle();
+  return couple ? couple.id : null;
+}
+
 // ── loadItemWithRequest — the forward's ground truth ────────────────────────
 async function loadItem(supabase, itemId) {
   const { data: item } = await supabase
@@ -342,7 +367,7 @@ async function forwardToVendor(supabase, { item, request, target }, deps) {
   //   status='active' AND discover_paused=false AND peer_discoverable=true.
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('id, business_name, category, city, status, discover_paused, peer_discoverable, routing_handle')
+    .select('id, user_id, business_name, category, city, status, discover_paused, peer_discoverable, routing_handle')
     .eq('id', target.vendor_id)
     .maybeSingle();
   if (!vendor || vendor.status !== 'active' || vendor.discover_paused === true || vendor.peer_discoverable !== true) {
@@ -375,7 +400,62 @@ async function forwardToVendor(supabase, { item, request, target }, deps) {
   if (!forward.ok) return forward;
   await bumpForwarded(supabase, item, request);
   console.log(`[assistance:forward] item=${item.id} → vendor=${vendor.routing_handle || vendor.id} lead=${created.lead.id} source=${TDW_ASSIST_SOURCE}`);
-  return { ok: true, forward: forward.row, lead: created.lead, vendor: { id: vendor.id, business_name: vendor.business_name, routing_handle: vendor.routing_handle } };
+  const alert = await alertVendorOfForward(supabase, { forwardId: forward.row.id, vendor, request }, deps);
+  return { ok: true, forward: { ...forward.row, status: alert.status, wamid: alert.wamid }, lead: created.lead,
+           vendor: { id: vendor.id, business_name: vendor.business_name, routing_handle: vendor.routing_handle }, alert };
+}
+
+// ── alertVendorOfForward — F-41.37 / R-41.68 ────────────────────────────────
+// The lead exists; the vendor is told the way every other lead door tells her:
+// `lead_alert_utility` (Utility, approved) on the vendor line to her users.phone.
+// GATE: cap.on('flag.assist_forward_alert') — seeded OFF (0151); the founder flips
+// it on the Switchboard after walking one live alert. While off: the forward row
+// says `dark` and the log says why (cap.reason). While on: sendWa's named throws
+// land as `failed` + error code on the row; the wamid lands on assistance_forwards
+// .wamid — the R-40.110 home A2 built dark — and the fourth router arm carries
+// the receipts. `sent === true` strictly; the result is bound, never discarded.
+async function alertVendorOfForward(supabase, { forwardId, vendor, request }, deps = {}) {
+  const capFn = (deps.cap && deps.cap.on) || cap.on;
+  const reasonFn = (deps.cap && deps.cap.reason) || cap.reason;
+  const record = async (patch) => {
+    try { await supabase.from('assistance_forwards').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', forwardId); }
+    catch (e) { console.error(`[assistance:forward-alert] row write failed for ${forwardId}: ${e && e.message}`); }
+  };
+  if (capFn(ASSIST_FORWARD_ALERT_FLAG) !== true) {
+    const why = reasonFn ? reasonFn(ASSIST_FORWARD_ALERT_FLAG) : `${ASSIST_FORWARD_ALERT_FLAG} is off`;
+    console.log(`[assistance:forward-alert] forward=${forwardId} vendor=${vendor.routing_handle || vendor.id} status=dark — NOT SENT: ${why}`);
+    await record({ status: 'dark' });
+    return { sent: false, status: 'dark', wamid: null, refusal: why };
+  }
+  const { data: user } = await supabase.from('users').select('id, phone').eq('id', vendor.user_id).maybeSingle();
+  if (!user || !user.phone) {
+    console.error(`[assistance:forward-alert] forward=${forwardId} vendor=${vendor.id} has no users.phone — NOT SENT`);
+    await record({ status: 'failed', error_code: 'no_vendor_phone' });
+    return { sent: false, status: 'failed', wamid: null, refusal: 'no_vendor_phone' };
+  }
+  const sendWaFn = deps.sendWa || require('../sendWa').sendWa;
+  try {
+    const out = await sendWaFn({
+      line: 'vendor', to: user.phone, templateKey: FORWARD_ALERT_TEMPLATE_KEY,
+      vars: [vendor.business_name || 'there', monthPhrase(request.wedding_date), VENDOR_LEADS_URL],
+      supabase,
+    });
+    const sent = !!(out && out.sent === true);
+    const wamid = sent && out.result && out.result.wamid ? String(out.result.wamid) : null;
+    if (!sent) {
+      console.error(`[assistance:forward-alert] forward=${forwardId} REFUSED (unknown) — the lead IS on file`);
+      await record({ status: 'failed', error_code: 'unknown' });
+      return { sent: false, status: 'failed', wamid: null, refusal: 'unknown' };
+    }
+    await record({ wamid, status: wamid ? 'sent' : 'sent_no_wamid', sent_at: new Date().toISOString() });
+    console.log(`[assistance:forward-alert] forward=${forwardId} vendor=${vendor.routing_handle || vendor.id} template=${FORWARD_ALERT_TEMPLATE_KEY} wamid=${wamid}`);
+    return { sent: true, status: wamid ? 'sent' : 'sent_no_wamid', wamid, refusal: null };
+  } catch (err) {
+    const code = (err && (err.code || err.name)) || 'send_failed';
+    console.error(`[assistance:forward-alert] forward=${forwardId} THREW (${code}: ${err && err.message}) — the lead IS on file`);
+    await record({ status: 'failed', error_code: String(code).slice(0, 80), error_title: String(err && err.message || '').slice(0, 500) });
+    return { sent: false, status: 'failed', wamid: null, refusal: code };
+  }
 }
 
 async function forwardToProspect(supabase, { item, request, target }, deps) {
@@ -560,8 +640,12 @@ async function listAssistanceRequests(supabase, { status, limit } = {}) {
     if (!byReq.has(it.request_id)) byReq.set(it.request_id, []);
     byReq.get(it.request_id).push(it);
   }
+  // F-41.42: counts are over EVERY request, never the filtered page — one read of
+  // (id, status) for all rows, tallied here. The page's three cards and the nav's
+  // Open: N read this, so a status filter no longer counts only itself.
   const counts = { open: 0, forwarded: 0, closed: 0 };
-  for (const r of requests || []) counts[r.status] = (counts[r.status] || 0) + 1;
+  const { data: all } = await supabase.from('assistance_requests').select('id, status');
+  for (const r of all || []) counts[r.status] = (counts[r.status] || 0) + 1;
   return { ok: true, requests: (requests || []).map(r => ({ ...r, items: byReq.get(r.id) || [] })), counts, fanout_default: FANOUT_DEFAULT };
 }
 
@@ -694,4 +778,5 @@ module.exports = {
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
   TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE,
+  ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen,
 };
