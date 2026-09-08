@@ -101,7 +101,7 @@ One phase per sitting. The spec's build-order table is the contract.
 - **ZIPs ONLY. Always.** Every delivery — code, docs, migrations, specs —
   ships as ONE ZIP the founder drops in REPO ROOT and applies with a single
   fixed command:
-  `unzip -o FILE.zip && cp -r deploy/* . && rm -rf deploy FILE.zip`
+  `unzip -o FILE.zip && cp -r deploy/. . && rm -rf deploy FILE.zip`
   followed by ONE ready-to-run verify command and ONE ready-to-run
   git add/commit/push line — all three provided complete.
 - The ZIP carries the full folder structure from repo root
@@ -151,7 +151,7 @@ These bind every session from this date. Where a law amends an earlier section, 
 - **Every shell line handed to the founder is pasted into a real pty first, in the exact form handed over** — `bash -i -c` does not reproduce history-expansion traps, and a pty that cannot reach the target environment is not a check. Apply blocks target `/workspaces/dream-os` (Codespace; ZIP by drag into the VS Code explorer, never `~/Downloads`).
 - **A superseded command is retracted BY NAME in the same message** ("do not run the earlier block"), never merely followed by a better one. Anything runnable left in a transcript will be run.
 - **Commit messages carrying shell metacharacters go through `git commit -F -` with a quoted heredoc.**
-- **§7's fixed apply command cannot ship a dotfile** (`cp -r deploy/*` skips them silently; `rm -rf deploy` then destroys them). No delivery places a dotfile inside `deploy/`; versioned hooks live at non-dot paths (`githooks/` + `core.hooksPath`, the F-04.61 precedent).
+- **§7's apply command is `cp -r deploy/. .` — amended by c-41.1 (CE-41, 2026-09-09).** The earlier spelling `deploy/*` skipped dotfiles silently and `rm -rf deploy` then destroyed them; `deploy/.` copies every entry. The standing rule stays as belt-and-braces: no delivery places a dotfile inside `deploy/`; versioned hooks live at non-dot paths (`githooks/` + `core.hooksPath`, the F-04.61 precedent).
 - **Delivery ZIPs are `deploy/`-prefixed; CE transport packets are `CE_PACKET/`-prefixed and must NOT be applicable by the fixed command.** Two classes, never mixed.
 - **Every delivery's paste block opens with `# repo: <name>` above the unzip line**; the founder reads line 1 against the terminal's prompt path.
 - **No live credential is ever echoed into a transcript** — secrets enter via a locally-set env var, referenced never printed; any leaked credential is rotated at once.
@@ -191,7 +191,7 @@ These bind every session from this date. Where a law amends an earlier section, 
 
 **Format rules:** zero placeholders anywhere; the guardrail sentence "trust evidence over narrative — including this kickoff" is standing (an executor who catches the kickoff wrong is credited, per CE-40); one kickoff = one sitting = one deliverable arc; a kickoff that cannot state its DISEASE with `file:line` evidence is not ready to issue. **`TDW_04_B6_KICKOFF.md` is the SUBSTANCE BENCHMARK (CE-57): a kickoff thinner than the precedent on the ladder, smoke-card, or veto dimensions is not ready to issue.**
 
-**THE APPLY-VERBATIM LAW (CE-56, founder-ruled 2026-07-22; born of three LE sessions reconstructing the command):** every kickoff's ACCEPTANCE carries the §7 apply chain **as bytes, never as a pointer** — the chair copies them from this document at kickoff-writing, fetch-fresh: `unzip -o FILE.zip && cp -r deploy/* . && rm -rf deploy FILE.zip` (FILE.zip = the actual name; any CE-disclosed extension, e.g. an `rm` for a chartered deletion, is named in the kickoff). A delivery whose apply block deviates is a **BOUNCE, not a fix-in-place** — the founder never debugs a paste-block. **The committed specimen anti-pattern (founder's own catch, NEVER this shape):** `unzip -o ~/Downloads/….zip -d . && \` — `~/Downloads` resolves inside the Codespace container, not the founder's machine, and `-d .` with line-continuations is a session RECONSTRUCTING from general knowledge instead of copying law. The session knew WHAT to do and invented HOW; the how is law.
+**THE APPLY-VERBATIM LAW (CE-56, founder-ruled 2026-07-22; born of three LE sessions reconstructing the command):** every kickoff's ACCEPTANCE carries the §7 apply chain **as bytes, never as a pointer** — the chair copies them from this document at kickoff-writing, fetch-fresh: `unzip -o FILE.zip && cp -r deploy/. . && rm -rf deploy FILE.zip` (FILE.zip = the actual name; any CE-disclosed extension, e.g. an `rm` for a chartered deletion, is named in the kickoff). A delivery whose apply block deviates is a **BOUNCE, not a fix-in-place** — the founder never debugs a paste-block. **The committed specimen anti-pattern (founder's own catch, NEVER this shape):** `unzip -o ~/Downloads/….zip -d . && \` — `~/Downloads` resolves inside the Codespace container, not the founder's machine, and `-d .` with line-continuations is a session RECONSTRUCTING from general knowledge instead of copying law. The session knew WHAT to do and invented HOW; the how is law.
 
 **THE SHELL-BOUNDARY LAW (CE-56; the F-04.101 executor's own phrasing, attributed):** the git line ships as its **own paste-block**, never appended to a verify chain — **"a STOP that isn't a shell boundary isn't a STOP."** A `#`-comment STOP inside one pasted block is walked straight through; only a block boundary forces the founder's read.
 
