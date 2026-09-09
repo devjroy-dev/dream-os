@@ -1,0 +1,31 @@
+CE-41 · SEAT D · D3d (dream-os) · FLOOR MANIFEST
+base: 69697565f2524b9d365130a243213df98145a3d7
+
+b65_room_on_the_wire      GREEN  16/16   NEW
+b20_a2_assistance_bench   exit 0    b64_template_slots_bench exit 0
+b64_mutations             GREEN   6/6    b61_switchboard_bench GREEN 64 · 0
+b62_mutations             GREEN  18/18   b63_mutations GREEN 30/30
+BOTH WAYS: cured GREEN 16/16 · uncured RED 5/16
+
+ZERO ENGINE BYTES. `TurnResult.victor_mode` is already the resolved room and the door
+already reads it (chat.js:1560, :2752). D3d is door-only, which is why it is provable
+in this container at all — src/engine/dist is absent here and b63 loses two cells to it.
+
+TWO CELLS OF MY OWN WERE WRONG BEFORE THEY WERE RIGHT:
+  1.2 forbade `body.room` ANYWHERE and convicted chat.js:3213 — the door's `roomAssert`,
+      which is F-41.98's design and must stay. What must never happen is the RESPONSE
+      being built from the REQUEST (the client would be told what it asked for, not what
+      happened, and a seam would draw on an assertion the engine had overridden).
+      Scoped to the two response legs; 1.2b now guards the assertion itself.
+  read() threw on the missing migration at an uncured tree instead of failing — ZERO
+      failures, no verdict. Guarded. Seat A's close note §6, third bench this sitting.
+
+§3 EXISTS BECAUSE OF F-41.103 AND F-41.104. Both were a cure landing on a write path
+and not its read; both were caught by a WALK, not the floor. The history query selects
+`room` AND the map carries it out — selecting then dropping it is the same defect with
+an extra step.
+
+MIGRATION 0159 — tail derived by command immediately before allocation → 0158.
+NOT RUN by this seat. One nullable column, CHECK on exactly two words. `consult` is
+NOT admitted as a string: absence is the value, and NULL must never fold to 'business'
+— business is the one room carrying the estate.

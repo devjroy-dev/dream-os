@@ -2418,6 +2418,29 @@ async function persistComposedReply(req, result, tail) {
   return patchComposedReply(req.app.locals.supabase, result, tail);
 }
 
+// ── R-41.142 · THE ROW REMEMBERS THE ROOM ────────────────────────────────────
+// The done event tells the CLIENT what happened this turn; this tells the THREAD,
+// so a reload does not lose it. Written by `result.assistant_message_id` — the id
+// the ENGINE witnessed — never by "the newest row for this conversation", which is
+// a guess that races every concurrent turn.
+//
+// It never overwrites and never invents: no id means the engine did not witness a
+// row, and the honest response is to write nothing (patchComposedReply:2407 takes
+// the same position for the same reason). A failure here NEVER fails the turn — the
+// reply has already been given; losing the room costs a hairline on reload, and
+// throwing would cost the answer.
+async function recordMessageRoom(supabase, result) {
+  const id = result && result.assistant_message_id;
+  if (!id) return;
+  const room = (result && result.victor_mode) ?? null;
+  if (room == null) return;   // consult, or nothing to say — 0159's NULL is the truth
+  try {
+    const { error } = await supabase.schema('engine')
+      .from('messages').update({ room }).eq('id', id);
+    if (error) console.warn('[door:message-room]', error.message);
+  } catch (e) { console.warn('[door:message-room]', e && e.message); }
+}
+
 // Lockstep the other way: when Donna moves a binder's date (donna_date / donna_edit carrying a date),
 // the linked calendar event follows — BUT ONLY IF THAT EVENT IS THE ENGAGEMENT.
 // Half A's binder write is a post-turn door action, never a donna_call in result,
@@ -3289,7 +3312,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       await logChatActivity(req, result); // TDW_04 B0 item 3
       // TDW_04 B6 sitting 2 — Q-B4-6(b): the door lines join the thread's row.
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
-      await persistComposedReply(req, result,
+      await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
+    await persistComposedReply(req, result,
         composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
       const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts }); // wire guard — PWA site 1 of 2 (SSE)
 
@@ -3301,6 +3325,16 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // is this additive payload; the pwa client swaps the message text on the flag.
       const s2sse = stage2Intercept(guardVerdict, false);
       const done = { type: 'done', tool_calls: s2sse ? [] : toolNames, refresh: s2sse ? false : toolNames.length > 0 };
+      // ── R-41.142 · THE ROOM COMES BACK ────────────────────────────────────
+      // `room` has travelled UP since F-41.98 and nothing came down, so the client
+      // could never know which room answered. This is the return leg, and it is the
+      // ENGINE'S OWN RESOLVED VALUE — TurnResult.victor_mode, decided at loop.ts:424
+      // by a precedence the door does not re-run. One home: the engine decides, the
+      // door reports, the glass reads. Never re-derived from the request's assertion,
+      // which is only what was ASKED for, not what happened.
+      // `?? null` because consult leaves victor_mode undefined ON PURPOSE, and the
+      // pwa renders null unmarked. NEVER fold it to 'business' — see 0159's comment.
+      done.room = (result && result.victor_mode) ?? null;
       if (s2sse) {
         done.intercept = { replaced: true, text: s2sse };
         // F-06.130: the delivery witness. This seat has no Fork D, so its resolution point IS
@@ -3359,6 +3393,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     // (booked/refused/mutated all do): a NEW line has no curl bytes to preserve,
     // and the line's live rendering is text on every surface.
     const openLine = donnaOpenLine(result);
+    await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
     await persistComposedReply(req, result,
       composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
     const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts }); // wire guard — PWA site 2 of 2 (JSON)
@@ -3404,6 +3439,11 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       reply,
       tool_calls: toolNames,
       refresh: toolNames.length > 0,
+      // R-41.142 — BOTH LEGS OR NEITHER. The stream carries `room` on its done event;
+      // this is the same fact on the non-stream path. A client that got the room from
+      // one and not the other would draw a seam that appears and vanishes with the
+      // transport, which is worse than no seam at all.
+      room: (result && result.victor_mode) ?? null,
       // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
       view: result.view && result.view.length ? result.view.map((r) => ({ ...r, missing_cells: missingCells(r) })) : undefined,
       meta: await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }), // TDW_02 P5: the meter, every turn
@@ -3430,7 +3470,12 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
     if (!convo) return res.json({ ok: true, messages: [] });
 
     const { data: rows, error } = await eng.from('messages')
-      .select('id, role, content, created_at')
+      // R-41.142 — `room` IS SELECTED HERE OR THE THREAD RELOADS UNMARKED. This is the
+      // third time this sitting a cure landed on a write path and not its read:
+      // F-41.103 (the consent gate could never pass for a found prospect) and
+      // F-41.104 (the queue could never render "Consent noted"). Both were caught by a
+      // walk, not the floor. Named in scope here rather than found later.
+      .select('id, role, content, created_at, room')
       .eq('conversation_id', convo.id)
       .in('role', ['user', 'assistant'])
       .order('created_at', { ascending: false })
@@ -3443,7 +3488,10 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
     const messages = (rows || [])
       .reverse()
       .filter((m) => m.content && m.content.trim().length > 0)
-      .map((m) => ({ id: m.id, role: m.role === 'user' ? 'user' : 'ai', text: m.content, at: m.created_at }));
+      // R-41.142: the room rides out too. Selecting it and then dropping it in the map
+      // would be the read-path defect with an extra step — the column would be full and
+      // the thread still unmarked.
+      .map((m) => ({ id: m.id, role: m.role === 'user' ? 'user' : 'ai', text: m.content, at: m.created_at, room: m.room ?? null }));
     return res.json({ ok: true, messages });
   } catch (err) {
     console.error('[vendor-e chat/history]', err.message);
