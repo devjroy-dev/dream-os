@@ -1,0 +1,18 @@
+CE-41 · SEAT D · D3a5 (dream-os, HOT) · FLOOR MANIFEST
+base: ab7c2835267368c1ab373cd00c6fb2eedbed5c36   (re-pinned from e660d0e; seat B B4-10 landed between cut and apply, docs only, no overlap)
+
+b20_a2_assistance_bench   GREEN  151/151   was 148/148 — +3 (§7g)
+BOTH WAYS: cured GREEN 151/151 · uncured RED 148/151
+
+F-41.104 — F-41.103's CLASS, ONE DOOR OVER. The SEND path was cured of not selecting
+the consent columns; the READ path was not. `consent` would have been undefined on
+every queue row and "Consent noted" could never have rendered. Found while building
+the pwa row, not by the floor.
+
+§7g's FIRST CUT FOUND TWO OF THREE. It anchored within 120 chars of
+`.from('prospects')`, and the INSERT path's `.select` sits after a whole object
+literal. Re-anchored on the SHAPE — every prospect-shaped select names `ig_handle` —
+so it cannot drift with formatting and a fourth select is caught when written.
+
+c-41.72: every replace grep-proved, in the form that matches the bytes written.
+No migration. No other bench touched.

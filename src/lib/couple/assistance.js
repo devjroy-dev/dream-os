@@ -937,7 +937,13 @@ async function getAssistanceRequest(supabase, requestId) {
     for (const v of data || []) vendors.set(v.id, v);
   }
   if (prospectIds.length) {
-    const { data } = await supabase.from('prospects').select('id, name, ig_handle, phone, state').in('id', prospectIds);
+    // F-41.104 — THE QUEUE'S READ MUST CARRY THE CONSENT TOO, and this is F-41.103's
+    // exact class one door over: the SEND path was cured and the READ path was not.
+    // Without these columns `consent` is undefined on every row and "Consent noted"
+    // can never render, no matter what the database holds.
+    // The row carries the STATE, not the raw columns — consentState is the one home
+    // and the pwa must never re-derive it (R-41.135).
+    const { data } = await supabase.from('prospects').select('id, name, ig_handle, phone, state, consent_text, consent_source').in('id', prospectIds);
     for (const p of data || []) prospects.set(p.id, p);
   }
   const byItem = new Map();
@@ -947,6 +953,12 @@ async function getAssistanceRequest(supabase, requestId) {
       ...f,
       vendor:   f.vendor_id ? (vendors.get(f.vendor_id) || null) : null,
       prospect: f.prospect_id ? (prospects.get(f.prospect_id) || null) : null,
+      // R-41.135 — the writer's own reading, computed once here and rendered as-is.
+      // Vendor forwards carry null: consent is a prospect's fact, and a vendor on TDW
+      // reached us herself.
+      consent: f.prospect_id
+        ? consentState(consentEvidences(prospects.get(f.prospect_id) || {}), prospects.get(f.prospect_id) || {})
+        : null,
     });
   }
   return {

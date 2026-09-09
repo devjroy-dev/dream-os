@@ -489,6 +489,30 @@ const ADMIN  = 'src/api/admin/assistance.js';
   // founder_attested DISTINCTLY from her_words — because if the two collapsed, the
   // queue would show the weaker evidence as the stronger, which is the whole thing
   // the third state exists to prevent.
+  // ── §7g · F-41.104 · THE READ PATH CARRIES THE STATE, NOT JUST THE SEND ────
+  // F-41.103 was the SEND path failing to select the consent columns. This is the
+  // same defect one door over: the QUEUE's read hydrated prospects with five columns
+  // and none of the consent ones, so `consent` was undefined on every row and
+  // "Consent noted" could never render whatever the database held. A cure applied to
+  // one path and not its sibling is the shape worth naming, not the individual miss.
+  section('§7g · F-41.104 — the queue read carries the consent state');
+  {
+    const src = strip(read(ASSIST));
+    // ANCHORED ON THE SHAPE, NOT A BYTE DISTANCE. The first cut looked within 120
+    // chars of `.from('prospects')` and found two of three — the INSERT path's
+    // `.select` sits after a whole object literal. Every prospect-shaped select in
+    // this file names `ig_handle`, so that is the anchor: it cannot drift with
+    // formatting, and a new one is caught the day it is written.
+    const prospectSelects = (src.match(/\.select\('[^']*ig_handle[^']*'\)/g) || []);
+    ok('§7g: EVERY prospect-shaped select in this file reads the consent columns'
+       + ` — ${prospectSelects.length} found`,
+       prospectSelects.length >= 3 && prospectSelects.every((sel) => sel.includes('consent_')));
+    ok('§7g: the read hands the queue consentState, never the raw columns to re-derive',
+       /consent: f\.prospect_id/.test(src) && /consentState\(consentEvidences\(/.test(src));
+    ok('§7g: a vendor forward carries null consent — it is a prospect\'s fact',
+       /consent: f\.prospect_id[\s\S]{0,200}: null,/.test(src));
+  }
+
   section('§7f · R-41.133 — the founder\'s attestation is its own source, and its own state');
   {
     const mig = read('db/migrations/0157_consent_source_founder_attested.sql');
