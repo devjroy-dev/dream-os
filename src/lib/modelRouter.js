@@ -139,9 +139,51 @@ const SWITCHABLE = Object.freeze({
 // grows a row; it cannot silently miss one the way 0115 missed this key.
 const { CANON_TIERS } = require('./billing/tierFlip');
 
+// ══════════════════════════════════════════════════════════════════════════
+// CE-41 · SEAT G · R-41.104 — THE WHATSAPP LANE'S ROOM, WITH ONE HOME
+// ══════════════════════════════════════════════════════════════════════════
+// R-39.22 has said since band 7 that advisory lives in the Advisor room alone.
+// F-40.3's cure (`vendorInbound.js:1436-1449`) enforced that AT THE WORD — the
+// lane refuses to WRITE `advisor` onto the row — and R-41.104 now enforces it
+// AT THE READ: a vendor flipped to advisor in the PWA still gets a BUSINESS
+// Victor on WhatsApp, because the WhatsApp lane never asks what the row holds.
+//
+// WHY THE FACT LIVES HERE AND NOT AT EITHER DOOR. The rule has TWO readers that
+// must never disagree: the ROUTE (`buildLlmForTurn`, which chose `advisor` as a
+// tier slot from `victor_mode`) and the ROOM (`loop.ts:299`, which chose the
+// advisory lens, the tool set and `estateInRoom` from the same column). A
+// literal `'business'` at each site is two homes for one rule, and the failure
+// mode is not hypothetical — it is this seat's own finding: the route was cured
+// in isolation once already in draft and the lane came out routing business
+// while still LOSING Donna, the estate and every read hand. One function, read
+// by both, so the two cannot drift apart.
+//
+// IT TAKES NO ARGUMENT AND HAS NO BRANCH, deliberately. A `waLaneMode(vendor)`
+// would be a switch, and a switch is the thing R-41.104 removes; the founder's
+// lever for this lane is the PWA chip, which still works, on the PWA.
+function waLaneMode() {
+  return 'business';
+}
+
 const VENDOR_ROLES = Object.freeze(['provider', 'donna']);
-function vendorLanes(surface, extra) {
-  return [...CANON_TIERS, 'advisor'].map((tier) => ({
+// CE-41 · SEAT G · R-41.104 (Fork C, chair-ruled) — `advisor` IS A PER-SURFACE
+// TIER, NOT A UNIVERSAL ONE.
+//
+// It was minted for every vendor surface, which was right while both surfaces
+// had the room. The WhatsApp lane no longer does, and dropping only the ROW
+// (`0154`) would have been a cure ONE TAP UNDOES: `admin/modelRoutes.js` builds
+// its response from `LANES` (:124, :137) and guards its POST on `LANE_BY_KEY`
+// (:182), so the lane would keep appearing on the panel with `has_row: false`
+// and the door's read-merge-write would seed the row back from what is live the
+// first time the founder touched it. THE REGISTRY IS THE AUTHORITY; the row is
+// downstream of it. Removing the lane closes both — the panel stops offering the
+// switch and the door refuses the key.
+//
+// `pwa_vendor` KEEPS IT (R-41.104 §4(d)): the advisor room is reachable in the
+// app, it routes to its own model there, and the founder switches it there.
+function vendorLanes(surface, extra, opts) {
+  const tiers = (opts && opts.advisor === false) ? [...CANON_TIERS] : [...CANON_TIERS, 'advisor'];
+  return tiers.map((tier) => ({
     key: `model.${surface}.${tier}`, surface, tier,
     roles: VENDOR_ROLES, reachable: true, ...extra,
   }));
@@ -156,7 +198,13 @@ const LANES = Object.freeze([
   // row exists each one RESOLVES THROUGH ITS `pwa_vendor` TWIN. Zero behaviour
   // change on the day this ships; a separately switchable lane the moment the
   // founder taps it.
-  ...vendorLanes('wa_vendor', { fallback_surface: 'pwa_vendor' }),
+  //
+  // R-41.104 (seat G): NO `advisor` LANE. The WhatsApp door cannot reach that
+  // tier slot any more — `buildLlmForTurn` routes this surface on `waLaneMode()`
+  // and never on `victor_mode` — so a lane here would be a switch the founder
+  // could tap that moved nothing, which is exactly what `reachable: false` was
+  // invented to prevent (R-40.60). `0154` drops the row this seed left behind.
+  ...vendorLanes('wa_vendor', { fallback_surface: 'pwa_vendor' }, { advisor: false }),
   { key: 'model.wa_marketing.default', surface: 'wa_marketing', tier: 'default',
     roles: Object.freeze(['provider', 'nudge']), reachable: true },
   { key: 'model.wa_couple.default', surface: 'wa_couple', tier: 'default',
@@ -367,4 +415,8 @@ module.exports = {
   // CE-41 F1 (R-41.85): the panel's three constants and the two seams. The door
   // holds no key list, no provider list and no model string of its own.
   SWITCHABLE, LANES, LANE_BY_KEY, fallbackSurfaceFor, bustRouteCache, CACHE_MS, HAIKU,
+  // CE-41 seat G (R-41.104): the ONE home of the WhatsApp lane's room. Read by
+  // the route (`buildLlmForTurn`) and by the door that hands the engine its room
+  // (`vendorInbound.js`, both `runTurn` sites). No third reader.
+  waLaneMode,
 };

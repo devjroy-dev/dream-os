@@ -67,9 +67,16 @@ const MUT = [
     "const SWITCHABLE = Object.freeze({\n  anthropic: HAIKU_CLASS[0],\n  deepseek:  DEEPSEEK_CLASS[0],\n});",
     "const SWITCHABLE = Object.freeze({\n  anthropic: 'claude-haiku-4-5-20251001',\n  deepseek:  'deepseek-v4-flash',\n});",
     'SWITCHABLE is built FROM the F-08.84 classes (no transcription)'],
+  // c-41.46 (CE-41 seat G): ANCHOR RE-DERIVED, NOT RETIRED. R-41.104 gave
+  // `vendorLanes` a per-surface advisor arm, so the single `return [...CANON_TIERS,
+  // 'advisor'].map(` line M14 pinned no longer exists and this mutation matched
+  // ZERO times — a dead anchor, which reports `??` and is neither a pass nor a
+  // proof (F-41.65's class, one bench over). The mutation's SUBJECT is unchanged:
+  // transcribing the tier words must still red b63's derivation cell. Re-derived
+  // by command against the cured tree at the cut, never edited from memory.
   ['M14 the tier words are transcribed rather than taken from CANON_TIERS', 'src/lib/modelRouter.js',
-    "  return [...CANON_TIERS, 'advisor'].map((tier) => ({",
-    "  return ['basic', 'essential', 'signature', 'prestige', 'advisor'].map((tier) => ({",
+    "  const tiers = (opts && opts.advisor === false) ? [...CANON_TIERS] : [...CANON_TIERS, 'advisor'];",
+    "  const tiers = (opts && opts.advisor === false) ? ['basic', 'essential', 'signature', 'prestige'] : ['basic', 'essential', 'signature', 'prestige', 'advisor'];",
     'the vendor tiers are DERIVED from CANON_TIERS, not transcribed (R-40.94)'],
   ['M15 the door grows its own copy of a lane key', 'src/api/admin/modelRoutes.js',
     "  const lane = LANE_BY_KEY.get(key);\n  if (!lane) return errRes(res, 400, 'not a model-route key.');",

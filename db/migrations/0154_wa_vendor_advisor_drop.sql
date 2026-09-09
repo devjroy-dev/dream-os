@@ -1,0 +1,113 @@
+-- 0154_wa_vendor_advisor_drop.sql — CE-41 · SEAT G · R-41.104.
+--
+-- Number derived by command at the RE-PINNED cut, never claimed from memory
+-- (LD-8):
+--   `git ls-tree --name-only b5052382b7bfee93ba4277bafd50fc1b941a4427 db/migrations/`
+-- tail is 0153_wa_vendor_route_seed.sql.
+--
+-- ⚠ THE RE-PIN NOTE ALLOCATED 0155, ON THE EXPECTATION THAT SEAT F's F1b TOOK
+-- 0154. It did not: F1b's diff is seven files and none of them is under `db/`.
+-- `OUT_OF_ORDER.json`'s register is empty and no 0154 exists anywhere in the
+-- tree at b505238. LD-8 says the number is DERIVED at the cut and never claimed
+-- from memory, and that holds for a number arriving in a kickoff exactly as it
+-- holds for one arriving in an executor's head — so this file is 0154, and the
+-- divergence from the note is filed rather than silently obeyed. Shipping 0155
+-- would leave a permanent hole at 0154 that every later reader has to derive.
+-- The chair overrules in one line if there is a reservation this seat cannot see.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+-- WHAT THIS DOES
+-- ═══════════════════════════════════════════════════════════════════════════
+-- `model.wa_vendor.advisor` was seeded nine days ago by 0153, correctly: at that
+-- date the WhatsApp lane resolved its route through `victor_mode` exactly as the
+-- PWA lane did, so the advisor room had a WhatsApp model and the founder could
+-- switch it. R-41.104 removed the room from this lane. The key now has no
+-- reader: `buildLlmForTurn` routes `wa_vendor` on `waLaneMode()` and cannot
+-- produce the `advisor` tier slot for this surface at all.
+--
+-- A live, well-formed row that no code path can ask for is the `model.pwa_vendor.trial`
+-- shape (0153's own §"THE TWO TIERS THIS FILE DELIBERATELY DOES NOT SEED"), and
+-- that row is carried `reachable: false` rather than deleted because it is the
+-- PWA lane's history. This one is nine days old, was never switched, and its
+-- surface no longer has the room — so it goes.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+-- WHY THE DELETE IS NOT THE CURE — AND WHAT IS
+-- ═══════════════════════════════════════════════════════════════════════════
+-- THE ROW IS DOWNSTREAM OF THE REGISTRY. `src/api/admin/modelRoutes.js` builds
+-- its GET from `LANES` (:124, :137) and guards its POST on `LANE_BY_KEY` (:182)
+-- — neither reads the database to decide what EXISTS, only to decide what is
+-- SET. So this DELETE on its own would have been a cure one tap undoes: the
+-- panel would still list Advisor under the WhatsApp lane with `has_row: false`,
+-- and the door's read-merge-write would seed the row straight back from what is
+-- live the first time the founder touched it.
+--
+-- The cure is `modelRouter.js`'s `vendorLanes(surface, extra, { advisor: false })`
+-- for `wa_vendor`, shipped in this same packet (chair-ruled, Fork C). With the
+-- lane gone the panel stops offering the switch and the POST refuses the key.
+-- THIS FILE THEN REMOVES THE ORPHAN THE SEED LEFT BEHIND — nothing more, and it
+-- is honest about being the smaller half.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+-- PROVENANCE (SQL-provenance law; R-40.27 — the constraints, not the columns
+-- alone, for every table written)
+-- ═══════════════════════════════════════════════════════════════════════════
+--   public.admin_config · docs/db/PUBLIC_SCHEMA.md:43-49 · 4 columns
+--       1. key         text NOT NULL                              (:46)
+--       2. value       text NOT NULL                              (:47)
+--       3. description text                                       (:48)
+--       4. updated_at  timestamptz NOT NULL default now()         (:49)
+--   CONSTRAINTS · docs/db/PUBLIC_SCHEMA.md:1514-1518
+--       [PRIMARY KEY] admin_config_pkey — PRIMARY KEY (key)       (:1517-1518)
+--   INDEXES · docs/db/PUBLIC_SCHEMA.md:3088-3092
+--       admin_config_pkey UNIQUE btree (key)                      (:3092)
+--
+-- Nothing references `admin_config.key` by foreign key (no FK rows on this table
+-- in the constraints block above), so the DELETE strands no child row.
+--
+-- ONE KEY, NAMED IN FULL. Not `LIKE 'model.wa_vendor.%'` and not a NOT IN list:
+-- a pattern here would take the four live tier rows with it the day someone
+-- reads it quickly, and this estate has spent enough on cures that were one
+-- character from a data loss. Idempotent by construction — a re-run deletes
+-- nothing and reports 0.
+--
+-- NO SCHEMA MOVES. No table, column, constraint or index is created or altered,
+-- so `docs/db/PUBLIC_SCHEMA.md` needs no regen with this delivery.
+
+BEGIN;
+
+DELETE FROM public.admin_config
+ WHERE key = 'model.wa_vendor.advisor';
+
+COMMIT;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- BEFORE — run as its own paste block (R-40.31: the editor renders only the
+-- last result), BEFORE the migration above
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+--   select key, value from public.admin_config
+--    where key like 'model.%' order by key;
+--
+-- EXPECT twelve rows if 0153 has been applied, including
+-- `model.wa_vendor.advisor` = {"provider":"deepseek","model":"deepseek-v4-flash"}.
+-- If that key is ABSENT, 0153 was never run and this migration is a no-op that
+-- can still be applied safely — say so rather than re-running 0153, because
+-- 0153 would then seed the very row this file exists to remove.
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- AFTER — its own paste block
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+--   select key, value from public.admin_config
+--    where key like 'model.wa_vendor.%' order by key;
+--
+-- EXPECT exactly three rows: essential, prestige, signature. EXPECT no
+-- `model.wa_vendor.advisor`. EXPECT `model.pwa_vendor.advisor` STILL PRESENT and
+-- untouched — the advisor room lives in the app and routes to DeepSeek there;
+-- this packet does not touch it, and a run that removed it would be a defect.
+--
+--   select key, value from public.admin_config
+--    where key = 'model.pwa_vendor.advisor';
+--
+-- EXPECT one row, {"provider":"deepseek","model":"deepseek-v4-flash"}.

@@ -497,10 +497,28 @@ const LIVE_MARKETING = { provider: 'anthropic', model: 'claude-haiku-4-5-2025100
     const chat = req('src/api/vendor-engine/chat.js');
     const { _resetRouteCache } = mr(); _resetRouteCache();
     // Victor deepseek, Donna anthropic — the exact state the founder walked at 04:37.
+    //
+    // c-41.49 (CE-41 seat G): THE FIXTURE MOVED, THE SUBJECT DID NOT. This cell
+    // drove the 04:37 state through `surface: 'wa_vendor'` and reached the split
+    // via the WhatsApp lane's ADVISOR tier — the route read `victor_mode`, got
+    // `advisor`, missed `model.wa_vendor.advisor` and borrowed the pwa twin seeded
+    // here. R-41.104 removed that path: the WhatsApp lane no longer reads the
+    // column and no longer has an advisor tier, so this fixture resolved
+    // `wa_vendor.essential` -> `pwa_vendor.essential` -> the DEFAULTS matrix, where
+    // Victor is anthropic and there is no split at all. `donnaTransport` was absent
+    // because no Donna was ever routed, NOT because F-41.96 regressed.
+    //
+    // The advisor room and its split still live in the APP, which is where the
+    // founder walked them and where R-41.104 §4(d) leaves them. Driven on
+    // `pwa_vendor`, this is the same state, the same row, the same assertion.
+    // F-41.96's subject is byte-untouched by seat G — verified by reverting seat
+    // G's three chat.js edits in a scratch tree: this cell greens on `pwa_vendor`
+    // at both trees, and the sibling cell below (essential tier, business room)
+    // never depended on the advisor lane and is untouched.
     const db = makeDb({ 'model.pwa_vendor.advisor': { provider: 'deepseek', model: 'deepseek-v4-flash', donna_provider: 'anthropic', donna_model: 'claude-haiku-4-5-20251001' } });
     db.schema = () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { victor_mode: 'advisor' } }) }) }) }) });
     const c = capture();
-    const w = await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1', surface: 'wa_vendor' });
+    const w = await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1', surface: 'pwa_vendor' });
     c.done();
     if (!w.donnaTransport) return 'donnaTransport is absent — loop.ts:728\'s ?? hands her Victor\'s wire';
     if (w.donnaTransport.provider !== 'anthropic') return `donnaTransport.provider=${w.donnaTransport.provider}`;

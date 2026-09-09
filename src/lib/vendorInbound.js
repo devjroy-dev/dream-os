@@ -165,6 +165,12 @@ function scrubModelFrame(text, verbatim, witness = null) {
 // (a refusal, a failed send) must NOT silence the model — she asked a question
 // and still deserves an answer.
 const { relayFiredOnArrival } = require('./vendor/coupleArrival');
+// CE-41 seat G (R-41.104): the ONE home of this lane's room, imported rather
+// than spelled. It is NOT threaded through `deps` on purpose — `deps` is the
+// injection seam for things a test double replaces, and a bench that could
+// substitute a `waLaneMode` returning `'advisor'` would be a bench able to prove
+// the opposite of the ruling. A constant fact is imported; only doors are injected.
+const { waLaneMode } = require('./modelRouter');
 
 async function processVendorInbound(inputs, deps, _noRetry) {
   return withTurnLock(turnKey('vendor', inputs && inputs.phone), () => _processVendorInbound(inputs, deps, _noRetry));
@@ -1715,7 +1721,15 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       moneyFacts = await buildMoneyFacts(supabase, vendor.id);
     } catch (e) { console.warn('[money:wa fact-block]', e && e.message); }
 
+    // ── CE-41 · SEAT G · R-41.104 — THE ROOM, HANDED TO THE ENGINE ──────────
+    // `buildLlmForTurn` above stopped reading `victor_mode` for the ROUTE. This
+    // is the other half and it is the half that matters to the vendor: without
+    // it the lane routes business and still ANSWERS from the advisory room —
+    // `loop.ts:299` reads the column itself, at :270, and no argument on this
+    // call could reach it until R-41.105 opened the field. Same `waLaneMode()`
+    // the route reads, so the two cannot drift (the charter's one home).
     const result = await runTurn({
+      modeOverride: waLaneMode(), // R-41.104 — advisory does not live on this lane
       agentId, message: body, calendarSnapshot, scratchpad,
       leadPings, // TDW_05 F-05.50(b) — an opaque string, the recentActivity contract
       pendingRelay, // TDW_06 F-06.162 (R-29.29) — the open commitment, door-known
@@ -1891,6 +1905,11 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       if ((s2line || impMiss) && !_noRetry) {
         try {
           const retry = await runTurn({
+            // R-41.104: the SECOND site, and it is not decoration. A stage-2 retry
+            // that omitted this would re-enter the advisory room mid-turn — the
+            // vendor's first answer business, his retried answer advisory, from one
+            // message. Named as a fork in the read-first rather than found at the bench.
+            modeOverride: waLaneMode(),
             agentId, message: body, calendarSnapshot, scratchpad, leadPings, pendingRelay, vendorCategory,
             moneyFacts: moneyFacts ? moneyFacts.block : undefined, // the retry answers from the SAME facts or it answers blind
             tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride,

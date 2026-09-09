@@ -39,7 +39,7 @@ const {
 } = require('../../lib/wireGuardVictor');
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
-const { resolveModel, fallbackSurfaceFor } = require('../../lib/modelRouter');   // TDW_02 P5 · CE-41 F-41.46
+const { resolveModel, fallbackSurfaceFor, waLaneMode } = require('../../lib/modelRouter');   // TDW_02 P5 · CE-41 F-41.46 · seat G R-41.104
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { OCCUPYING_KINDS, isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set + the one rule (Q-B3-10, CE-ratified)
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
@@ -1543,9 +1543,16 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // actionKind — the split is the point, not a new authority.
   const readHands = hands.filter((h) => actionKind(h.name) === 'read');
   // LIMB 5's ONE widening, jot-scoped and nothing else: jot_advice is Victor's own
-  // TOP-LEVEL hand (loop.ts:837), never a nested donna_call, so the nested-only fence
+  // TOP-LEVEL hand (loop.ts:908), never a nested donna_call, so the nested-only fence
   // above cannot see it. Read here for the jot question ALONE; every other limb reads
   // `hands`, and D-1's fence is untouched for all of them.
+  //
+  // c-41.45 (CE-41 seat G): the cite read `loop.ts:837` and :837 is mid-comment.
+  // Victor's own top-level hands are pushed at `loop.ts:908`
+  // (`toolCalls.push({ name: tu.name, input: tu.input, result })`); the NESTED
+  // Donna ledger this census reads is :821-826. Corrected by command at the cut,
+  // not from memory. It is worth the two lines: this seat's own charter inherited
+  // the wrong cite from this comment and sent a reading to a block of prose.
   const jotHand = ((result && result.tool_calls) || []).some((tc) => tc && tc.name === 'jot_advice');
   // 0080's room, surfaced on TurnResult (loop.ts) and unread until now. ABSENT on consult
   // turns by design (victor_mode is inert there — A-1's precedence), which is why LIMB 2
@@ -2813,7 +2820,21 @@ async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendo
   // F-06.4: the advisor room routes on its own key; every other mode routes on the
   // product tier exactly as before. The ENGINE tier (capabilities/caps) always follows
   // the PRODUCT tier — advisor changes only which MODEL serves Victor, not the tier.
-  const victorMode = await readVictorMode({ supabase, agentId });
+  // ── CE-41 · SEAT G · R-41.104 — THE WHATSAPP LANE DOES NOT ASK ────────────
+  // THE READ IS SKIPPED, NOT OVERRULED. A `readVictorMode()` whose answer is
+  // then discarded would leave a live reader of the column on this lane and the
+  // next sitting would have to derive, again, that it changes nothing; worse, it
+  // would keep the column one edit away from mattering here. On `wa_vendor` the
+  // question is never asked, so `routeTier` is the PRODUCT TIER, always.
+  //
+  // `waLaneMode()` and not the literal `'business'`: this is the same fact the
+  // door hands the engine as `modeOverride` a few files over, and R-41.104's
+  // charter binds them to one home so route and room cannot disagree. The
+  // comparison stays against `'advisor'` — the ROOM's word, from 0080's CHECK —
+  // and `waLaneMode()` returning anything else is what makes this lane business.
+  const victorMode = surface === 'wa_vendor'
+    ? waLaneMode()
+    : await readVictorMode({ supabase, agentId });
   const routeTier = victorMode === 'advisor' ? 'advisor' : productTier;
   const route = await resolveModel(supabase, surface, routeTier,
     { fallbackSurface: fallbackSurfaceFor(surface, routeTier) });

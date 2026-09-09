@@ -163,6 +163,23 @@ type RunTurnArgs = {
   // ABSENT => she follows Victor's wiring exactly as P5 shipped it.
   donnaTransport?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> };
   donnaModelOverride?: string;
+  // ── CE-41 · SEAT G · R-41.104, W-1 OPENED BY R-41.105 ─────────────────────
+  // THE ROOM, SUPPLIED BY THE DOOR. Every other room in this file is decided
+  // from the agent row read at :270, and that is right for the PWA: the vendor
+  // flips the chip, the column moves, the app changes rooms. It was WRONG for
+  // WhatsApp, where R-39.22 has always said the advisory room does not live —
+  // and enforcing that at the word alone (`vendorInbound.js`'s refusal to WRITE
+  // `advisor`) left every vendor ALREADY flipped in the app answering from the
+  // advisory room on WhatsApp: no Donna, no estate, no read hands, and the wire
+  // guard convicting his lookups (F-41.95).
+  //
+  // 'business' IS THE ONLY VALUE THE TYPE ADMITS. Not `Room`, not
+  // `'business' | 'advisor'`: a door that could push a vendor INTO the advisory
+  // room is F-40.3's disease with a new spelling, and the type is where that is
+  // refused rather than in a comment asking the next seat not to. ABSENT => the
+  // row decides, byte-identical to the pre-cure engine (regression law), which
+  // is what the PWA door passes.
+  modeOverride?: 'business';
   onEvent?: (e: TurnEvent) => void;
 };
 
@@ -296,7 +313,30 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // scratchpad, shelf, or Donna. No claim surface, no neighbouring-line donor pool
   // (F-04.70's mechanism removed by construction). His only hand is jot_advice; the
   // dispatch/claim doctrines have no subject in this room.
-  const isAdvisor = !isConsult && (agent.victor_mode as string | null) === 'advisor';
+  // CE-41 seat G (R-41.104/R-41.105): `args.modeOverride` is the DOOR'S room and
+  // it wins over the row. The `??` is deliberate and is the whole regression
+  // proof — absent, this term is `agent.victor_mode` and the predicate is the
+  // byte it has always been. `estateInRoom` (:302 below) follows from here, so
+  // the lens (:487), the tool set (:567) and every estate block (:311-313,
+  // :494-532) come with it: ONE term, and the room is whole.
+  const isAdvisor = !isConsult && ((args.modeOverride ?? agent.victor_mode) as string | null) === 'advisor';
+  // ── R-41.105's WITNESS ────────────────────────────────────────────────────
+  // The founder's walk (§6) reads THIS to know the room, because the estate has
+  // no other line that says it: `soul=` exists at exactly one site in the estate
+  // (`closerEngine.js:1282`) and it is the MARKETING lane's. The `{mode:'advisor'}`
+  // meta at :934 is the only other witness and it is a SELECT, not a log.
+  //
+  // ⚠ THE RULED LINE NAMED A `surface=` TERM AND IT IS NOT PRINTED HERE. The
+  // engine does not know the surface: `RunTurnArgs` carries no such field, and
+  // inferring one from `modeOverride`'s presence would print a fact this file
+  // derived rather than received — F-41.96's exact disease (a line reporting the
+  // route it intended instead of the wire it took) one lane over. `override=yes`
+  // already carries everything the walk needs, since the WhatsApp door is the
+  // only caller that passes the field. DECLARED, not absorbed; the chair rules
+  // before push (packet §0).
+  // eslint-disable-next-line no-console
+  console.log(`[engine:mode] room=${isConsult ? 'consult' : (isAdvisor ? 'advisor' : 'business')} `
+    + `override=${args.modeOverride ? 'yes' : 'no'}`);
   // The estate lives ONLY in a business room. Consult is ephemeral (no owner even);
   // advisor keeps the OWNER but drops all estate. One predicate for the reads below.
   const estateInRoom = !isConsult && !isAdvisor;
