@@ -357,7 +357,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
     let db = seededDb(); let s = await seedRequest(db);
     const sendSpy = { called: 0 };
     // A10: the arm is LIVE in code; the register decides. Key OFF here.
-    let f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '+91 98111 22333', ig_handle: '@rahulshoots', name: 'Rahul' } },
+    let f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '+91 98111 22333', ig_handle: '@rahulshoots', name: 'Rahul', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} },
       { createLead: async () => { throw new Error('must not create a lead for an outsider'); }, cap: { on: () => false, reason: (k) => `${k} is off on the switchboard` }, sendWa: async () => { throw new Error('must not send while off'); } });
     // c-41.10 · replaces `... && /stub/.test(f.dark.reason)`: the register is real, the row seeds
     // `approved` ("Meta yes, the founder not yet") and the reason no longer says stub.
@@ -368,12 +368,12 @@ const ADMIN  = 'src/api/admin/assistance.js';
     const fw = db._t.assistance_forwards;
     ok('one forwards row: kind prospect, prospect_id, lead_id null, wamid null, status dark', fw.length === 1 && fw[0].target_kind === 'prospect' && fw[0].prospect_id === pr[0].id && fw[0].lead_id === null && fw[0].wamid === null && fw[0].status === 'dark');
     ok('no leads row was written for an outsider (she is a lead only when she joins, roadmap §7)', db._t.leads.length === 0);
-    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} }, {});
     ok('the same last ten again → FOUND, not inserted (prospects.phone is UNIQUE)', f.ok && db._t.prospects.length === 1 && f.prospect.id === pr[0].id && db._t.assistance_forwards.length === 2);
     db._t.prospects.push({ id: 'p-twin', phone: '449811122333', source: 'manual', state: 'cold' });
-    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} }, {});
     ok('two prospects sharing a last ten → refused ambiguous_prospect, nothing written', !f.ok && f.code === 'ambiguous_prospect' && db._t.assistance_forwards.length === 2);
-    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '12345' } }, {});
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '12345', consent_text: 'yes please, my number is 12345', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} }, {});
     ok('a short number → refused no_phone', !f.ok && f.code === 'no_phone');
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'carrier_pigeon' } }, {});
     ok('an unknown target kind → refused bad_target', !f.ok && f.code === 'bad_target');
@@ -385,7 +385,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
     ok('the filed template names + Meta ids are recorded once (TEMPLATE_REFS)', A.TEMPLATE_REFS.lead_outside.meta_id === '2544506315978894' && A.TEMPLATE_REFS.found_vendor.meta_id === '3160852754105015' && A.TEMPLATE_REFS.found_outside.meta_id === '3115277355330375');
     // ═══ A10 · the live arm, key ON ═══
     db = seededDb(); s = await seedRequest(db); const sends = [];
-    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', ig_handle: '@rahulshoots', name: 'Rahul' } },
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', ig_handle: '@rahulshoots', name: 'Rahul', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} },
       { cap: { on: () => true }, sendWa: async (o) => { sends.push(o); return { sent: true, mode: 'template', result: { wamid: 'wamid.OUT1' } }; } });
     const oc = sends[0] || {};
     ok('key ON → ONE send on the MARKETING line to the prospect number, template assist_lead_outside', f.ok && sends.length === 1 && oc.line === 'marketing' && oc.to === '919811122333' && oc.templateKey === 'assist_lead_outside');
@@ -414,11 +414,11 @@ const ADMIN  = 'src/api/admin/assistance.js';
     // silent slide back to MARKETING reds.
     ok('the registry entry is Utility, approved, MARKETING line, five variables; the writer names Meta id', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate('assist_lead_outside'); return t.isApproved('assist_lead_outside') && e.category === 'UTILITY' && e.line === 'marketing' && e.variables.length === 5 && A.TEMPLATE_REFS.lead_outside.meta_id === '2544506315978894'; })());
     db = seededDb(); s = await seedRequest(db);
-    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } },
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} },
       { cap: { on: () => true }, sendWa: async () => { const e = new Error('This message was not delivered to maintain healthy ecosystem engagement.'); e.body = { error: { code: 131049 } }; throw e; } });
     ok('R-41.30: a synchronous 131049 lands as failed + error_code 131049; the forward still stands', f.ok && db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === '131049' && /healthy ecosystem/.test(db._t.assistance_forwards[0].error_title || '') && f.alert.sent === false);
     db = seededDb(); s = await seedRequest(db);
-    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } },
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} },
       { cap: { on: () => true }, sendWa: async () => { const e = new Error('paused'); e.name = 'WaTemplateNotApprovedError'; throw e; } });
     ok('a named sendWa throw lands as failed + its name', db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'WaTemplateNotApprovedError');
     // c-41.39: the `=== 2` call-site COUNT is struck. F-41.61 legitimately removed the
@@ -432,10 +432,73 @@ const ADMIN  = 'src/api/admin/assistance.js';
   } else { for (let i = 0; i < 13; i++) ok('§7 cell (writer absent)', false); }
 
   // ═══ §8 ═══
+  // ⚠ §7's OUTSIDER FIXTURES GAINED A CONSENT RECORD, AND THAT IS THE CURE
+  // CONVICTING THEM. R-41.122 makes her words a PRECONDITION, so a `target` with no
+  // `consent_text` is now refused before the switchboard is even read — which is
+  // exactly what §7c asserts. The fixtures below supply what a real founder supplies
+  // from the queue's paste box, and the number in the words matches the row's phone
+  // because limb (a) requires it.
+
+  // ══ §7c · R-41.122 · THE CONSENT RECORD, ONE CELL PER LIMB ═════════════════
+  // Meta Messaging Policy §1 has two limbs and the estate satisfied neither in code
+  // until D3a. These are DRIVEN against the real writer's own helper, and for a
+  // refusal the assertion is that it wrote NOTHING and named WHICH limb failed.
+  section('§7c · R-41.122 — the consent record, one cell per limb');
+  // A CELL THAT CANNOT SEE ITS SUBJECT MUST FAIL, NEVER THROW (seat A's close note
+  // §6, and its own four specimens). The first cut of this section called
+  // A.consentEvidences unguarded and CRASHED the whole bench at an uncured tree —
+  // which reports zero failures and no verdict at all, the worst of both. The guard
+  // below turns "the helper is absent" into ten named reds, so the both-ways proof
+  // reads as a proof instead of a stack trace.
+  const hasConsent = !!(A && typeof A.consentEvidences === 'function');
+  if (!hasConsent) {
+    for (let i = 0; i < 10; i++) {
+      ok('§7c cell — src/lib/couple/assistance.js exports no consentEvidences (R-41.122 uncured)', false);
+    }
+  }
+  if (A && hasConsent) {
+    const mk = (consent_text) => ({
+      id: 'prospects-9', phone: '919876543210', ig_handle: 'x', name: 'X',
+      consent_text, consent_source: 'instagram_dm', consent_at: new Date().toISOString(),
+      consent_recorded_by: 'admin:test',
+    });
+
+    // limb (b) — she consented, or there is no record that she did.
+    ok('R-41.122 limb (b): no consent record → refused, and the limb is named',
+       (() => { const r = A.consentEvidences(mk(null)); return r.ok === false && r.limb === 'b'; })());
+    ok('R-41.122 limb (b): whitespace is not a record', A.consentEvidences(mk('   \n  ')).ok === false);
+
+    // limb (a) — SHE gave the number, which is a different claim from consenting.
+    ok('R-41.122 limb (a): a reply without the number is refused, distinctly from (b)',
+       (() => { const r = A.consentEvidences(mk('yes please go ahead'));
+                return r.ok === false && r.limb === 'a' && /given it herself/.test(r.error); })());
+    ok("R-41.122 limb (a): someone else's number in her words does not evidence hers",
+       A.consentEvidences(mk('sure, reach me on 9000000001')).ok === false);
+
+    // Satisfied — the estate's join law (R-41.29) applied to prose, not a field.
+    ok('R-41.122: her number written plainly evidences both limbs',
+       A.consentEvidences(mk('yes, 9876543210')).ok === true);
+    ok('R-41.122: +91 and spacing fold to the same ten',
+       A.consentEvidences(mk('yes you can message me on +91 98765 43210')).ok === true);
+    ok('R-41.122: dashes, brackets and a leading zero all fold',
+       A.consentEvidences(mk('my number is (098765)-43210 go ahead')).ok === true);
+
+    // THE PLACEMENT IS THE CLAIM: above the register gate, and writing nothing.
+    const src = read(ASSIST);
+    const fn  = src.slice(src.indexOf('async function forwardToProspect('));
+    ok('R-41.122: the consent gate is read BEFORE the switchboard gate, never after',
+       fn.indexOf('consentEvidences(prospect)') < fn.indexOf('const capFn ='));
+    ok('R-41.122: a missing record refuses outright — it never writes a dark row',
+       /code: REFUSE\.NO_CONSENT_RECORD/.test(fn)
+       && fn.indexOf('REFUSE.NO_CONSENT_RECORD') < fn.indexOf('writeForward'));
+    ok('R-41.122: NO boolean consent column anywhere — her words are the evidence',
+       !/consent_given/.test(src));
+  } else if (A) { /* guarded above — the ten reds are already recorded */ }
+
   section('§8 · recordForwardOutcome — R-41.30\'s write path');
   if (A) {
     const db = seededDb(); const s = await seedRequest(db);
-    const f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
+    const f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} }, {});
     const o = await A.recordForwardOutcome(db, f.forward.id, { status: 'failed', error_code: 131049, error_title: 'This message was not delivered to maintain healthy ecosystem engagement.' });
     const row = db._t.assistance_forwards.find(x => x.id === f.forward.id);
     ok('a synchronous 131049 lands as status failed with error_code + error_title on the row', o.ok && row.status === 'failed' && row.error_code === '131049' && /healthy ecosystem/.test(row.error_title) && row.updated_at);
@@ -486,7 +549,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
   if (A) {
     const dbr = seededDb(); const sr = await seedRequest(dbr);
     await A.forwardAssistanceItem(dbr, { itemId: sr.makeup.id, target: { kind: 'vendor', vendor_id: 'v-swati' } }, { createLead: async () => ({ ok: true, lead: { id: 'l1' }, deduped: false }) });
-    await A.forwardAssistanceItem(dbr, { itemId: sr.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
+    await A.forwardAssistanceItem(dbr, { itemId: sr.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} }, {});
     const mine = await A.getLatestAssistanceForCouple(dbr, 'couple-priya');
     const mk = mine.items.find(i => i.category === 'makeup'), ph = mine.items.find(i => i.category === 'photography');
     ok('F-41.29: her read names the TDW vendor found (name + /v/ code) and counts outsiders unnamed — no queue, no wamid, no lead id', mine.ok && mine.request.id === sr.request.id && mk.found.length === 1 && mk.found[0].routing_handle === 'MAKEUPBYSWATIROY' && ph.found.length === 0 && ph.outsiders_asked === 1 && !('forwards' in ph) && !JSON.stringify(mine).includes('wamid') && !JSON.stringify(mine).includes('lead_id'));
@@ -507,11 +570,11 @@ const ADMIN  = 'src/api/admin/assistance.js';
     // M2: the dark gate inverted → §7's dark cell must red
     // Absent anchor at the uncured tree → the cell FAILS, never throws.
     const M2 = (() => { try { return loadMutated(ASSIST, s => { const o = "status: armed ? 'queued' : 'dark',"; if (!s.includes(o)) throw new Error('M2 anchor missing'); return s.replace(o, "status: armed ? 'dark' : 'queued',"); }); } catch { return null; } })();
-    if (M2) { const db = seededDb(); const s = await seedRequest(db); await M2.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, { cap: { on: () => false, reason: () => 'off' } });
+    if (M2) { const db = seededDb(); const s = await seedRequest(db); await M2.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} }, { cap: { on: () => false, reason: () => 'off' } });
       ok('M2 · dark gate inverted → the status-dark cell reds (non-vacuous)', db._t.assistance_forwards[0].status !== 'dark'); } else ok('M2 · anchor present to mutate', false);
     // M3: prospects source changed → §7's manual cell must red
     const M3 = loadMutated(ASSIST, s => { const o = "source:    'manual',"; if (!s.includes(o)) throw new Error('M3 anchor missing'); return s.replace(o, "source:    'tdw_assist',"); });
-    { const db = seededDb(); const s = await seedRequest(db); await M3.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
+    { const db = seededDb(); const s = await seedRequest(db); await M3.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} }, {});
       ok('M3 · prospects.source mutated → the R-41.14 cell reds (non-vacuous; the CHECK would refuse it in prod)', db._t.prospects[0].source !== 'manual'); }
     // M4: the partial UNIQUE removed from the migration text → §2's cell reds
     const mig4 = read(MIG).replace(/CREATE UNIQUE INDEX IF NOT EXISTS uq_assistance_forwards_wamid[\s\S]*?;/, '');

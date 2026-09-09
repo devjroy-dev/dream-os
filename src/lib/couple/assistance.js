@@ -110,6 +110,10 @@ const REFUSE = Object.freeze({
   VENDOR_UNAVAILABLE: 'vendor_unavailable',
   ALREADY_HAS:     'peer_already_has',
   BAD_TARGET:      'bad_target',
+  // R-41.122 — Meta Messaging Policy §1's two limbs, refused under one code because
+  // the founder's next step is the same either way: go back to the DM and get her
+  // words. The SENTENCE distinguishes them; the code does not need to.
+  NO_CONSENT_RECORD: 'no_consent_record',
 });
 
 // ── normalizePhone — the one home (R-41.29) ─────────────────────────────────
@@ -455,6 +459,44 @@ async function forwardToVendor(supabase, { item, request, target }, deps) {
            vendor: { id: vendor.id, business_name: vendor.business_name, routing_handle: vendor.routing_handle }, alert };
 }
 
+// ── R-41.122 · THE CONSENT RECORD, AND WHAT EACH LIMB ACTUALLY ASKS ──────────
+// Meta Messaging Policy §1: a business may message a person only if (a) SHE GAVE
+// THE NUMBER and (b) SHE CONSENTED. docs/filings/META_MESSAGING_POLICY_READ.md:31
+// records the strict reading of (a) — TDW obtaining the number and her merely
+// agreeing to its use satisfies (b) alone. The amended R-41.122 cures both by
+// asking her, in the DM, to SUPPLY the number: her reply then evidences (a) by
+// containing it and (b) by existing.
+//
+// LIMB (a) IS A COMPARISON BETWEEN HER WORDS AND THE ROW'S PHONE, and it lives here
+// rather than in a CHECK constraint for two reasons: it spans two columns that may
+// be written in either order, and its refusal must carry a sentence the founder can
+// act on. A CHECK can only say no.
+//
+// The extraction is deliberately blunt: every digit run in her words, each folded to
+// its last ten, compared against the row's last ten. "+91 98765 43210",
+// "9876543210", "my number is 098765-43210" all fold to the same ten — the estate's
+// join law (R-41.29) applied to prose instead of a field. It does NOT try to find
+// "the phone number" in her sentence; picking the right number out of free text is a
+// guess, and any run that folds to her row's phone is proof enough that she wrote it.
+function consentEvidences(prospect) {
+  const text = prospect && prospect.consent_text;
+  // limb (b) — she said something, and it was recorded.
+  if (text == null || String(text).trim().length === 0) {
+    return { ok: false, limb: 'b', error: 'No consent record for this number. Ask her in the DM and paste her reply before forwarding.' };
+  }
+  // limb (a) — her words carry the number.
+  const rowTen = normalizePhone(prospect.phone);
+  const runs = String(text).match(/\d[\d\s\-()]{7,}\d/g) || [];
+  const said = runs.some((r) => {
+    const digits = r.replace(/\D/g, '');
+    return digits.length >= 10 && digits.slice(-10) === rowTen;
+  });
+  if (!said) {
+    return { ok: false, limb: 'a', error: 'Her reply does not contain this number. Meta needs her to have given it herself \u2014 ask again in the DM and paste the reply.' };
+  }
+  return { ok: true };
+}
+
 // ── alertVendorOfForward — F-41.37 / R-41.68 ────────────────────────────────
 // The lead exists; the vendor is told the way every other lead door tells her:
 // `lead_alert_utility` (Utility, approved) on the vendor line to her users.phone.
@@ -512,6 +554,11 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
   const lastTen = normalizePhone(target.phone);
   if (!lastTen) return { ok: false, code: REFUSE.NO_PHONE, error: 'A ten-digit WhatsApp number is required.' };
   const ig = target.ig_handle ? String(target.ig_handle).trim().replace(/^@/, '') : null;
+  // R-41.122 — verbatim. The only normalisation is "is it empty", because a form
+  // that submits an untouched textarea sends '' and that is not a record.
+  const consentText = (target.consent_text != null && String(target.consent_text).trim().length > 0)
+    ? String(target.consent_text)
+    : null;
   const name = target.name ? String(target.name).trim().slice(0, 120) : null;
 
   // Find by last ten (the join law); insert on the prospect lane's own format
@@ -543,8 +590,18 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
         source:    'manual',
         state:     'cold',
         notes:     `assistance item ${item.id}`,
+        // R-41.122 — HER WORDS, WRITTEN AT THE MOMENT THE ROW IS CREATED.
+        // The founder does the Instagram DM by hand and pastes her reply into the
+        // queue's form; it arrives here on `target`. Stored verbatim: not trimmed,
+        // not normalised, not summarised, because the value of evidence is that it
+        // is what she wrote. Null when he has not asked yet — the row still files,
+        // she is simply not yet askable, and the gate below is what says so.
+        consent_text:        consentText,
+        consent_source:      consentText ? (target.consent_source || 'instagram_dm') : null,
+        consent_at:          consentText ? (target.consent_at || new Date().toISOString()) : null,
+        consent_recorded_by: consentText ? (target.consent_recorded_by || null) : null,
       })
-      .select('id, phone, name, ig_handle, category, city, source, state')
+      .select('id, phone, name, ig_handle, category, city, source, state, consent_text, consent_source, consent_at, consent_recorded_by')
       .single();
     if (insErr) return { ok: false, code: 'prospect_failed', error: `Could not file the prospect: ${insErr.message}` };
     prospect = inserted;
@@ -565,6 +622,35 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
   // said the opposite; it was true until that commit and false after it.
   // R-41.30 still holds for the SYNCHRONOUS refusal below, which no webhook can
   // ever report and which only the catch arm can write.
+  // ── R-41.122 · THE CONSENT GATE SITS ABOVE THE REGISTER GATE ──────────────
+  // BEFORE the switchboard read, deliberately. A missing consent record is NOT a
+  // switchboard state: `dark` means "the founder has not opened this plane yet", so
+  // a row that went dark for want of consent would tell him the wrong thing and be
+  // flipped on to no effect. This refuses outright, writes NOTHING, and names which
+  // limb failed. The prospect row still stands — she is on file, just not yet askable.
+  // A row FOUND from an earlier forward may predate its consent, or he may be
+  // pasting it now for the first time. Record it before the gate reads, so the
+  // same call that supplies the evidence can also use it — otherwise the founder
+  // pastes her words and is refused anyway, which reads as the form not working.
+  // NEVER OVERWRITES: her first words stand. A second paste on a row that already
+  // has a record is ignored, because evidence is not editable after the fact.
+  if (consentText && !prospect.consent_text) {
+    const patch = {
+      consent_text:        consentText,
+      consent_source:      target.consent_source || 'instagram_dm',
+      consent_at:          target.consent_at || new Date().toISOString(),
+      consent_recorded_by: target.consent_recorded_by || null,
+    };
+    await supabase.from('prospects').update(patch).eq('id', prospect.id);
+    prospect = { ...prospect, ...patch };
+  }
+
+  const consent = consentEvidences(prospect);
+  if (!consent.ok) {
+    console.log(`[assistance:forward] item=${item.id} \u2192 prospect=${prospect.id} REFUSED no_consent_record (limb ${consent.limb}) \u2014 nothing written, nothing sent`);
+    return { ok: false, code: REFUSE.NO_CONSENT_RECORD, limb: consent.limb, error: consent.error };
+  }
+
   const capFn = (deps.cap && deps.cap.on) || cap.on;
   const reasonFn = (deps.cap && deps.cap.reason) || cap.reason;
   const armed = capFn(cap.CAPABILITY_KEYS.TDW_ASSIST_LEAD_OUTSIDE) === true;
@@ -899,6 +985,6 @@ module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
-  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE,
+  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

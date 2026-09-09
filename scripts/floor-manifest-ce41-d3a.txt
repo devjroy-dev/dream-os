@@ -1,0 +1,45 @@
+CE-41 · SEAT D · D3a (dream-os) · FLOOR MANIFEST
+base: e1dae2b94800029771b05d4b924e8a4c43c03725
+
+b20_a2_assistance_bench   GREEN  136/136   was 126/126 — +10 (§7c, one group per limb)
+b64_template_slots_bench  exit 0
+b64_mutations             GREEN    6/6
+b61_switchboard_bench     GREEN   64 · 0
+b62_mutations             GREEN   18/18
+b62_g34_s2_bench          exit 0
+b63_mutations             GREEN   30/30
+
+BOTH WAYS, BY COMMAND:
+  cured    GREEN 136/136
+  uncured  RED   126/136 — ten named reds
+
+  ⚠ THE FIRST CUT OF §7c CRASHED THE BENCH AT AN UNCURED TREE. It called
+  A.consentEvidences unguarded, so the uncured run reported "bench threw", ZERO
+  failures and NO verdict — the worst of both, and it briefly read as a clean run.
+  A cell that cannot see its subject must FAIL, never throw (seat A's close note §6).
+  Guarded: the helper's absence is now ten named reds.
+
+COUNT MOVEMENT: b20_a2 126 → 136 (+10). No cell removed, none re-cut.
+
+§7's OUTSIDER FIXTURES GAINED A CONSENT RECORD — the cure convicting them.
+  R-41.122 makes her words a PRECONDITION, so eleven `target: { kind: 'prospect' }`
+  fixtures that carried no `consent_text` were refused before the switchboard was
+  read. That is §7c's own assertion firing on §7. Each fixture now supplies what a
+  real founder supplies from the paste box, and the number in the words matches the
+  row's phone BECAUSE LIMB (a) REQUIRES IT — a fixture that did not would be
+  asserting a send the policy forbids.
+
+MIGRATION 0156 — tail derived by command immediately before allocation → 0155.
+  NOT RUN by this seat. Four columns added, nothing altered or dropped; the
+  consent_source CHECK is witnessed against its own line in this file.
+
+WHAT D3a DELIBERATELY DOES NOT DO:
+  No pwa byte. The paste box is a FOURTH-SHAPE CONTROL (a textarea for another
+  person's words, not a field) and is a D3 frame with the chair's veto, per §3 of
+  the earlier relay. Until it ships the founder cannot paste from the queue, so
+  EVERY OUTSIDER FORWARD WILL REFUSE no_consent_record after this applies.
+  THAT IS THE POINT AND IT IS NOT A REGRESSION — R-41.125 made the DM the record
+  and D3a makes it a precondition. But it means the outsider plane is CLOSED between
+  this apply and the pwa frame, and the founder must know that before he applies.
+
+INHERITED, NOT TOUCHED: F-41.64, F-41.65 (seat C).
