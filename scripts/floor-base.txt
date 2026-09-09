@@ -15,7 +15,9 @@ RED: b08_p5_unblock_bench
 RED: b10_p1_search_bench
 RED: b10_p2_bridge_bench
 RED: b10_p3_mint_deck_bench
+RED: b39_telemetry_bench
 RED: b45_precutover_seat_bench
 RED: b51_referrals_bench
 RED: b59_g34_reminders_bench
 RED: b59_mutations
+RED: b61_mutations
