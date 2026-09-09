@@ -1062,10 +1062,30 @@ async function publicEnquiry(supabase, prefix) {
   // PostgREST as the column reference `id::text` on the operator. There is no
   // precedent for this in the estate (derived: no `::text` beside a like/ilike
   // anywhere), so the shape is stated here rather than assumed by the next reader.
+  // ── F-41.153 · A PREFIX ON A uuid IS A RANGE, NOT A PATTERN ────────────────
+  // TWO WRONG SHAPES BEFORE THIS ONE, AND THE FOUNDER'S CONSOLE CAUGHT BOTH:
+  //   1. `.like('id', '5b253fb2%')` — Postgres refuses outright:
+  //      `operator does not exist: uuid ~~ unknown`.
+  //   2. `.filter('id::text', 'like', …)` — PostgREST sent the cast as part of the
+  //      COLUMN NAME rather than a cast expression, so the operator still met a uuid
+  //      and the SAME error came back. Asserted in a comment, never run: the original
+  //      defect one layer along.
+  //
+  // THE RIGHT SHAPE NEEDS NO CAST AND NO PostgREST FEATURE. A uuid's first eight hex
+  // are its high-order bits, so `enq-5b253fb2` names the RANGE
+  //   5b253fb2-0000-0000-0000-000000000000 .. 5b253fb2-ffff-ffff-ffff-ffffffffffff
+  // and native uuid comparison answers it. Derived, not assumed: the real id sits
+  // inside, `5b253fb3…` and `5b253fbf…` sit outside.
+  //
+  // It is also strictly faster — this is the PRIMARY KEY, so a range is an index scan
+  // where a text pattern would have been a full scan even if the cast had worked.
+  const lo = `${String(prefix).toLowerCase()}-0000-0000-0000-000000000000`;
+  const hi = `${String(prefix).toLowerCase()}-ffff-ffff-ffff-ffffffffffff`;
   const { data: items, error: itemsErr } = await supabase
     .from('assistance_request_items')
     .select('id, request_id, category, budget_rs')
-    .filter('id::text', 'like', `${String(prefix).toLowerCase()}%`)
+    .gte('id', lo)
+    .lte('id', hi)
     .limit(2);
   // An unrunnable query is NOT a miss. It is logged and refused, because a door that
   // silently answers "nothing here" to its own broken filter is how F-41.153 survived

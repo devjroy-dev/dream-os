@@ -1,0 +1,30 @@
+CE-41 · SEAT D · D3c2d (dream-os, HOT) · FLOOR MANIFEST
+base: c7cdc758513f0fbe0594a031cbfe0c7598e87b36
+
+b66_inbound_consent   GREEN  50/50   was 48/48 — +2 (11.1b, 11.4d)
+b20_a2 · b65 · b64_mutations · b61 · b62_mutations · b63_mutations   all exit 0
+BOTH WAYS: cured GREEN 50/50 · uncured RED on four
+NO MIGRATION.
+
+F-41.153 — THIRD SHAPE, AND THE FOUNDER'S CONSOLE CAUGHT THE FIRST TWO:
+  1. `.like('id', '5b253fb2%')`  → operator does not exist: uuid ~~ unknown
+  2. `.filter('id::text', 'like', …)` → THE SAME ERROR. PostgREST sent the cast as
+     part of the COLUMN NAME, not as a cast expression, so the operator still met a
+     uuid. I asserted that shape in a comment and could not run it here — the original
+     defect one layer along, shipped as a fix.
+  3. A PREFIX ON A uuid IS A RANGE ON ITS HIGH-ORDER BITS. No cast, no PostgREST
+     feature, native uuid comparison, and it uses the PRIMARY KEY index where a text
+     pattern would have scanned even if the cast had worked.
+     Derived before cutting: the real id sits inside; 5b253fb3… and 5b253fbf… outside.
+
+THE HALF OF D3c2c THAT WORKED IS WHY THIS WAS CATCHABLE. The old door failed
+identically and said NOTHING; the error-reading half printed
+`[public:enquiry] item lookup failed: …` and named the cause. A fix that only made
+the failure legible still earned its place.
+
+THE DOUBLE NOW REFUSES BOTH BROKEN SHAPES. Its first version ACCEPTED the cast form
+and would have blessed fix #2 exactly as §10's blessed fix #1. A double is only worth
+what it refuses.
+
+11.4d IS NEW AND MATTERS: a prefix one hex away must NOT resolve. A loose range would
+hand a stranger the wrong enquiry, which is worse than the door not working at all.

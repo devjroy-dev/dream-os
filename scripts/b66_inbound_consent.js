@@ -219,8 +219,14 @@ section('11. F-41.153 — the filter must be RUNNABLE, and its failure must be r
   // `assistance_request_items.id` is uuid. Postgres refuses `id LIKE '...'` outright
   // (`operator does not exist: uuid ~~ unknown`), so the first cut's door could never
   // find ANY enquiry — mounted, reachable, structurally incapable.
-  ok('11.1 the id prefix filter casts to text — a uuid cannot be LIKEd',
-     /filter\('id::text', 'like'/.test(pe) && !/\.like\('id',/.test(pe));
+  // The uuid takes NEITHER a pattern NOR a cast-in-filter — both were tried and both
+  // came back `operator does not exist: uuid ~~ unknown` from the founder's console.
+  // A prefix on a uuid is a RANGE on its high-order bits.
+  ok('11.1 the id prefix is a RANGE on the uuid, not a pattern and not a cast',
+     /\.gte\('id', lo\)/.test(pe) && /\.lte\('id', hi\)/.test(pe)
+     && !/\.like\('id'/.test(pe) && !/filter\('id::text'/.test(pe));
+  ok('11.1b the bounds are the prefix padded low and high, derived not typed',
+     /-0000-0000-0000-000000000000/.test(pe) && /-ffff-ffff-ffff-ffffffffffff/.test(pe));
 
   // ⚠ THE SECOND FAULT HID THE FIRST. Destructuring only `{ data }` threw the
   // complaint away and null read as "no such enquiry". An UNRUNNABLE query and a
@@ -249,15 +255,20 @@ section('11. F-41.153 — the filter must be RUNNABLE, and its failure must be r
                   phone: '919625759924', name: 'Sarah' };
     const UUID_ERR = { message: 'operator does not exist: uuid ~~ unknown' };
     const db = { from: (t) => ({ select: () => ({
-      like:   (col) => ({ limit: () => (col === 'id'
-                ? { data: null, error: UUID_ERR }
-                : { data: [row], error: null }) }),
-      filter: (col, _op, val) => ({ limit: () => (col === 'id::text'
-                ? { data: row.id.startsWith(String(val).replace('%', '')) ? [row] : [], error: null }
-                : { data: null, error: UUID_ERR }) }),
+      // ⚠ THE DOUBLE REFUSES BOTH SHAPES THE DATABASE REFUSED. `.like('id', …)` errors
+      // as Postgres does; `.filter('id::text', …)` errors too, because PostgREST sent
+      // the cast as a COLUMN NAME and the operator still met a uuid. The first version
+      // of this double accepted the cast form and would have blessed the second broken
+      // fix exactly as §10's blessed the first. A double is only worth what it refuses.
+      like:   () => ({ limit: () => ({ data: null, error: UUID_ERR }) }),
+      filter: () => ({ limit: () => ({ data: null, error: UUID_ERR }) }),
+      gte:    (c1, v1) => ({ lte: (c2, v2) => ({ limit: () => ({
+                data: (c1 === 'id' && c2 === 'id' && row.id >= v1 && row.id <= v2) ? [row] : [],
+                error: null }) }) }),
       eq:     () => ({ maybeSingle: () => ({ data: t === 'assistance_requests' ? req : null, error: null }) }),
     }) }) };
     const hit  = await A.publicEnquiry(db, '5b253fb2');
+    const near = await A.publicEnquiry(db, '5b253fb3');   // one hex off — must NOT match
     const miss = await A.publicEnquiry(db, '00000000');
     const bad  = await A.publicEnquiry(db, 'zzzz');
     ok('11.4 a real prefix RESOLVES against a predicate-honouring double',
@@ -266,6 +277,10 @@ section('11. F-41.153 — the filter must be RUNNABLE, and its failure must be r
        !!hit && !('phone' in hit) && !('name' in hit));
     ok('11.4c a miss and a malformed prefix both answer null, identically',
        miss === null && bad === null);
+    // THE RANGE MUST NOT BE LOOSE. A neighbouring prefix shares seven hex and must
+    // fall outside — otherwise the door hands a stranger the wrong enquiry.
+    ok('11.4d a prefix one hex away does NOT resolve — the range is tight',
+       near === null);
   });
 
   ok('11.5 forwarded requests are visible — only `closed` hides an enquiry',
