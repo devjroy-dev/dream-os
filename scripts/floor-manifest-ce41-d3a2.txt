@@ -1,0 +1,16 @@
+CE-41 · SEAT D · D3a2 (dream-os, HOT) · FLOOR MANIFEST
+base: bb90ffd5cfaec484533e4788d9a959967174fd01
+
+b20_a2_assistance_bench   GREEN  140/140   was 136/136 — +4 (§7d)
+BOTH WAYS: cured GREEN 140/140 · uncured RED 138/140
+
+COUNT MOVEMENT: b20_a2 136 → 140 (+4). No cell removed or re-cut.
+
+§7d's FIRST CUT OVER-REACHED, AND THE OVER-REACH WAS THE USEFUL PART. It asserted
+every REFUSE code appears in the forward door and named four that do not — all four
+belong to the CREATE door, which handles them correctly without naming them because
+ITS default is 400. The two doors in one file default opposite ways; only the
+forward door can turn a refusal into a 500. The cell now asserts THAT, not a list of
+names, which would rot the same way the allow-list did.
+
+No migration. No other bench touched.

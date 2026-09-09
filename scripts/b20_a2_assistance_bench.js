@@ -439,6 +439,39 @@ const ADMIN  = 'src/api/admin/assistance.js';
   // from the queue's paste box, and the number in the words matches the row's phone
   // because limb (a) requires it.
 
+  // ══ §7d · F-41.102 · A REFUSAL IS NOT A SERVER FAULT ═══════════════════════
+  // no_consent_record answered 500 because the forward door keeps a hand-written
+  // allow-list of caller-at-fault codes and falls everything else to 500. D3a added
+  // the code to the WRITER; nothing made this line notice.
+  //
+  // THE FIRST CUT OF THIS CELL OVER-REACHED and found something better. It asserted
+  // every REFUSE code appears in the forward door, and named four that do not —
+  // no_items, bad_category, bad_budget, too_many_items. Those are the CREATE door's,
+  // and it handles them correctly WITHOUT naming them, because ITS default is 400:
+  //     `out.code === 'insert_failed' || out.code === 'items_failed' ? 500 : 400`
+  // So the two doors in one file default OPPOSITE WAYS. The create door assumes the
+  // caller is at fault unless it knows better; the forward door assumes ITSELF at
+  // fault unless it recognises the code. Only the second can turn a policy refusal
+  // into a 500, and it did. That asymmetry is the finding, and it is what this cell
+  // now asserts — not a list of names, which would rot the same way.
+  section('§7d · F-41.102 — the forward door names its refusals, the create door defaults safe');
+  {
+    const door = strip(read('src/api/admin/assistance.js'));
+    ok('§7d: the create door DEFAULTS to 400 — an unrecognised code blames the caller',
+       /\? 500\s*:\s*400/.test(door));
+    ok('§7d: the forward door still defaults to 500, so every refusal it can return must be NAMED',
+       /:\s*500;/.test(door));
+    ok('§7d: no_consent_record is named in the caller-at-fault branch, not left to the fallback',
+       /REFUSE\.NO_CONSENT_RECORD/.test(door)
+       && door.indexOf('REFUSE.NO_CONSENT_RECORD') < door.indexOf(': 500;'));
+    // The forward path's own refusals, derived from what forwardAssistanceItem can
+    // return rather than from the whole roster — the create-only codes are not its.
+    const FORWARD_CODES = ['NOT_FOUND', 'CLOSED', 'VENDOR_UNAVAILABLE', 'ALREADY_HAS', 'BAD_TARGET', 'NO_PHONE', 'NO_CONSENT_RECORD'];
+    const missing = FORWARD_CODES.filter((k) => !door.includes(`REFUSE.${k}`));
+    ok('§7d: every refusal the forward path can return is named in its status map'
+       + (missing.length ? ` — missing: ${missing.join(', ')}` : ''), missing.length === 0);
+  }
+
   // ══ §7c · R-41.122 · THE CONSENT RECORD, ONE CELL PER LIMB ═════════════════
   // Meta Messaging Policy §1 has two limbs and the estate satisfied neither in code
   // until D3a. These are DRIVEN against the real writer's own helper, and for a

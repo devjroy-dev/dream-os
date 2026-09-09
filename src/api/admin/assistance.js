@@ -80,7 +80,20 @@ router.post('/items/:itemId/forward', asyncHandler(async (req, res) => {
   });
   if (!out.ok) {
     const status = out.code === REFUSE.NOT_FOUND ? 404
-      : [REFUSE.CLOSED, REFUSE.VENDOR_UNAVAILABLE, REFUSE.ALREADY_HAS, REFUSE.BAD_TARGET, REFUSE.NO_PHONE, 'ambiguous_prospect'].includes(out.code) ? 409
+      // ── F-41.102 · A REFUSAL IS NOT A SERVER FAULT ──────────────────────────
+      // This list is the door's whole idea of "the caller is at fault"; anything
+      // absent from it falls to 500. D3a added REFUSE.NO_CONSENT_RECORD to the
+      // WRITER and not to this list, so Meta's Messaging Policy §1 refusal — the
+      // most expected refusal on this door, since the plane is shut until the paste
+      // box ships — answered 500 Internal Server Error. The founder's console read
+      // it as the app breaking rather than as the estate declining to send.
+      // The body was already correct (`code` + the sentence); only the status lied.
+      //
+      // THE SHAPE THAT CAUSED IT: a hand-maintained allow-list beside a REFUSE
+      // roster that grows independently. Adding a code to the writer cannot make
+      // this line notice. The cell below asserts the two stay in step — every
+      // REFUSE value is either mapped here or named as deliberately a 500.
+      : [REFUSE.CLOSED, REFUSE.VENDOR_UNAVAILABLE, REFUSE.ALREADY_HAS, REFUSE.BAD_TARGET, REFUSE.NO_PHONE, REFUSE.NO_CONSENT_RECORD, 'ambiguous_prospect'].includes(out.code) ? 409
       : 500;
     return res.status(status).json({ ok: false, code: out.code, error: out.error });
   }
