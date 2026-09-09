@@ -842,6 +842,13 @@ const TEMPLATES = {
   // [F-06.85: conditioned on row 11's state. Its next sitting must re-read the
   //  Manager before touching this word.]
   //
+  // ✔ RE-READ AND MOVED, D3b. The nightly sweep read Meta at 2026-09-09 02:27Z and
+  // recorded `Meta: APPROVED · UTILITY · id 3160852754105015` on the register row —
+  // F-41.114's re-filed button cleared review. So `pending` became stale IN THE
+  // CONSERVATIVE DIRECTION (the entry refused nothing wrongly; the send arm and the
+  // register key are both gates above it), and it is now `approved`. The word moved
+  // because a reading moved it, which is the only thing that may.
+  //
   // {{2}} IS A BARE NOUN. The body reads "we have matched a {{2}}" — the ARTICLE IS
   // IN THE LITERAL. F-41.80 is what happens when the value carries one too, and
   // scripts/b64_template_slots_bench.js §3 composes literal and value for every
@@ -870,7 +877,7 @@ const TEMPLATES = {
       "Hi {{1}}, we have matched a {{2}} to the request you sent The Dream Wedding " +
       "for your {{3}} wedding. {{4}} is on The Dream Wedding, and their recent work " +
       "and open dates are on the page below.",
-    status: 'pending',
+    status: 'approved',
   },
 
   // ── R-41.4(c) · THE BRIDE IS TOLD AN OUTSIDER WAS FOUND ───────────────────

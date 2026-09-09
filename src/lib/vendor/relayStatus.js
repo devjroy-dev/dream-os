@@ -359,6 +359,41 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: prRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE SEVENTH HOME · public.assistance_found_notices (0158) ───────────
+      // R-41.4(b)/(c): the couple-facing "we found you" send. APPENDED, never
+      // reordered — each home is tried only on a miss, so the six above cost
+      // nothing and their behaviour is unchanged (LD-8's spirit for a ladder that
+      // is not a migration).
+      //
+      // THIS IS THE THIRD TABLE TO CARRY A wamid AND THE FIRST TO GET ITS ARM IN
+      // THE SAME PACKET. lead_alerts (F-40.177), referral_alerts (F-40.190) and
+      // payment_reminders (F-40.229) each shipped a wamid column with no arm, and
+      // every receipt fell to the orphan line below until someone noticed. Adding
+      // the column and the arm together is the cheap way not to be a fourth.
+      //
+      // `.select()`ed for F-06.143's reason: a blind update cannot tell one row
+      // from none. 0158's uq_assistance_found_notices_wamid is UNIQUE and PARTIAL
+      // on `wamid IS NOT NULL`, so `> 1` is unreachable — checked anyway, because
+      // every arm above checks it and the one that skipped would be the weakest.
+      const fn = await supabase
+        .from('assistance_found_notices')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, forward_id, kind, status');
+      const fnRows = Array.isArray(fn && fn.data) ? fn.data : [];
+      if (fnRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=assistance_found_notice', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: fnRows[0], reason: 'assistance_found_notice' };
+      }
+      if (fnRows.length > 1) {
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=assistance_found_notice_ambiguous', `matched=${fnRows.length}`, errFields(status),
+          ' SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: fnRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

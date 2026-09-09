@@ -455,8 +455,13 @@ async function forwardToVendor(supabase, { item, request, target }, deps) {
   await bumpForwarded(supabase, item, request);
   console.log(`[assistance:forward] item=${item.id} → vendor=${vendor.routing_handle || vendor.id} lead=${created.lead.id} source=${TDW_ASSIST_SOURCE}`);
   const alert = await alertVendorOfForward(supabase, { forwardId: forward.row.id, vendor, request }, deps);
+  // R-41.4(b) — and SHE is told. Its own gate, its own row. A failure here NEVER
+  // unwinds the forward: the lead exists and the vendor has been alerted whether or
+  // not her notice went out, and the notice's own row carries why it did not.
+  const found = await notifyCoupleOfFound(supabase,
+    { forwardId: forward.row.id, kind: 'found_vendor', request, item, vendor }, deps);
   return { ok: true, forward: { ...forward.row, status: alert.status, wamid: alert.wamid }, lead: created.lead,
-           vendor: { id: vendor.id, business_name: vendor.business_name, routing_handle: vendor.routing_handle }, alert };
+           vendor: { id: vendor.id, business_name: vendor.business_name, routing_handle: vendor.routing_handle }, alert, found };
 }
 
 // ── R-41.122 · THE CONSENT RECORD, AND WHAT EACH LIMB ACTUALLY ASKS ──────────
@@ -522,6 +527,107 @@ function consentEvidences(prospect) {
     return { ok: false, limb: 'a', error: 'Her reply does not contain this number. Meta needs her to have given it herself \u2014 ask again in the DM and paste the reply.' };
   }
   return { ok: true };
+}
+
+// ── R-41.4(b)/(c) · TELLING HER WE FOUND SOMEONE ─────────────────────────────
+// The couple-facing half of a forward. It fires PER FORWARD, not per request: a
+// couple whose photography reaches three vendors hears three times, once each, and
+// 0158's UNIQUE on forward_id makes that structural rather than a convention.
+//
+// ⚠ THIS IS THE ONLY ARM IN THIS FILE THAT SPEAKS TO THE COUPLE. The other three
+// send to the founder, the vendor and the outsider. It therefore rides the BRIDE
+// line and `coupleContact` — the one home for her number (R-41.29), which prefers
+// her `users.phone` over the request's last ten and falls back only when she has no
+// account yet.
+//
+// GATED LIKE EVERY OTHER SEND: its own register key, its own dark row, its own
+// refusal words. A key that is off writes the notice as `dark` and sends nothing —
+// the founder sees the plane is shut rather than wondering why she was not told.
+//
+// NO PHONE OF THE VENDOR'S OR THE OUTSIDER'S RIDES THIS BODY. Roadmap §7's refusal
+// runs both ways: her number never leaves with an outsider, and an outsider's never
+// arrives with her. The outsider arm carries an INSTAGRAM HANDLE, which is public.
+async function notifyCoupleOfFound(supabase, { forwardId, kind, request, item, vendor, prospect }, deps = {}) {
+  const capFn = (deps.cap && deps.cap.on) || cap.on;
+  const reasonFn = (deps.cap && deps.cap.reason) || cap.reason;
+  const key = kind === 'found_vendor'
+    ? cap.CAPABILITY_KEYS.TDW_ASSIST_FOUND_VENDOR
+    : cap.CAPABILITY_KEYS.TDW_ASSIST_FOUND_OUTSIDE;
+
+  // One row per forward, written BEFORE the send so a process that dies mid-flight
+  // leaves a row the boot reconciler can see — F-41.81's lesson, applied at birth
+  // rather than after a walk found two rows stranded at `queued`.
+  const armed = capFn(key) === true;
+  const { data: notice, error: insErr } = await supabase
+    .from('assistance_found_notices')
+    .insert({ forward_id: forwardId, kind, status: armed ? 'queued' : 'dark' })
+    .select('id, forward_id, kind, status')
+    .single();
+  if (insErr) {
+    console.error(`[assistance:found] forward=${forwardId} could not file the notice: ${insErr.message}`);
+    return { sent: false, status: 'failed', wamid: null, refusal: 'notice_failed' };
+  }
+  const record = async (patch) => {
+    try {
+      await supabase.from('assistance_found_notices')
+        .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', notice.id);
+    } catch (e) { console.error(`[assistance:found] could not record on notice ${notice.id}: ${e && e.message}`); }
+  };
+
+  if (!armed) {
+    const why = reasonFn ? reasonFn(key) : `${key} is off`;
+    console.log(`[assistance:found] forward=${forwardId} kind=${kind} status=dark — NOT SENT: ${why}`);
+    return { sent: false, status: 'dark', wamid: null, refusal: why };
+  }
+
+  const contact = await coupleContact(supabase, request);
+  if (!contact || !contact.phone) {
+    await record({ status: 'failed', error_code: 'no_couple_phone' });
+    console.log(`[assistance:found] forward=${forwardId} has no couple phone — NOT SENT`);
+    return { sent: false, status: 'failed', wamid: null, refusal: 'no_couple_phone' };
+  }
+
+  // Both bodies take the trade as a BARE NOUN — "matched a {{2}}" / "matched to a
+  // {{3}}" — so both use categoryNoun. F-41.80 is what happens when the value
+  // carries an article the literal already supplies, and b64 §3 composes the two
+  // for every entry with a trade slot.
+  const vars = kind === 'found_vendor'
+    ? {
+        name:          contact.name || 'there',
+        category_noun: categoryNoun(item.category),
+        month_year:    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided',
+        vendor_name:   (vendor && (vendor.business_name || vendor.routing_handle)) || 'a vendor',
+        routing_handle: (vendor && vendor.routing_handle) || '',   // the url button's suffix, NOT a body slot
+      }
+    : {
+        name:          contact.name || 'there',
+        month_year:    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided',
+        category_noun: categoryNoun(item.category),
+        ig_handle:     (prospect && prospect.ig_handle) ? `@${String(prospect.ig_handle).replace(/^@/, '')}` : 'their profile',
+      };
+
+  const sendWaFn = deps.sendWa || require('../sendWa').sendWa;
+  try {
+    const out = await sendWaFn({
+      line: 'bride', to: contact.phone, templateKey: kind === 'found_vendor' ? 'assist_found_vendor' : 'assist_found_outside',
+      vars, supabase, site: 'assistance:found', ctx: `forward=${forwardId}`,
+    });
+    const sent = !!(out && out.sent === true);
+    const wamid = sent && out.result && out.result.wamid ? String(out.result.wamid) : null;
+    if (!sent) {
+      await record({ status: 'failed', error_code: 'unknown' });
+      console.log(`[assistance:found] forward=${forwardId} kind=${kind} REFUSED (unknown)`);
+      return { sent: false, status: 'failed', wamid: null, refusal: 'unknown' };
+    }
+    await record({ status: wamid ? 'sent' : 'sent_no_wamid', wamid, sent_at: new Date().toISOString() });
+    console.log(`[assistance:found] forward=${forwardId} kind=${kind} wamid=${wamid || 'nowamid'}`);
+    return { sent: true, status: wamid ? 'sent' : 'sent_no_wamid', wamid, refusal: null };
+  } catch (err) {
+    const code = (err && (err.code || err.name)) || 'send_failed';
+    await record({ status: 'failed', error_code: code, error_title: err && err.message ? String(err.message).slice(0, 200) : null });
+    console.log(`[assistance:found] forward=${forwardId} kind=${kind} THREW (${code})`);
+    return { sent: false, status: 'failed', wamid: null, refusal: code };
+  }
 }
 
 // ── alertVendorOfForward — F-41.37 / R-41.68 ────────────────────────────────
@@ -714,7 +820,12 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
 
   if (!armed) {
     console.log(`[assistance:forward] item=${item.id} → prospect=${prospect.id} status=dark — NOT SENT: ${darkReason}`);
-    return { ok: true, forward: forward.row, prospect, consent: consentState(consent, prospect), dark: { reason: darkReason } };
+    // R-41.4(c) — she is told even when the OUTSIDER's join alert is dark. The two
+    // planes are gated separately on purpose: whether the outsider has been invited
+    // and whether the couple has been told are different facts with different keys.
+    const found = await notifyCoupleOfFound(supabase,
+      { forwardId: forward.row.id, kind: 'found_outside', request, item, prospect }, deps);
+    return { ok: true, forward: forward.row, prospect, consent: consentState(consent, prospect), found, dark: { reason: darkReason } };
   }
 
   // The join message. F-41.63: its five variables are META'S order, taken from
@@ -772,7 +883,12 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     await supabase.from('assistance_forwards')
       .update({ wamid, status: wamid ? 'sent' : 'sent_no_wamid', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', forward.row.id);
-    return { ok: true, forward: { ...forward.row, wamid, status: wamid ? 'sent' : 'sent_no_wamid' }, prospect, alert: { sent: true, wamid } };
+    // R-41.4(c) — the outsider is invited and SHE is told, in that order. Its own
+    // gate and its own row: a failure here never unwinds the forward, because the
+    // prospect exists and the invitation went out whether or not her notice did.
+    const found = await notifyCoupleOfFound(supabase,
+      { forwardId: forward.row.id, kind: 'found_outside', request, item, prospect }, deps);
+    return { ok: true, forward: { ...forward.row, wamid, status: wamid ? 'sent' : 'sent_no_wamid' }, found, prospect, alert: { sent: true, wamid } };
   } catch (err) {
     // R-41.30: a SYNCHRONOUS refusal (131049 and its kin) never reaches a webhook,
     // so the row is the only place it can be written. It is written here.
@@ -781,7 +897,14 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     await recordForwardOutcome(supabase, forward.row.id, { status: 'failed', error_code: code, error_title: (err && err.message) || null });
     return { ok: true, forward: { ...forward.row, status: 'failed', error_code: String(code) }, prospect, alert: { sent: false, refusal: String(code) } };
   }
-  return { ok: true, forward: forward.row, prospect, consent: consentState(consent, prospect) };
+  // ⚠ UNREACHABLE, AND KEPT AS A GUARD RATHER THAN A PROMISE. Every branch of the
+  // try/catch above returns, so control never arrives here. D3b's first cut put the
+  // couple's notice on THIS line and it would have fired for nobody — the outsider's
+  // successful send would silently never have told her. The notice now sits in the
+  // success branch itself. If a future edit adds a path that falls through, this
+  // throws rather than returning a shape that looks fine and told no one.
+  /* istanbul ignore next */
+  throw new Error('forwardToProspect: unreachable — every branch above returns');
 }
 
 async function writeForward(supabase, row) {
@@ -1046,6 +1169,6 @@ module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
-  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState,
+  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

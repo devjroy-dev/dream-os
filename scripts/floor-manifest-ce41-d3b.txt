@@ -1,0 +1,39 @@
+CE-41 · SEAT D · D3b (dream-os) · FLOOR MANIFEST
+base: b72d855e0e9577664e453076aedb948d60931c6b   (re-pinned from b66b99b; seat B B4-9a, docs only, no overlap)
+
+b20_a2_assistance_bench   GREEN  165/165   was 151/151 — +14 (§7h)
+b64_template_slots_bench  exit 0     b64_mutations GREEN 6/6
+b61_switchboard_bench     GREEN 64 · 0
+b62_mutations             GREEN 18/18     b63_mutations GREEN 30/30
+BOTH WAYS: cured GREEN 165/165 · uncured RED 152/165
+
+MIGRATION 0158 — tail derived by command immediately before allocation → 0157.
+NOT RUN by this seat.
+
+FOUR EXISTING CELLS MOVED, AND THREE OF THEM WERE COUNTS:
+  "three gated sendWa sites"        → the writer legitimately has FOUR arms now.
+  "three const out = await sendWaFn" → RE-CUT TO A PROPERTY, not a bigger number:
+      every sendWaFn is captured and checked, no bare await, checks >= sites.
+      FOURTH COUNTING-CELL SPECIMEN THIS SITTING (b20_a2:404, b20_a3:269, b64 M4).
+      A count says how many; it never says whether each one is bound.
+  "a vendor with no users.phone → nothing sent" → it MEANT "no VENDOR alert sent".
+      Those were the same statement until the couple got her own notice on her own
+      key. Scoped to lead_alert_utility.
+  "key ON → ONE send on the MARKETING line" → same shape; scoped to
+      assist_lead_outside, and it still asserts EXACTLY ONE of those, which is the
+      real guarantee: an outsider is invited once per forward, never twice.
+
+THE DOUBLE GAINED 0158's TABLE. Without it the notice insert failed and every
+forward's behaviour changed downstream — the double must carry what the schema does.
+
+TWO DEFECTS THIS PACKET NEARLY SHIPPED, BOTH CAUGHT BEFORE THE CUT:
+  · The couple's notice was first placed on forwardToProspect's TRAILING return —
+    which is UNREACHABLE, because every branch of the try/catch above returns. The
+    outsider's successful send would silently never have told her. Moved into the
+    success branch; the dead tail now THROWS instead of returning a shape that
+    looks fine and told no one.
+  · The arm first read `request.__item_category` — a field invented on a row that
+    does not have it. The item is passed now.
+
+c-41.72: every replace grep-proved. One proof (`notifyCoupleOfFound(supabase,` = 4)
+counts the DEFINITION plus three live call sites, and says so.

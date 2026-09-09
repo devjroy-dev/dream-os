@@ -57,7 +57,10 @@ function strip(src) {
 // ── the stub DB ──────────────────────────────────────────────────────────────
 function makeDb(seed = {}) {
   const tables = {
+    // D3b: 0158's table. Without it the notice insert fails and every forward's
+    // behaviour changes downstream — the double must carry what the schema carries.
     assistance_requests: [], assistance_request_items: [], assistance_forwards: [],
+    assistance_found_notices: [],
     couples: [], users: [], vendors: [], prospects: [], leads: [], clients: [],
     messages: [], lead_alerts: [], referral_alerts: [], contract_sends: [], ...seed,
   };
@@ -321,8 +324,13 @@ const ADMIN  = 'src/api/admin/assistance.js';
     db = seededDb(); s = await seedRequest(db); db._t.vendors.push({ id: 'v-nophone', user_id: 'user-ghost', business_name: 'Ghost', category: 'makeup', city: 'Delhi', status: 'active', discover_paused: false, peer_discoverable: true, routing_handle: 'GHOST' }); calls = [];
     f = await A.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-nophone' } },
       { createLead: okLead, cap: { on: () => true, reason: () => null }, sendWa: async (o) => { calls.push(o); return { sent: true, result: { wamid: 'x' } }; } });
-    ok('a vendor with no users.phone → failed/no_vendor_phone, nothing sent', f.ok && calls.length === 0 && db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'no_vendor_phone');
-    ok('the alert is bound and strict: three `const out = await sendWaFn(`, three `out.sent === true`, no bare await', (() => { const code = strip(read(ASSIST)); return (code.match(/const out = await sendWaFn\(/g) || []).length === 3 && (code.match(/out\.sent === true/g) || []).length === 3 && !/^\s*await sendWaFn\(/m.test(code); })());
+    // D3b: this said "nothing sent" and meant "the VENDOR was not alerted". Those were
+    // the same statement until R-41.4(b) gave the couple her own notice on her own key
+    // — a separate plane that may legitimately fire while the vendor's arm refuses.
+    // Scoped to the claim it actually makes.
+    ok('a vendor with no users.phone → failed/no_vendor_phone, no VENDOR alert sent',
+       f.ok && calls.filter(c => c.templateKey === 'lead_alert_utility').length === 0 && db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'no_vendor_phone');
+    
   } else { for (let i = 0; i < 9; i++) ok('§6b (writer absent)', false); }
 
   // ═══ §6c · F-41.43 / R-41.69 — couple_id attached at write by last-ten ═══
@@ -378,7 +386,19 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'carrier_pigeon' } }, {});
     ok('an unknown target kind → refused bad_target', !f.ok && f.code === 'bad_target');
     const code = strip(read(ASSIST));
-    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp(; exactly THREE gated sendWa sites — founder notify (R-41.63), vendor alert (R-41.68), outsider join (R-41.83)', !/sendMetaTemplate\(/.test(code) && !/sendWhatsApp\(/.test(code) && (code.match(/await sendWaFn\(/g) || []).length === 3);
+    // c-41.72's sibling lesson, FOURTH SPECIMEN THIS SITTING: this counted send sites
+    // (`=== 3`), so a legitimate fourth arm reddened it and the fix was to type a new
+    // number. A count tells you how many, never whether each one is bound. Re-cut to
+    // the PROPERTY: every `sendWaFn(` in this file is followed by an `out.sent === true`
+    // check before anything is treated as sent, and no bare `await sendWaFn(` exists.
+    // A fifth arm is now correct by construction or red on its own merits.
+    ok('the sends are bound and strict: every sendWaFn is captured and checked, no bare await', (() => {
+      const bare = (code.match(/[^=]\s+await sendWaFn\(/g) || []).filter(x => !/const out = await sendWaFn\(/.test(x));
+      const sites = (code.match(/const out = await sendWaFn\(/g) || []).length;
+      const checks = (code.match(/out\.sent === true/g) || []).length;
+      return bare.length === 0 && sites >= 3 && checks >= sites;
+    })());
+    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp(; exactly FOUR gated sendWa sites — founder notify (R-41.63), vendor alert (R-41.68), outsider join (R-41.83), the found notice to the couple (R-41.4)', !/sendMetaTemplate\(/.test(code) && !/sendWhatsApp\(/.test(code) && (code.match(/await sendWaFn\(/g) || []).length === 4);
     // RETIRED-BY-RULING (A10/R-41.83): the block is the arm now, not a comment.
     ok('the send is reached only through the register key — no env var, no second path', /capFn\(cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE\) === true/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code) && !/uncomment/i.test(read(ASSIST)));
     ok('the read is cap.on() on the one key, never an env var', /cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code));
@@ -388,7 +408,13 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', ig_handle: '@rahulshoots', name: 'Rahul', consent_text: 'yes please, my number is 9811122333', consent_source: 'instagram_dm', consent_recorded_by: 'admin:test'} },
       { cap: { on: () => true }, sendWa: async (o) => { sends.push(o); return { sent: true, mode: 'template', result: { wamid: 'wamid.OUT1' } }; } });
     const oc = sends[0] || {};
-    ok('key ON → ONE send on the MARKETING line to the prospect number, template assist_lead_outside', f.ok && sends.length === 1 && oc.line === 'marketing' && oc.to === '919811122333' && oc.templateKey === 'assist_lead_outside');
+    // D3b: `sends.length === 1` meant "one send to the OUTSIDER" and said "one send in
+    // the world". R-41.4(c) gave the couple her own notice on her own key and her own
+    // line, so two sends now leave this call and both are correct. Scoped to the
+    // outsider's own template — and it still asserts EXACTLY ONE of those, which is
+    // the guarantee (an outsider is invited once per forward, never twice).
+    ok('key ON → ONE send on the MARKETING line to the prospect number, template assist_lead_outside',
+       f.ok && sends.filter(x => x.templateKey === 'assist_lead_outside').length === 1 && oc.line === 'marketing' && oc.to === '919811122333' && oc.templateKey === 'assist_lead_outside');
     // c-41.39, THIRD CELL. This asserted the PRE-F-41.63 order — city at {{2}}, the
     // trade at {{3}}, the month at {{4}} — and so held the defect in place as a
     // REQUIREMENT. A sealed cell can encode a bug; this one did, and it is why the
@@ -495,6 +521,64 @@ const ADMIN  = 'src/api/admin/assistance.js';
   // and none of the consent ones, so `consent` was undefined on every row and
   // "Consent noted" could never render whatever the database held. A cure applied to
   // one path and not its sibling is the shape worth naming, not the individual miss.
+  // ══ §7h · R-41.4(b)/(c) · THE COUPLE IS TOLD, AND IT IS ITS OWN PLANE ══════
+  section('§7h · R-41.4(b)/(c) — the "we found you" arm, 0158, and the eighth home');
+  {
+    const mig = read('db/migrations/0158_assistance_found_notices.sql');
+    const src = strip(read(ASSIST));
+    const rly = strip(read('src/lib/vendor/relayStatus.js'));
+
+    // ONE EVENT, ONE ROW — structural, not a convention.
+    ok('§7h: 0158 keys the notice on forward_id with a UNIQUE, so a double-send cannot make two rows',
+       /create unique index if not exists uq_assistance_found_notices_forward/.test(mig)
+       && /\(forward_id\)/.test(mig));
+    ok('§7h: the wamid index and UNIQUE are both PARTIAL on wamid is not null (R-40.110)',
+       (mig.match(/where wamid is not null/g) || []).length === 2);
+    ok('§7h: the receipt vocabulary is 0148\'s own, so the eighth arm is the seventh\'s shape',
+       /status in \('queued', 'dark', 'sent', 'sent_no_wamid', 'delivered', 'read', 'failed'\)/.test(mig));
+    ok('§7h: kind is CONSTRAINED — a fifth arm cannot appear without a decision',
+       /kind in \('found_vendor', 'found_outside'\)/.test(mig));
+
+    // THE ARM IS APPENDED, NEVER REORDERED — the six above must be untouched.
+    ok('§7h: relayStatus gains an eighth home and the earlier ones keep their order',
+       /home=assistance_found_notice'/.test(rly)
+       && rly.indexOf('home=payment_reminder') < rly.indexOf('home=assistance_found_notice')
+       && rly.indexOf('home=assistance_found_notice') < rly.indexOf('home=none'));
+    ok('§7h: it matches by wamid and selects, so one row can be told from none (F-06.143)',
+       /from\('assistance_found_notices'\)[\s\S]{0,300}\.eq\('wamid', wamid\)[\s\S]{0,120}\.select\(/.test(rly));
+
+    // ⚠ THE COLUMN AND THE ARM SHIPPED TOGETHER, WHICH IS THE POINT.
+    // lead_alerts (F-40.177), referral_alerts (F-40.190) and payment_reminders
+    // (F-40.229) each shipped a wamid with NO arm, and every receipt fell to the
+    // orphan line until someone noticed — three times. This cell asserts the pair.
+    ok('§7h: the table that carries a wamid has an arm in the SAME packet (not a fourth F-40.177)',
+       /wamid/.test(mig) && /assistance_found_notices/.test(rly));
+
+    // THE ARM'S OWN SHAPE
+    ok('§7h: the notice rides the BRIDE line and coupleContact, the one home for her number',
+       /line: 'bride'/.test(src) && /coupleContact\(supabase, request\)/.test(src));
+    ok('§7h: it is gated on its OWN register key per kind, and writes a dark row when shut',
+       /TDW_ASSIST_FOUND_VENDOR/.test(src) && /TDW_ASSIST_FOUND_OUTSIDE/.test(src)
+       && /status: armed \? 'queued' : 'dark'/.test(src));
+    ok('§7h: the row is written BEFORE the send, so a death mid-flight leaves something to reconcile (F-41.81)',
+       src.indexOf("from('assistance_found_notices')") < src.indexOf("templateKey: kind === 'found_vendor'"));
+    ok('§7h: both bodies take the trade as a BARE NOUN (F-41.80 cannot repeat here)',
+       (() => { const arm = src.slice(src.indexOf('async function notifyCoupleOfFound'), src.indexOf('async function forwardToProspect'));
+                return (arm.match(/categoryNoun\(item\.category\)/g) || []).length === 2; })());
+    ok('§7h: NO phone of the vendor\'s or the outsider\'s rides her body — the handle is public, the number is not',
+       /ig_handle:/.test(src) && !/prospect\.phone/.test(src.slice(src.indexOf('async function notifyCoupleOfFound'), src.indexOf('async function forwardToProspect'))));
+
+    // THE DEAD TAIL — the defect this packet nearly shipped.
+    ok('§7h: forwardToProspect\'s unreachable tail THROWS, it does not return a shape that told nobody',
+       /unreachable — every branch above returns/.test(read(ASSIST)));
+
+    // found_vendor's word moved because a READING moved it.
+    const tpl = strip(read('src/lib/templates.js'));
+    ok('§7h: found_vendor is approved now, and the entry records the sweep that moved it',
+       /assist_found_vendor:[\s\S]{0,900}status: 'approved'/.test(tpl)
+       && /RE-READ AND MOVED/.test(read('src/lib/templates.js')));
+  }
+
   section('§7g · F-41.104 — the queue read carries the consent state');
   {
     const src = strip(read(ASSIST));
