@@ -791,6 +791,31 @@ const TEMPLATES = {
     line: 'marketing',
     category: 'UTILITY',                      // R-41.118 - Utility on the MARKETING PNID; the two are independent
     variables: ['name', 'month_year', 'city', 'category_noun', 'budget_rs'],
+    // ── F-41.123 · THE BUTTON DECLARATION, MISSING SINCE D2 ──────────────────
+    // Railway 2026-09-09 08:29/08:30: `131008 — buttons: Button at index 0 of type
+    // Url requires a parameter`, BOTH sends refused. Row 10a records a DYNAMIC url
+    // button; this entry declared none, so the builder emitted body parameters only
+    // and Meta rejected the payload.
+    //
+    // ⚠ THE BUILDER WAS NOT AT FAULT AND WAS NOT CHANGED. `buildTemplatePayload`
+    // has carried a url-button arm since G3.2 s2 (see the foot of this file), and
+    // `review_request` has used it in production. The defect was ENTIRELY here: an
+    // entry that omitted the `button` its filing carries. A second arm would have
+    // been a second home for one fact.
+    //
+    // `base` is documentation — Meta holds it and the send never transmits it —
+    // recorded so a reader sees what the suffix is appended to. NOTE it is the SAME
+    // base as `review_request`: R-41.119 rules one path, two families, disambiguated
+    // by the explicit `enq-` prefix the caller supplies, never by shape. The bend to
+    // R-40.15 is recorded there with its retirement (the base moves to `/e/` at the
+    // next edit window and the prefix retires with it).
+    button: {
+      type: 'url',
+      index: 0,
+      text: 'Visit website',                 // renders from the base; Meta's own chrome
+      base: 'https://thedreamwedding.in/r/',
+      variable: 'enquiry_ref',               // the SUFFIX, `enq-<item_id>` — never a full URL
+    },
     // Byte-for-byte docs/TEMPLATES.md §2 row 10a - the founder's Manager preview,
     // 2026-09-09 07:42 IST. The invitation clauses are gone ("asked The Dream Wedding
     // to find them", "has been matched to you", "Reply STOP REQUESTS"); what is left is
@@ -829,6 +854,18 @@ const TEMPLATES = {
     line: 'bride',
     category: 'UTILITY',
     variables: ['name', 'category_noun', 'month_year', 'vendor_name'],
+    // F-41.123's sibling, cured BEFORE its arm wakes rather than after Meta refuses
+    // it. Row 11 records a dynamic url button on the /v/ address family (R-40.15),
+    // suffix = the vendor's `routing_handle`. Declaring it now means the day this
+    // arm is built it cannot repeat 131008, and b64 §5 asserts the declaration
+    // against the document today, with no send required.
+    button: {
+      type: 'url',
+      index: 0,
+      text: 'See their page',
+      base: 'https://thedreamwedding.in/v/',
+      variable: 'routing_handle',
+    },
     body:
       "Hi {{1}}, we have matched a {{2}} to the request you sent The Dream Wedding " +
       "for your {{3}} wedding. {{4}} is on The Dream Wedding, and their recent work " +

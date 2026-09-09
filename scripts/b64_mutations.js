@@ -50,16 +50,15 @@ const CURED_BODY =
 // PRE_CURE retired: M1 now carries its two halves inline (see M1's note).
 
 // The two adjacent send-arm lines, cured. Swapping them is the live F-41.63 defect.
+// D2b / F-41.123: the send site passes an OBJECT now. The defect these mutations
+// model is no longer "two list positions swapped" but "two KEYS given each other's
+// expression" — which is what a keyed binding exists to convict.
 const ARM_23 =
-  "    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}} month_year\n" +
-  "    request.city || 'India',                                                                          // {{3}} city";
+  "    month_year:  monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}}\n" +
+  "    city:        request.city || 'India',                                                             // {{3}}";
 const ARM_23_SWAPPED =
-  "    request.city || 'India',                                                                          // {{2}} month_year\n" +
-  "    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{3}} city";
-// M6's arm half: swapped AND re-annotated, so even the comments agree.
-const ARM_23_CONSISTENT =
-  "    request.city || 'India',                                                                          // {{2}} city\n" +
-  "    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{3}} month_year";
+  "    month_year:  request.city || 'India',                                                             // {{2}}\n" +
+  "    city:        monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{3}}";
 
 const MUT = [
   // TWO EDITS, not one concatenated anchor: a comment block now sits between the
@@ -77,13 +76,17 @@ const MUT = [
     ],
     cell: 'literal subsequences identical' },
 
-  { id: 'M2 the variables array is permuted, the body untouched (§1 cannot see it; §2 must)',
-    edits: [[TPL, CURED_VARS, "    variables: ['name', 'city', 'month_year', 'category_noun', 'budget_rs'],"]],
-    cell: 'vars order is bound to templates.js variables' },
+  // ── M2 RETIRED INTO M8, AND SAID SO RATHER THAN DELETED ──────────────────
+  // M2 permuted `variables` and expected §2 to catch it. Under the ARRAY form it
+  // did — the binding was positional. Under the KEYED form it cannot: a key carries
+  // its own meaning, so there is no order at the send site to break. M2 and M8 are
+  // THE SAME EDIT EXPECTING OPPOSITE VERDICTS, and a harness that holds both is
+  // contradicting itself. M8 is the honest one and names where the conviction
+  // actually lives (b20_a2's driven cell, verified by command at the cut).
 
   { id: "M3 the send arm's expressions are swapped, annotations carried along (the live defect)",
     edits: [[ARM, ARM_23, ARM_23_SWAPPED]],
-    cell: 'vars order is bound to templates.js variables' },
+    cell: 'each value\'s expression matches the variable it is keyed to' },
 
   { id: 'M4 a registry entry gains a §2 row while still named witnessless (partition, rule 5)',
     // The old target (`tdw_assist_lead_outside`) is RETIRED and unregistered since
@@ -110,12 +113,28 @@ const MUT = [
       "  makeup: 'a makeup artist', hairstylist: 'a hairstylist', jewellery: 'a jeweller', decor: 'a decorator',"]],
     cell: 'no doubled article' },
 
-  { id: 'M6 DECLARED SURVIVOR — registry variables and the send arm permuted together (M2+M3, cancelling)',
+  // ── M6 RETIRED, AND WHY, BECAUSE A RETIRED MUTATION MUST SAY SO ───────────
+  // M6 modelled "permute `variables` AND permute the send arm to match — they
+  // cancel." Under the ARRAY form that was a real, invisible pair. Under the KEYED
+  // form the send arm has no order to permute: a key carries its own meaning, so
+  // there is nothing to cancel against. The residue M6 declared no longer exists in
+  // that shape. Its replacement is M8, which measures what the keyed form actually
+  // gave up. Deleting M6 silently would have quietly shrunk the harness's claim.
+
+  // ── M8 · WHAT THE KEYED FORM COSTS, MEASURED NOT ASSUMED ──────────────────
+  // Permuting `variables` alone changes the ORDER META RECEIVES (the builder does
+  // `declared.map(nm => vars[nm])`), and §1 cannot see it (no literal moves) and §2
+  // cannot see it (keys bind by name, not position). So b64 is BLIND to it, and this
+  // mutation asserts that blindness out loud rather than letting a reader assume
+  // coverage. THE CONVICTION LIVES IN b20_a2's DRIVEN CELL, which builds the payload
+  // and compares the order Meta actually gets — behaviour, not text. That is the
+  // better instrument for it, and this note is the pointer to it.
+  { id: 'M8 DECLARED BLIND SPOT — `variables` permuted alone (b64 cannot see it; b20_a2 convicts it)',
     edits: [
       [TPL, CURED_VARS, "    variables: ['name', 'city', 'month_year', 'category_noun', 'budget_rs'],"],
-      [ARM, ARM_23, ARM_23_CONSISTENT],
     ],
-    survives: true },
+    survives: true,
+    why: 'b64 is blind here BY DESIGN of the keyed form; b20_a2\'s driven cell builds the payload and convicts it' },
 ];
 
 let bad = 0;
@@ -142,7 +161,7 @@ for (const m of MUT) {
   if (m.survives) {
     const green = /\bGREEN\b/.test(out) && !line;
     console.log(`  ${green ? 'ok   ' : 'MISS '} ${m.id}`);
-    console.log("         must stay GREEN — this one is the Manager's to witness, not a cell's");
+    console.log(`         must stay GREEN — ${m.why || "this one is the Manager's to witness, not a cell's"}`);
     if (!green) { bad++; console.log(`         expected GREEN; got: ${line.slice(0, 300)}`); }
   } else {
     const hit = line.includes(m.cell);

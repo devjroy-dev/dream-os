@@ -594,13 +594,30 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
   const sendWaFn = deps.sendWa || require('../sendWa').sendWa;
   const t = TEMPLATE_REFS.lead_outside;
   const to = prospect.phone;
-  const vars = [
-    prospect.name || 'there',                                                                        // {{1}} name
-    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}} month_year
-    request.city || 'India',                                                                          // {{3}} city
-    categoryNoun(item.category),                                                                      // {{4}} category_noun
-    formatRs(item.budget_rs || 0),                                                                    // {{5}} budget_rs
-  ];
+  // ── F-41.123 · AN OBJECT, NOT AN ARRAY, AND THAT IS THE WHOLE FIX HERE ─────
+  // The builder reads a url button's suffix BY THE BUTTON'S OWN VARIABLE NAME
+  // (`vars[t.button.variable]`) and explicitly refuses to read it from a positional
+  // list — the button's {{1}} and the body's {{1}} are two different variables that
+  // happen to share a number. An ARRAY therefore cannot carry a suffix at all: the
+  // arm reads `undefined` and throws before Meta is ever called. Meta's own refusal
+  // (131008) came first only because the entry declared no button to begin with.
+  //
+  // `review_request` has passed an object to this same arm in production since
+  // G3.2 s2. This call site is the one that did not, and the builder's own body
+  // path takes either form (`declared.map(nm => vars[nm])`), so nothing else moves.
+  //
+  // R-41.119 — THE SUFFIX CARRIES THE `enq-` PREFIX. One path, two families: the
+  // review family owns bare codes on `/r/`, this one owns `enq-<item_id>`, and the
+  // pwa's `/r/[code]` branches on the prefix EXPLICITLY, never on shape. When the
+  // button base moves to `/e/` at the next edit window, the prefix retires with it.
+  const vars = {
+    name:        prospect.name || 'there',                                                            // {{1}}
+    month_year:  monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}}
+    city:        request.city || 'India',                                                             // {{3}}
+    category_noun: categoryNoun(item.category),                                                       // {{4}}
+    budget_rs:   formatRs(item.budget_rs || 0),                                                       // {{5}}
+    enquiry_ref: `enq-${item.id}`,                                                                    // the url button's suffix, NOT a body slot
+  };
   try {
     // F-41.78: `sendWa` logs the one SENT line (R-41.90) and its own default names
     // neither the site nor the item. A10's line read `site=sendWa:template ctx=-`,

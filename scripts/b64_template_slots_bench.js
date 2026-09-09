@@ -62,6 +62,15 @@
 // exact class this rider struck from b20_a2:405 under c-41.39. §2 now STRIPS
 // line comments first and binds the EXPRESSION.
 //
+// ⚠ D2b: THE SEND SITE NOW PASSES AN OBJECT, AND THE CELL IS STRONGER FOR IT.
+// F-41.123 forced `vars` from a positional array to a keyed object, because the
+// builder reads a url button's suffix BY NAME and cannot read it from a list. §2
+// used to infer the binding from ORDER — expression i against variables[i]. It now
+// reads the KEY the call site itself writes, which removes the inference entirely:
+// a mis-keyed value is wrong on its face rather than wrong by position. The old
+// order-based form could not have caught a swap that also swapped the annotations
+// (its own M3 tuition); this form has no annotations to be fooled by.
+//
 // The binding rule, derived and not transcribed: fold the registry variable name
 // and the expression to lowercase alphanumerics, and require the expression to
 // contain the folded name. `month_year` → `monthyear` ⊂ `monthYearOnly(...)`;
@@ -217,27 +226,66 @@ section('2. the wire side — each send site\'s vars order bound to its variable
 // The one send site in this seat's radius. A site is (file, templateKey, the
 // `vars` array literal). The binding is the trailing `// {{n}} <name>` annotation
 // on each element: it names which registry `variables` entry that slot carries.
+// ⚠ EACH SITE NAMES ITS FUNCTION. The first cut searched the whole file for
+// `const vars = {` and matched `notifyFounder`'s object — an earlier one — so it
+// asserted the wrong send site while looking green on two of five cells. A
+// first-match anchor in a file with more than one send is not an anchor.
+// The second site is the one that mistake surfaced: notifyFounder was never
+// covered, and it is a live send with five declared variables.
 const WIRE_SITES = [
-  { file: 'src/lib/couple/assistance.js', key: 'assist_lead_outside', reg: 'assist_lead_outside' },
+  { file: 'src/lib/couple/assistance.js', fn: 'async function forwardToProspect', key: 'assist_lead_outside',    reg: 'assist_lead_outside' },
+  { file: 'src/lib/couple/assistance.js', fn: 'async function notifyFounder',     key: 'admin_assist_request',   reg: 'admin_assist_request' },
 ];
 const fold = (t) => String(t).toLowerCase().replace(/[^a-z0-9]/g, '');
 for (const site of WIRE_SITES) {
-  const src = fs.readFileSync(P(site.file), 'utf8');
-  const block = (src.match(/const vars = \[([\s\S]*?)\n  \];/) || [])[1] || '';
+  const whole = fs.readFileSync(P(site.file), 'utf8');
+  const at = whole.indexOf(site.fn);
+  // A cell that cannot see its subject must FAIL, never silently read another's.
+  ok(`2.0 ${site.key} · the send site \`${site.fn}\` is where this cell says it is`, at !== -1);
+  const src = at === -1 ? '' : whole.slice(at);
+  const block = (src.match(/const vars = \{([\s\S]*?)\n  \};/) || [])[1] || '';
   // COMMENT-BLIND (R-40.105, and this file's own M3 tuition): strip every line
-  // comment BEFORE reading a single expression. The annotations are for a human.
-  const exprs = block.split('\n')
+  // comment BEFORE reading a single pair. The annotations are for a human.
+  const pairs = block.split('\n')
     .map(l => l.replace(/\/\/.*$/, '').trim().replace(/,$/, ''))
-    .filter(l => l.length > 0);
+    .filter(l => l.length > 0)
+    .map(l => { const i = l.indexOf(':'); return { key: l.slice(0, i).trim(), expr: l.slice(i + 1).trim() }; })
+    .filter(p => p.key && p.expr);
   const vars = REG[site.reg].variables;
+  const btn  = REG[site.reg].button;
+  const bodyPairs = pairs.filter(p => vars.includes(p.key));
 
-  ok(`2.a ${site.key} · the vars array has one expression per registry variable`,
-     exprs.length === vars.length);
+  ok(`2.a ${site.key} · every registry variable has a pair at the send site, by NAME`,
+     vars.every(v => pairs.some(p => p.key === v)) && bodyPairs.length === vars.length);
   ok(`2.b ${site.key} · no expression is empty once comments are stripped`,
-     exprs.length > 0 && exprs.every(e => e.length > 0));
-  // THE BINDING, ON THE EXPRESSION AND NEVER ON A COMMENT.
-  ok(`2.c ${site.key} · vars order is bound to templates.js variables, element for element`,
-     exprs.length === vars.length && exprs.every((e, i) => fold(e).includes(fold(vars[i]))));
+     pairs.length > 0 && pairs.every(p => p.expr.length > 0));
+  // THE BINDING, ON THE EXPRESSION AND NEVER ON A COMMENT — now keyed, not ordered.
+  // ── THE CONTAINMENT RULE IS A HEURISTIC, SO ITS MISSES ARE NAMED ──────────
+  // `date_words: monthDayYear(request.wedding_date)` is correct and the fold cannot
+  // see it — the key and the function share no letters. Narrowing the cell to the
+  // sites where the rule happens to hold would be the vacuity this file has already
+  // been caught at twice. Instead the rule PARTITIONS, exactly as §1 and §4 do:
+  // every pair is either self-evident by containment, or named here with the reading
+  // that justifies it. A pair that stops being self-evident and is not named REDS;
+  // a name here that becomes self-evident also REDS, so the list cannot rot.
+  const READ_BY_HAND = {
+    'admin_assist_request.date_words':  'monthDayYear(request.wedding_date) — the wedding date in words; the fold shares no letters with the key',
+    'admin_assist_request.couple_name': "request.name — the couple's own name; `couple_name` and `name` fold apart",
+  };
+  const unbound = bodyPairs.filter(p => !fold(p.expr).includes(fold(p.key)));
+  ok(`2.c ${site.key} · each value's expression matches the variable it is keyed to, or is named by hand`,
+     unbound.every(p => READ_BY_HAND[`${site.key}.${p.key}`]));
+  ok(`2.f ${site.key} · nothing named by hand has since become self-evident (the list cannot rot)`,
+     Object.keys(READ_BY_HAND)
+       .filter(n => n.startsWith(`${site.key}.`))
+       .every(n => bodyPairs.some(p => p.key === n.split('.').pop() && !fold(p.expr).includes(fold(p.key)))));
+  // ── F-41.123 · THE BUTTON'S SUFFIX IS SUPPLIED, AND IT IS NOT A BODY SLOT ──
+  if (btn && btn.type === 'url') {
+    const bp = pairs.find(p => p.key === btn.variable);
+    ok(`2.d ${site.key} · the url button's suffix (${btn.variable}) is supplied at the send site`, !!bp);
+    ok(`2.e ${site.key} · the suffix is NOT one of the body's declared variables`,
+       !vars.includes(btn.variable));
+  }
 }
 
 section('3. literal + value compose — no doubled article reaches a handset (F-41.80)');

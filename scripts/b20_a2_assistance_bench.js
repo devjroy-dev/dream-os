@@ -396,7 +396,16 @@ const ADMIN  = 'src/api/admin/assistance.js';
     // the founder's Manager screenshot) is name · month and year · city · trade · budget.
     // F-41.80: the trade is now a BARE NOUN — the body supplies the article
     // ("...to find them a {{4}}"), so 'a photographer' here rendered "a a photographer".
-    ok('five vars in META\'s order, the trade a bare noun: name · month and year · city · trade · budget in Indian grouping, no glyph', Array.isArray(oc.vars) && oc.vars.length === 5 && oc.vars[0] === 'Rahul' && oc.vars[1] === 'February 2027' && oc.vars[2] === 'Delhi' && oc.vars[3] === 'photographer' && oc.vars[4] === '2,50,000' && !/\u20b9/.test(JSON.stringify(oc.vars)));
+    ok('the PAYLOAD META RECEIVES is in Meta\'s order, the trade a bare noun: name · month and year · city · trade · budget in Indian grouping, no glyph', (() => { const t = require(P('src/lib/templates.js'));
+      // c-41.63 / F-41.123: the send site passes an OBJECT now (the builder reads a url
+      // button's suffix by name and cannot read it from a list). So this cell no longer
+      // reads a positional array — it BUILDS THE PAYLOAD and asserts the order META
+      // ACTUALLY RECEIVES, which is the guarantee the label always claimed and the array
+      // form only stood in for. It is strictly stronger: a permuted `variables` array
+      // now reds HERE, behaviourally, where b64's keyed binding cannot see it.
+      const body = t.buildTemplatePayload('assist_lead_outside', oc.vars).components.find(c => c.type === 'body');
+      const got = body.parameters.map(x => x.text);
+      return JSON.stringify(got) === JSON.stringify(['Rahul', 'February 2027', 'Delhi', 'photographer', '2,50,000']); })() && !/\u20b9/.test(JSON.stringify(oc.vars)));
     ok('NO phone of the couple rides the body (roadmap §7, the standing refusal)', !JSON.stringify(oc.vars || []).includes('9625759924') && !JSON.stringify(oc.vars || []).includes('+91'));
     ok('the wamid lands on assistance_forwards.wamid with status sent + sent_at', db._t.assistance_forwards[0].wamid === 'wamid.OUT1' && db._t.assistance_forwards[0].status === 'sent' && !!db._t.assistance_forwards[0].sent_at && f.alert.sent === true);
     // c-41.61: R-41.118 moved the outsider alert to v2 (Utility, Meta 2544506315978894).

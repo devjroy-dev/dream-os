@@ -1,0 +1,60 @@
+CE-41 · SEAT D · D2b (dream-os, HOT) · FLOOR MANIFEST
+base: 5d7d4835fc41e5ef19db23ac470578d2f6184ea0
+run:  the seat's container, node, after `npm install`
+
+FLOOR = NAMED BASE, no delta.
+
+b64_template_slots_bench   GREEN  131/131   was 122/122 — +9 (§2 re-cut keyed, +2.0/2.d/2.e/2.f, second wire site)
+b64_mutations              GREEN    6/6     was 7/7 — M2 and M6 RETIRED WITH REASONS, M8 added
+b20_a2_assistance_bench    GREEN  126/126   one cell re-cut (c-41.63); COUNT UNCHANGED
+b61_switchboard_bench      GREEN   64 · 0
+b62_mutations              GREEN   18/18
+b62_g34_s2_bench           exit 0
+b63_mutations              GREEN   30/30
+
+THE PAYLOAD, DRIVEN — the whole point of this packet:
+  buildTemplatePayload('assist_lead_outside', {...}) now emits
+    components[0] {type:'body', parameters:[5 × text]}
+    components[1] {type:'button', sub_type:'url', index:'0', parameters:[{type:'text', text:'enq-<item_id>'}]}
+  That second component is exactly what Meta's 131008 asked for. Verified by
+  running the builder, not by reading it.
+
+COUNT MOVEMENTS, DISCLOSED:
+  b64            122 → 131   (+9)
+  b64_mutations    7 →   6   TWO RETIRED, ONE ADDED. Neither deletion was silent:
+                             M2 (permute `variables`, expect §2 to catch) and M6
+                             (permute both, expect them to cancel) both described
+                             the ARRAY form's positional binding, which no longer
+                             exists. M2 and M8 were the SAME EDIT EXPECTING OPPOSITE
+                             VERDICTS — a harness holding both contradicts itself.
+  b20_a2         126 → 126   (no movement)
+
+M8 IS A DECLARED BLIND SPOT, MEASURED NOT ASSUMED:
+  Permuting `variables` alone changes the order META RECEIVES (the builder does
+  `declared.map(nm => vars[nm])`). §1 cannot see it — no literal moves. §2 cannot
+  see it — keys bind by name, not position. SO b64 IS BLIND TO IT, and M8 asserts
+  that blindness out loud rather than letting a reader assume coverage.
+  THE CONVICTION LIVES IN b20_a2's DRIVEN CELL. Verified by command at the cut:
+  applying M8's edit and running b20_a2 → RED 125/126 on
+  "the PAYLOAD META RECEIVES is in Meta's order". Behaviour, not text.
+
+FIVE ANCHORS DIED ON THIS SEAT'S OWN EDITS, ALL RE-DERIVED:
+  b64 §2's site regex   matched notifyFounder's `const vars = {` — AN EARLIER ONE IN
+                        THE SAME FILE. It asserted the wrong send site while showing
+                        green on two of five cells. Each site now NAMES ITS FUNCTION
+                        and 2.0 fails if that function is not found.
+  b64_mutations M3/M6   anchored on the array form's two adjacent lines
+  b20_a2 ×1             read `oc.vars` as a positional array
+  Fourth time this sitting (c-41.43, c-41.61, D2's four, these). The harness
+  reporting "matched 0 times" rather than passing is the only reason it is survivable.
+
+2.c PARTITIONS RATHER THAN NARROWS:
+  The containment fold is a heuristic and it misses two real pairs at notifyFounder
+  (`date_words ← monthDayYear(...)`, `couple_name ← request.name`). Narrowing the
+  cell to where the rule happens to hold would be vacuity. Both are named in
+  READ_BY_HAND with the reading that justifies them, and 2.f REDS if a named pair
+  becomes self-evident — so the list cannot rot.
+
+NO MIGRATION. Ladder tail 0155, untouched.
+INHERITED RED, NOT TOUCHED: F-41.64 (b39_telemetry), F-41.65 (b61_mutations M8).
+CONTAINER GAP: b63_f1_model_routes_bench — missing engine/dist, identical at origin.
