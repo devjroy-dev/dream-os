@@ -52,6 +52,20 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 router.post('/', asyncHandler(async (req, res) => {
   const b = req.body || {};
+  // ── R-42.7 · THE DOOR REFUSES A REQUEST WITH NO CITY ───────────────────────
+  // Founder-ruled 2026-09-10. The queue's submit guard is NOT this rule — it is a
+  // courtesy that saves him a round trip. A guard that lives only in a form is a
+  // guard anyone with a curl walks past, and every cityless row already on file
+  // (five at the ruling, all origin=admin) got there through this door.
+  //
+  // `.trim()`, the same spelling the forward gate reads by: a city of one space is
+  // not a city. The forward-time gate STAYS (chair's ruling (a)) — this stops new
+  // blank rows, that one stops the five that already exist reaching an outsider
+  // with the template's `India` fallback in place of a city.
+  if (!(b.city && String(b.city).trim())) {
+    return res.status(400).json({ ok: false, code: REFUSE.NO_CITY, error: 'Add a city to file the request.' });
+  }
+
   const out = await createAssistanceRequest(req.app.locals.supabase, {
     couple_id:    null,
     phone:        b.phone,

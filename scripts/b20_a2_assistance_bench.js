@@ -877,6 +877,27 @@ const ADMIN  = 'src/api/admin/assistance.js';
        noun('a_token_nobody_mapped') === 'vendor');
   }
 
+  // ═══ §R-42.7 · the intake door refuses a request with no city ══════════════
+  {
+    const admDoor = strip(read('src/api/admin/assistance.js'));
+    ok('R-42.7: the typed-request door refuses a blank city, in the founder\'s vetoed words',
+       /if \(!\(b\.city && String\(b\.city\)\.trim\(\)\)\) \{/.test(admDoor)
+       && /code: REFUSE\.NO_CITY, error: 'Add a city to file the request\.'/.test(admDoor));
+    ok('R-42.7: it refuses BEFORE the writer is called — no row, no items, nothing to undo',
+       (() => {
+         const i = admDoor.indexOf("REFUSE.NO_CITY, error: 'Add a city to file");
+         const j = admDoor.indexOf('createAssistanceRequest(req.app.locals.supabase, {');
+         return i > 0 && j > 0 && i < j ? true : `guard at ${i}, writer at ${j}`;
+       })() === true);
+    ok('R-42.7: it is a 400 — the caller is at fault, and F-41.102\'s 409 list is for FORWARD refusals only',
+       /status\(400\)\.json\(\{ ok: false, code: REFUSE\.NO_CITY/.test(admDoor));
+    // The two sentences are different acts and must not collapse into one byte.
+    ok('R-42.7 / F-42.58: the intake refusal and the forward refusal are DIFFERENT sentences',
+       /'Add a city to file the request\.'/.test(admDoor)
+       && /'Add a city before forwarding this outside TDW\.'/.test(strip(read(ASSIST)))
+       && !/before forwarding/.test(admDoor));
+  }
+
   // ═══ §M ═══
   section('§M · MUTATIONS — production code, each expected to REDDEN a named cell');
   if (A) {

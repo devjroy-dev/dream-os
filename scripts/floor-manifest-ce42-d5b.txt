@@ -1,0 +1,10 @@
+# CE-42 · SEAT D2 · packet D5b (dream-os) — declared manifest (F-14.16).
+# Base: d6cd660dbaa18b678e673f53cbedd8e19f51d2c7 (re-pinned from b3b5995 after 4a's
+#        door rider; both manifest blobs verified byte-identical across the two tips)
+#   src/api/admin/assistance.js        — R-42.7, the intake door's city guard.
+#   scripts/b20_a2_assistance_bench.js — §R-42.7, four cells.
+#   docs/TDW_CE42_D5b_DREAMOS_HANDOVER.md — new.
+src/api/admin/assistance.js
+scripts/b20_a2_assistance_bench.js
+docs/TDW_CE42_D5b_DREAMOS_HANDOVER.md
+scripts/floor-manifest-ce42-d5b.txt
