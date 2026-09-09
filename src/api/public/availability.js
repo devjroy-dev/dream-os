@@ -116,6 +116,43 @@ function verdictOf(out) {
   };
 }
 
+// ── R8-1 · THE RECORD (F-42.11, migration 0160) ────────────────────────────
+// This door has answered strangers about named dates since G3.1 and recorded
+// NOTHING, so G4.4's demand pulse had no source and never would have grown one.
+// This function is `public.date_checks`'s SOLE WRITER, and it is the only place
+// in the estate that inserts into that table.
+//
+// ⚠ IT CANNOT CHANGE THE ANSWER, AND THAT IS ITS WHOLE CONTRACT (O-3, ruled).
+// A stranger asked one question. Whether our analytics landed is not her
+// problem and must never become her 500: the insert is awaited, its error is
+// caught and logged, and nothing it does can reach the status code or the word.
+// A failed write is REPORTED (protocol §4, never a false done) — to the log,
+// which is the only reader entitled to care.
+//
+// AWAITED RATHER THAN FLOATED, for two reasons the alternative loses. A
+// floating promise makes the bench racy — the cell would be asserting a row
+// that may or may not have landed by the time the response resolved, which is
+// a green that means nothing. And a Railway restart between the response and
+// an unawaited insert drops the row silently. The cost is one round trip on a
+// door that already runs two queries, paid before `res.json`.
+//
+// ⚠ WHAT IS NOT WRITTEN: `id` and `checked_at` are the table's own defaults
+// (0160), so this writer names two columns and the database names the rest.
+// There is no third column to name — no phone, no IP, no session key, no hash
+// of one. Fork B: THE CHECK, NEVER THE ASKER. The rate limiter above keys on
+// `req.ip` and that key lives in memory for ten minutes and is never carried
+// into a row.
+async function recordCheck(supabase, vendorId, date) {
+  try {
+    const { error } = await supabase
+      .from('date_checks')
+      .insert({ vendor_id: vendorId, date });
+    if (error) console.error('[date_checks] insert failed —', error.message || error);
+  } catch (e) {
+    console.error('[date_checks] insert threw —', (e && e.message) || e);
+  }
+}
+
 /**
  * GET /api/v2/public/availability/:code/:date
  *
@@ -166,6 +203,29 @@ router.get('/:code/:date', asyncHandler(async (req, res) => {
   // for either of its two reasons. The switch is not offered to her at all, so
   // reaching here means a hand-typed URL or a stale link — same miss.
   if (out && out.occupancy === 'off') return notFound(res);
+
+  // ── THE RECORD GOES HERE AND NOWHERE ELSE (O-1, ruled) ───────────────────
+  // The rule the chair ruled is A RESOLVED VENDOR PAST EVERY GATE, and this is
+  // the line where that becomes true. Everything above returns before it: the
+  // 429, the malformed code or date, the unknown handle, the inactive or paused
+  // vendor, the switch left off, and the trade with no capacity to answer. So
+  // a refusal writes nothing without any branch here having to say so.
+  //
+  // ⚠ AND THE `vendor.id`-LESS PATH IS ABOVE IT TOO, WHICH IS THE ONE LINE THE
+  // CHAIR ASKED FOR. The read failure at the `vendors` lookup answers
+  // `blocked:null` and returns BEFORE this point, and it records nothing
+  // because there is no vendor identity to attribute the check to — not because
+  // a rule excluded it. A row keyed on nobody is not a row.
+  //
+  // ⚠ THE EXIT BELOW THIS LINE IS DEAD TODAY, AND F-42.47 IS WHY. `describeDate`
+  // has eight returns (src/lib/vendor/occupancy.js:1110, :1128, :1136, :1137,
+  // :1148, :1158, :1161, :1172) and every one of them is an object, so `!out`
+  // cannot be true. O-1's "record at :171" therefore has no live effect today —
+  // it is not wrong, it is unreachable, and this one call site gives it effect
+  // the moment F-42.47's cure makes that branch reachable. Nothing here needs
+  // to change on that day, which is why the call sits above both exits rather
+  // than being written twice.
+  await recordCheck(supabase, vendor.id, date);
 
   // The checker's own could-not-see, carried rather than translated.
   if (!out) {
