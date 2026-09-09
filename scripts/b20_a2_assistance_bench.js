@@ -476,6 +476,63 @@ const ADMIN  = 'src/api/admin/assistance.js';
   // Meta Messaging Policy §1 has two limbs and the estate satisfied neither in code
   // until D3a. These are DRIVEN against the real writer's own helper, and for a
   // refusal the assertion is that it wrote NOTHING and named WHICH limb failed.
+  // ── §7e · F-41.103 · A FOUND PROSPECT'S RECORD MUST BE READ ────────────────
+  // The find path selected eight columns and none of the four consent ones, so an
+  // EXISTING row came back with consent_text undefined and read as "no record" no
+  // matter what it held. Every §7 fixture inserts a FRESH prospect, so the bench was
+  // green on a path it never walked. This cell walks it: forward once to create the
+  // row WITH a record, then forward again to the SAME number and assert the second
+  // call still sees it.
+  // ── §7f · R-41.133 · THREE STATES, AND THE CHECK THAT ADMITS THE FOURTH ────
+  // The tick writes TDW's own sentence under its own source word. Two cells, as the
+  // chair named: the CHECK admits exactly four values, and consentState reports
+  // founder_attested DISTINCTLY from her_words — because if the two collapsed, the
+  // queue would show the weaker evidence as the stronger, which is the whole thing
+  // the third state exists to prevent.
+  section('§7f · R-41.133 — the founder\'s attestation is its own source, and its own state');
+  {
+    const mig = read('db/migrations/0157_consent_source_founder_attested.sql');
+    const four = ["'instagram_dm'", "'whatsapp'", "'other'", "'founder_attested'"];
+    ok('§7f: 0157 admits EXACTLY the four ruled values, no more',
+       four.every((v) => mig.includes(v))
+       && (mig.match(/consent_source in \(([^)]*)\)/) || [, ''])[1].split(',').length === 4);
+    ok('§7f: it drops the old constraint before adding, so a re-run is safe',
+       /drop constraint if exists prospects_consent_source_check/.test(mig)
+       && mig.indexOf('drop constraint') < mig.indexOf('add constraint'));
+
+    if (A && typeof A.consentState === 'function') {
+      const her  = { phone: '919876543210', consent_text: 'yes, 9876543210', consent_source: 'instagram_dm' };
+      const att  = { phone: '919876543210', consent_text: 'Founder asked her for this number and she gave it and agreed to be messaged.', consent_source: 'founder_attested' };
+      const none = { phone: '919876543210', consent_text: null, consent_source: null };
+      ok('§7f: her own reply reads her_words',
+         A.consentState(A.consentEvidences(her), her).state === 'her_words');
+      ok('§7f: the attestation reads founder_attested, NOT her_words',
+         A.consentState(A.consentEvidences(att), att).state === 'founder_attested');
+      ok('§7f: no record reads none, and still names the limb',
+         (() => { const st = A.consentState(A.consentEvidences(none), none);
+                  return st.state === 'none' && st.limb === 'b'; })());
+      // THE TRAP THIS CELL EXISTS FOR: TDW's sentence does not contain her number,
+      // so consentEvidences alone would call it limb (a) and the queue would say
+      // "No consent on file" over a real attestation. The source word is what
+      // separates them, and it must win.
+      ok('§7f: an attestation is never mistaken for a missing record, though it carries no number',
+         A.consentEvidences(att).ok === false
+         && A.consentState(A.consentEvidences(att), att).state === 'founder_attested');
+    } else {
+      for (let i = 0; i < 4; i++) ok('§7f cell — consentState absent (R-41.133 uncured)', false);
+    }
+  }
+
+  section('§7e · F-41.103 — a found prospect carries its consent record');
+  if (A) {
+    const src = strip(read(ASSIST));
+    const fn  = src.slice(src.indexOf('async function forwardToProspect('));
+    const finds = (fn.match(/\.select\('id, phone, name, ig_handle[^']*'\)/g) || []);
+    ok('§7e: every prospect select in the send path reads the consent columns'
+       + (finds.length ? ` — ${finds.length} select(s)` : ' — none found'),
+       finds.length >= 2 && finds.every((f) => f.includes('consent_text')));
+  }
+
   section('§7c · R-41.122 — the consent record, one cell per limb');
   // A CELL THAT CANNOT SEE ITS SUBJECT MUST FAIL, NEVER THROW (seat A's close note
   // §6, and its own four specimens). The first cut of this section called
@@ -521,9 +578,17 @@ const ADMIN  = 'src/api/admin/assistance.js';
     const fn  = src.slice(src.indexOf('async function forwardToProspect('));
     ok('R-41.122: the consent gate is read BEFORE the switchboard gate, never after',
        fn.indexOf('consentEvidences(prospect)') < fn.indexOf('const capFn ='));
-    ok('R-41.122: a missing record refuses outright — it never writes a dark row',
-       /code: REFUSE\.NO_CONSENT_RECORD/.test(fn)
-       && fn.indexOf('REFUSE.NO_CONSENT_RECORD') < fn.indexOf('writeForward'));
+    // R-41.132 (founder, 2026-09-09) REVERSED THIS THE SAME MORNING. The record is
+    // EVIDENCE, not a precondition: the send proceeds either way and the queue shows
+    // the gap as a fact beside it. So the cell that asserted a refusal now asserts
+    // the opposite — that the send path carries the reading OUT instead of refusing
+    // on it. The DM thread is the record (R-41.125); this column is a copy of it,
+    // and a missing copy is a gap in TDW's filing cabinet, not a reason to refuse.
+    ok('R-41.132: no record does NOT refuse — the send proceeds and the state is carried out',
+       !/code: REFUSE\.NO_CONSENT_RECORD/.test(fn)
+       && /consent: consentState\(consent, prospect\)/.test(fn));
+    ok('R-41.132: the gap is logged, never silent',
+       /NO CONSENT ON FILE \(limb \$\{consent\.limb\}\)/.test(fn));
     ok('R-41.122: NO boolean consent column anywhere — her words are the evidence',
        !/consent_given/.test(src));
   } else if (A) { /* guarded above — the ten reds are already recorded */ }

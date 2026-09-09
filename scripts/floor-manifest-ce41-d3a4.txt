@@ -1,0 +1,25 @@
+CE-41 · SEAT D · D3a4 (dream-os, HOT) · FLOOR MANIFEST
+base: 187c410cffdf331fd4219544f3f14019bb782ef6
+SUPERSEDES D3a3 — same base, same file; apply one, not both.
+
+b20_a2_assistance_bench   GREEN  148/148   was 140/140 at the base
+BOTH WAYS: cured GREEN 148/148 · uncured RED 139/148
+
+COUNT: 140 → 148 (+8). §7e +1 (F-41.103), §7c refusal cell inverted +1 (R-41.132),
+§7f +6 (R-41.133: two on the migration, four on the three states).
+
+c-41.72 — EVERY REPLACE PROVED BY GREP, AND ONE GREP WAS ITSELF WRONG:
+  bench regex   1  (expect 1)   `consentState\(consent, prospect\)`  ← regex-escaped
+  writer sites  2  (expect 2)   `consentState(consent, prospect)`
+  0157 present  1
+  three states  3  (expect 3)
+  The first attempt searched the UNESCAPED form and returned 0 while the edit was
+  correct. The habit only works if the grep matches the bytes actually written.
+
+§7f's SIXTH CELL IS THE ONE THAT MATTERS: TDW's attestation carries NO number, so
+consentEvidences alone calls it limb (a). Without the source word winning, the queue
+would show "No consent on file" over a real attestation. The cell asserts both halves
+at once — evidences() says false AND state says founder_attested.
+
+MIGRATION 0157 — tail derived by command immediately before allocation → 0156.
+NOT RUN by this seat. Drops the old constraint before adding, so a re-run is safe.

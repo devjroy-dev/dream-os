@@ -478,6 +478,33 @@ async function forwardToVendor(supabase, { item, request, target }, deps) {
 // join law (R-41.29) applied to prose instead of a field. It does NOT try to find
 // "the phone number" in her sentence; picking the right number out of free text is a
 // guess, and any run that folds to her row's phone is proof enough that she wrote it.
+// The queue's view of the same reading. One home: the pwa renders THIS, and never
+// re-derives "is there a record" from consent_text itself — two opinions on one
+// fact is how a row says No consent on file beside a record that exists.
+// R-41.133 — THREE STATES, AND THE QUEUE MUST NEVER RE-DERIVE THEM. The pwa renders
+// what this returns and never reads consent_source itself: two opinions on one fact
+// is how a row says "No consent on file" beside a record that exists.
+//
+//   her_words        — she replied and her reply carries the number. Strongest.
+//   founder_attested — TDW is speaking, not her. The founder's habit, made a tap and
+//                      labelled as his. Real evidence, weaker than hers, never dressed
+//                      as hers.
+//   none             — no record at all. The DM thread is still the record (R-41.125);
+//                      what is missing is TDW's copy of it.
+//
+// `limb` is kept on the `none` state because it says WHICH limb is unevidenced, and
+// the founder's next move differs: limb (b) means ask her, limb (a) means ask her to
+// send the number herself.
+const CONSENT_ATTESTED_SOURCE = 'founder_attested';
+
+function consentState(c, prospect) {
+  if (prospect && prospect.consent_source === CONSENT_ATTESTED_SOURCE && prospect.consent_text) {
+    return { state: 'founder_attested', limb: null };
+  }
+  if (c && c.ok) return { state: 'her_words', limb: null };
+  return { state: 'none', limb: (c && c.limb) || 'b' };
+}
+
 function consentEvidences(prospect) {
   const text = prospect && prospect.consent_text;
   // limb (b) — she said something, and it was recorded.
@@ -566,7 +593,15 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
   // UNIQUE, so a second writer must find before it inserts.
   let { data: found } = await supabase
     .from('prospects')
-    .select('id, phone, name, ig_handle, category, city, source, state')
+    // F-41.103 — THE FIND PATH MUST READ THE CONSENT COLUMNS TOO. It did not, so a
+    // prospect that ALREADY EXISTED came back with consent_text undefined and was
+    // reported as having no record no matter what the row actually held. D3a's gate
+    // could therefore never pass for a found prospect — only for one inserted in the
+    // same call. The founder's walk proved it: the record written at 05:17, the
+    // refusal at 10:49, the same number.
+    // THE BENCH DID NOT CATCH IT because every fixture inserts a FRESH prospect with
+    // consent on `target`; the found-with-a-record path had no cell. It has one now.
+    .select('id, phone, name, ig_handle, category, city, source, state, consent_text, consent_source, consent_at, consent_recorded_by')
     .like('phone', `%${lastTen}`)
     .limit(2);
   found = Array.isArray(found) ? found : [];
@@ -645,10 +680,24 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     prospect = { ...prospect, ...patch };
   }
 
+  // ── R-41.132 · THE RECORD IS EVIDENCE, NOT A PRECONDITION (founder, 09-09) ──
+  // D3a made this a gate and the founder reversed it the same morning. The send
+  // proceeds either way; what changes is whether the estate can SHOW the evidence
+  // later. R-41.125 stands: the Instagram DM thread is the record, and this column
+  // is a copy of it — so a missing copy is a gap in TDW's own filing cabinet, not a
+  // reason to refuse a message the founder has already cleared by hand.
+  //
+  // ⚠ WHAT THIS MEANS, SAID PLAINLY BECAUSE THE CODE NO LONGER SAYS IT: Meta's
+  // Messaging Policy §1 still has two limbs and TDW still has to satisfy them. The
+  // enforcement is now the FOUNDER'S HABIT and the DM thread, not this function.
+  // The queue shows "No consent on file" beside the send so the gap is visible
+  // rather than silent, and that visibility is the whole of what replaced the gate.
+  //
+  // The state is COMPUTED and RETURNED, never thrown away — the queue renders it,
+  // and a later sitting that wants the gate back has the reading already here.
   const consent = consentEvidences(prospect);
   if (!consent.ok) {
-    console.log(`[assistance:forward] item=${item.id} \u2192 prospect=${prospect.id} REFUSED no_consent_record (limb ${consent.limb}) \u2014 nothing written, nothing sent`);
-    return { ok: false, code: REFUSE.NO_CONSENT_RECORD, limb: consent.limb, error: consent.error };
+    console.log(`[assistance:forward] item=${item.id} \u2192 prospect=${prospect.id} NO CONSENT ON FILE (limb ${consent.limb}) \u2014 sending anyway (R-41.132); the DM thread is the record`);
   }
 
   const capFn = (deps.cap && deps.cap.on) || cap.on;
@@ -665,7 +714,7 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
 
   if (!armed) {
     console.log(`[assistance:forward] item=${item.id} → prospect=${prospect.id} status=dark — NOT SENT: ${darkReason}`);
-    return { ok: true, forward: forward.row, prospect, dark: { reason: darkReason } };
+    return { ok: true, forward: forward.row, prospect, consent: consentState(consent, prospect), dark: { reason: darkReason } };
   }
 
   // The join message. F-41.63: its five variables are META'S order, taken from
@@ -732,7 +781,7 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     await recordForwardOutcome(supabase, forward.row.id, { status: 'failed', error_code: code, error_title: (err && err.message) || null });
     return { ok: true, forward: { ...forward.row, status: 'failed', error_code: String(code) }, prospect, alert: { sent: false, refusal: String(code) } };
   }
-  return { ok: true, forward: forward.row, prospect };
+  return { ok: true, forward: forward.row, prospect, consent: consentState(consent, prospect) };
 }
 
 async function writeForward(supabase, row) {
@@ -985,6 +1034,6 @@ module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
-  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences,
+  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };
