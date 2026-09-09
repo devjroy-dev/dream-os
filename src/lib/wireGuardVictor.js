@@ -158,8 +158,35 @@ const TRANSMISSION_CLAIM_RE = new RegExp([
   "\\b(?:sent|messaged|texted|forwarded|passed on)\\s+(?:it\\s+)?to\\s+\\S",
 ].join('|'), 'i');
 
+// ── F-42.21(b) · THE BARE-GERUND DEFECT. MINE, AND IT ATE AN HONEST TURN. ──
+// The first cut made the particle OPTIONAL — `(?:out|in touch|up)?` — so the limb
+// fired on a BARE "reaching". On the founder's live line, 2026-09-09 18:28:36,
+// Victor wrote 「 …to confirm I'm REACHING THE RIGHT PERSON and the right event 」
+// and this limb matched the ten bytes "reaching t". That phrase is about
+// IDENTIFYING the right person, not about reaching out TO them, and the turn was
+// replaced with 「 That didn't land — nothing was changed 」 — a false interception
+// on a reply carrying two invoice numbers and two figures the vendor then lost.
+//
+// THE PARTICLE IS WHAT MAKES THESE VERBS TRANSMISSION VERBS. "reaching",
+// "getting" and "following" are among the commonest verbs in English and mean
+// nothing about a message on their own; "reach out", "get in touch" and "follow
+// up" are the idioms R-VS.12 was asked to add, and the idiom is the whole of the
+// signal. So each particle is now REQUIRED with its own verb rather than shared
+// optionally across all of them — the shared optional group was the shape that
+// let a bare gerund through.
+//
+// The plainly-transmissive verbs keep their own limb, and they require a
+// RECIPIENT (`to`/`with` + a token), because "writing the draft" and "sending the
+// invoice" are not sends to a lead either.
 const BARE_INTENT_RE = new RegExp([
-  "\\b(?:reaching|getting|writing|messaging|texting|sending|contacting|following)\\s+(?:out\\s+|in\\s+touch\\s+|up\\s+)?(?:to|with)?\\s*\\S",
+  "\\breach(?:ing|ed)?\\s+out\\b",
+  "\\bget(?:ting)?\\s+in\\s+touch\\b",
+  "\\bfollow(?:ing)?\\s+up\\b",
+  // These four are transmissive only WITH A RECIPIENT. "writing the draft for you"
+  // and "getting the file" are ordinary work; "writing to Priya" is a send. The
+  // preposition is required and the object may sit between (up to three tokens,
+  // lazily, so the span cannot run past a clause boundary into a later "to").
+  "\\b(?:writing|messaging|texting|contacting|sending)\\s+(?:[^\\s,.]+\\s+){0,3}?(?:to|with)\\s+[^\\s,.]+",
   "\\bon\\s+it\\b",
   "\\bwill\\s+(?:do|reach|message|text|write|send|contact)\\b",
   "\\bi'?ll\\s+(?:reach|get\\s+in\\s+touch|follow\\s+up|contact)\\b",

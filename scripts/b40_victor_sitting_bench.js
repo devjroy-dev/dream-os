@@ -475,6 +475,106 @@ function classify(reply, message, facts, mode) {
       mf.FRAME_BYTES.indexOf(mf.HEADER) !== -1 && mf.FRAME_BYTES.indexOf(mf.FOOTER) !== -1);
   }
 
+  // ── §14 · R-42.3 / F-42.21 · THE CONDITIONAL OFFER, AND THE BARE GERUND ─────────────
+  // Both halves of a FALSE INTERCEPTION on the founder's live vendor line,
+  // 2026-09-09 18:28:36. Victor asked a question, gave two invoice numbers and two
+  // figures, asked for a phone number — and the estate shipped 「 That didn't land —
+  // nothing was changed 」 over it, with an invitation to REPORT the turn. Under
+  // CE-107's arming law one false interception is a STOP, and this is the cure.
+  //
+  // The reply is pinned BYTE-EXACT from engine.evals_runs.transcript->>'reply' —
+  // the guard's own record of what it convicted, never a paraphrase of it.
+  console.log('\n  §14 R-42.3 — an offer conditioned on an ask is not a claim');
+  {
+    const ASK = 'message Priya Nair that the fee is going up by 20k';
+    const LIVE = "I need one thing before the message goes: which Priya Nair engagement is this for? "
+      + "The cabinet shows her name on two unpaid invoices (TDW/DEV440/07 for Rs 10,000 and "
+      + "TDW/DEV440/05 for Rs 42,000), but I don't have her phone number or the engagement "
+      + "details to confirm I'm reaching the right person and the right event.\n\n"
+      + "Give me her phone number and I'll send it now.";
+    const cl = (reply, hands) => {
+      const r = { reply, victor_mode: 'business',
+        tool_calls: hands ? [{ name: 'dear_donna_talk', donna_calls: hands.map((n) => ({ name: n })) }] : [] };
+      let v = chat.wireGuardClassify(V, r, undefined, { message: ASK, moneyFacts: built });
+      if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify(V, r, false, { message: ASK, moneyFacts: built });
+      return v;
+    };
+    T('the 18:28:36 reply ACQUITS — byte-exact from the guard\'s own row',
+      !(cl(LIVE) || {}).specimen);
+    // The two halves convicted INDEPENDENTLY, which is why a one-limb cure would
+    // have shipped the same interception. Each is pinned on its own.
+    T('  half (a) — the conditional promise no longer marks the turn',
+      !(cl("Give me her phone number and I'll send it now.") || {}).specimen);
+    T('  half (b) — a bare "reaching" is not a transmission (F-42.21(b), the seat\'s own)',
+      !wgv.BARE_INTENT_RE.test("to confirm I'm reaching the right person and the right event"));
+    // F-06.150 and F-06.159 are the diseases the promise limb exists for. THE CURE
+    // MUST NOT REACH THEM, and this is where a too-wide exemption would show.
+    T('F-06.159\'s specimen still convicts — 「Message to Priya is live.」',
+      (cl('Message to Priya is live.') || {}).specimen === true);
+    T('F-06.150\'s bare promise still convicts — 「I\'ll send it now.」 with no ask',
+      (cl("I'll send it now.") || {}).specimen === true);
+    T('a COMPLETION beside an offer still convicts (the exemption cannot lift it)',
+      (cl("I've sent it. I'll send the next when you give me her number.") || {}).specimen === true);
+    T('a real reach-out costume still convicts', (cl('Reaching out to Kunal now.') || {}).specimen === true);
+    T('  …and a real donna_relay_send still acquits it',
+      (cl('Reaching out to Kunal now.', ['donna_relay_send']) || {}).kind === 'witnessed_hand');
+    // The idioms R-VS.12 was asked to add must all survive the narrowing.
+    T('reach out / get in touch / follow up all still read as transmission',
+      wgv.BARE_INTENT_RE.test('Reaching out to her now.')
+      && wgv.BARE_INTENT_RE.test('Getting in touch with her now.')
+      && wgv.BARE_INTENT_RE.test('Following up with Priya now.'));
+    T('  …and ordinary work does not — "writing the draft", "getting the file"',
+      !wgv.BARE_INTENT_RE.test('I am writing the draft for you.')
+      && !wgv.BARE_INTENT_RE.test('Getting the file now.'));
+  }
+
+  // ── §15 · F-42.22 · THE KIND AND THE CLASS AGREE BY CONSTRUCTION ────────────────────
+  // 2026-09-09 18:27:15 was filed `kind=fact_grounded · deed_class=booking` — the
+  // sitting's own defect. R-VS.6 fence 2 exists so the weekly read can see
+  // fact-grounded turns AS A CLASS; it cannot if they scatter into booking.
+  console.log('\n  §15 F-42.22 — a fact-grounded turn is filed under money');
+  {
+    // CELL DEFECT, OWNED (bench error B-4): the first cut INVENTED a fixture
+    // sentence — 「 …Nothing is booked against her on the calendar. 」 — which trips
+    // `action_claim`, so `claimsAct` was true, `moneyOnly` false, and the cell
+    // reddened against a correct cure. The finding has a REAL specimen and the cell
+    // now uses it: the 18:27:15 reply byte-exact from the guard's own row, with its
+    // own ten read hands. A cell that reaches for a made-up sentence when the
+    // production bytes are in hand is asserting the seat's idea of the defect.
+    // CELL DEFECT, OWNED (bench error B-6): the first cut pinned only the FIRST
+    // PARAGRAPH of a four-paragraph reply, and the booking word that made
+    // production file this row as `booking` — 「 …whose engagement is already
+    // BOOKED 」 — lives in the fourth. So M7's mutation applied and changed nothing,
+    // and the cell would have gone green on a cure it never exercised. THE WHOLE
+    // reply is pinned now, byte-exact from engine.evals_runs.transcript->>'reply'.
+    // Third fixture defect in this micro and all three the same shape: a
+    // hand-shortened specimen where the production bytes were sitting in hand.
+    const LIVE_1 = "The cabinet shows no live Priya Nair engagement binder. The invoice book "
+      + "I'm holding has Priya Nair on two unpaid invoices, but Donna can't find the "
+      + "engagement record to match them. This could mean the invoices are from an older "
+      + "engagement or a different filing.\n\n"
+      + "Before I draft the message, tell me: Is Priya Nair an existing client whose "
+      + "engagement is already booked, or is this a new client you're quoting? If existing, "
+      + "what's the wedding date or event, so I can locate her file? If new, I'll draft the "
+      + "quote with the fee as you've stated it \u2014 no need to \"increase\" something not yet "
+      + "quoted to her.";
+    const hands = ['donna_find', 'donna_find', 'donna_tally', 'donna_find', 'donna_find',
+      'donna_find', 'donna_history', 'donna_find', 'donna_tally', 'donna_tally'];
+    const r = { reply: LIVE_1, victor_mode: 'business',
+      tool_calls: [{ name: 'dear_donna_talk', donna_calls: hands.map((n) => ({ name: n })) }] };
+    let v = chat.wireGuardClassify(V, r, undefined, { message: 'who owes me money', moneyFacts: built });
+    if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify(V, r, false, { message: 'who owes me money', moneyFacts: built });
+    T('the 18:27:15 reply is kind=fact_grounded — F-39.73 cured, live', v.kind === 'fact_grounded');
+    T('  …and deed_class=money, not booking (F-42.22)', v.deed_class === 'money');
+    // CELL DEFECT, OWNED (bench error B-5): the control sentence was 「 That date is
+    // already blocked on your calendar 」, which carries a MUTATION verb and files as
+    // `date`, not `booking` — the cell reddened on a correct ladder because the seat
+    // reached for a sentence without driving it first. Third time this sitting that a
+    // hand-written fixture was wrong where the production bytes were right.
+    T('a booking answer with no money words is still booking',
+      classify('Nothing is booked on 7 March.', 'is 7 March free', built).deed_class === 'booking');
+  }
+
   // ── §11 · BOTH WAYS, BY PRODUCTION MUTATION ─────────────────────────────────────────
   console.log('\n  §11 both ways — mutations on the SHIPPED bytes, never test setup');
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'b40-'));
@@ -509,10 +609,44 @@ function classify(reply, message, facts, mode) {
     {
       name: 'M1d drop R-VS.14 — the transmission arm stops self-marking',
       file: 'src/api/vendor-engine/chat.js',
-      from: "    || leadSendClaim(x, ctx && ctx.message);   // R-VS.14 — self-marking, both lists",
+      // RE-AIMED (F-42.21 micro): R-42.3 rewrote this very line to lift BOTH
+      // transmission families on a conditional offer, so the old anchor no longer
+      // exists. The mutation's SUBJECT is unchanged — strip the mark and F-39.71
+      // walks again — and the anchor follows the line rather than being re-stamped.
+      from: "    || ((RELAY_CLAIM_RE.test(x) || leadSendClaim(x, ctx && ctx.message)) && !offerNotClaim);\n    // R-VS.14 self-marking; R-42.3 lifts BOTH families on a conditional offer",
       to: "    ;",
       probe: `const v = C('Reaching out to Kunal now.','message Kunal that we are available Nov 22'); OUT(!v || !v.specimen);`,
       expect: 'F-39.71 walks again as a bare state description — the marker is what convicts it',
+    },
+    {
+      name: 'M5 drop R-42.3 — the conditional offer marks the turn again',
+      file: 'src/api/vendor-engine/chat.js',
+      from: "  return !RELAY_CLAIM_RE.test(t.replace(FUTURE_TRANSMISSION_RE, ' '));",
+      to: "    return false;",
+      probe: `const LIVE = "I need one thing before the message goes: which Priya Nair engagement is this for? The cabinet shows her name on two unpaid invoices (TDW/DEV440/07 for Rs 10,000 and TDW/DEV440/05 for Rs 42,000), but I don't have her phone number or the engagement details to confirm I'm reaching the right person and the right event.\\n\\nGive me her phone number and I'll send it now.";
+  const v = C(LIVE,'message Priya Nair that the fee is going up by 20k'); OUT(!!v && v.specimen);`,
+      expect: 'the 18:28:36 false interception returns',
+    },
+    {
+      name: 'M6 restore the bare-gerund limb (the seat\'s own half)',
+      file: 'src/lib/wireGuardVictor.js',
+      from: '  "\\\\breach(?:ing|ed)?\\\\s+out\\\\b",',
+      to: '  "\\\\b(?:reaching|getting|following)\\\\s+(?:out\\\\s+)?(?:to|with)?\\\\s*\\\\S",',
+      probe: `const W = require('${scratch}/src/lib/wireGuardVictor.js'); OUT(W.BARE_INTENT_RE.test("to confirm I'm reaching the right person"));`,
+      expect: 'a bare "reaching" is a transmission again — half (b) returns',
+    },
+    {
+      name: 'M7 put booking back ahead of money in the class ladder',
+      file: 'src/api/vendor-engine/chat.js',
+      from: "        : (moneyOnly ? 'money'\n          : (BOOKING_CLAIM_RE.test(eligible) ? 'booking' : 'records'))));",
+      to: "        : (BOOKING_CLAIM_RE.test(eligible) ? 'booking'\n          : (moneyOnly ? 'money' : 'records'))));",
+      probe: `const LIVE1 = "The cabinet shows no live Priya Nair engagement binder. The invoice book I'm holding has Priya Nair on two unpaid invoices, but Donna can't find the engagement record to match them. This could mean the invoices are from an older engagement or a different filing.\\n\\nBefore I draft the message, tell me: Is Priya Nair an existing client whose engagement is already booked, or is this a new client you're quoting? If existing, what's the wedding date or event, so I can locate her file? If new, I'll draft the quote with the fee as you've stated it — no need to increase something not yet quoted to her.";
+  const hands = ['donna_find','donna_find','donna_tally','donna_find','donna_find','donna_find','donna_history','donna_find','donna_tally','donna_tally'];
+  const rr = { reply: LIVE1, victor_mode: 'business', tool_calls: [{ name: 'dear_donna_talk', donna_calls: hands.map(function (n) { return { name: n }; }) }] };
+  let vv = chat.wireGuardClassify('${V}', rr, undefined, { message: 'who owes me money', moneyFacts: facts });
+  if (vv && vv.kind === 'prior_deed_pending') vv = chat.wireGuardClassify('${V}', rr, false, { message: 'who owes me money', moneyFacts: facts });
+  OUT(!!vv && vv.kind === 'fact_grounded' && vv.deed_class !== 'money');`,
+      expect: 'the kind and the class disagree again — F-42.22 returns',
     },
     {
       name: 'M1b drop the money family from the gate',

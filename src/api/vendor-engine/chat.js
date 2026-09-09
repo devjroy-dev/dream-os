@@ -1401,6 +1401,57 @@ const RELAY_VERB_RE = /\b(?:send|message|msg|text|whatsapp|write to|reply to|tel
 
 // The VERBATIM fork's markers: the vendor supplied the words himself, so the
 // estate delivers HIS bytes and no model touches the body path.
+// ── R-42.3's SITING, AND WHY IT MOVED (b06_forkc §6.11) ────────────────────
+// The first cut declared these inside `wireGuardClassify`. `FUTURE_TRANSMISSION_RE`
+// carries `whatsapp` as a TRANSMISSION VERB, and §6.11 greps the classifier's
+// executable body for `vendorInbound|whatsapp|wa_seat|pwa` to prove the ladder
+// never branches on the SEAT. The cell was right to fire and the siting was wrong:
+// vocabulary belongs at module scope beside the family it reads — which is where
+// RELAY_CLAIM_RE itself lives — and a regex rebuilt on every turn is a cost with
+// no reason. The cell keeps every tooth; nothing about it was amended.
+// ── R-42.3 · F-42.21(a) · THE CONDITIONAL OFFER IS AN ASK, NOT A CLAIM ─────
+// 2026-09-09 18:28:36, the founder's live vendor line. Victor wrote:
+//   「 I need one thing before the message goes… I don't have her phone number…
+//     Give me her phone number and I'LL SEND IT NOW. 」
+// and the estate replaced it with 「 That didn't land — nothing was changed 」,
+// taking two invoice numbers, two figures and a request for a phone number off
+// the vendor's screen and inviting him to REPORT the turn as a malfunction.
+// Nothing was supposed to land. He was being asked a question.
+//
+// THE LIMB IS NOT WRONG AND IT IS NOT REMOVED. RELAY_CLAIM_RE's first-person
+// limb was drafted to catch a promise ON PURPOSE — F-06.150's disease is a bare
+// 「 I'll send it now 」 with no hand, and that stays a claim. What the family
+// never drew is THIS case: the promise is CONDITIONED ON AN INPUT THE REPLY IS
+// ASKING FOR. A promise the vendor must act on before it can be kept is an
+// offer, and harveySoul:173 licenses exactly that shape — 「 you speak intent or
+// you ask, in the present 」.
+//
+// READS THE WHOLE REPLY, NOT THE SENTENCE, as ruled: the ask and the promise are
+// usually two sentences and a per-sentence test would never see them together.
+//
+// THE EXEMPTION CANNOT LIFT A COMPLETION. It applies only when the ONLY relay
+// limb the reply satisfies is the future one — proven by excising the future
+// spans and re-testing the SHIPPED regex, never by a second opinion about what
+// the reply says. 「 I've sent it. I'll send the next when you give me her
+// number 」 still convicts on its first sentence, which is the whole point.
+const FUTURE_TRANSMISSION_RE = /\bI(?:'ll| will|'m going to| am going to)\s+(?:just |already |now )?(?:send|sending|message|messaging|text|texting|write|writing|whatsapp|forward|relay|pass on)\b/gi;
+const MISSING_INPUT_RE = new RegExp([
+  "\\bi\\s+(?:don'?t|do not)\\s+have\\b",
+  "\\bi\\s+need\\b",
+  "\\b(?:give|send|tell|share)\\s+me\\b",
+  "\\bwhat(?:'s| is)\\s+(?:her|his|their|the)\\b",
+  "\\b(?:once|as soon as|when|if)\\s+you\\s+(?:give|send|tell|share|confirm)\\b",
+  "\\bnot\\s+on\\s+file\\b",
+].join('|'), 'i');
+function conditionalOffer(text) {
+  const t = String(text || '');
+  if (!MISSING_INPUT_RE.test(t)) return false;
+  FUTURE_TRANSMISSION_RE.lastIndex = 0;
+  if (!FUTURE_TRANSMISSION_RE.test(t)) return false;
+  FUTURE_TRANSMISSION_RE.lastIndex = 0;
+  return !RELAY_CLAIM_RE.test(t.replace(FUTURE_TRANSMISSION_RE, ' '));
+}
+
 const VERBATIM_RE = /(?:^|\s)(?:tell|say to|write to|message|send)\s+\S+\s*[:,]\s*["'“](.+)["'”]\s*$|["'“]([^"'”]{8,})["'”]/;
 
 // (exported at the foot, beside its siblings — a mid-file assignment would be
@@ -1609,6 +1660,10 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // So the turn reaches the ladder — all B-i was ever for — and is then judged by
   // the class it has always belonged to, acquitted by a real send hand and by
   // nothing else.
+  // R-42.3 — the predicate is module-scope, beside the family it reads (see
+  // CONDITIONAL OFFER above RELAY_CLAIM_RE). Only the call sits in the ladder.
+  const offerNotClaim = conditionalOffer(reply);
+
   const relayClaim = RELAY_CLAIM_RE.test(eligible) || leadSendClaim(eligible, ctx && ctx.message);
   // ── THE ACKNOWLEDGEMENT PREDICATE, DEFINED POSITIVELY (executor-authored,
   // Stage-1-scoped, DISCLOSED). The first ladder defined `acknowledgement` NEGATIVELY —
@@ -1704,8 +1759,13 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // behind it still marks nothing.
   const isClaimSentence = (x) => ACTION_CLAIM_RE.test(x) || COMPLETED_ACT_RE.test(x)
     || MUTATION_CLAIM_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
-    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x)
-    || leadSendClaim(x, ctx && ctx.message);
+    || DOORLINE_CLAIM_RE.test(x)
+    // R-42.3 — BOTH transmission families are lifted together. leadSendClaim is
+    // R-VS.12's own vocabulary and its TRANSMISSION_CLAIM_RE limb reads 「 I'll
+    // send 」 exactly as RELAY_CLAIM_RE does; lifting one and leaving the other
+    // ships the identical interception, which is the failure the chair named
+    // before this cure was allowed to start.
+    || ((RELAY_CLAIM_RE.test(x) || leadSendClaim(x, ctx && ctx.message)) && !offerNotClaim);
   // the stative "<participle> as" IS a completion marker — that is what carries the claim
   // in the shape F-06.126 has been unable to see for three batches.
   // RELAY_CLAIM_RE joins BOTH lists, exactly as DOORLINE_CLAIM_RE does and for the
@@ -1714,8 +1774,9 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // beside it would acquit the founder's own specimen, whose opener is 「 Understood. 」
   const markerIn = (x) => AGENTIVE_CLAIM_RE.test(x) || DONE_MARKER_RE.test(x)
     || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
-    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x)
-    || leadSendClaim(x, ctx && ctx.message);   // R-VS.14 — self-marking, both lists
+    || DOORLINE_CLAIM_RE.test(x)
+    || ((RELAY_CLAIM_RE.test(x) || leadSendClaim(x, ctx && ctx.message)) && !offerNotClaim);
+    // R-VS.14 self-marking; R-42.3 lifts BOTH families on a conditional offer
   const opener = sentences[0] || '';
   // the "Done."-class opener: SHORT and carrying nothing but the completion word. Length
   // bounded so a long first sentence that merely happens to contain "already" is not one.
@@ -1759,11 +1820,23 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // R-VS.12: `victorClass` is now `expense` or nothing, so a claimed send to a
   // lead falls through to `relay` exactly as it did before this sitting — the
   // seat's preemption of that class is REVERSED, deliberately.
+  // ── F-42.22 · THE KIND AND THE CLASS MUST NOT DISAGREE ────────────────────
+  // 2026-09-09 18:27:15 filed `kind=fact_grounded · deed_class=booking`. The money
+  // LIMB runs on `moneyClaim && !claimsAct`; this ladder had `booking` AHEAD of the
+  // same predicate, so a money answer that also mentioned the calendar was
+  // acquitted as fact-grounded and filed as a booking. R-VS.6 fence 2 exists so the
+  // weekly read can see fact-grounded turns AS A CLASS, and it cannot if they
+  // scatter. Computed ONCE and read by both, so the two cannot drift again.
+  //
+  // NO BEHAVIOURAL CHANGE BEYOND THE FILING, derived not hoped: `moneyOnly` entails
+  // `!claimsAct`, so the money limb returns before `classWitnessHands` is consulted
+  // and `deed_class` reaches nothing else on that path. Only the label moves.
+  const moneyOnly = moneyClaim && !claimsAct;
   const deedClass = victorClass ? victorClass
     : (mutationClaim ? 'date'
       : (relayClaim ? 'relay'
-        : (BOOKING_CLAIM_RE.test(eligible) ? 'booking'
-          : (moneyClaim && !claimsAct ? 'money' : 'records'))));
+        : (moneyOnly ? 'money'
+          : (BOOKING_CLAIM_RE.test(eligible) ? 'booking' : 'records'))));
   // ── F-06.183's CURE (§0.2 GRANTED) · THE WITNESS IS CLASS-SCOPED ──────────
   //
   // FOUNDER-WITNESSED ON PRODUCTION, walk ten, 2026-08-11 13:32:30. The vendor's
@@ -1823,7 +1896,7 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   //
   // NO BLOCK AND NO HANDS IS THE CONFABULATION SIGNATURE and it keeps convicting
   // — that is F-40.9's shape and R-VS.6 fence 2 exists to keep it detectable.
-  else if (moneyClaim && !claimsAct) {
+  else if (moneyOnly) {   // F-42.22 — the same predicate the class ladder reads
     kind = moneyGrounded(eligible, ctx && ctx.moneyFacts)
       ? 'fact_grounded'
       : (readHands.length > 0 ? 'read_backed_report' : 'costume');

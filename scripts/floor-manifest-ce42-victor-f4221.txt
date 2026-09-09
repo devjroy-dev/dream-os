@@ -1,0 +1,42 @@
+# CE-42 · SEAT VICTOR · MICRO F-42.21 / F-42.22 — DECLARED MANIFEST (F-14.16)
+# base: f3e9ff0  (re-pinned from b3b5995 after 4a's door rider d6cd660 and D5b;
+#       all four manifest blobs verified byte-identical b3b5995..f3e9ff0 by
+#       `git rev-parse origin/main:<path>` before this packet was re-cut)
+#
+# ── THE FILE TABLE ──────────────────────────────────────────────────────────
+# MACHINE-READ by run-floor.sh --delivery: everything after '#' is stripped,
+# blanks dropped, and any dirty path NOT listed below refuses the run. That
+# refusal is the point — it is what lets a floor be measured BEFORE the commit
+# without the dirt being able to hide.
+#
+#   src/api/vendor-engine/chat.js       — R-42.3's predicate and the two lists it
+#                                         gates; F-42.22's single `moneyOnly`.
+#                                         The predicate is at MODULE SCOPE beside
+#                                         RELAY_CLAIM_RE, not in the ladder:
+#                                         b06_forkc §6.11 greps the classifier's
+#                                         executable body for `whatsapp` to prove
+#                                         it never branches on the seat, and
+#                                         FUTURE_TRANSMISSION_RE carries that word
+#                                         as a transmission verb.
+#   src/lib/wireGuardVictor.js          — F-42.21(b): each particle required with
+#                                         its own verb; the four transmissive verbs
+#                                         require a recipient preposition.
+#   scripts/b40_victor_sitting_bench.js — §14 (11 cells), §15 (3), M5/M6/M7, and
+#                                         M1d re-aimed at the line R-42.3 rewrote.
+#                                         113/113 -> 129/129.
+#   docs/TDW_MICRO_F4221_HANDOVER.md    — new.
+#
+# src/engine/dist/ is NOT here and never will be: gitignored (.gitignore:26) and
+# Railway's `npm run build` produces it at deploy. `npm run build` therefore runs
+# in the verify block BEFORE the floor, so a tsc failure surfaces as a red in the
+# founder's terminal rather than a boot crash on Railway.
+#
+# NOT in this packet, deliberately: src/lib/victorLines.js. It moved at c1c17db
+# (4a's F-42.66 cure — the load-time self-check this seat's comment had claimed
+# since CE-40 without having one, owned in the handover §5). This micro does not
+# touch it, and shipping it would carry another packet's cure back out.
+src/api/vendor-engine/chat.js
+src/lib/wireGuardVictor.js
+scripts/b40_victor_sitting_bench.js
+docs/TDW_MICRO_F4221_HANDOVER.md
+scripts/floor-manifest-ce42-victor-f4221.txt
