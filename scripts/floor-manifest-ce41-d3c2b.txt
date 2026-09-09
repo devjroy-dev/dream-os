@@ -1,0 +1,36 @@
+CE-41 · SEAT D · D3c2b (dream-os) · FLOOR MANIFEST
+base: 3f323817cbdc332f07571d6790c46d354983d3cd
+
+b66_inbound_consent   GREEN  41/41   was 22/22 — +19 (§8 F-41.151, §9 F-41.100, §10 F-41.128)
+b20_a2 · b65 · b64_mutations · b61 · b62_mutations · b63_mutations   all exit 0
+BOTH WAYS: cured GREEN 41/41 · uncured RED, fourteen NAMED reds
+NO MIGRATION.
+
+⚠ b20_a2's ONE-HOME CELL CAUGHT THE PUBLIC DOOR, AND THE LAW WAS RIGHT.
+  `.from('assistance_*')` may appear in exactly TWO files — the writer and
+  relayStatus. The first cut of src/api/public/enquiry.js made a THIRD. The query
+  moved into the writer as `publicEnquiry`; the door is now a shape that decides what
+  a stranger may see. A sealed bench refusing an architecture is the cheapest review
+  in the estate, and it fired before the founder ever saw the packet.
+
+F-41.128 DRIVEN, NOT READ. All four paths run against a double whose fixture row
+CARRIES phone and name: good prefix → four fields, no phone, no name; bad prefix →
+null; closed → null; two matches → null. One answer for every miss, so the door is
+not an oracle.
+
+F-41.151's LOOKUP WAS RESHAPED ON THE ESTATE'S OWN PATTERN. Its first cut pulled
+EVERY user row into memory and matched in JS — a full table scan on the ordinary path,
+where the ordinary answer is "not a vendor". findCoupleIdByLastTen (:390) already had
+the shape: filter in Postgres with `like '%<ten>'`, take two, and REFUSE TO GUESS
+between country-code twins. A redirect naming the wrong handle is worse than none.
+
+F-41.100: the cap gates on the ITEM, above both arms — a TDW vendor counts as much as
+an outsider, so inside either arm it would be half a rule.
+
+THREE CELLS OF MINE WERE WRONG BEFORE THEY WERE RIGHT:
+  8.3 matched `function consentEvidences(prospect)` — the DEFINITION — and read the
+      gate as misplaced when it was not. F-41.107's family. Scoped to the function.
+  10.1 read the door for a select that had moved to the writer.
+  10.6 COUNTED occurrences of NOTHING; the count moved when the query moved. Re-cut to
+      the property across both homes (R-41.138: a cell counts only when the count IS
+      the guarantee).

@@ -143,6 +143,12 @@ const REFUSE = Object.freeze({
   VENDOR_UNAVAILABLE: 'vendor_unavailable',
   ALREADY_HAS:     'peer_already_has',
   BAD_TARGET:      'bad_target',
+  // F-41.151 — she is already one of ours. Not a failure: a REDIRECT, and the queue
+  // offers the TDW forward that was the right door all along.
+  ALREADY_A_VENDOR: 'already_a_vendor',
+  // F-41.100 / R-41.123 — the ruled cap, warn-and-confirm. Not a wall: the founder
+  // can pass it, but he passes it ON PURPOSE.
+  FANOUT_REACHED:  'fanout_reached',
   // R-41.122 — Meta Messaging Policy §1's two limbs, refused under one code because
   // the founder's next step is the same either way: go back to the DM and get her
   // words. The SENTENCE distinguishes them; the code does not need to.
@@ -437,11 +443,35 @@ async function coupleContact(supabase, request) {
 // ── forwardAssistanceItem — the sole writer of assistance_forwards ──────────
 // target: { kind:'vendor', vendor_id } | { kind:'prospect', phone, ig_handle?, name? }
 // Returns { ok, forward, lead?, prospect?, dark?: {reason} } or { ok:false, code, error }.
-async function forwardAssistanceItem(supabase, { itemId, target, actor } = {}, deps = {}) {
+async function forwardAssistanceItem(supabase, { itemId, target, actor, confirm } = {}, deps = {}) {
   const loaded = await loadItem(supabase, itemId);
   if (!loaded) return { ok: false, code: REFUSE.NOT_FOUND, error: 'No such item.' };
   const { item, request } = loaded;
   if (request.status === 'closed') return { ok: false, code: REFUSE.CLOSED, error: 'This request is closed.' };
+
+  // ── F-41.100 / R-41.123 · THE CAP IS ENFORCED, AND IT ASKS ────────────────
+  // §6.2 ruled three per category with an admin override, and NOTHING EVER CHECKED
+  // IT: FANOUT_DEFAULT was read only to be handed to the queue for display, while
+  // bumpForwarded incremented unconditionally. The founder's walk showed `6 of 3`
+  // today. A number the code never keeps is worse than no number — it reads as a rule.
+  //
+  // WARN AND CONFIRM, NOT A WALL. The override was always part of the ruling, so this
+  // refuses ONCE and says what he is about to do; `confirm: true` on the retry passes.
+  // The fourth forward becomes a DECISION rather than an accident or an impossibility.
+  //
+  // IT GATES ON THE ITEM, ABOVE BOTH ARMS. The cap counts how many vendors have seen
+  // this category — a TDW vendor counts exactly as much as an outsider — so it cannot
+  // live inside either arm without being half a rule.
+  if (!confirm && (item.forwarded_count || 0) >= FANOUT_DEFAULT) {
+    console.log(`[assistance:forward] item=${item.id} at ${item.forwarded_count || 0}/${FANOUT_DEFAULT} \u2014 REFUSED fanout_reached, awaiting confirm`);
+    return {
+      ok: false,
+      code: REFUSE.FANOUT_REACHED,
+      forwarded_count: item.forwarded_count || 0,
+      fanout_default: FANOUT_DEFAULT,
+      error: `This is ${(item.forwarded_count || 0) + 1} of ${FANOUT_DEFAULT} for ${categoryNoun(item.category)}. Forward anyway?`,
+    };
+  }
 
   const kind = target && target.kind;
   if (kind === 'vendor')   return forwardToVendor(supabase, { item, request, target, actor }, deps);
@@ -534,6 +564,28 @@ async function forwardToVendor(supabase, { item, request, target }, deps) {
 // the founder's next move differs: limb (b) means ask her, limb (a) means ask her to
 // send the number herself.
 const CONSENT_ATTESTED_SOURCE = 'founder_attested';
+
+// F-41.151's lookup, and the only place the estate asks "is this number ours?".
+// phone → users → vendors, because `vendors` HAS NO PHONE COLUMN (verified at the
+// cut: it carries routing_handle and user_id). Returns null for a number that is not
+// a vendor's, which is the ordinary case and must stay cheap.
+// ⚠ SHAPED ON findCoupleIdByLastTen (:390), NOT INVENTED. Its first cut pulled EVERY
+// user row into memory and matched in JS — a full table scan on the ordinary path,
+// where the ordinary answer is "not a vendor". The estate already had the right
+// shape one function up: filter in Postgres with `like '%<ten>'`, take two, and
+// REFUSE TO GUESS between country-code twins rather than picking the first.
+// Two users sharing a last ten → null, exactly as R-41.69 rules for the couple side:
+// a wrong redirect naming someone else's handle is worse than no redirect.
+async function vendorForPhone(supabase, phone) {
+  const ten = normalizePhone(phone);
+  if (!ten) return null;
+  const { data: users } = await supabase.from('users').select('id, phone').like('phone', `%${ten}`).limit(2);
+  if (!Array.isArray(users) || users.length !== 1) return null;
+  const { data: vendor } = await supabase
+    .from('vendors').select('id, routing_handle, business_name, user_id')
+    .eq('user_id', users[0].id).maybeSingle();
+  return vendor || null;
+}
 
 function consentState(c, prospect) {
   if (prospect && prospect.consent_source === CONSENT_ATTESTED_SOURCE && prospect.consent_text) {
@@ -834,6 +886,34 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
   //
   // The state is COMPUTED and RETURNED, never thrown away — the queue renders it,
   // and a later sitting that wants the gate back has the reading already here.
+  // ── F-41.151 · THIS NUMBER IS ALREADY ON TDW ──────────────────────────────
+  // A number was three things at once on 2026-09-09: a vendor's user phone, a vendor
+  // row with 57 leads, AND an outsider prospect with a forward against it. Nothing
+  // stopped it. `ALREADY_HAS` guards a different question entirely — whether THIS
+  // vendor already holds a lead for THIS couple — so the outsider plane could, and
+  // did, invite someone who was already on the platform.
+  //
+  // ⚠ THE VENDOR HAS NO PHONE COLUMN. `vendors` carries `routing_handle` and a
+  // `user_id`; the number lives on `users.phone`. So the lookup is phone → user →
+  // vendor, the same join alertVendorOfForward walks in reverse at :688. Deriving it
+  // any other way would invent a column the schema does not have.
+  //
+  // A REFUSAL THAT NAMES THE RIGHT DOOR. The founder is not doing something wrong —
+  // he is using the outsider sheet for someone who does not need inviting. The queue
+  // says so and offers the TDW forward, which is why the handle rides out on the
+  // refusal: a sentence that says "no" without saying "here instead" costs him a
+  // second search.
+  const already = await vendorForPhone(supabase, lastTen);
+  if (already) {
+    console.log(`[assistance:forward] item=${item.id} \u2192 ${lastTen} REFUSED already_a_vendor (@${already.routing_handle}) \u2014 nothing written, nothing sent`);
+    return {
+      ok: false,
+      code: REFUSE.ALREADY_A_VENDOR,
+      vendor: { id: already.id, routing_handle: already.routing_handle, business_name: already.business_name },
+      error: `This number is already on TDW as @${already.routing_handle}. Forward to her as a TDW vendor instead.`,
+    };
+  }
+
   const consent = consentEvidences(prospect);
   if (!consent.ok) {
     console.log(`[assistance:forward] item=${item.id} \u2192 prospect=${prospect.id} NO CONSENT ON FILE (limb ${consent.limb}) \u2014 sending anyway (R-41.132); the DM thread is the record`);
@@ -948,6 +1028,42 @@ async function writeForward(supabase, row) {
     .single();
   if (error) return { ok: false, code: 'forward_failed', error: `Could not record the forward: ${error.message}` };
   return { ok: true, row: data };
+}
+
+// ── F-41.128 · THE PUBLIC ENQUIRY READ LIVES HERE, NOT IN THE DOOR ──────────
+// b20_a2's one-home cell caught the first cut: `.from('assistance_*')` may appear in
+// exactly TWO files — this writer and relayStatus — and src/api/public/enquiry.js
+// made a third. The law held and the door was wrong, so the QUERY moved here and the
+// door became a shape: it decides what a stranger may see, this decides what is read.
+//
+// ⚠ IT RETURNS ONLY FOUR FIELDS AND THE DOOR ADDS NOTHING. Category, city, month,
+// budget BAND. Never her phone (roadmap §7's standing refusal), never her name,
+// never the day, never the figure, never an id, never a second item. The selects
+// below name their columns for that reason — a `select('*')` here is how `phone`
+// reaches a public page the day someone adds a column.
+//
+// ONE ANSWER FOR EVERY MISS. Not found, closed, malformed, ambiguous prefix: all
+// return null, so a prober cannot learn which enquiries exist by trying tokens.
+async function publicEnquiry(supabase, prefix) {
+  if (!/^[0-9a-f]{8}$/i.test(String(prefix || ''))) return null;
+  const { data: items } = await supabase
+    .from('assistance_request_items')
+    .select('id, request_id, category, budget_rs')
+    .like('id', `${String(prefix).toLowerCase()}%`)
+    .limit(2);
+  // Eight hex is a uuid's first block — a collision is unlikely, not impossible.
+  // Two matches must answer NOTHING rather than pick one, or a stranger is shown an
+  // enquiry that is not the one he was sent.
+  if (!Array.isArray(items) || items.length !== 1) return null;
+  const item = items[0];
+  const { data: request } = await supabase
+    .from('assistance_requests')
+    .select('id, city, wedding_date, status')          // NOT phone, NOT name
+    .eq('id', item.request_id)
+    .maybeSingle();
+  if (!request || request.status === 'closed') return null;
+  return { category: item.category || null, city: request.city || null,
+           wedding_date: request.wedding_date || null, budget_rs: item.budget_rs || null };
 }
 
 async function bumpForwarded(supabase, item, request) {
@@ -1202,6 +1318,6 @@ module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
-  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink,
+  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink, vendorForPhone, publicEnquiry,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

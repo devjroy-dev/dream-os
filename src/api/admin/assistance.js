@@ -77,6 +77,8 @@ router.post('/items/:itemId/forward', asyncHandler(async (req, res) => {
   if (!target) return res.status(400).json({ ok: false, code: REFUSE.BAD_TARGET, error: 'kind must be vendor or prospect.' });
   const out = await forwardAssistanceItem(req.app.locals.supabase, {
     itemId: req.params.itemId, target, actor: req.admin && req.admin.email ? req.admin.email : 'admin',
+    // F-41.100: the override is the CALLER's, sent only on a deliberate retry.
+    confirm: b.confirm === true,
   });
   if (!out.ok) {
     const status = out.code === REFUSE.NOT_FOUND ? 404
@@ -93,9 +95,14 @@ router.post('/items/:itemId/forward', asyncHandler(async (req, res) => {
       // roster that grows independently. Adding a code to the writer cannot make
       // this line notice. The cell below asserts the two stay in step — every
       // REFUSE value is either mapped here or named as deliberately a 500.
-      : [REFUSE.CLOSED, REFUSE.VENDOR_UNAVAILABLE, REFUSE.ALREADY_HAS, REFUSE.BAD_TARGET, REFUSE.NO_PHONE, REFUSE.NO_CONSENT_RECORD, 'ambiguous_prospect'].includes(out.code) ? 409
+      : [REFUSE.CLOSED, REFUSE.VENDOR_UNAVAILABLE, REFUSE.ALREADY_HAS, REFUSE.BAD_TARGET, REFUSE.NO_PHONE, REFUSE.NO_CONSENT_RECORD, REFUSE.ALREADY_A_VENDOR, REFUSE.FANOUT_REACHED, 'ambiguous_prospect'].includes(out.code) ? 409
       : 500;
-    return res.status(status).json({ ok: false, code: out.code, error: out.error });
+    // F-41.151: the refusal CARRIES THE VENDOR. The sentence names a handle and the
+    // queue offers the TDW forward beside it; without this the founder reads "@DEV440"
+    // and has to go find her himself, which is the second search the redirect exists
+    // to save. F-41.102's lesson one field over: the body was right and the status
+    // lied; here the status is right and the body must not be thin.
+    return res.status(status).json({ ok: false, code: out.code, error: out.error, vendor: out.vendor || undefined, forwarded_count: out.forwarded_count, fanout_default: out.fanout_default });
   }
   return res.status(201).json(out);
 }));

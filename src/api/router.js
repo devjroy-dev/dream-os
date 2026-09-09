@@ -28,6 +28,11 @@ router.use('/crew',               require('./crew'));          // TDW_04.5 P3 �
 // no session mounted among them would be read as guarded by association. Same
 // reasoning as the crew line above.
 router.use('/public/vendor-card', require('./public/vendorCard'));
+// F-41.128 — the second unauthenticated per-enquiry read. Mounted BESIDE the vendor
+// card deliberately: both are public, both are read-only, and keeping them adjacent
+// means a reader of this file sees the whole public surface in one place rather than
+// discovering a third one later. The door's own header lists what it refuses.
+router.use('/public/enquiry', require('./public/enquiry'));
 router.use('/public/sitemap',     require('./public/sitemap'));       // G3.1 s2 p2 — the pages Google may list; app/sitemap.ts reads it hourly
 // BLOCK 19 · G1.1 — the public wedding page. Beside the card door because it is
 // the same exposure class with a second path segment (R-G11.5's miss law).

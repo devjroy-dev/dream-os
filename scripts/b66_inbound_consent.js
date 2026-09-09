@@ -120,5 +120,94 @@ section('7. F-41.149 — the comment said the wrong variable');
      /MARKETING_PHONE_NUMBER_ID` is the Meta id/.test(pr));
 }
 
+section('8. F-41.151 — a number already on TDW is redirected, not invited');
+{
+  const w = strip(read('src/lib/couple/assistance.js'));
+  const d = strip(read('src/api/admin/assistance.js'));
+  ok('8.1 the lookup goes phone → users → vendors (vendors HAS NO phone column)',
+     /from\('users'\)[\s\S]{0,80}like\('phone'/.test(w) && /from\('vendors'\)[\s\S]{0,120}eq\('user_id'/.test(w));
+  // R-41.69's law, carried: two users on one last-ten → attach NOTHING. A redirect
+  // naming the wrong handle is worse than no redirect.
+  ok('8.2 two users sharing a last ten → null, never a guess',
+     /\.limit\(2\)/.test(w) && /users\.length !== 1\) return null/.test(w));
+  // The first `consentEvidences(prospect` in the file is the FUNCTION DEFINITION, not
+  // a call — this cell's first cut matched it and read the gate as misplaced when it
+  // was not. F-41.107's family: an anchor that cannot tell a declaration from a use.
+  // Scoped to forwardToProspect's own slice, where only the call exists.
+  ok('8.3 it refuses BEFORE anything is written or sent', (() => {
+    const fn = w.slice(w.indexOf('async function forwardToProspect('));
+    return fn.indexOf('REFUSE.ALREADY_A_VENDOR') !== -1
+        && fn.indexOf('REFUSE.ALREADY_A_VENDOR') < fn.indexOf('const consent = consentEvidences(prospect)')
+        && fn.indexOf('REFUSE.ALREADY_A_VENDOR') < fn.indexOf('writeForward');
+  })() === true);
+  ok('8.4 the refusal names the handle and the door offers the TDW forward',
+     /already on TDW as @\$\{already\.routing_handle\}/.test(w)
+     && /vendor: out\.vendor \|\| undefined/.test(d));
+  ok('8.5 mapped to the caller-at-fault branch, not the 500 fallback',
+     /REFUSE\.ALREADY_A_VENDOR/.test(d) && d.indexOf('REFUSE.ALREADY_A_VENDOR') < d.indexOf(': 500;'));
+}
+
+section('9. F-41.100 / R-41.123 — the cap asks, then passes');
+{
+  const w = strip(read('src/lib/couple/assistance.js'));
+  const d = strip(read('src/api/admin/assistance.js'));
+  ok('9.1 the gate reads FANOUT_DEFAULT — the number is finally kept, not just shown',
+     /if \(!confirm && \(item\.forwarded_count \|\| 0\) >= FANOUT_DEFAULT\)/.test(w));
+  // ABOVE BOTH ARMS: the cap counts vendors who have seen the category, and a TDW
+  // vendor counts as much as an outsider. Inside either arm it would be half a rule.
+  ok('9.2 it gates on the ITEM, above the vendor/prospect branch',
+     w.indexOf('REFUSE.FANOUT_REACHED') < w.indexOf("if (kind === 'vendor')"));
+  ok('9.3 confirm passes it, and the confirm is the CALLER\'s',
+     /confirm: b\.confirm === true/.test(d));
+  ok('9.4 the refusal carries both counts so the sentence can name them',
+     /forwarded_count: item\.forwarded_count \|\| 0/.test(w) && /fanout_default: out\.fanout_default/.test(d));
+}
+
+section('10. F-41.128 — the public door, judged by what it REFUSES');
+{
+  const e = strip(read('src/api/public/enquiry.js'));
+  const raw = read('src/api/public/enquiry.js');
+  // THE ONE-HOME LAW HELD AND THE DOOR WAS WRONG. b20_a2 asserts `.from('assistance_*')`
+  // lives in exactly two files; the first cut of this door made a third. The QUERY is
+  // the writer's now and the door is a shape — so the "never selects phone" cell reads
+  // publicEnquiry, and the "never renders it" cells read the door.
+  const q = strip(read('src/lib/couple/assistance.js'));
+  const pe = q.slice(q.indexOf('async function publicEnquiry'), q.indexOf('async function bumpForwarded'));
+  // ⚠ THE ONLY CELLS THAT MATTER ON AN UNAUTHENTICATED DOOR.
+  ok('10.1 the reader names its columns and NEVER selects phone or name',
+     /select\('id, city, wedding_date, status'\)/.test(pe) && !/phone/.test(pe));
+  ok('10.1b the door itself touches no assistance table — the read is the writer\'s',
+     !/from\('assistance_/.test(e) && /publicEnquiry\(req\.app\.locals\.supabase/.test(e));
+  ok('10.2 no row is ever spread — every field is named, one by one',
+     !/\.\.\.request/.test(e + pe) && !/\.\.\.item/.test(e + pe) && !/\.\.\.row/.test(e));
+  ok('10.3 the budget leaves as a BAND, and the figure never does',
+     /budget_band: budgetBand\(row\.budget_rs\)/.test(e) && !/budget_rs:/.test(e));
+  ok('10.4 the date leaves as month and year — the day is dropped inside monthYear',
+     /month:\s*monthYear\(row\.wedding_date\)/.test(e) && !/getUTCDate/.test(e));
+  ok('10.5 no id of any kind rides out',
+     !/id:\s*(item|request|row)\./.test(e));
+  // AN ORACLE IS THE OTHER FAILURE. Missing, closed and malformed must be one answer.
+  ok('10.6 every miss answers identically — the door is not an oracle',
+     (() => {
+       // THE ORACLE TEST, ASSERTED ACROSS BOTH HOMES. The reader returns null for
+       // every miss — malformed prefix, no match, ambiguous prefix, closed request —
+       // and the door turns EVERY null into the one NOTHING. Counting `NOTHING` alone
+       // was the wrong shape: it moved when the query moved, and a count is not the
+       // guarantee (R-41.138). What matters is that no branch answers differently.
+       const misses = ['test(String(prefix', 'items.length !== 1) return null',
+                       "status === 'closed'"];
+       const readerRefuses = misses.every((m) => pe.includes(m));
+       const doorFolds = /if \(!m\) return res\.json\(NOTHING\)/.test(e)
+                      && /if \(!row\) return res\.json\(NOTHING\)/.test(e);
+       return readerRefuses && doorFolds;
+     })() === true);
+  ok('10.7 a prefix matching two items answers NOTHING rather than picking one',
+     /items\.length !== 1\) return null/.test(pe));
+  ok('10.8 the token shape is anchored — enq- plus exactly eight hex',
+     /\^enq-\(\[0-9a-f\]\{8\}\)\$/.test(raw));
+  ok('10.9 it is mounted beside the other public read',
+     /public\/enquiry/.test(strip(read('src/api/router.js'))));
+}
+
 console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
 if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
