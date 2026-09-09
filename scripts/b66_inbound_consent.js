@@ -16,6 +16,8 @@ const read = (rel) => (fs.existsSync(P(rel)) ? fs.readFileSync(P(rel), 'utf8') :
 const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 let pass = 0, fail = 0; const fails = [];
+// Cells that must await something. Run after the synchronous body, before the verdict.
+const DRIVEN = [];
 const ok = (l, c) => { if (c === true) pass++; else { fail++; fails.push(l); }
   console.log(`  ${c === true ? 'ok  ' : 'FAIL'}  ${l}`); };
 const section = (t) => console.log(`\n── ${t}`);
@@ -209,5 +211,77 @@ section('10. F-41.128 — the public door, judged by what it REFUSES');
      /public\/enquiry/.test(strip(read('src/api/router.js'))));
 }
 
-console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
-if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
+section('11. F-41.153 — the filter must be RUNNABLE, and its failure must be read');
+{
+  const q = strip(read('src/lib/couple/assistance.js'));
+  const pe = q.slice(q.indexOf('async function publicEnquiry'), q.indexOf('async function bumpForwarded'));
+
+  // `assistance_request_items.id` is uuid. Postgres refuses `id LIKE '...'` outright
+  // (`operator does not exist: uuid ~~ unknown`), so the first cut's door could never
+  // find ANY enquiry — mounted, reachable, structurally incapable.
+  ok('11.1 the id prefix filter casts to text — a uuid cannot be LIKEd',
+     /filter\('id::text', 'like'/.test(pe) && !/\.like\('id',/.test(pe));
+
+  // ⚠ THE SECOND FAULT HID THE FIRST. Destructuring only `{ data }` threw the
+  // complaint away and null read as "no such enquiry". An UNRUNNABLE query and a
+  // query that matches nothing are different facts.
+  ok('11.2 both lookups read their error, and neither is destructured data-only',
+     /error: itemsErr/.test(pe) && /error: reqErr/.test(pe)
+     && /if \(itemsErr\)/.test(pe) && /if \(reqErr\)/.test(pe));
+  ok('11.3 a failed query is logged and refused, never folded into the miss',
+     /\[public:enquiry\] item lookup failed/.test(pe)
+     && /\[public:enquiry\] request lookup failed/.test(pe));
+
+  // A DOUBLE THAT IGNORES THE PREDICATE CANNOT TEST THE PREDICATE. §10's double
+  // returned rows whatever the filter said, so all four paths passed while the real
+  // filter was unrunnable. This one HONOURS the filter and refuses the uuid form the
+  // way Postgres does — the only shape that would have caught F-41.153 in a bench.
+  //
+  // ⚠ TWO WRONG SHAPES BEFORE THIS ONE. The first built the double and asserted an
+  // object was not null (always true — vacuous). The second reached for `deasync` and
+  // a global promise because b66 is synchronous and publicEnquiry is async. The honest
+  // answer is neither: the bench's LAST act is an async tail, awaited before the
+  // verdict, so a driven cell needs no machinery at all.
+  DRIVEN.push(async (A) => {
+    const row = { id: '5b253fb2-1287-41e0-a3d4-eac192c28269', request_id: 'r1',
+                  category: 'photography', budget_rs: 150000 };
+    const req = { id: 'r1', city: 'Jaipur', wedding_date: '2026-12-22', status: 'forwarded',
+                  phone: '919625759924', name: 'Sarah' };
+    const UUID_ERR = { message: 'operator does not exist: uuid ~~ unknown' };
+    const db = { from: (t) => ({ select: () => ({
+      like:   (col) => ({ limit: () => (col === 'id'
+                ? { data: null, error: UUID_ERR }
+                : { data: [row], error: null }) }),
+      filter: (col, _op, val) => ({ limit: () => (col === 'id::text'
+                ? { data: row.id.startsWith(String(val).replace('%', '')) ? [row] : [], error: null }
+                : { data: null, error: UUID_ERR }) }),
+      eq:     () => ({ maybeSingle: () => ({ data: t === 'assistance_requests' ? req : null, error: null }) }),
+    }) }) };
+    const hit  = await A.publicEnquiry(db, '5b253fb2');
+    const miss = await A.publicEnquiry(db, '00000000');
+    const bad  = await A.publicEnquiry(db, 'zzzz');
+    ok('11.4 a real prefix RESOLVES against a predicate-honouring double',
+       !!hit && hit.category === 'photography' && hit.city === 'Jaipur');
+    ok('11.4b and it carries no phone and no name, though the fixture row has both',
+       !!hit && !('phone' in hit) && !('name' in hit));
+    ok('11.4c a miss and a malformed prefix both answer null, identically',
+       miss === null && bad === null);
+  });
+
+  ok('11.5 forwarded requests are visible — only `closed` hides an enquiry',
+     /status === 'closed'\) return null/.test(pe) && !/status !== 'open'/.test(pe));
+}
+
+(async () => {
+  let A = {};
+  try { A = require(P('src/lib/couple/assistance.js')); } catch (_e) { /* uncured */ }
+  for (const cell of DRIVEN) {
+    if (typeof A.publicEnquiry !== 'function') {
+      for (let i = 0; i < 3; i++) ok('§11 driven cell — publicEnquiry absent (F-41.153 uncured)', false);
+    } else {
+      try { await cell(A); } catch (e) { ok(`§11 driven cell threw: ${e && e.message}`, false); }
+    }
+  }
+  console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
+  if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
+})();

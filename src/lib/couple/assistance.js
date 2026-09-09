@@ -1046,21 +1046,51 @@ async function writeForward(supabase, row) {
 // return null, so a prober cannot learn which enquiries exist by trying tokens.
 async function publicEnquiry(supabase, prefix) {
   if (!/^[0-9a-f]{8}$/i.test(String(prefix || ''))) return null;
-  const { data: items } = await supabase
+  // ── F-41.153 · A uuid CANNOT BE `LIKE`d, AND THE ERROR WAS BEING SWALLOWED ──
+  // `assistance_request_items.id` is uuid. Postgres refuses `id LIKE '5b253fb2%'`
+  // outright — `operator does not exist: uuid ~~ unknown` — so PostgREST returned an
+  // error, supabase-js handed back `data: null`, and this function read null as
+  // "no such enquiry". EVERY token resolved to found:false. The door was mounted,
+  // reachable, and structurally incapable of finding anything.
+  //
+  // TWO FAULTS, AND THE SECOND IS THE ONE THAT HID THE FIRST. Destructuring only
+  // `{ data }` threw the complaint away. A query that CANNOT RUN and a query that
+  // matches nothing are different facts, and a public door that confuses them tells
+  // a prober the same thing it tells a real vendor — by accident, not by design.
+  //
+  // THE CAST GOES IN THE FILTER, not around it: `id::text` is expressible in
+  // PostgREST as the column reference `id::text` on the operator. There is no
+  // precedent for this in the estate (derived: no `::text` beside a like/ilike
+  // anywhere), so the shape is stated here rather than assumed by the next reader.
+  const { data: items, error: itemsErr } = await supabase
     .from('assistance_request_items')
     .select('id, request_id, category, budget_rs')
-    .like('id', `${String(prefix).toLowerCase()}%`)
+    .filter('id::text', 'like', `${String(prefix).toLowerCase()}%`)
     .limit(2);
+  // An unrunnable query is NOT a miss. It is logged and refused, because a door that
+  // silently answers "nothing here" to its own broken filter is how F-41.153 survived
+  // a bench, a manifest and a walk.
+  if (itemsErr) {
+    console.error('[public:enquiry] item lookup failed:', itemsErr.message);
+    return null;
+  }
   // Eight hex is a uuid's first block — a collision is unlikely, not impossible.
   // Two matches must answer NOTHING rather than pick one, or a stranger is shown an
   // enquiry that is not the one he was sent.
   if (!Array.isArray(items) || items.length !== 1) return null;
   const item = items[0];
-  const { data: request } = await supabase
+  const { data: request, error: reqErr } = await supabase
     .from('assistance_requests')
     .select('id, city, wedding_date, status')          // NOT phone, NOT name
     .eq('id', item.request_id)
     .maybeSingle();
+  if (reqErr) {
+    console.error('[public:enquiry] request lookup failed:', reqErr.message);
+    return null;
+  }
+  // CLOSED IS THE ONLY STATUS THAT HIDES IT. `open` and `forwarded` both show —
+  // an enquiry that has been forwarded is precisely the one a vendor holds a link
+  // to, and hiding it would blank the page for every real reader.
   if (!request || request.status === 'closed') return null;
   return { category: item.category || null, city: request.city || null,
            wedding_date: request.wedding_date || null, budget_rs: item.budget_rs || null };

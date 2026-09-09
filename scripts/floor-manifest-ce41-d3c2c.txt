@@ -1,0 +1,36 @@
+CE-41 · SEAT D · D3c2c (dream-os, HOT) · FLOOR MANIFEST
+base: 42dbb30483d605bfb081f70d64a53bf8fc1eedc9
+
+b66_inbound_consent   GREEN  48/48   was 41/41 — +7 (§11)
+b20_a2 · b65 · b64_mutations · b61 · b62_mutations · b63_mutations   all exit 0
+BOTH WAYS: cured GREEN 48/48 · uncured RED, five of §11's cells including the driven one
+NO MIGRATION.
+
+F-41.153 — THE PUBLIC DOOR COULD NEVER FIND ANYTHING, AND MY BENCH SAID IT COULD.
+  `assistance_request_items.id` is uuid. Postgres refuses `id LIKE '5b253fb2%'`
+  outright: `operator does not exist: uuid ~~ unknown` (confirmed at source by the
+  founder). PostgREST returned the error, supabase-js handed back `data: null`, and
+  publicEnquiry read null as "no such enquiry". EVERY token answered found:false.
+  The door was mounted, reachable, and structurally incapable.
+
+  TWO FAULTS, AND THE SECOND HID THE FIRST. Destructuring only `{ data }` threw the
+  complaint away. An UNRUNNABLE query and a query that matches nothing are different
+  facts, and a public door that confuses them answers a prober and a real vendor the
+  same way BY ACCIDENT rather than by design. Both lookups now read their error.
+
+WHY §10 PASSED ON A BROKEN DOOR: ITS DOUBLE IGNORED THE PREDICATE. It returned rows
+whatever the filter said, so all four paths went green while the filter was
+unrunnable. §11's double HONOURS the filter and errors on the uuid form exactly as
+the database does — and it REDS at an uncured tree, which §10's never would have.
+A double that waves the predicate through cannot test the predicate.
+
+§11.4 TOOK THREE SHAPES BEFORE IT WAS HONEST:
+  1. built the double, asserted an object was not null — ALWAYS TRUE, vacuous.
+  2. reached for `deasync` and a global promise, because b66 is synchronous and
+     publicEnquiry is async.
+  3. the bench grew an async tail: DRIVEN cells run after the synchronous body and
+     before the verdict. No machinery, and the cell actually resolves a prefix.
+
+`forwarded` REQUESTS ARE VISIBLE. Only `closed` hides an enquiry — a forwarded one is
+precisely what a vendor holds a link to, and the founder's walk found NO open requests
+at all, so an `open`-only door would have been blank for every real reader.
