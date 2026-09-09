@@ -150,8 +150,10 @@ const { CANON_TIERS } = require('./billing/tierFlip');
 //
 // WHY THE FACT LIVES HERE AND NOT AT EITHER DOOR. The rule has TWO readers that
 // must never disagree: the ROUTE (`buildLlmForTurn`, which chose `advisor` as a
-// tier slot from `victor_mode`) and the ROOM (`loop.ts:299`, which chose the
-// advisory lens, the tool set and `estateInRoom` from the same column). A
+// tier slot from `victor_mode`) and the ROOM (`loop.ts`'s room resolution, which
+// chose the advisory lens, the tool set and `estateInRoom` from the same column;
+// F-41.138 — this comment named `:299` and the expression has not been on that
+// line for two packets, so it names the SYMBOL now and cannot go stale again). A
 // literal `'business'` at each site is two homes for one rule, and the failure
 // mode is not hypothetical — it is this seat's own finding: the route was cured
 // in isolation once already in draft and the lane came out routing business
@@ -188,13 +190,15 @@ function waLaneMode() {
 //
 // WHY THE RESOLUTION LIVES HERE. It has TWO readers that must never disagree: the
 // ROUTE (`buildLlmForTurn`, which picks the `advisor` tier slot) and the ROOM
-// (`loop.ts:299`, which picks the lens, the tool set and `estateInRoom`). The two
+// (`loop.ts`'s `assertedRoom`, which picks the lens, the tool set and
+// `estateInRoom` — named by SYMBOL, not by line; F-41.138). The two
 // live in different PACKAGES — `src/engine` is `vendor-suit-engine`, its own
 // tsconfig, compiled to `dist` — so a literal one home spanning both is not
 // available. THIS IS THE HONEST SECOND-BEST AND IT IS DECLARED, NOT PAPERED: the
-// door resolves here; the engine carries the same three-term precedence at :299;
-// and `b65` §8 drives BOTH across the full input matrix and asserts they agree on
-// every combination. A disagreement is a bench red, not a production surprise.
+// door resolves here; the engine carries the same precedence at its own
+// `assertedRoom`; and `b65` §8/§9 drive BOTH across the full input matrix and
+// assert they agree on every combination. A disagreement is a bench red, not a
+// production surprise.
 //
 // THE PRECEDENCE, CHAIR-RULED, IN ORDER:
 //   1. the SURFACE — `wa_vendor` is `waLaneMode()` and nothing else can speak
@@ -206,19 +210,25 @@ function waLaneMode() {
 //   3. `roomAssert` — the page saying `advisor`. Narrow by type the other way:
 //      a page can assert the advisory room and nothing else, so this field can
 //      never be used to force someone OUT of a room either.
-//   4. the COLUMN — what `engine.agents.victor_mode` holds. Last, and on its way
-//      out: it retires in a later packet, and until then it is what keeps the one
-//      orphan row's app behaviour unchanged.
+//   4. NOTHING ELSE — `business`. CE-41 · SEAT I · R-41.136: the column term is
+//      GONE. It was ruled "last, and on its way out" by G2 and this is the packet
+//      it went out on: Advisor is reachable only through the Advisor room, so a
+//      call carrying no assertion is a BUSINESS call whatever the row says. The
+//      `columnMode` PARAMETER is removed too, not merely ignored — a parameter
+//      accepted and discarded is a term one edit away from mattering again, which
+//      is the same reasoning R-41.104 used to SKIP the WhatsApp read rather than
+//      overrule it. The one orphan `advisor` row (DEV440's) is now inert to both
+//      route and room; it is still the app chip's state and nothing more.
 //
 // THE TWO FIELDS ARE DELIBERATELY NOT ONE. A single `room?: 'business'|'advisor'`
 // would be smaller and would walk straight through `b65_mutations` M3, which
 // exists to RED exactly that widening. Two fields, two polarities, two intents,
 // each unable to express the other's — the asymmetry IS the fence.
-function resolveVendorRoom({ surface, modeOverride, roomAssert, columnMode }) {
+function resolveVendorRoom({ surface, modeOverride, roomAssert }) {
   if (surface === 'wa_vendor') return waLaneMode();
   if (modeOverride === 'business') return 'business';
   if (roomAssert === 'advisor') return 'advisor';
-  return columnMode === 'advisor' ? 'advisor' : 'business';
+  return 'business';
 }
 
 const VENDOR_ROLES = Object.freeze(['provider', 'donna']);

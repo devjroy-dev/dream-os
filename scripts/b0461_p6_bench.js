@@ -248,9 +248,44 @@ sec('8. THE VOICE GATE — the weave reaches Victor, and only a planner');
      'the gate reads the DOOR-NORMALISED category (one home for the predicate)');
   ok(/\+ \(isPlannerVoice \? PRODUCTION_WEAVE : ''\)/.test(loopSrc),
      'the weave is APPENDED conditionally — a non-planner prefix is byte-identical (E-1)');
-  ok(!/PRODUCTION_WEAVE/.test(loopSrc.slice(loopSrc.indexOf('CONSULTANT_HARVEY_SOUL :'), loopSrc.indexOf('+ (isAdvisor'))) ||
-     /!isConsult/.test(loopSrc.slice(loopSrc.indexOf('isPlannerVoice'), loopSrc.indexOf('isPlannerVoice') + 80)),
+  // ── RE-DERIVED AT CE-41 SEAT I (R-41.136), DISCLOSED AS c-41.6's FORM ─────────
+  // THE SUBJECT IS UNCHANGED: consult has no roster to read and no door to signal,
+  // so the weave must never reach it. TWO THINGS ABOUT THE OLD INSTRUMENT FAILED
+  // AND BOTH ARE WORTH NAMING.
+  //
+  // (1) IT READ RAW TEXT. Its second disjunct took the 80 characters after the
+  // FIRST occurrence of the string `isPlannerVoice` and looked for `!isConsult`.
+  // That first occurrence was the declaration only for as long as no COMMENT in
+  // the file happened to name the identifier — R-40.105's comment-blindness law,
+  // which this cell predates. Seat I's composition comment names it, and the fence
+  // went red over a comment. It reads comment-stripped code now.
+  //
+  // (2) ITS WINDOW WAS BOUNDED BY `+ (isAdvisor`, which assumed the lens term
+  // followed the field block IMMEDIATELY. R-41.136 (b) seats a room line between
+  // them (sited there and not last because F-06.67 rules that the lens closes the
+  // advisory prefix), so the window silently changed shape. A fence whose bounds
+  // are a neighbouring term's spelling is a fence the next packet moves by
+  // accident. It is bounded by the statement's own semicolon now.
+  //
+  // THE FENCED ORDER, WHOLE AND ASSERTED POSITIONALLY:
+  //   soul + weave + law + field + room line + lens
+  const codeOnly = loopSrc.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1 ');
+  const prefixExpr = (() => {
+    const i = codeOnly.indexOf('const staticPrefix =');
+    return i < 0 ? '' : codeOnly.slice(i, codeOnly.indexOf(';', i));
+  })();
+  ok(prefixExpr.length > 0, 'the compose statement did not extract — RE-DERIVE before trusting this fence');
+  ok(/const isPlannerVoice = !isConsult &&/.test(codeOnly),
      'consult is excluded — he has no roster to read and no door to signal');
+  ok(!/PRODUCTION_WEAVE/.test(prefixExpr.replace(/\(isPlannerVoice \? PRODUCTION_WEAVE : ''\)/, ' ')),
+     'the weave reaches the prefix by some route other than the planner gate');
+  {
+    const at = (t) => prefixExpr.indexOf(t);
+    const order = ['HARVEY_SOUL', 'PRODUCTION_WEAVE', 'NO_MACHINERY_LAW', 'fieldBlock', 'ROOM_LINE', 'ADVISOR_LENS'];
+    const idx = order.map(at);
+    ok(idx.every((n) => n >= 0) && idx.every((n, k) => k === 0 || n > idx[k - 1]),
+       'the fenced order moved — soul, weave, law, field, room line, lens: ' + JSON.stringify(idx));
+  }
 
   // The weave must survive the persona firewall: every vendor-speakable string pre-reads
   // through scrubText before shipping (guardrail 4). The soul can be echoed, so it counts.

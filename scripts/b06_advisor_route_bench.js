@@ -70,14 +70,23 @@ const mkReq = (supabase, tier, agentId) => ({ app: { locals: { supabase } }, ven
 (async () => {
   console.log('\n  [1] THE DOOR SEAM (buildLlmForTurn) — mode-scoped routing, server-resolved agent:');
   {
-    // advisor: routes to deepseek regardless of product tier
+    // advisor: routes to deepseek regardless of product tier.
+    // FIXTURE RE-DERIVED AT CE-41 SEAT I (R-41.136). The advisory ROUTE is the
+    // subject and it is unchanged; the room now arrives from the Advisor page's
+    // assertion rather than from the row, so the ctx carries `roomAssert`. The row
+    // is still seeded `advisor` — it must no longer be able to do anything, and
+    // the fourth cell below is what now proves that.
     const sb = mkSupabase({ 'agent-real': 'advisor' });
-    const ctx = mkCtx(sb, 'signature', 'agent-real'); // signature would be anthropic-haiku in business
+    const ctx = { ...mkCtx(sb, 'signature', 'agent-real'), roomAssert: 'advisor' }; // signature would be anthropic-haiku in business
     const w = await buildLlmForTurn(ctx);
     T('advisor routes Victor to deepseek (model.pwa_vendor.advisor), not the signature-tier Haiku', w.route.provider === 'deepseek' && w.route.model === 'deepseek-v4-flash');
     T('…and the deepseek transport + modelOverride are seated (a non-anthropic route)', !!w.transport && w.transport.provider === 'deepseek' && w.modelOverride === 'deepseek-v4-flash');
     T('…and the ENGINE tier still follows the PRODUCT tier (signature -> mid), unchanged by mode', w.tierOverride === 'mid');
-    T('…and the victor_mode read keyed on the SERVER-RESOLVED agentId (ctx.agentId), never a client id', sb.__queried.agentsIdEq === 'agent-real');
+    // RE-CUT, NOT DELETED. The old cell asserted the victor_mode read was keyed on
+    // the SERVER-RESOLVED agentId — a real fence while the door read the column.
+    // R-41.136 removed the read, so the fence has no subject and the honest
+    // successor is its LIMIT CASE: the door does not query the agent row at all.
+    T('…and the door never queries the agent row — the column read is GONE (R-41.136)', sb.__queried.agentsIdEq === null);
   }
   {
     // business @ signature: byte-identical to today (anthropic haiku, no transport)
@@ -86,13 +95,13 @@ const mkReq = (supabase, tier, agentId) => ({ app: { locals: { supabase } }, ven
     T('business @ signature stays anthropic-haiku, NO deepseek transport (byte-identical control)', w.route.provider === 'anthropic' && !w.transport);
   }
   {
-    // victor_mode absent (consult / unseeded agent): falls to business routing
+    // no assertion (the shared sheet, an unseeded agent): falls to business routing
     const sb = mkSupabase({});
     const w = await buildLlmForTurn(mkCtx(sb, 'essential', 'agent-unseeded'));
     // essential IS deepseek by product tier — assert the route matches the essential default,
     // i.e. the mode read did NOT flip it to the advisor key (both happen to be deepseek, so
     // assert via the tierOverride which advisor never changes and essential maps to 'entry').
-    T('a victor_mode read-miss falls to business routing (no advisor flip on an unseeded agent)', w.tierOverride === 'entry' && w.route.provider === 'deepseek');
+    T('an unasserted turn falls to business routing (R-41.136: no room without a door)', w.tierOverride === 'entry' && w.route.provider === 'deepseek');
   }
 
   console.log('\n  [2] THE HARVEST GATE (F-06.2) — advisor counsel is never mined:');

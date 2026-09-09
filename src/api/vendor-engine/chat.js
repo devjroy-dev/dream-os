@@ -2783,24 +2783,19 @@ const ENGINE_TIER_MAP = { basic: 'entry', essential: 'entry', signature: 'mid', 
 // The turn's llm wiring. Anthropic routes pass NO transport — the engine's own
 // pre-facade path runs byte-identical (acceptance 9). Non-anthropic routes pass
 // the facade transport + one model for both hands.
-// TDW_06 P6b (F-06.4, CE-ratified): the advisor room's model is chosen AT THE DOOR.
-// victor_mode is read from engine.agents by the SERVER-RESOLVED agentId (resolveAgent
-// middleware — the reverse bridge; NEVER a client-supplied id) and, when 'advisor',
-// routes Victor to the model.pwa_vendor.advisor key. A read miss falls to 'business'
-// (no advisor route). Business/consult are byte-identical to before this seam.
-// TDW_06 P7b (F-06.1 second limb): PLAIN-ARGS ctx { supabase, agentId } so the WA door can
-// share it — it has no Express req. Moved in LOCKSTEP with buildLlmForTurn (CE correction:
-// buildLlmForTurn's co-dependent must not keep reading req.app or the WA call throws).
-async function readVictorMode({ supabase, agentId }) {
-  try {
-    const { data } = await supabase.schema('engine')
-      .from('agents').select('victor_mode').eq('id', agentId).maybeSingle();
-    return (data && data.victor_mode) === 'advisor' ? 'advisor' : 'business';
-  } catch (e) {
-    console.warn('[vendor-e chat:victor_mode read]', e.message);
-    return 'business';
-  }
-}
+// CE-41 · SEAT I · R-41.136 — `readVictorMode` IS GONE FROM THIS FILE.
+// It was TDW_06 P6b's door-side read of `engine.agents.victor_mode`, the term that
+// let the column pick the ROUTE. R-41.136 removes the column from the room, and a
+// route that still asked would be the disagreement `resolveVendorRoom` exists to
+// make impossible. DELETED, not left unreferenced: a dead reader of a retiring
+// column is how the column comes back. The export at the foot of this file goes
+// with it — it had no consumer outside `b65_mutations`' specimen strings, counted
+// by command at `b72d855`.
+//
+// THE COLUMN IS NOT DEAD, only its readers in the turn. `GET /api/v2/vendor-e/mode`
+// (`vendorMode.js`) still reads it for the app's chip, and the PATCH door and the
+// WhatsApp way-home still write it. Three live readers in the pwa, counted at
+// `dreamos-pwa:7b76858c`, are why nothing was retired here.
 
 // TDW_06 P7b (F-06.1 second limb): PLAIN-ARGS ctx { supabase, vendor, agentId } — the ONE
 // route builder both doors call, so the PWA door and the WA lane route IDENTICALLY (advisor
@@ -2821,11 +2816,13 @@ async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendo
   // product tier exactly as before. The ENGINE tier (capabilities/caps) always follows
   // the PRODUCT tier — advisor changes only which MODEL serves Victor, not the tier.
   // ── CE-41 · SEAT G · R-41.104 — THE WHATSAPP LANE DOES NOT ASK ────────────
-  // THE READ IS SKIPPED, NOT OVERRULED. A `readVictorMode()` whose answer is
-  // then discarded would leave a live reader of the column on this lane and the
-  // next sitting would have to derive, again, that it changes nothing; worse, it
-  // would keep the column one edit away from mattering here. On `wa_vendor` the
-  // question is never asked, so `routeTier` is the PRODUCT TIER, always.
+  // THE READ WAS SKIPPED, NOT OVERRULED: a column read whose answer is then
+  // discarded leaves a live reader on the lane, and the next sitting has to
+  // derive, again, that it changes nothing. Seat I generalised that reasoning to
+  // BOTH lanes (R-41.136) and the read is gone from this file entirely, so this
+  // paragraph now records WHY the shape was chosen rather than a live asymmetry.
+  // On `wa_vendor` the surface still decides first and `routeTier` is the PRODUCT
+  // TIER, always.
   //
   // `waLaneMode()` and not the literal `'business'`: this is the same fact the
   // door hands the engine as `modeOverride` a few files over, and R-41.104's
@@ -2834,17 +2831,19 @@ async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendo
   // and `waLaneMode()` returning anything else is what makes this lane business.
   //
   // CE-41 SEAT G · G2 (R-41.107) — THE ROUTE FOLLOWS THE ASSERTED ROOM, and it
-  // MUST. A cure that taught only `loop.ts:299` about `roomAssert` would put the
-  // Advisor page's turns in the advisory room on the BUSINESS model, because the
-  // column is on its way out and will soon never say `advisor` at all. Route and
+  // MUST. A cure that taught only the engine's `assertedRoom` about `roomAssert`
+  // would put the Advisor page's turns in the advisory room on the BUSINESS model,
+  // because the column is on its way out and will soon never say `advisor` at all
+  // (F-41.138: named by symbol, not by line — this comment said `:299`). Route and
   // room reading one resolution is the same principle G1 shipped for the
   // WhatsApp lane; only the number of terms has grown.
   //
-  // The column is still read on the PWA lane — last in the precedence, and only
-  // until it retires. It is what keeps the one orphan `advisor` row's app
-  // behaviour unchanged in the meantime.
-  const columnMode = surface === 'wa_vendor' ? null : await readVictorMode({ supabase, agentId });
-  const victorMode = resolveVendorRoom({ surface, roomAssert, columnMode });
+  // CE-41 · SEAT I · R-41.136 — THE COLUMN IS NO LONGER READ ON EITHER LANE. G2
+  // left it last in the precedence "until it retires"; this is that packet. The
+  // read is not conditional now, it is ABSENT, which is the same shape R-41.104
+  // chose for `wa_vendor` and for the same reason: a read whose answer is thrown
+  // away leaves the column one edit from mattering.
+  const victorMode = resolveVendorRoom({ surface, roomAssert });
   const routeTier = victorMode === 'advisor' ? 'advisor' : productTier;
   const route = await resolveModel(supabase, surface, routeTier,
     { fallbackSurface: fallbackSurfaceFor(surface, routeTier) });
@@ -2949,9 +2948,10 @@ function istMonthStartUtcISO() {
   return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - IST_MS).toISOString();
 }
 // ═══ TDW_10 · F-10.100 — THE METER IS PLAIN-ARGS, BECAUSE THE CAP IS COMBINED ═══
-// CE R-26.7 §C ruled F-6 on this file's OWN precedent, twice over: readVictorMode
-// and buildLlmForTurn both carry the F-06.1 second-limb comment a few dozen lines
-// above — PLAIN-ARGS ctx so the WA door can share it; it has no Express `req`;
+// CE R-26.7 §C ruled F-6 on this file's OWN precedent, twice over: `readVictorMode`
+// and `buildLlmForTurn` both carried the F-06.1 second-limb comment a few dozen lines
+// above (CE-41 seat I retired the first with the column read; `buildLlmForTurn` still
+// carries it) — PLAIN-ARGS ctx so the WA door can share it; it has no Express `req`;
 // moved in LOCKSTEP with its co-dependents, because a co-dependent that keeps
 // reading `req.app` throws the moment the WhatsApp lane calls it.
 //
@@ -3623,7 +3623,6 @@ module.exports.buildLlmForTurn       = buildLlmForTurn;
 module.exports.abandonActiveThread   = abandonActiveThread; // TDW_06 P7a (F-06.8): shared flip seam
 module.exports.fireHarvest           = fireHarvest;
 module.exports.advisorHarvestGate    = advisorHarvestGate;
-module.exports.readVictorMode        = readVictorMode;
 // TDW_10 F-10.100: the cap seam, exported for the WhatsApp door (src/lib/vendorInbound.js,
 // the word trio's fourth member) and for tdw10_combined_cap. `buildMeta` is now plain-args
 // for exactly this reason — the WA lane has no Express req. The three copy constants are

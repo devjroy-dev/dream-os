@@ -1,0 +1,42 @@
+# scripts/floor-manifest-ce41-i1.txt
+# CE-41 · SEAT I · R-41.136 — ADVISOR ONLY IN THE ADVISOR ROOM.
+# Base: dream-os main 60f20c3fba0bc3991cd3d0d038badde6c3951dbc.
+# Every path below is authored by this delivery and by nothing else in it.
+#
+# FLOOR, BOTH TREES, SERIAL, BY COMMAND (a git worktree at 60f20c3 is the base
+# instrument — c-41.84: the first base run used `git archive`, which carries no
+# `.git`, and thirteen benches that shell out to `git diff` failed for that
+# reason alone; those numbers were thrown away, not reported):
+#   base   60f20c3   177 benches   GREEN 150   FAIL 23   ERR 4
+#   cured            178 benches   GREEN 151   FAIL 23   ERR 4
+#   DELTA: none, both directions. The 27 non-green carry across byte-for-byte,
+#   and the base set is identical across two independent runs.
+#   The one added bench is b65_i1, green.
+#
+# PRODUCTION
+src/engine/src/core/loop.ts
+src/engine/src/core/harveySoul.ts
+src/lib/modelRouter.js
+src/api/vendor-engine/chat.js
+#
+# THE PACKET'S OWN PROOF
+scripts/b65_i1_advisor_room_only_bench.js
+scripts/b65_g1_wa_advisor_off_bench.js
+scripts/b65_mutations.js
+#
+# RATIFIED BENCHES RE-FIXTURED BY THE RULING (subjects unchanged in every case;
+# each entered the advisory room by SETTING THE COLUMN and now enters by the
+# page's assertion, with the row left saying `advisor` so each also witnesses
+# that the column decides nothing)
+scripts/b06_advisor_bench.js
+scripts/b06_0081_bench.js
+scripts/b06_advisor_route_bench.js
+scripts/b06_wa_words_bench.js
+scripts/b63_f1_model_routes_bench.js
+#
+# COMPOSITION FENCES RE-DERIVED (the room line entered the composed prefix)
+scripts/b06_f0658_bench.js
+scripts/b06_f0667_bench.js
+scripts/b0461_p6_bench.js
+#
+scripts/floor-manifest-ce41-i1.txt

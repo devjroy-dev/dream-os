@@ -129,8 +129,11 @@ function mkSupabase(agents, convos) {
   console.log('\n  [3] THE CONFIG WIRE (F-06.1) — the WA door routes IDENTICALLY to the PWA door:');
   {
     // advisor @ signature -> deepseek (the advisor room's model), NOT the signature-tier Haiku.
+    // FIXTURE RE-DERIVED AT CE-41 SEAT I (R-41.136): the subject is the CONFIG WIRE
+    // — both doors must resolve one route — and it is untouched. The room reaches
+    // this call from the Advisor page's assertion now; the row cannot carry it.
     const sb = mkSupabase({ 'a1': 'advisor' }, []);
-    const w = await buildLlmForTurn({ supabase: sb, vendor: { id: 'v1', tier: 'signature' }, agentId: 'a1' });
+    const w = await buildLlmForTurn({ supabase: sb, vendor: { id: 'v1', tier: 'signature' }, agentId: 'a1', roomAssert: 'advisor' });
     T('advisor@signature -> deepseek (+transport +modelOverride), the same the PWA door yields',
       w.route.provider === 'deepseek' && w.route.model === 'deepseek-v4-flash' && !!w.transport && w.modelOverride === 'deepseek-v4-flash');
     T('…engine tier still follows the PRODUCT tier (signature -> mid)', w.tierOverride === 'mid');

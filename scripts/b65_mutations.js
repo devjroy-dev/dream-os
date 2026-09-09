@@ -8,6 +8,22 @@
 // runTurn site and not the retry (M2), and dropping the row without the
 // registry so one founder tap seeds it back (M4/M5).
 //
+// CE-41 · SEAT I (R-41.136) RE-DERIVED NINE ANCHORS — M1, M2, M9, M10, M12, M23,
+// M24, M28, M29 — every one of which pinned a byte this packet deleted, and each
+// of which would have reported `?? target matched 0 times`. A DEAD ANCHOR IS NOT
+// A PASS and this file already says so; what is new is that the seat which killed
+// the bytes is the seat that re-cut the anchors, in the same packet, rather than
+// leaving the next sitting to find them. Two subjects genuinely ceased to exist
+// (M1's "the row alone" and M28's "a business column suppresses the assertion" —
+// there is no column term left to do either) and were re-cut to the failure that
+// replaced them; the other seven keep their subjects exactly.
+//
+// M35-M41 are seat I's own, and they carry TWO new fields: the bench to drive
+// (default `b65_g1`, `b65_i1` for the room and the room line) and REBUILD, which
+// runs `tsc` in the scratch before driving. Rebuild exists for exactly the cells
+// that read `dist` — the composed prompt cannot be proved off a `dist` compiled
+// from the unmutated source.
+//
 // THE ENGINE MUTATIONS (M1, M3, M8) EDIT THE TYPESCRIPT AND DO NOT REBUILD.
 // Deliberate and disclosed: the cells they name (§2.1, §2.2, §2.6) read the
 // SOURCE, which is where the ruled bytes live and where a later seat would
@@ -27,14 +43,20 @@ const ROOT = path.resolve(__dirname, '..');
 // A correction number is owed for these; this seat's c-41.45-.49 is spent.
 const MUT = [
   // ── THE ROOM ──────────────────────────────────────────────────────────────
-  ['M1 the engine goes back to reading the row alone (the half-cure)', 'src/engine/src/core/loop.ts',
-    "  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? agent.victor_mode) as string | null;",
-    "  const assertedRoom = (agent.victor_mode) as string | null;",
-    'the room predicate prefers the override over the row'],
-  ['M2 the override wins the WRONG way round (the row overrules the door)', 'src/engine/src/core/loop.ts',
-    "args.modeOverride ?? args.roomAssert ?? agent.victor_mode",
-    "agent.victor_mode ?? args.modeOverride ?? args.roomAssert",
-    'the room predicate prefers the override over the row'],
+  // RE-CUT AT SEAT I. "The row alone" cannot be built any more — the column is
+  // not selected and not read — so the half-cure's modern shape is the DEFAULT
+  // flipping: a turn that asserts nothing landing in the advisory room, which is
+  // R-41.136 read backwards.
+  ['M1 the DEFAULT flips — an unasserted turn lands in the advisory room', 'src/engine/src/core/loop.ts',
+    "  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? 'business') as string | null;",
+    "  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? 'advisor') as string | null;",
+    'the room predicate prefers the override over everything below it'],
+  // RE-CUT AT SEAT I: the door's term is dropped outright, which is the failure
+  // the original pinned (the door stops leading) in the shape the tree now allows.
+  ['M2 the engine drops the door\'s term — a page could hold a WhatsApp turn', 'src/engine/src/core/loop.ts',
+    "args.modeOverride ?? args.roomAssert ?? 'business'",
+    "args.roomAssert ?? 'business'",
+    'the room predicate prefers the override over everything below it'],
   ['M3 the type widens so a door could push a vendor INTO the advisory room', 'src/engine/src/core/loop.ts',
     "  modeOverride?: 'business';",
     "  modeOverride?: string;",
@@ -57,13 +79,17 @@ const MUT = [
     'R-41.105\'s witness line is at the predicate and names the room'],
 
   // ── THE ROUTE ─────────────────────────────────────────────────────────────
-  ['M9 the WA route reads the column again', 'src/api/vendor-engine/chat.js',
-    "  const columnMode = surface === 'wa_vendor' ? null : await readVictorMode({ supabase, agentId });",
-    "  const columnMode = await readVictorMode({ supabase, agentId });",
+  // RE-CUT AT SEAT I: `readVictorMode` is deleted, so both mutations now RE-ADD a
+  // column read at the door — which is the failure they always described. M9's
+  // answer is used; M10's is thrown away, and the census cell must red on BOTH,
+  // because a read whose answer is discarded is still a live reader.
+  ['M9 the route reads the column again', 'src/api/vendor-engine/chat.js',
+    "  const victorMode = resolveVendorRoom({ surface, roomAssert });",
+    "  const { data: _vm } = await supabase.schema('engine').from('agents').select('victor_mode').eq('id', agentId).maybeSingle();\n  const victorMode = (_vm && _vm.victor_mode === 'advisor') ? 'advisor' : resolveVendorRoom({ surface, roomAssert });",
     'the same flipped agent on wa_vendor routes the PRODUCT tier, and the column is never SELECTed'],
-  ['M10 the WA route ASKS and then discards the answer (the shape this seat refused)', 'src/api/vendor-engine/chat.js',
-    "  const columnMode = surface === 'wa_vendor' ? null : await readVictorMode({ supabase, agentId });",
-    "  const _asked = await readVictorMode({ supabase, agentId });\n  const columnMode = surface === 'wa_vendor' ? null : _asked;",
+  ['M10 the route ASKS and then discards the answer (the shape this seat refused)', 'src/api/vendor-engine/chat.js',
+    "  const victorMode = resolveVendorRoom({ surface, roomAssert });",
+    "  await supabase.schema('engine').from('agents').select('victor_mode').eq('id', agentId).maybeSingle();\n  const victorMode = resolveVendorRoom({ surface, roomAssert });",
     'the same flipped agent on wa_vendor routes the PRODUCT tier, and the column is never SELECTed'],
   ['M11 the PWA route loses its advisor tier (the app stops routing the room)', 'src/api/vendor-engine/chat.js',
     "  const routeTier = victorMode === 'advisor' ? 'advisor' : productTier;",
@@ -72,8 +98,8 @@ const MUT = [
 
   // ── THE ONE HOME ──────────────────────────────────────────────────────────
   ['M12 the route spells `business` itself (two homes for one rule)', 'src/api/vendor-engine/chat.js',
-    "  const victorMode = resolveVendorRoom({ surface, roomAssert, columnMode });",
-    "  const victorMode = surface === 'wa_vendor' ? 'business' : resolveVendorRoom({ surface, roomAssert, columnMode });",
+    "  const victorMode = resolveVendorRoom({ surface, roomAssert });",
+    "  const victorMode = surface === 'wa_vendor' ? 'business' : resolveVendorRoom({ surface, roomAssert });",
     'BOTH readers import it; neither spells the word itself'],
   ['M13 waLaneMode grows an argument (the switch R-41.104 removes)', 'src/lib/modelRouter.js',
     "function waLaneMode() {\n  return 'business';\n}",
@@ -104,13 +130,13 @@ const MUT = [
 
   // ── G2 · R-41.107 — THE ROOM THE PAGE ASSERTS ─────────────────────────────
   ['M23 the engine drops roomAssert from the precedence', 'src/engine/src/core/loop.ts',
-    "  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? agent.victor_mode) as string | null;",
-    "  const assertedRoom = (args.modeOverride ?? agent.victor_mode) as string | null;",
-    'the engine carries the three-term precedence in that order'],
+    "  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? 'business') as string | null;",
+    "  const assertedRoom = (args.modeOverride ?? 'business') as string | null;",
+    'the engine carries the ruled precedence in that order'],
   ['M24 the precedence inverts — an assertion beats the door\'s business', 'src/engine/src/core/loop.ts',
-    "args.modeOverride ?? args.roomAssert ?? agent.victor_mode",
-    "args.roomAssert ?? args.modeOverride ?? agent.victor_mode",
-    'the route resolver and the engine term agree on ALL 16 combinations'],
+    "args.modeOverride ?? args.roomAssert ?? 'business'",
+    "args.roomAssert ?? args.modeOverride ?? 'business'",
+    'the route resolver and the engine term agree on ALL 8 combinations'],
   // ⚠ M24 IS THE CELL THAT CAUGHT 8.1's FIRST CUT. Inverting the engine's order
   // left 8.1 GREEN, because 8.1 carried its own transcription of that order
   // instead of reading it. 8.1 now parses the `??` chain out of `loop.ts`, so the
@@ -139,13 +165,17 @@ const MUT = [
   // witness. The failure that IS observable is a column that SUPPRESSES an
   // assertion — a business column silently cancelling the Advisor page — and that
   // is what this mutation now drives.
-  ['M28 a business column suppresses the page\'s assertion', 'src/lib/modelRouter.js',
-    "  if (roomAssert === 'advisor') return 'advisor';\n  return columnMode === 'advisor' ? 'advisor' : 'business';",
-    "  if (columnMode != null) return columnMode === 'advisor' ? 'advisor' : 'business';\n  return roomAssert === 'advisor' ? 'advisor' : 'business';",
-    'the PRECEDENCE is modeOverride, then roomAssert, then the column'],
+  // RE-CUT AT SEAT I. The original subject — a column suppressing the page — has
+  // no mechanism left; there is no column in the resolver to do it. What replaces
+  // it is the resolver's own default going the wrong way, which is the route-side
+  // twin of M1 and the failure the founder's walk would meet on the rooms page.
+  ['M28 the resolver\'s default flips — an unasserted route resolves advisory', 'src/lib/modelRouter.js',
+    "  if (roomAssert === 'advisor') return 'advisor';\n  return 'business';",
+    "  if (roomAssert === 'advisor') return 'advisor';\n  return 'advisor';",
+    'the PRECEDENCE is modeOverride, then roomAssert, then BUSINESS'],
   ['M29 the ROUTE stops following the asserted room (the advisory room on the business model)', 'src/api/vendor-engine/chat.js',
-    "  const victorMode = resolveVendorRoom({ surface, roomAssert, columnMode });",
-    "  const victorMode = resolveVendorRoom({ surface, columnMode });",
+    "  const victorMode = resolveVendorRoom({ surface, roomAssert });",
+    "  const victorMode = resolveVendorRoom({ surface });",
     'DRIVEN: the Advisor page\u2019s assertion routes the advisor tier on a business column'],
   ['M30 the door stops failing closed — any truthy `room` asserts', 'src/api/vendor-engine/chat.js',
     "  const roomAssert = body.room === 'advisor' ? 'advisor' : undefined;",
@@ -185,10 +215,62 @@ const MUT = [
     "function sha256(s) {",
     "function sha256_unused(s) {",
     'victorLines\' load-time sha256 guard is present and passes'],
+
+  // ── CE-41 · SEAT I · R-41.136 — THE ROOM BY CONSTRUCTION, AND THE ROOM LINE ──
+  // These name cells in `b65_i1_advisor_room_only_bench.js` (the 6th field). The
+  // two the charter named by hand are M35 (restore the column term) and M37 (swap
+  // the two room lines); the rest are the other ways this cure can be built wrong
+  // and still look done.
+  ['M35 the column term is restored to the engine', 'src/engine/src/core/loop.ts',
+    "  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? 'business') as string | null;",
+    "  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? agent.victor_mode) as string | null;",
+    "the engine's resolution has TWO terms and the third is the literal business", 'b65_i1'],
+  ['M36 the turn SELECTs the column again (the reader that comes back first)', 'src/engine/src/core/loop.ts',
+    "    .select('id, tier, display_name, profession_preset, timezone, mode')",
+    "    .select('id, tier, display_name, profession_preset, timezone, mode, victor_mode')",
+    'the turn does not SELECT the column at all', 'b65_i1'],
+  // REBUILD: §2.3 reads the COMPOSED PROMPT off the compiled engine, so a source
+  // swap that is never compiled would prove nothing. tsc runs in the scratch.
+  // ⚠ M37's FIRST CUT SWAPPED THE CONSTANT'S VALUES AND WAS UNOBSERVABLE, and the
+  // derivation is worth keeping. §2.3 reads the two sentences OUT OF the constant
+  // by key — which is what keeps the founder's copy veto free — so exchanging the
+  // values moves the fixture with the cure and every cell stays green. The
+  // failure that IS observable, and the one that matters, is the COMPOSITION
+  // picking the wrong line for the room: that is the byte a later seat would get
+  // backwards, and it is what this mutation drives.
+  ['M37 the two room lines are SWAPPED (Victor names the room he is not in)', 'src/engine/src/core/loop.ts',
+    "    + (isConsult ? '' : (isAdvisor ? ROOM_LINE.advisor : ROOM_LINE.business))",
+    "    + (isConsult ? '' : (isAdvisor ? ROOM_LINE.business : ROOM_LINE.advisor))",
+    'DRIVEN: a BUSINESS turn carries the business line and NOT the advisor one', 'b65_i1', 'rebuild'],
+  ['M38 the CONSULT room is handed a room line too (fork F2 reversed)', 'src/engine/src/core/loop.ts',
+    "    + (isConsult ? '' : (isAdvisor ? ROOM_LINE.advisor : ROOM_LINE.business))",
+    "    + (isAdvisor ? ROOM_LINE.advisor : ROOM_LINE.business)",
+    'DRIVEN: CONSULT carries NEITHER — the third room is not claimed for it (fork F2)', 'b65_i1', 'rebuild'],
+  ['M39 the witness says `column` again over a room no column decided', 'src/engine/src/core/loop.ts',
+    "(args.roomAssert ? 'assert' : 'default')",
+    "(args.roomAssert ? 'assert' : 'column')",
+    'the witness names `default`, and `column` is gone from the source', 'b65_i1'],
+  ['M40 the resolver takes its column parameter back', 'src/lib/modelRouter.js',
+    "function resolveVendorRoom({ surface, modeOverride, roomAssert }) {",
+    "function resolveVendorRoom({ surface, modeOverride, roomAssert, columnMode }) {",
+    '`resolveVendorRoom` has no `columnMode` parameter left to read', 'b65_i1'],
+  ['M41 the column\'s writers are retired along with its readers (the over-cure)', 'src/api/vendor-engine/vendorMode.js',
+    "    .from('agents').update({ victor_mode: target }).eq('id', agentId);",
+    "    .from('agents').select('id').eq('id', agentId);",
+    'the column is NOT retired — its writers and the chip\'s reader stand', 'b65_i1'],
 ];
 
+// THE BENCH EACH MUTATION DRIVES. Default `b65_g1`; seat I's cells live in
+// `b65_i1`. A mutation naming a cell in the wrong bench would report MISS, not a
+// false ok — the runner matches the named cell against that bench's FAILED line.
+const BENCH = {
+  b65_g1: 'scripts/b65_g1_wa_advisor_off_bench.js',
+  b65_i1: 'scripts/b65_i1_advisor_room_only_bench.js',
+};
+
 let bad = 0;
-for (const [id, file, from, to, cellName] of MUT) {
+for (const [id, file, from, to, cellName, benchKey, rebuild] of MUT) {
+  const bench = BENCH[benchKey || 'b65_g1'];
   const scratch = fs.mkdtempSync('/tmp/b65m-');
   execSync(`cp -r ${ROOT}/src ${ROOT}/db ${ROOT}/scripts ${ROOT}/package.json ${scratch}/ && ln -s ${ROOT}/node_modules ${scratch}/node_modules`);
   const p = path.join(scratch, file); const s = fs.readFileSync(p, 'utf8');
@@ -198,8 +280,17 @@ for (const [id, file, from, to, cellName] of MUT) {
   // bench over this same sitting.
   if (n !== 1) { console.log(`  ??     ${id} — target matched ${n} times`); bad++; fs.rmSync(scratch, { recursive: true, force: true }); continue; }
   fs.writeFileSync(p, s.replace(from, to));
+  // REBUILD, when the named cell reads `dist`. A tsc failure is NOT a pass: the
+  // mutation is reported dead rather than credited with a red it never drove.
+  if (rebuild) {
+    try { execSync(`cd ${scratch} && ./node_modules/.bin/tsc -p src/engine/tsconfig.json`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) {
+      console.log(`  ??     ${id} — the mutated tree does not compile; no red was driven`);
+      bad++; fs.rmSync(scratch, { recursive: true, force: true }); continue;
+    }
+  }
   let out = '';
-  try { out = execSync(`B65_ROOT=${scratch} node ${scratch}/scripts/b65_g1_wa_advisor_off_bench.js`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+  try { out = execSync(`B65_ROOT=${scratch} node ${scratch}/${bench}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
   catch (e) { out = (e.stdout || '') + (e.stderr || ''); }
   // The NAMED cell must be among the failures. A mutation that reds something
   // else has not proven its cell — it has proven the tree is fragile.

@@ -56,7 +56,13 @@ if (!gate.runDist) {
     ? fs.readFileSync(path.join(ROOT, 'src/engine/src/core/advisorLens.ts'), 'utf8') : '';
   const jotSrc = fs.existsSync(path.join(ROOT, 'src/engine/src/core/tools/jotAdvice.ts'))
     ? fs.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/jotAdvice.ts'), 'utf8') : '';
-  T('source: loop learns the advisor room, gated on !isConsult', /isAdvisor = !isConsult && \(agent\.victor_mode/.test(loopSrc));
+  // F-41.139: this cell pinned `isAdvisor = !isConsult && (agent.victor_mode` and
+  // had been FALSE since G1 moved the expression — invisible because it only runs
+  // on a clean clone, where `dist` is absent and the gate diverts here. Re-derived
+  // at seat I against the shipped shape, and split so the room and its resolution
+  // are two claims rather than one regex.
+  T('source: loop learns the room from the DOOR, gated on !isConsult', /isAdvisor = !isConsult && assertedRoom === 'advisor'/.test(loopSrc));
+  T('source: and the resolution is the door, the page, then business (R-41.136)', /args\.modeOverride \?\? args\.roomAssert \?\? 'business'/.test(loopSrc));
   T('source: the advisor branch drops dear_donna_talk and adds jot_advice', /if \(isAdvisor\) \{[\s\S]*JOT_ADVICE_TOOL/.test(loopSrc) && !/if \(isAdvisor\)[\s\S]*DEAR_DONNA_TALK_TOOL/.test(loopSrc.slice(loopSrc.indexOf('if (isAdvisor)'), loopSrc.indexOf('} else if (!isConsult)'))));
   T('source: the estate is gated out (estateInRoom)', /const estateInRoom = !isConsult && !isAdvisor/.test(loopSrc));
   T('source: victor_mode rides the TurnResult', /victor_mode: isConsult \? undefined : \(isAdvisor \? 'advisor' : 'business'\)/.test(loopSrc));
@@ -155,8 +161,14 @@ const db = { from: (t) => mkq(t), schema: () => db };
   sec('§1 — THE ADVISORY ROOM: victor_mode=advisor. Filing paused, the estate gone, jot_advice the only hand.');
   {
     calls.length = 0; store.conversations.length = 0; store.messages.length = 0; store.ownerNotes.length = 0;
+    // FIXTURE RE-DERIVED AT CE-41 SEAT I (R-41.136). THE SUBJECT OF EVERY CELL
+    // BELOW IS UNCHANGED — the advisory room's tool set, its lens, its estate, its
+    // one hand. What moved is the DOOR: a row saying `advisor` no longer opens the
+    // room, so the turn enters it the only way it is now reachable, from the
+    // Advisor page's assertion. The row is left saying `advisor` deliberately, so
+    // this bench also witnesses that the column no longer decides anything.
     cur = { victor_mode: 'advisor', mode: 'advisory' };
-    const r = await runTurn({ agentId: ADVISOR_AGENT, message: 'What should I be posting this muhurat season?', tierOverride: 'entry' });
+    const r = await runTurn({ agentId: ADVISOR_AGENT, message: 'What should I be posting this muhurat season?', tierOverride: 'entry', roomAssert: 'advisor' });
     const first = calls[0] || { tools: [], system: '' };
 
     T('§1.1 victor_mode rides the TurnResult as "advisor"', r && r.victor_mode === 'advisor');

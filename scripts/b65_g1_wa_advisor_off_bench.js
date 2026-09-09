@@ -6,9 +6,15 @@
 // (§5), the founder-vetoed refusal (§6), and F-41.95's guard specimen (§7).
 //
 // BOTH WAYS, MEASURED: at the uncured tree 17/29 — §1.2, §1.3, §2.1-2.4, §2.6,
-// §3.1-3.3, §4.1, §4.2 RED. Cured, 29/29. `b65_mutations.js` edits PRODUCTION
-// code in a scratch copy; each mutation must RED its named cell (F-40.216,
-// non-vacuous by construction).
+// §3.1-3.3, §4.1, §4.2 RED. Cured, 29/29 (G1), then 42/42 at G2.
+// CE-41 · SEAT I (R-41.136, chair fork F4) AMENDED §1.1, §2.2, §2.3, §8.1-8.4 IN
+// PLACE. Their SUBJECTS are unchanged; what moved is the shape they pin, because
+// the column left the resolution. Declared rather than superseded: a cell whose
+// subject survives should not be retired for a cure it predicted. The room and
+// the room line are proved in `b65_i1_advisor_room_only_bench.js`, a new member
+// of this family, which drives the compiled engine and the composed prompt.
+// `b65_mutations.js` edits PRODUCTION code in a scratch copy; each mutation must
+// RED its named cell (F-40.216, non-vacuous by construction).
 //
 // ⚠ §7 IS GREEN AT BOTH TREES, BY CONSTRUCTION, AND IS NOT A PROOF OF THE CURE.
 // DECLARED HERE RATHER THAN LEFT TO BE DISCOVERED. It drives `wireGuardClassify`
@@ -103,17 +109,22 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
 (async () => {
   sec('§1 THE ROUTE — `wa_vendor` never reads `victor_mode` (R-41.104 §4(a), limb 1)');
 
+  // AMENDED AT CE-41 SEAT I (R-41.136, chair fork F4). THE SUBJECT IS UNCHANGED —
+  // the PWA lane still routes the advisor ROOM to its own tier — but the room no
+  // longer comes from the ROW, so the fixture now asserts it the only way it is
+  // now reachable: from the Advisor door. The census limb that made this cell
+  // non-vacuous is kept and INVERTED: the route must NOT ask the column any more.
   await cell('1.1 buildLlmForTurn on pwa_vendor STILL routes the advisor room to its own tier', async () => {
     const { buildLlmForTurn } = req('src/api/vendor-engine/chat.js');
     const db = makeDb({ 'model.pwa_vendor.advisor': { provider: 'deepseek', model: 'deepseek-v4-flash' } }, { 'agent-1': 'advisor' });
-    const w = await buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'agent-1' });
+    const w = await buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'agent-1', roomAssert: 'advisor' });
     // c-41.47 — ASSERTS THE KEY THAT WAS ASKED FOR, not the provider that came back. The
     // first cut checked `provider === 'deepseek'` and a mutation retiring the
     // advisor tier PASSED it: with the tier slot gone the lookup falls to
     // `model.pwa_vendor.essential`, which is deepseek in the DEFAULTS matrix
     // too. Same answer, different question — the census is what distinguishes
     // them, exactly as it does in §1.2.
-    if (!db._reads.includes('engine.agents.victor_mode')) return 'the PWA route stopped asking the room';
+    if (db._reads.includes('engine.agents.victor_mode')) return 'the PWA route still SELECTs the column (R-41.136)';
     if (!db._reads.includes('model.pwa_vendor.advisor')) return `the PWA route asked for ${db._reads.filter(k => /^model\./.test(k)).join(',') || 'no model key'}`;
     return w.route && w.route.provider === 'deepseek' ? true : `pwa advisor route is ${JSON.stringify(w.route)}`;
   });
@@ -144,22 +155,25 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
     return /modeOverride\?:\s*'business';/.test(t) ? true : 'RunTurnArgs has no business-only modeOverride';
   });
 
-  await cell('2.2 the room predicate prefers the override over the row', () => {
-    // ANCHOR RE-DERIVED at G2: R-41.107 inserts `args.roomAssert` between the
-    // override and the column, so the two-term expression this cell pinned no
-    // longer exists. The SUBJECT is unchanged — the door must still beat the row —
-    // and §8.4 owns the full ruled order. Correction number owed; range spent.
+  await cell('2.2 the room predicate prefers the override over everything below it', () => {
+    // ANCHOR RE-DERIVED at G2, and again at SEAT I (R-41.136, fork F4): the row
+    // is no longer a term at all, so an expression naming `agent.victor_mode`
+    // would now be the FAILURE. The SUBJECT is unchanged across all three cuts —
+    // the door must lead the precedence — and §8.4 owns the full ruled order.
     const c = codeOf('src/engine/src/core/loop.ts');
-    return /args\.modeOverride\s*\?\?[\s\S]{0,40}agent\.victor_mode/.test(c) ? true : 'loop.ts:299 still reads the row alone';
+    if (/agent\.victor_mode/.test(c)) return 'the turn still reads the column';
+    return /args\.modeOverride\s*\?\?[\s\S]{0,40}'business'/.test(c) ? true : 'the override does not lead the resolution';
   });
 
-  await cell('2.3 ABSENT the override the predicate is byte-identical (regression law)', () => {
+  await cell('2.3 ABSENT the override the predicate lands on the SHIPPED default', () => {
     const { runTurn } = req('src/engine/dist/core/loop.js');
-    // The compiled term, read as source: `??` with the row on the right is the
-    // whole regression proof — a PWA turn passes nothing and lands on the row.
+    // The compiled term, read as source. AMENDED AT SEAT I: the right-hand term
+    // was the row and is now the literal `'business'`, so what is asserted is
+    // that the COMPILED engine carries the cure and not merely the source — the
+    // dist is what Railway runs, and `b65_i1` drives it.
     const c = fs.readFileSync(path.join(ROOT, 'src/engine/dist/core/loop.js'), 'utf8');
-    return typeof runTurn === 'function' && /modeOverride\s*\?\?[\s\S]{0,40}victor_mode/.test(c)
-      ? true : 'the compiled engine does not carry the ?? term';
+    return typeof runTurn === 'function' && /modeOverride\s*\?\?\s*args\.roomAssert\s*\?\?\s*'business'/.test(c)
+      ? true : 'the compiled engine does not carry the two-term resolution';
   });
 
   await cell('2.4 the WhatsApp door passes it at BOTH runTurn sites', () => {
@@ -377,13 +391,14 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
   // `modelRouter.js`) and `loop.ts:299`'s expression (the room, in the engine)
   // cannot share a home across a package boundary, so instead they are driven
   // side by side over every combination and asserted equal.
+  // AMENDED AT CE-41 SEAT I (R-41.136, fork F4): `columnMode` left the resolver,
+  // so the matrix loses that axis — 16 combinations become 8. It is not a
+  // narrowing of the proof; the axis it dropped no longer exists to vary.
   const MATRIX = [];
   for (const surface of ['pwa_vendor', 'wa_vendor']) {
     for (const modeOverride of [undefined, 'business']) {
       for (const roomAssert of [undefined, 'advisor']) {
-        for (const columnMode of ['business', 'advisor']) {
-          MATRIX.push({ surface, modeOverride, roomAssert, columnMode });
-        }
+        MATRIX.push({ surface, modeOverride, roomAssert });
       }
     }
   }
@@ -397,19 +412,25 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
     const c = codeOf('src/engine/src/core/loop.ts');
     const m = c.match(/const assertedRoom = \(([^)]*)\)/);
     if (!m) return null;
-    return m[1].split('??').map((x) => x.trim())
-      .map((x) => x.replace(/^args\./, '').replace(/^agent\.victor_mode$/, 'columnMode'))
-      .filter(Boolean);
+    return m[1].split('??').map((x) => x.trim().replace(/^args\./, '')).filter(Boolean);
   })();
+  // A LITERAL TERM ENDS THE CHAIN. Seat I's third term is `'business'`, not a
+  // field, so the walker returns it rather than looking it up on the arguments —
+  // and it is still READ OUT of the file, never transcribed, so an inversion of
+  // the shipped order still moves this instrument.
   const engineTerm = (a) => {
     if (!engineOrder) return undefined;
-    for (const term of engineOrder) if (a[term] != null) return a[term];
+    for (const term of engineOrder) {
+      if (/^'.*'$/.test(term)) return term.slice(1, -1);
+      if (a[term] != null) return a[term];
+    }
     return undefined;
   };
 
-  await cell('8.1 the route resolver and the engine term agree on ALL 16 combinations', () => {
+  await cell('8.1 the route resolver and the engine term agree on ALL 8 combinations', () => {
     const { resolveVendorRoom } = req('src/lib/modelRouter.js');
     if (!engineOrder || engineOrder.length !== 3) return `could not read the engine's precedence: ${JSON.stringify(engineOrder)}`;
+    if (engineOrder[2] !== "'business'") return `the engine's last term is ${engineOrder[2]}, not the ruled default`;
     const bad = [];
     for (const m of MATRIX) {
       const route = resolveVendorRoom(m);
@@ -417,34 +438,36 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
       // that lane, so the surface term is applied here exactly as the door applies
       // it — `modeOverride: 'business'` at both runTurn sites, never an assertion.
       const asEngineSees = m.surface === 'wa_vendor'
-        ? { modeOverride: 'business', roomAssert: undefined, columnMode: m.columnMode }
+        ? { modeOverride: 'business', roomAssert: undefined }
         : m;
       const room = engineTerm(asEngineSees) === 'advisor' ? 'advisor' : 'business';
-      if (route !== room) bad.push(`${m.surface}/${m.modeOverride || '-'}/${m.roomAssert || '-'}/${m.columnMode}: route=${route} room=${room}`);
+      if (route !== room) bad.push(`${m.surface}/${m.modeOverride || '-'}/${m.roomAssert || '-'}: route=${route} room=${room}`);
     }
     return bad.length === 0 ? true : bad.join(' · ');
   });
 
-  await cell('8.2 the PRECEDENCE is modeOverride, then roomAssert, then the column', () => {
+  await cell('8.2 the PRECEDENCE is modeOverride, then roomAssert, then BUSINESS', () => {
     const { resolveVendorRoom } = req('src/lib/modelRouter.js');
     const r = (o) => resolveVendorRoom({ surface: 'pwa_vendor', ...o });
-    if (r({ modeOverride: 'business', roomAssert: 'advisor', columnMode: 'advisor' }) !== 'business') return 'roomAssert beat modeOverride';
-    if (r({ roomAssert: 'advisor', columnMode: 'business' }) !== 'advisor') return 'the column beat roomAssert';
-    if (r({ columnMode: 'advisor' }) !== 'advisor') return 'the column stopped being read';
-    if (r({ columnMode: 'business' }) !== 'business') return 'a bare business column did not resolve business';
+    if (r({ modeOverride: 'business', roomAssert: 'advisor' }) !== 'business') return 'roomAssert beat modeOverride';
+    if (r({ roomAssert: 'advisor' }) !== 'advisor') return 'the assertion stopped opening the room';
+    if (r({}) !== 'business') return 'a bare call did not resolve business';
+    // R-41.136's own limb: a column value handed in ANYWAY must change nothing.
+    // The parameter is gone, so this is the shape a caller left behind would take.
+    if (r({ columnMode: 'advisor' }) !== 'business') return 'a stray columnMode still reached the advisory room';
     return true;
   });
 
   await cell('8.3 the SURFACE wins over everything — an assertion cannot reach the WhatsApp lane', () => {
     const { resolveVendorRoom } = req('src/lib/modelRouter.js');
-    return resolveVendorRoom({ surface: 'wa_vendor', roomAssert: 'advisor', columnMode: 'advisor' }) === 'business'
+    return resolveVendorRoom({ surface: 'wa_vendor', roomAssert: 'advisor' }) === 'business'
       ? true : 'R-41.104 was overridden by an assertion';
   });
 
-  await cell('8.4 the engine carries the three-term precedence in that order', () => {
+  await cell('8.4 the engine carries the ruled precedence in that order', () => {
     const c = codeOf('src/engine/src/core/loop.ts');
-    return /args\.modeOverride\s*\?\?\s*args\.roomAssert\s*\?\?\s*agent\.victor_mode/.test(c)
-      ? true : 'loop.ts:299 does not carry the ruled order';
+    return /args\.modeOverride\s*\?\?\s*args\.roomAssert\s*\?\?\s*'business'/.test(c)
+      ? true : 'the engine does not carry the ruled order (R-41.136)';
   });
 
   await cell('8.5 roomAssert is `advisor`-ONLY on the type — no door can force a vendor OUT either', () => {

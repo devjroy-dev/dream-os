@@ -153,8 +153,12 @@ const lastAssistant = () => [...store.messages].reverse().find((m) => m.role ===
   sec('§1 — THE MODE STAMP + THE ASYMMETRY (advisor stamped, business bare).');
   {
     metaColumnPresent = true; store.messages.length = 0;
+    // FIXTURE RE-DERIVED AT CE-41 SEAT I (R-41.136): the row no longer opens the
+    // room, so the advisory turn enters through the Advisor page's assertion. The
+    // row is LEFT saying `advisor` — the stamp under test must follow the room the
+    // turn actually ran in, not the column, and leaving it set is what proves that.
     curVictorMode = 'advisor';
-    await runTurn({ agentId: AGENT, message: 'What should I post?', conversationId: CONV, tierOverride: 'entry' });
+    await runTurn({ agentId: AGENT, message: 'What should I post?', conversationId: CONV, tierOverride: 'entry', roomAssert: 'advisor' });
     const adv = lastAssistant();
     T('§1.1 the advisor assistant row carries meta {"mode":"advisor"}', !!adv && adv.meta && adv.meta.mode === 'advisor');
 

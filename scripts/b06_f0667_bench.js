@@ -63,6 +63,18 @@ function body(src, name) {
   return src.slice(a, src.indexOf('`;', a));
 }
 
+// The room lines (CE-41 seat I, R-41.136) are LIFTED, never transcribed — the
+// founder holds the copy veto on both sentences and no cell here asserts wording.
+function roomLine(key) {
+  const t = read(LOOP);
+  const m = t.match(/const ROOM_LINE = \{([\s\S]*?)\n\} as const;/);
+  if (!m) return '';
+  const g = m[1].match(new RegExp(`${key}:\\s*([\\s\\S]*?),(?=\\n|$)`, 'm'));
+  if (!g) return '';
+  const parts = g[1].match(/'((?:[^'\\]|\\.)*)'/g) || [];
+  return parts.map((q) => q.slice(1, -1)).join('').replace(/\\n/g, '\n').replace(/\\'/g, "'");
+}
+
 // ── THE COMPOSE HARNESS ─────────────────────────────────────────────────────
 function lift(loopSrc) {
   const m = loopSrc.match(/const isPlannerVoice = ([^;]+);\s*\n\s*const staticPrefix = ([\s\S]*?);\n/);
@@ -85,6 +97,22 @@ function compose({ vendorCategory, isConsult = false, isAdvisor = false, fieldBl
   const CONSULTANT_HARVEY_SOUL = body(read(CONSULT), 'CONSULTANT_HARVEY_SOUL');
   assert.ok(HARVEY_SOUL && PRODUCTION_WEAVE && NO_MACHINERY_LAW && ADVISOR_LENS && CONSULTANT_HARVEY_SOUL,
     'a soul constant did not extract — re-derive');
+  // CE-41 SEAT I (R-41.136): the compose expression gained a terminal ROOM_LINE
+  // term, so the harness must carry it or the `eval` throws and every cell below
+  // reports a dead anchor. It is LIFTED from `loop.ts` exactly as the soul
+  // constants above are — never transcribed.
+  const ROOM_LINE = (() => {
+    const t = read(LOOP);
+    const m = t.match(/const ROOM_LINE = \{([\s\S]*?)\n\} as const;/);
+    if (!m) return { business: '', advisor: '' };
+    const grab = (key) => {
+      const g = m[1].match(new RegExp(`${key}:\\s*([\\s\\S]*?),(?=\\n|$)`, 'm'));
+      if (!g) return '';
+      const parts = g[1].match(/'((?:[^'\\]|\\.)*)'/g) || [];
+      return parts.map((q) => q.slice(1, -1)).join('').replace(/\\n/g, '\n').replace(/\\'/g, "'");
+    };
+    return { business: grab('business'), advisor: grab('advisor') };
+  })();
   const args = { vendorCategory };
   // eslint-disable-next-line no-eval
   const isPlannerVoice = eval(gate);
@@ -136,10 +164,19 @@ t('§2.1 ⚑ BUSINESS is byte-identical to soul(+roster)+law+field — the lens 
   const S = body(soulSrc, 'HARVEY_SOUL');
   const W = body(soulSrc, 'PRODUCTION_WEAVE');
   const L = body(soulSrc, 'NO_MACHINERY_LAW');
-  assert.strictEqual(compose({ vendorCategory: 'planning' }), S + W + L + FIELD_BLOCK,
+  // AMENDED AT CE-41 SEAT I, AND THIS IS THE ONE RATIFIED POSITION R-41.136
+  // KNOWINGLY MOVES. F-06.67 fenced the business prefix as soul(+roster)+law+field
+  // EXACTLY; R-41.136 (b) appends a room line to it so Victor cannot name a room he
+  // is not in on the shared sheet, and the ruling priced the cost in its own packet
+  // — one prefix re-warm per account, estate-wide, once. What this cell was
+  // FENCING is untouched and still asserted: the LENS TERM IS THE EMPTY STRING in a
+  // business room, and the prefix is an exact equality, not a diff.
+  const R = roomLine('business');
+  assert.ok(R, 'the business room line did not lift out of loop.ts — re-derive');
+  assert.strictEqual(compose({ vendorCategory: 'planning' }), S + W + L + FIELD_BLOCK + R,
     'the planner business prefix moved');
   for (const c of NON_PLANNER) {
-    assert.strictEqual(compose({ vendorCategory: c }), S + L + FIELD_BLOCK,
+    assert.strictEqual(compose({ vendorCategory: c }), S + L + FIELD_BLOCK + R,
       `the '${c}' business prefix moved`);
   }
 });
@@ -181,7 +218,11 @@ t('§3.2 ⚑ …and with an EMPTY field block they are IDENTICAL — which is ex
   const S = body(soulSrc, 'HARVEY_SOUL');
   const L = body(soulSrc, 'NO_MACHINERY_LAW');
   const cured = compose({ vendorCategory: 'photography', isAdvisor: true, fieldBlock: '' });
-  assert.strictEqual(cured, S + L + LENS_BODY + '', 'the empty-field case is not identity — re-derive');
+  // AMENDED AT SEAT I with the advisor room line, which sits between the field
+  // block and the lens. The subject — that an EMPTY field block collapses the two
+  // orders into one string, which is how the gauntlet's double hid this for three
+  // sittings — is untouched.
+  assert.strictEqual(cured, S + L + roomLine('advisor') + LENS_BODY + '', 'the empty-field case is not identity — re-derive');
 });
 
 t('§3.3 the post-lens tail is ZERO chars cured, and >=90,000 uncured (the number, not the adjective)', () => {
@@ -198,22 +239,24 @@ H('§4 — ⚑ BOTH-WAYS BY PRODUCTION MUTATION (loop.ts itself, never the fixtu
 
 const MUTATIONS = [
   { label: '§4.1 RED — the pre-cure order restored: fieldBlock closes the prefix and the lens is buried',
-    from: "+ fieldBlock + (isAdvisor ? ADVISOR_LENS : '');",
-    to: "+ (isAdvisor ? ADVISOR_LENS : '') + fieldBlock;",
+    from: "+ (isAdvisor ? ADVISOR_LENS : '');",
+    to: "+ fieldBlock;",
     expect: (p) => {
       assert.ok(!p.trimEnd().endsWith(LENS_BODY.trimEnd()), 'the mutation did not move the lens');
       const i = p.indexOf(LENS_HEAD);
       assert.ok(p.length - (i + LENS_BODY.trim().length) > 90000, 'the buried lens does not carry a >=90k tail');
     } },
   { label: '§4.2 RED — the lens dropped from the expression entirely: the advisor room composes unlensed',
-    from: "+ fieldBlock + (isAdvisor ? ADVISOR_LENS : '');",
-    to: '+ fieldBlock;',
+    from: "+ (isAdvisor ? ADVISOR_LENS : '');",
+    to: ";",
     expect: (p) => { assert.ok(!p.includes(LENS_HEAD), 'the lens survived its own deletion'); } },
 ];
 
 t('§4.0 the mutation anchor exists EXACTLY ONCE in loop.ts — a mutation that matches nothing proves nothing', () => {
   const src = read(LOOP);
-  const n = (src.match(/\+ fieldBlock \+ \(isAdvisor \? ADVISOR_LENS : ''\);/g) || []).length;
+  // RE-DERIVED AT SEAT I: the room line entered the expression between the field
+  // block and the lens, so the anchor is the lens term and its semicolon alone.
+  const n = (src.match(/\+ \(isAdvisor \? ADVISOR_LENS : ''\);/g) || []).length;
   assert.strictEqual(n, 1, `the compose anchor appears ${n} times — re-derive before trusting §4`);
 });
 
@@ -238,7 +281,7 @@ for (const m of MUTATIONS) {
 
 t('§4.3 the tree was RESTORED — the mutations left no residue', () => {
   const src = read(LOOP);
-  assert.ok(src.includes("+ fieldBlock + (isAdvisor ? ADVISOR_LENS : '');"),
+  assert.ok(src.includes("+ (isAdvisor ? ADVISOR_LENS : '');"),
     'loop.ts did not come back to its cured bytes — STOP and restore by hand');
 });
 
@@ -266,5 +309,6 @@ t('§5.3 the prefix is still WHOLLY STATIC — the cache law is untouched by a r
 
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);
 if (fail) { console.log('RED — F-06.67 is not held.'); process.exit(1); }
-console.log('GREEN — the lens closes the prompt and not merely its file; business and consult');
-console.log('did not move one byte; and the stub that hid this for three sittings is named.');
+console.log('GREEN — the lens closes the prompt and not merely its file; consult did not');
+console.log('move one byte and business moved exactly one ruled line (R-41.136); and the stub');
+console.log('that hid this for three sittings is named.');

@@ -522,11 +522,15 @@ const LIVE_MARKETING = { provider: 'anthropic', model: 'claude-haiku-4-5-2025100
     // at both trees, and the sibling cell below (essential tier, business room)
     // never depended on the advisor lane and is untouched.
     const db = makeDb({ 'model.pwa_vendor.advisor': { provider: 'deepseek', model: 'deepseek-v4-flash', donna_provider: 'anthropic', donna_model: 'claude-haiku-4-5-20251001' } });
+    // FIXTURE RE-DERIVED AT CE-41 SEAT I (R-41.136): the SUBJECT is Donna's own
+    // wire in the advisory room — F-41.96 — and it is untouched. The row stub is
+    // kept exactly as it was, and is now inert; the room arrives from the Advisor
+    // page's assertion, which is the only door to it.
     db.schema = () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { victor_mode: 'advisor' } }) }) }) }) });
     const c = capture();
-    const w = await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1', surface: 'pwa_vendor' });
+    const w = await chat.buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'a1', surface: 'pwa_vendor', roomAssert: 'advisor' });
     c.done();
-    if (!w.donnaTransport) return 'donnaTransport is absent — loop.ts:728\'s ?? hands her Victor\'s wire';
+    if (!w.donnaTransport) return 'donnaTransport is absent — the advisor room lost Donna\'s own wire';
     if (w.donnaTransport.provider !== 'anthropic') return `donnaTransport.provider=${w.donnaTransport.provider}`;
     return typeof w.donnaTransport.stream === 'function' && typeof w.donnaTransport.create === 'function'
       ? true : 'the transport carries no stream/create';

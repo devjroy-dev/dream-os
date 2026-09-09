@@ -80,6 +80,22 @@ function compose({ vendorCategory, isConsult = false, isAdvisor = false }) {
   const CONSULTANT_HARVEY_SOUL = body(read(CONSULT), 'CONSULTANT_HARVEY_SOUL');
   assert.ok(HARVEY_SOUL && PRODUCTION_WEAVE && ADVISOR_LENS && CONSULTANT_HARVEY_SOUL,
     'a soul constant did not extract — re-derive');
+  // CE-41 SEAT I (R-41.136): the compose expression gained a terminal ROOM_LINE
+  // term, so the harness must carry it or the `eval` throws and every cell below
+  // reports a dead anchor. It is LIFTED from `loop.ts` exactly as the soul
+  // constants above are — never transcribed.
+  const ROOM_LINE = (() => {
+    const t = read(LOOP);
+    const m = t.match(/const ROOM_LINE = \{([\s\S]*?)\n\} as const;/);
+    if (!m) return { business: '', advisor: '' };
+    const grab = (key) => {
+      const g = m[1].match(new RegExp(`${key}:\\s*([\\s\\S]*?),(?=\\n|$)`, 'm'));
+      if (!g) return '';
+      const parts = g[1].match(/'((?:[^'\\]|\\.)*)'/g) || [];
+      return parts.map((q) => q.slice(1, -1)).join('').replace(/\\n/g, '\n').replace(/\\'/g, "'");
+    };
+    return { business: grab('business'), advisor: grab('advisor') };
+  })();
   const args = { vendorCategory };
   // ── LABELED AMENDMENT · F-06.67 (CE-ruled 2026-07-27, sitting 2). NOT A CELL CHANGE:
   // the FIXTURE was a 15-char stub, '\n\n[FIELD BLOCK]', and a stub that size cannot

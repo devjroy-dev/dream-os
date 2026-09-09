@@ -42,6 +42,40 @@ const MAX_ITERATIONS = 12;
 // into a logged abort. It does NOT shape how they talk — it makes a loop observable
 // and safe instead of a hung, billing turn. Soul governs the real count.
 const TALK_FUSE = 5;
+
+// ── CE-41 · SEAT I · R-41.136 (b) — VICTOR DOES NOT NARRATE A MODE HE IS NOT IN ──
+// The wire has said which room a turn ran in since G2 (`[engine:mode]`); Victor
+// himself never did, so when a vendor asked him in the shared Ask TDW sheet he
+// answered from the soul's own sense of himself and could name the advisory room
+// on a lane that has no door to it. That is the F-41.96 class one surface over: a
+// line reporting the room it imagines instead of the room it is in.
+//
+// ONE LINE PER ROOM, AND IT IS NOT A GUARD. F-41.112's wire-guard family stays
+// deferred and this is why: a guard convicts an answer AFTER it is composed, and
+// the specimen it would convict is simply not produced once the prompt says where
+// he is. The room line removes the specimen; the guard would only catch it.
+//
+// WHY THESE BYTES LIVE HERE AND NOT IN `harveySoul.ts` / `advisorLens.ts`. They are
+// not soul and not lens — they are a FACT ABOUT THIS TURN, chosen per room by the
+// same predicate that chooses the lens, and W-1 is not opened for a soul byte. A
+// sentence about the room, sited inside the soul, would be a sentence the room's
+// next sitting has no reason to re-read (F-06.85's disease). Sited here, beside
+// `isAdvisor`, it cannot drift from the predicate that selects it.
+//
+// CONSULT GETS NEITHER (chair fork F2). Consult is a third room with its own soul
+// and no `victor_mode` at all; handing it "you are in the working room" would be
+// the exact claim this packet exists to stop.
+//
+// THE FOUNDER HOLDS THE VETO ON THESE TWO SENTENCES (R-41.98: plain, short). No
+// bench asserts their WORDING — `b65` §9 asserts only that the business room gets
+// the business line and not the advisor one, and the converse — so a vetoed
+// rewording is a copy edit here and nothing else moves.
+const ROOM_LINE = {
+  business: '\n\nYou are in the working room. If you are asked which mode you are in, say business. '
+    + 'The Advisor room is its own door in the app.',
+  advisor: '\n\nYou are in the Advisor room.',
+} as const;
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export type TurnResult = {
@@ -303,7 +337,13 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
 
   const { data: agent, error } = await supabase
     .from('agents')
-    .select('id, tier, display_name, profession_preset, timezone, mode, victor_mode')
+    // CE-41 · SEAT I · R-41.136 — `victor_mode` IS GONE FROM THIS SELECT. The turn
+    // does not read the column any more (:355 below): the room is the DOOR'S, and a
+    // column still fetched here would be one edit away from deciding again. The
+    // column itself lives on — `GET /api/v2/vendor-e/mode` reads it for the app's
+    // chip and the PATCH door and the WhatsApp way-home still write it — but no
+    // reader of it remains inside a turn.
+    .select('id, tier, display_name, profession_preset, timezone, mode')
     .eq('id', agentId)
     .maybeSingle();
   if (error) throw new Error(`agent lookup failed: ${error.message}`);
@@ -333,17 +373,21 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // (F-04.70's mechanism removed by construction). His only hand is jot_advice; the
   // dispatch/claim doctrines have no subject in this room.
   // CE-41 seat G (R-41.104/R-41.105): `args.modeOverride` is the DOOR'S room and
-  // it wins over the row. The `??` is deliberate and is the whole regression
-  // proof — absent, this term is `agent.victor_mode` and the predicate is the
-  // byte it has always been. `estateInRoom` (:302 below) follows from here, so
-  // the lens (:487), the tool set (:567) and every estate block (:311-313,
-  // :494-532) come with it: ONE term, and the room is whole.
-  // CE-41 seat G · G2 (R-41.107): THE PRECEDENCE, chair-ruled, in order —
+  // it wins. `estateInRoom` (:388 below) follows from here, so the lens, the tool
+  // set and every estate block come with it: ONE term, and the room is whole.
+  // CE-41 · SEAT I · R-41.136 — THE COLUMN TERM IS GONE AND THE DEFAULT IS THE
+  // RULING. Advisor is reachable ONLY through the Advisor room, so a turn that
+  // carries no assertion is a BUSINESS turn by construction, whatever the row
+  // says. This is not a tightening of the old precedence; it is the removal of
+  // its last term. The orphan `advisor` row (DEV440's) is now inert to the turn:
+  // it decides nothing here, and the founder's walk reads `source=default` on it.
+  // The mirror below is now TWO terms, not three, and `b65` §9 drives both.
+  // CE-41 seat G · G2 (R-41.107), AS SEAT I LEAVES IT — THE PRECEDENCE, in order:
   // `modeOverride` (a door saying business), then `roomAssert` (a page saying
-  // advisor), then the column. THIS EXPRESSION IS A MIRROR of
+  // advisor), then `'business'`. THIS EXPRESSION IS A MIRROR of
   // `modelRouter.js`'s `resolveVendorRoom`, which the ROUTE reads, and the two
   // live in different packages so a literal one home is not available. Declared,
-  // not papered: `b65` §8 drives BOTH across the full input matrix and asserts
+  // not papered: `b65` §8/§9 drive BOTH across the full input matrix and assert
   // they agree on every combination — a disagreement is a bench red rather than
   // a lane routing business while it answers advisory, which is exactly the
   // half-cure G1's read-first reported as blocking.
@@ -352,7 +396,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // file only through the WhatsApp door, which passes `modeOverride: 'business'`
   // at both its `runTurn` sites and never passes an assertion. The router's
   // resolver carries the surface term because it is called on both lanes.
-  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? agent.victor_mode) as string | null;
+  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? 'business') as string | null;
   const isAdvisor = !isConsult && assertedRoom === 'advisor';
   // ── R-41.105's WITNESS ────────────────────────────────────────────────────
   // The founder's walk (§6) reads THIS to know the room, because the estate has
@@ -373,7 +417,10 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // different doors and a single field could not say which spoke. `source=`
   // names the term that actually decided, so a turn's room is legible without
   // re-deriving the precedence from this file.
-  const roomSource = args.modeOverride ? 'override' : (args.roomAssert ? 'assert' : 'column');
+  // CE-41 · SEAT I · R-41.136: the third value is `default`, and `column` can no
+  // longer print — there is no column term left to decide. A log still saying
+  // `source=column` after this packet is a stale dist, not a live read.
+  const roomSource = args.modeOverride ? 'override' : (args.roomAssert ? 'assert' : 'default');
   console.log(`[engine:mode] room=${isConsult ? 'consult' : (isAdvisor ? 'advisor' : 'business')} `
     + `override=${args.modeOverride ? 'yes' : 'no'} assert=${args.roomAssert ? 'yes' : 'no'} `
     + `source=${roomSource}`);
@@ -560,11 +607,37 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // F-06.4 DOES NOT CLOSE HERE. It closes at 4-of-4 on a gauntlet seat that composes the
   // production room — which is F-06.68's repair (the desk double now serves the handbook
   // rows), not this line. The live verdict is the founder's and is declared, never claimed.
+  // CE-41 · SEAT I · R-41.136 (b), FORK F1 RULED — THE ROOM LINE JOINS THE CACHED
+  // STATIC PREFIX, and it closes it, after the lens. It is static PER ROOM, so the
+  // cache law (guardrail 3) holds exactly as it does for the lens: nothing dynamic
+  // crossed the breakpoint. COST, STATED AND NOT SOFTENED — unlike F-06.58's and
+  // the lens's, this one is ESTATE-WIDE: every vendor account takes one prefix
+  // re-warm, once, because the BUSINESS line lands in every business prefix. That
+  // is the price of a room Victor cannot misname, and it is paid once per account,
+  // never per turn. The dynamic block was the alternative and was refused: a room
+  // assertion sitting beside the clock line is one that drifts with it.
+  //
+  // ⚠ AND IT DOES NOT CLOSE THE PREFIX — THE LENS STILL DOES. The first cut put
+  // the room line last and RED six cells of `b06_f0667`, which is F-06.67's own
+  // ruling defending itself: the advisory lens must END the composed prefix, and
+  // its CRUX must be the last paragraph Victor reads in that room, because three
+  // re-authorings believed it while it was false. A twenty-eight-character
+  // sentence after the crux is exactly the move that ruling forbids. The room
+  // line therefore sits between the field block and the lens, where it changes
+  // nothing about which paragraph closes either room.
+  //
+  // ⚠ THE COMMENT SITS ABOVE `isPlannerVoice`, NOT BETWEEN IT AND `staticPrefix`.
+  // `b06_f0658` and `b06_f0667` LIFT this compose expression out of the file by a
+  // regex that requires the two declarations to be adjacent, and a comment between
+  // them dead-anchors eighteen cells at once — loudly, to their credit. Sited here
+  // the anchor holds.
   const isPlannerVoice = !isConsult && args.vendorCategory === 'planning';
   const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL)
     + (isPlannerVoice ? PRODUCTION_WEAVE : '')
     + (isConsult ? '' : NO_MACHINERY_LAW)
-    + fieldBlock + (isAdvisor ? ADVISOR_LENS : '');
+    + fieldBlock
+    + (isConsult ? '' : (isAdvisor ? ROOM_LINE.advisor : ROOM_LINE.business))
+    + (isAdvisor ? ADVISOR_LENS : '');
   // The clock: today's date, in the owner's timezone, in the DYNAMIC (never-cached)
   // block — it changes daily and must never be cached stale. Reaches Harvey here;
   // Donna reads the same date via todayLine() in her own runtime.

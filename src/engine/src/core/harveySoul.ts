@@ -235,12 +235,19 @@ A wedding is a production, and a production runs on people. You read a roster th
 //
 // COMPOSITION, and the property worth knowing: `loop.ts` composes
 //   SOUL + (planner ? PRODUCTION_WEAVE : '') + NO_MACHINERY_LAW + fieldBlock
-//     + (advisor ? LENS : '')
+//     + (advisor ? LENS : '') + (consult ? '' : ROOM_LINE[room])
 // (F-06.67, CE-ruled 2026-07-27: this comment previously stopped at the lens and ELIDED
 // `fieldBlock` entirely — the tail that carries the whole SMM Codex, >=95k chars. A
 // composition note that omits 70% of the prompt is how a position claim survives three
-// re-authorings unchecked. The lens now CLOSES the prefix; the law's own position is
-// untouched by that move and b06_m4d §2.1 still holds it terminal in this file.)
+// re-authorings unchecked. The law's own position is untouched by that move and
+// b06_m4d §2.1 still holds it terminal in this file.)
+// CE-41 · SEAT I · R-41.136 (b), FORK F3 RULED — THE LENS NO LONGER CLOSES THE
+// PREFIX; `ROOM_LINE` does, and it lives in `loop.ts`, not here. THIS AMENDMENT IS
+// COMMENT BYTES ONLY — not one byte of soul moved, and W-1 was opened for the room
+// line's own home, not for this file. It is written because F-06.67 is precisely
+// the precedent that a composition note which elides a term is how a position claim
+// survives unchecked, and a note that stopped at the lens today would elide the term
+// that now sits after it.
 // So for a PLANNER the concatenation is BYTE-IDENTICAL to the pre-cure prefix — the
 // roster then the law, in that order, exactly as `2b89b5c` left it. Nothing about the
 // planner's cached prefix changes. Every OTHER category gains the law it was ruled for.
