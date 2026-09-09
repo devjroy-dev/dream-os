@@ -1,6 +1,14 @@
+// ── F-41.75 · Rs 0.5L IS NOT THE WALLET LAW ─────────────────────────────────
+// Seat E's cockpit walk read "Rs 0.5L / Rs 50k" on vendor chat. R-41.114 and the
+// wallet law: figures are `Rs X,XX,XXX` in Indian grouping — no glyph, no K, no L,
+// no Cr. `/100000).toFixed(1)}L` is a second money format in a file that already has
+// access to the estate's one (`formatRs`, src/lib/format.js:50, driven: 150000 ->
+// "1,50,000"). Two formats for one fact, and the shorter one rounds: Rs 1,49,000 and
+// Rs 1,51,000 both print "Rs 1.5L", which is a figure the founder cannot act on.
 // src/admin/views/detail.js
 
 const { waNumberFor } = require('../../lib/waNumbers');
+const { formatRs } = require('../../lib/format');   // F-41.75: the estate's ONE money format
 const TDW_WA_NUMBER = waNumberFor('vendor');   // F5 rider: one home for the pair
 
 function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [], monthCostInr = '0.00', costByModel = {}, invoices = [], expenses = [], totalBilled = 0, totalPaid = 0, totalOutstanding = 0, totalExpenses = 0, clients = [] }) {
@@ -256,7 +264,7 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
         <tbody>
           ${leads.map(l => {
             const budget = l.budget_min
-              ? `Rs ${(l.budget_min/100000).toFixed(1)}L${l.budget_max && l.budget_max !== l.budget_min ? `–${(l.budget_max/100000).toFixed(1)}L` : ''}`
+              ? `Rs ${formatRs(l.budget_min)}${l.budget_max && l.budget_max !== l.budget_min ? `–${formatRs(l.budget_max)}` : ''}`
               : '—';
             return `<tr style="border-bottom:1px solid #f0f0f0;">
               <td style="padding:8px 0;">${l.name || '—'}</td>

@@ -205,6 +205,27 @@ app.post('/webhook/meta', async (req, res) => {
         console.log(`[webhook:meta] template status ${v.message_template_name}=${v.event} → ${r.applied ? 'applied' : r.reason}`);
       } catch (e) { console.warn('[webhook:meta] template status seam', e && e.message); }
     }
+    // ── F-41.125 · THE WABA'S OWN STATE, BESIDE THE TEMPLATE'S ────────────────
+    // Meta enforces Messaging Policy §7 at the ACCOUNT: a WABA can be restricted, its
+    // quality tier cut, or its sending suspended, and `account_update` is the only
+    // notice. Nothing received it — the founder's first sign would have been sends
+    // failing for a reason no log named.
+    //
+    // ⚠ IT LOGS AND DOES NOT ACT. A restriction is the founder's decision, not the
+    // estate's: flipping keys off automatically would take the plane down on a webhook
+    // whose shape has never executed here, and a WABA restriction that turns out to be
+    // transient would leave the switchboard dark with nobody knowing why. The line is
+    // loud, names the event, and stops.
+    //
+    // ⚠ AND IT PRINTS THE WHOLE VALUE. Every other receiver logs named fields, because
+    // it knows the shape. THIS ONE DOES NOT — its first real execution is the founder's
+    // webhook, so the raw value IS the evidence for whoever reads the next sitting.
+    // The moment the shape is witnessed, this line should narrow to named fields.
+    for (const a of metaInbound.extractAccountUpdates(req.body)) {
+      try {
+        console.warn(`[webhook:meta] ACCOUNT UPDATE event=${a.event} — WABA-level, the founder's to act on: ${JSON.stringify(a)}`);
+      } catch (e) { console.warn('[webhook:meta] account update seam', e && e.message); }
+    }
     for (const s of metaInbound.extractStatuses(req.body)) {
       // ── TDW_06 · F-06.143's SECOND LIMB DIES HERE (fork 3(b), chair-ruled) ──
       // This was a BLIND update: no `.select()`, no count, wrapped in a

@@ -265,6 +265,36 @@ function extractTemplateStatusUpdates(body) {
   return out;
 }
 
+// ── F-41.125 · THE WABA-LEVEL RESTRICTION WEBHOOK ────────────────────────────
+// Meta's Messaging Policy §7 is enforced at the ACCOUNT, not the template: a WABA can
+// be restricted, its quality tier cut, or its sending capability suspended, and the
+// only notice is `account_update`. NOTHING IN THE ESTATE RECEIVED IT — the founder's
+// first sign of a restriction would have been sends failing for a reason no log named.
+//
+// ⚠ THIS IS extractTemplateStatusUpdates WITH ONE WORD CHANGED, ON PURPOSE. Four
+// walkers now cross the same entry[].changes[] envelope, split only by `ch.field`, and
+// a fourth that invented its own traversal would be a fourth dialect for one shape.
+// The only differences are the field name and the guard: a template update is worthless
+// without `message_template_name`, an account update without an `event`.
+//
+// ⚠ ITS FIRST REAL EXECUTION IS THE FOUNDER'S WEBHOOK, NOT A BENCH. Meta's payload for
+// this field cannot be sent from this container, so every claim about its shape comes
+// from the three siblings and Meta's documentation — the same position that produced
+// F-41.153's two wrong fixes. The cells assert the TRAVERSAL, which is the siblings'
+// and is testable, and nothing about Meta's inner field names beyond `event`. If Meta
+// sends a shape this misses, the log line at the receiver is the evidence.
+function extractAccountUpdates(body) {
+  const out = [];
+  const entries = body && Array.isArray(body.entry) ? body.entry : [];
+  for (const entry of entries) {
+    const changes = Array.isArray(entry.changes) ? entry.changes : [];
+    for (const ch of changes) {
+      if (ch && ch.field === 'account_update' && ch.value && ch.value.event) out.push(ch.value);
+    }
+  }
+  return out;
+}
+
 function changesWithPnid(body) {
   const out = [];
   const entries = (body && Array.isArray(body.entry)) ? body.entry : [];
@@ -303,6 +333,7 @@ function laneForPnid(pnid, env = process.env) {
 }
 
 module.exports = {
+  extractAccountUpdates,
   extractTemplateStatusUpdates,
   handleVerifyChallenge,
   verifyMetaSignature,

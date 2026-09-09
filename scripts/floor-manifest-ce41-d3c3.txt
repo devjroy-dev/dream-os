@@ -1,0 +1,39 @@
+CE-41 · SEAT D · D3c3 (dream-os) · FLOOR MANIFEST
+base: 0f43228bf56e48bb43c9da15393755ab425128b3
+
+b66_inbound_consent   GREEN  67/67   was 50/50 — +17 (§12 F-41.125, §13 F-41.154, §14 F-41.75)
+b64_mutations         GREEN   6/6    M3 RE-ANCHORED (F-41.154 moved its bytes)
+b20_a2 · b64 · b65 · b61 · b62_mutations · b63_mutations · b0455_money_loop   all exit 0
+BOTH WAYS: cured GREEN 67/67 · uncured RED on fifteen
+NO MIGRATION.
+
+⚠ F-41.125's FIRST REAL EXECUTION IS THE FOUNDER'S WEBHOOK, NOT A BENCH.
+  Meta's account_update payload cannot be sent from this container. Every claim about
+  its shape comes from the three siblings and Meta's docs — the same position that
+  produced F-41.153's TWO wrong fixes. So the walker is extractTemplateStatusUpdates
+  with one word changed, the cells assert the TRAVERSAL (the siblings', testable) and
+  nothing about Meta's inner names beyond `event`, and THE RECEIVER LOGS THE WHOLE
+  VALUE because the raw payload is the evidence for the next sitting. When the shape
+  is witnessed, that line should narrow to named fields.
+
+  IT LOGS AND DOES NOT ACT. A restriction is the founder's decision. Flipping keys on
+  a webhook whose shape has never executed here would take the plane down on a guess,
+  and a transient restriction would leave the switchboard dark with nobody knowing why.
+  A cell asserts the receiver touches no capability.
+
+F-41.154: six literals for two facts became two homes. The founder's OWN notify keeps
+its own words — `date_words` is a FULL DATE in a different template read by a different
+person — and that is asserted, so the next sitting does not "finish the job".
+
+F-41.75: three files, five L-format sites, zero left in code. briefing.js HAD NO
+require at all — the first cut replaced the format and left formatRs undefined, which
+would have thrown on the 8am cron and at no bench. Caught by reading the header.
+
+⚠ AN ERROR OF MINE THAT WAS NOT AN ERROR IN THE CODE. I read detail.js's range as
+missing its separator and nearly "fixed" it. The separator is an EN-DASH, and my own
+inspection pipeline (`tr -cd '\11\12\15\40-\176'`) strips non-ASCII — the character
+vanished in the display, not in the file. The false comment never landed only because
+an assert aborted the write. A tool that silently drops bytes is a tool that invents
+findings; read bytes with `cat -A` when the claim is about a character.
+
+M3's ANCHOR DIED AGAIN — sixth this sitting. Re-derived from the live file.

@@ -3,6 +3,11 @@
 // Returns { send: true, message: string } or { send: false, reason: string }
 // Does NOT send anything — that is the cron's responsibility.
 
+// F-41.75: the estate's ONE money format. This file had no require at all — the first
+// cut replaced the L-format and left the call undefined, which would have thrown on the
+// 8am cron rather than at any bench. Caught by reading the header, not by running.
+const { formatRs } = require('../lib/format');
+
 async function buildBriefing({ vendor, user, supabase }) {
   const vendorId = vendor.id;
   const name = user?.name || 'there';
@@ -166,7 +171,7 @@ async function buildBriefing({ vendor, user, supabase }) {
   if (overdueInvoices && overdueInvoices.length > 0) {
     const names = overdueInvoices.map(i => {
       const balance = i.amount_total - i.amount_paid;
-      return `${i.client_name} (${i.invoice_number}, Rs ${(balance/100000).toFixed(1)}L due ${i.due_date})`;
+      return `${i.client_name} (${i.invoice_number}, Rs ${formatRs(balance)} due ${i.due_date})`;
     }).join(', ');
     const count = overdueInvoices.length;
     parts.push(`${count} overdue invoice${count === 1 ? '' : 's'}: ${names}.`);

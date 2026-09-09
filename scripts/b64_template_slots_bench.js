@@ -270,6 +270,12 @@ for (const site of WIRE_SITES) {
   // a name here that becomes self-evident also REDS, so the list cannot rot.
   const READ_BY_HAND = {
     'admin_assist_request.date_words':  'monthDayYear(request.wedding_date) — the wedding date in words; the fold shares no letters with the key',
+    // F-41.154 moved these to one home each, and the fold cannot see through the
+    // helper's name: `assistanceMonth` does not contain `monthyear`, `assistanceCity`
+    // does not contain `city`... except it does, so only the month needs naming.
+    // Named rather than the cell narrowed — narrowing to where the heuristic happens
+    // to hold is the vacuity this file has been caught at twice.
+    'assist_lead_outside.month_year':   'assistanceMonth(request.wedding_date) — F-41.154s one home; the helper name folds apart from the key',
     'admin_assist_request.couple_name': "request.name — the couple's own name; `couple_name` and `name` fold apart",
   };
   const unbound = bodyPairs.filter(p => !fold(p.expr).includes(fold(p.key)));

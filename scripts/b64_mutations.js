@@ -53,12 +53,17 @@ const CURED_BODY =
 // D2b / F-41.123: the send site passes an OBJECT now. The defect these mutations
 // model is no longer "two list positions swapped" but "two KEYS given each other's
 // expression" — which is what a keyed binding exists to convict.
+// ⚠ RE-DERIVED AT F-41.154 (this is the sixth anchor this sitting to die on a real
+// edit, and the harness reporting "matched 0 times" is the only reason each was
+// survivable). The date fallback moved from four inline copies into `assistanceMonth`,
+// so the old two-line anchor no longer exists. Read from the live file, not recalled.
 const ARM_23 =
-  "    month_year:  monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}}\n" +
-  "    city:        request.city || 'India',                                                             // {{3}}";
+  "    month_year:  assistanceMonth(request.wedding_date), // {{2}}\n" +
+  "    city:        assistanceCity(request.city),                                                             // {{3}}";
 const ARM_23_SWAPPED =
-  "    month_year:  request.city || 'India',                                                             // {{2}}\n" +
-  "    city:        monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{3}}";
+  "    month_year:  assistanceCity(request.city), // {{2}}\n" +
+  "    city:        assistanceMonth(request.wedding_date),                                                             // {{3}}";
+
 
 const MUT = [
   // TWO EDITS, not one concatenated anchor: a comment block now sits between the

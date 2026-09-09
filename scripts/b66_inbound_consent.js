@@ -297,6 +297,80 @@ section('11. F-41.153 — the filter must be RUNNABLE, and its failure must be r
       try { await cell(A); } catch (e) { ok(`§11 driven cell threw: ${e && e.message}`, false); }
     }
   }
-  console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
+  section('12. F-41.125 — the fourth walker, and a receiver that does not act');
+{
+  const mi = strip(read('src/lib/metaInbound.js'));
+  const ix = strip(read('src/index.js'));
+  const M  = (() => { try { return require(P('src/lib/metaInbound.js')); } catch (_e) { return {}; } })();
+
+  // MIRRORED, NOT INVENTED. Four walkers cross one entry[].changes[] envelope, split
+  // only by ch.field. A fourth with its own traversal would be a fourth dialect.
+  ok('12.1 it walks the siblings\' envelope: entry[] → changes[] → field test',
+     /field === 'account_update'/.test(mi)
+     && /for \(const entry of entries\)[\s\S]{0,200}for \(const ch of changes\)[\s\S]{0,200}account_update/.test(mi));
+  ok('12.2 it guards on `event`, as the template walker guards on message_template_name',
+     /ch\.value && ch\.value\.event\) out\.push/.test(mi));
+
+  if (typeof M.extractAccountUpdates === 'function') {
+    const body = { entry: [{ id: '1', changes: [
+      { field: 'account_update', value: { event: 'ACCOUNT_RESTRICTION' } },
+      { field: 'messages', value: { messages: [] } },
+    ] }] };
+    ok('12.3 driven: it picks its own field and leaves the siblings\' alone',
+       M.extractAccountUpdates(body).length === 1
+       && M.extractTemplateStatusUpdates(body).length === 0);
+    ok('12.4 an account_update with no event is not an account update',
+       M.extractAccountUpdates({ entry: [{ changes: [{ field: 'account_update', value: {} }] }] }).length === 0);
+    ok('12.5 an empty body yields nothing rather than throwing',
+       M.extractAccountUpdates({}).length === 0 && M.extractAccountUpdates(null).length === 0);
+  } else {
+    for (let i = 0; i < 3; i++) ok('§12 cell — extractAccountUpdates absent (F-41.125 uncured)', false);
+  }
+
+  // ⚠ IT LOGS AND DOES NOT ACT. A restriction is the founder's decision; flipping keys
+  // on a webhook whose shape has never executed here would take the plane down on a
+  // guess. The cell asserts the receiver touches no capability.
+  ok('12.6 the receiver warns and acts on nothing — no key is flipped from a webhook',
+     /ACCOUNT UPDATE event=/.test(ix)
+     && !/extractAccountUpdates[\s\S]{0,400}(cap\.|capabilities|flip)/.test(ix));
+}
+
+section('13. F-41.154 — two words, one home each');
+{
+  const w = strip(read('src/lib/couple/assistance.js'));
+  const A = (() => { try { return require(P('src/lib/couple/assistance.js')); } catch (_e) { return {}; } })();
+  ok('13.1 the two words live in one place and are the chair\'s',
+     /monthUnknown: 'an upcoming'/.test(w) && /cityUnknown:  'India'/.test(w));
+  // The walk that forced this: four sites held the date word, and one produced
+  // "a couple planning a a date to be decided wedding" — F-41.80's shape.
+  ok('13.2 no outsider-facing site still holds its own copy of the date word',
+     !/month_year:[^\n]*'a date to be decided'/.test(w));
+  ok('13.3 the founder\'s own notify keeps ITS words — a different slot, a different reader',
+     /date_words:[^\n]*'a date to be decided'/.test(w));
+  if (typeof A.assistanceMonth === 'function') {
+    ok('13.4 driven: a real date gives the month, a null gives the vetoed word',
+       A.assistanceMonth('2026-12-22') === 'December 2026'
+       && A.assistanceMonth(null) === 'an upcoming');
+    ok('13.5 driven: the city falls back to India and never to an empty string',
+       A.assistanceCity('Jaipur') === 'Jaipur' && A.assistanceCity(null) === 'India'
+       && A.assistanceCity('') === 'India');
+  } else {
+    for (let i = 0; i < 2; i++) ok('§13 cell — assistanceMonth absent (F-41.154 uncured)', false);
+  }
+}
+
+section('14. F-41.75 — one money format, no L');
+{
+  const files = ['src/admin/views/detail.js', 'src/agent/engine.js', 'src/agent/briefing.js'];
+  for (const f of files) {
+    const src = strip(read(f));
+    ok(`14.${files.indexOf(f) + 1} ${f} writes no lakh suffix in code`,
+       !/toFixed\(1\)\}L/.test(src));
+    ok(`14.${files.indexOf(f) + 1}b ${f} imports the estate's one formatter`,
+       /require\(['"]\.\.?\/(\.\.\/)?lib\/format['"]\)/.test(src));
+  }
+}
+
+console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
   if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
 })();

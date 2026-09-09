@@ -289,6 +289,12 @@ async function notifyFounder(supabase, request, items, deps) {
   const sendWaFn = deps.sendWa || require('../sendWa').sendWa;
   const vars = {
     couple_name:      request.name || 'a couple',
+    // ⚠ NOT F-41.154's WORDS, AND DELIBERATELY SO. This is the FOUNDER'S OWN notify
+    // (`admin_assist_request`), whose {{2}} is a FULL DATE and not a month — a
+    // different slot in a different template read by a different person. R-41.154
+    // ruled the two words for what an OUTSIDER and a STRANGER read; the founder
+    // reading "a date to be decided" in his own alert is correct and unchanged.
+    // Naming this so the next sitting does not "finish the job" and break row 9.
     date_words:       monthDayYear(request.wedding_date) || 'a date to be decided',
     city:             request.city || 'a city to be decided',
     categories_words: categoriesWords((items || []).map(i => i.category)),
@@ -587,6 +593,41 @@ async function vendorForPhone(supabase, phone) {
   return vendor || null;
 }
 
+// ── F-41.154 · THE TWO WORDS FOR WHAT SHE HASN'T SAID (chair-ruled) ─────────
+// TBD IS A LEGITIMATE STATE. A couple may genuinely not have a date, and the sheet
+// keeps accepting one without it. What the chair ruled is that the two fallbacks are
+// VETOED COPY, not slot fillers — they are read by an outsider on WhatsApp and by a
+// stranger on the public page, so they are product bytes and belong in one home.
+//
+// The walk that forced this: BOTH live requests had `wedding_date` null and one had no
+// city, so the outsider's message read "a couple planning a wedding in India needs a
+// photographer" with the fallbacks doing all the work — and four separate call sites
+// each held their own copy of the date word, two held the city word. Six literals for
+// two facts.
+//
+// "an upcoming" reads correctly in the template's own sentence — "a couple planning an
+// upcoming wedding in Jaipur" — where "a date to be decided" produced "a couple
+// planning a a date to be decided wedding". The old word was written for a different
+// slot and never re-read when the slot moved (F-41.80's shape: the literal and the
+// value composing into nonsense).
+//
+// ⚠ THE PUBLIC PAGE AND THE COUPLE'S "we found you" USE THESE SAME TWO. One home, or
+// the outsider and the couple are told different things about the same request.
+const ASSIST_WORDS = {
+  monthUnknown: 'an upcoming',
+  cityUnknown:  'India',
+};
+
+// The month slot as the templates want it: the real month when there is one, the vetoed
+// word when there is not. Never a date, never a day — {{2}} is a month.
+function assistanceMonth(weddingDate) {
+  return monthDayYear(weddingDate) ? monthYearOnly(weddingDate) : ASSIST_WORDS.monthUnknown;
+}
+
+function assistanceCity(city) {
+  return city || ASSIST_WORDS.cityUnknown;
+}
+
 function consentState(c, prospect) {
   if (prospect && prospect.consent_source === CONSENT_ATTESTED_SOURCE && prospect.consent_text) {
     return { state: 'founder_attested', limb: null };
@@ -680,13 +721,13 @@ async function notifyCoupleOfFound(supabase, { forwardId, kind, request, item, v
     ? {
         name:          contact.name || 'there',
         category_noun: categoryNoun(item.category),
-        month_year:    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided',
+        month_year:    assistanceMonth(request.wedding_date),
         vendor_name:   (vendor && (vendor.business_name || vendor.routing_handle)) || 'a vendor',
         routing_handle: (vendor && vendor.routing_handle) || '',   // the url button's suffix, NOT a body slot
       }
     : {
         name:          contact.name || 'there',
-        month_year:    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided',
+        month_year:    assistanceMonth(request.wedding_date),
         category_noun: categoryNoun(item.category),
         ig_handle:     (prospect && prospect.ig_handle) ? `@${String(prospect.ig_handle).replace(/^@/, '')}` : 'their profile',
       };
@@ -971,8 +1012,8 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
   // button base moves to `/e/` at the next edit window, the prefix retires with it.
   const vars = {
     name:        prospect.name || 'there',                                                            // {{1}}
-    month_year:  monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{2}}
-    city:        request.city || 'India',                                                             // {{3}}
+    month_year:  assistanceMonth(request.wedding_date), // {{2}}
+    city:        assistanceCity(request.city),                                                             // {{3}}
     category_noun: categoryNoun(item.category),                                                       // {{4}}
     budget_rs:   formatRs(item.budget_rs || 0),                                                       // {{5}}
     enquiry_ref: `enq-${item.id}`,                                                                    // the url button's suffix, NOT a body slot
@@ -1368,6 +1409,6 @@ module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
-  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink, vendorForPhone, publicEnquiry,
+  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink, vendorForPhone, publicEnquiry, ASSIST_WORDS, assistanceMonth, assistanceCity,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

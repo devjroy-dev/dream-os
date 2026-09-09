@@ -920,7 +920,7 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
       const summary = leads.map(l => {
         const date   = formatDateWithPrecision(l.wedding_date, l.wedding_date_precision);
         const budget = l.budget_min
-          ? `Rs ${(l.budget_min/100000).toFixed(1)}L${l.budget_max && l.budget_max !== l.budget_min ? `-${(l.budget_max/100000).toFixed(1)}L` : ''}`
+          ? `Rs ${formatRs(l.budget_min)}${l.budget_max && l.budget_max !== l.budget_min ? `-${formatRs(l.budget_max)}` : ''}`
           : 'budget unknown';
         return `${l.name || 'Unknown'} — ${l.phone || 'no phone'} — ${date} — ${l.state} — ${budget}`;
       }).join('\n');
