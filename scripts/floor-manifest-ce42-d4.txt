@@ -1,0 +1,25 @@
+CE-42 · SEAT D · D4 (dream-os) · FLOOR MANIFEST
+base: e101b7e7a1deee96b9a9232a6e788732a0275673
+b66_inbound_consent  GREEN 77/77 (+10, §16) · b20_a2 GREEN 165/165 · seven others exit 0
+BOTH WAYS: uncured RED on eight. NO MIGRATION.
+
+NOT A THIRD COUPLES WRITER. `ensureCoupleRow` (src/lib/coupleIdentity.js) is already the
+estate's find-or-create — users insert, 23505 race, couples row, name backfill — and
+already serves admin/couples.js:128 and vendorInbound.js:522. The ruling asked for
+auth.js:170-202's shape extracted; it was extracted long ago. D4 is its THIRD CALLER.
+
+THREE SEALED CELLS MOVED, ALL THE RULED CHANGE:
+· "unknown phone → couple_id null (seat D backfills on join)" → a couple is CREATED.
+· "two users share the last ten → attach nothing" → the request is REFUSED. Attaching
+  nothing is still right; writing it couple-less is not.
+· "admin-typed (couple_id NULL) forwards with +91 + last ten" → the lead half is
+  untouched and verified by command (+919876543210 / "Typed Couple"); only the
+  `couple_id === null` clause moved.
+
+F-42.2 FILED NOT CURED, and named at the create site by path and symbol:
+brideComplete (onboardingPredicate.js:86) needs users.name AND couples.budget_total.
+D4 writes the name; NOTHING writes budget_total (R-41.25). The day
+`onboarding.gate_enabled` arms, onboardingGate.js:103 gates every couple created here.
+
+16.9 WAS VACUOUS ON ITS FIRST CUT — `(async()=>true)() && true` is always truthy.
+Re-cut onto the bench's async tail and driven against a double that counts rows.

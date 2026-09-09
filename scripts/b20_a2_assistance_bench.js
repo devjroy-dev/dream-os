@@ -292,7 +292,13 @@ const ADMIN  = 'src/api/admin/assistance.js';
     const adm = await A.createAssistanceRequest(db, { phone: '98 7654 3210', name: 'Typed Couple', city: 'Jaipur', origin: 'admin', items: [{ category: 'makeup', budget_rs: 30000 }] }, noSend);
     leadCalls.length = 0;
     f = await A.forwardAssistanceItem(db, { itemId: adm.items[0].id, target: { kind: 'vendor', vendor_id: 'v-swati' } }, { createLead: fakeCreateLead });
-    ok('admin-typed request (couple_id NULL) forwards with phone +91 + last ten and the typed name', f.ok && leadCalls[0].params.phone === '+919876543210' && leadCalls[0].params.name === 'Typed Couple' && adm.request.couple_id === null && adm.request.origin === 'admin');
+    // D4: the lead half is untouched — +91 + last ten, the typed name — but the request
+    // now CARRIES a couple, so the old `couple_id === null` clause is the ruled change,
+    // not a regression. The values reach the lead identically either way: through
+    // coupleContact's couples→users lookup instead of its raw-phone fallback.
+    ok('admin-typed request forwards with phone +91 + last ten and the typed name, and now carries a couple',
+       f.ok && leadCalls[0].params.phone === '+919876543210' && leadCalls[0].params.name === 'Typed Couple'
+       && !!adm.request.couple_id && adm.request.origin === 'admin');
   } else { for (let i = 0; i < 15; i++) ok('§6 cell (writer absent)', false); }
 
   // ═══ §6b · F-41.37 / R-41.68 — the vendor is told, behind the flag ═══
@@ -340,10 +346,19 @@ const ADMIN  = 'src/api/admin/assistance.js';
     let r = await A.createAssistanceRequest(db, { phone: '96257 59924', name: 'Sarah', origin: 'admin', items: [{ category: 'makeup', budget_rs: 1 }] }, noSend);
     ok('admin-typed, phone matches one users.phone by last ten → couple_id attached at write', r.ok && r.request.couple_id === 'couple-priya' && r.request.origin === 'admin');
     r = await A.createAssistanceRequest(db, { phone: '9000000000', origin: 'admin', items: [{ category: 'makeup' }] }, noSend);
-    ok('admin-typed, unknown phone → couple_id null (seat D backfills on join)', r.ok && r.request.couple_id === null);
+    // ⚠ D4 INVERTED THIS CELL, AND THAT IS THE PACKET. It asserted couple_id stays
+    // null for an unknown phone — which is exactly the state that sent her found-notice
+    // to a raw phone and dropped her reply at brideInbound's invite gate. A request
+    // now gets a couple or it is not written.
+    ok('admin-typed, unknown phone → a couple is CREATED and attached, never null',
+       r.ok && !!r.request.couple_id);
     db._t.users.push({ id: 'user-twin', phone: '+449625759924' });
     r = await A.createAssistanceRequest(db, { phone: '9625759924', origin: 'admin', items: [{ category: 'makeup' }] }, noSend);
-    ok('two users share the last ten → attach nothing rather than guess', r.ok && r.request.couple_id === null);
+    // ⚠ D4 MOVED THIS ONE TOO. Attaching nothing is still right — a wrong couple_id
+    // sends her enquiry to a stranger — but the request must not be WRITTEN couple-less
+    // either. The twin now refuses, and the refusal is the whole answer.
+    ok('two users share the last ten → the request is REFUSED, not written couple-less',
+       !r.ok && r.code === 'ambiguous_couple');
     r = await A.createAssistanceRequest(db, { couple_id: 'couple-explicit', phone: '9625759924', origin: 'bride', items: [{ category: 'makeup' }] }, noSend);
     ok('an explicit couple_id (the bride door\'s session) always wins over the match', r.ok && r.request.couple_id === 'couple-explicit');
     const mine = await A.getLatestAssistanceForCouple(db, 'couple-priya');

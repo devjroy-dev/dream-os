@@ -58,6 +58,7 @@ const { createLead } = require('../vendor/leads');
 const { VENDOR_CATEGORIES } = require('../../agent/categories');
 const { normalizeTo } = require('../metaCloud');
 const cap = require('../capabilities');
+const { ensureCoupleRow } = require('../coupleIdentity');        // D4: the estate's find-or-create (admin/couples.js:128, vendorInbound.js:522 are the others)
 const { monthPhrase } = require('../discover/demoLeadAlert');   // its ONE HOME (enquire.js:67 names the same coupling)
 const { logWaSend } = require('../waSendLog');                  // R-41.90: the estate's one send-log grammar, masked recipient
 const VENDOR_LEADS_URL = require('../pwaPaths').vendorUrl('leadsList');
@@ -146,6 +147,9 @@ const REFUSE = Object.freeze({
   // F-41.151 — she is already one of ours. Not a failure: a REDIRECT, and the queue
   // offers the TDW forward that was the right door all along.
   ALREADY_A_VENDOR: 'already_a_vendor',
+  // D4 — the two ways a request can fail to get a couple.
+  AMBIGUOUS_COUPLE: 'ambiguous_couple',
+  COUPLE_FAILED:    'couple_failed',
   // F-41.100 / R-41.123 — the ruled cap, warn-and-confirm. Not a wall: the founder
   // can pass it, but he passes it ON PURPOSE.
   FANOUT_REACHED:  'fanout_reached',
@@ -222,6 +226,51 @@ async function createAssistanceRequest(supabase, params, deps = {}) {
   // backfill is for couples who join LATER; this is the one home for the match now.
   let couple_id = p.couple_id || null;
   if (!couple_id) couple_id = await findCoupleIdByLastTen(supabase, phone);
+
+  // ── D4 · EVERY REQUEST GETS A COUPLE, OR IT IS NOT WRITTEN ─────────────────
+  // The match above was already here; only the CREATE half was missing, and null
+  // survived exactly when the last ten belonged to no `users` row — which is every
+  // request the founder files by hand. The cost was not cosmetic: her found-notice
+  // went to the raw phone (coupleContact's null branch), she was told to reply, and
+  // her reply died at brideInbound.js's circle-invite gate with DEAD_END_REPLY.
+  //
+  // ⚠ NOT A THIRD COUPLES WRITER. `ensureCoupleRow` (src/lib/coupleIdentity.js) is
+  // the estate's find-or-create and already serves admin/couples.js:128 and
+  // vendorInbound.js:522 — it handles the users insert, the 23505 race, the couples
+  // row and the name backfill. The ruling asked for auth.js's shape extracted; it
+  // was extracted long ago and this is the third caller, not a second home.
+  //
+  // ⚠ IT TAKES E.164. `users.phone` is matched with `.eq`, and this table's `phone`
+  // is the LAST TEN (R-41.29). `e164FromLastTen` is the one bridge between them;
+  // passing the last ten straight through would miss every existing user and create
+  // a duplicate beside them.
+  //
+  // ⚠ F-42.2 — THE GATE WILL LOCK THESE COUPLES OUT THE DAY IT ARMS.
+  // `brideComplete` (src/lib/onboardingPredicate.js:86) requires `users.name` AND
+  // `couples.budget_total`. This writes the name when the founder supplied one;
+  // NOTHING writes budget_total (R-41.25: the request holds its own copy). So when
+  // `onboarding.gate_enabled` flips on, onboardingGate (src/lib/onboardingGate.js:103)
+  // will gate every couple created here on her first message. Filed, not cured —
+  // CE-42 owns the gate's next sitting. Named here so that sitting finds it.
+  if (!couple_id) {
+    // The twin case is the match's own refusal and it stands: two users share the
+    // last ten, findCoupleIdByLastTen attaches nothing rather than guess, and we do
+    // NOT create a third. Refusing is the only honest answer — a wrong couple_id
+    // sends her enquiry to a stranger.
+    const twin = await lastTenIsAmbiguous(supabase, phone);
+    if (twin) {
+      return { ok: false, code: REFUSE.AMBIGUOUS_COUPLE,
+               error: 'Two accounts share those ten digits. Resolve them before filing this request.' };
+    }
+    try {
+      const ids = await ensureCoupleRow(supabase, e164FromLastTen(phone), p.name || null);
+      couple_id = (ids && ids.couple_id) || null;
+    } catch (e) {
+      console.error('[assistance:create] could not attach a couple:', e && e.message);
+      return { ok: false, code: REFUSE.COUPLE_FAILED,
+               error: 'Could not create the account for this number. Try again.' };
+    }
+  }
 
   const { data: request, error: reqErr } = await supabase
     .from('assistance_requests')
@@ -399,6 +448,15 @@ function formatRs(n) {
 // The last-ten → couple_id match (R-41.69). `users.phone` is E.164; `like '%<ten>'`
 // is the same join law prospects use. Two users sharing a last-ten (a country-code
 // twin) → attach nothing rather than guess.
+// D4: findCoupleIdByLastTen returns null for BOTH "no user" and "two users", and the
+// two need opposite answers — create, or refuse. This asks which it was, with the same
+// query and the same limit so the two can never disagree about what they saw.
+async function lastTenIsAmbiguous(supabase, lastTen) {
+  if (!lastTen) return false;
+  const { data: users } = await supabase.from('users').select('id').like('phone', `%${lastTen}`).limit(2);
+  return Array.isArray(users) && users.length > 1;
+}
+
 async function findCoupleIdByLastTen(supabase, lastTen) {
   if (!lastTen) return null;
   const { data: users } = await supabase.from('users').select('id, phone').like('phone', `%${lastTen}`).limit(2);
@@ -1016,7 +1074,7 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     city:        assistanceCity(request.city),                                                             // {{3}}
     category_noun: categoryNoun(item.category),                                                       // {{4}}
     budget_rs:   formatRs(item.budget_rs || 0),                                                       // {{5}}
-    enquiry_ref: `enq-${item.id}`,                                                                    // the url button's suffix, NOT a body slot
+    enquiry_ref: enquiryToken(item.id),   // R-42.1: eight hex, the form the public door parses                                                                    // the url button's suffix, NOT a body slot
   };
   try {
     // F-41.78: `sendWa` logs the one SENT line (R-41.90) and its own default names
@@ -1411,6 +1469,6 @@ module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
-  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink, vendorForPhone, publicEnquiry, ASSIST_WORDS, assistanceMonth, assistanceCity,
+  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink, vendorForPhone, publicEnquiry, lastTenIsAmbiguous, ASSIST_WORDS, assistanceMonth, assistanceCity,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

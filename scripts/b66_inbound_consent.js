@@ -377,6 +377,68 @@ section('15. R-41.131 — the link reaches the queue');
   ok('15.1 every item the queue reads carries its wa_link', /wa_link: enquiryWaLink\(i\.id\)/.test(w));
 }
 
+section('16. D4 — every request gets a couple, or it is not written');
+{
+  const w = strip(read('src/lib/couple/assistance.js'));
+  const A = (() => { try { return require(P('src/lib/couple/assistance.js')); } catch (_e) { return {}; } })();
+
+  ok('16.1 the create half runs only when the match found nothing',
+     /if \(!couple_id\) couple_id = await findCoupleIdByLastTen/.test(w)
+     && w.indexOf('findCoupleIdByLastTen(supabase, phone)') < w.indexOf('ensureCoupleRow(supabase, e164FromLastTen'));
+
+  // NOT A THIRD WRITER. ensureCoupleRow already serves admin/couples.js and
+  // vendorInbound.js; this is its third caller.
+  ok('16.2 it calls the estate\'s find-or-create, and defines no couples insert of its own',
+     /ensureCoupleRow\(supabase, e164FromLastTen\(phone\), p\.name \|\| null\)/.test(w)
+     && !/from\('couples'\)[\s\S]{0,60}\.insert/.test(w));
+
+  // users.phone is matched with .eq and is E.164; this table's phone is the last ten.
+  ok('16.3 the last ten is bridged to E.164 — never passed straight through',
+     /ensureCoupleRow\(supabase, e164FromLastTen\(phone\)/.test(w)
+     && !/ensureCoupleRow\(supabase, phone/.test(w));
+
+  // THE TWIN CASE. findCoupleIdByLastTen returns null for BOTH "no user" and "two
+  // users"; the two need opposite answers, so the probe asks which it was.
+  ok('16.4 a country-code twin REFUSES rather than creating a third account',
+     /const twin = await lastTenIsAmbiguous/.test(w)
+     && w.indexOf('lastTenIsAmbiguous(supabase, phone)') < w.indexOf('ensureCoupleRow(supabase, e164FromLastTen')
+     && /REFUSE\.AMBIGUOUS_COUPLE/.test(w));
+  ok('16.5 the probe uses the match\'s own query and limit, so they cannot disagree',
+     /lastTenIsAmbiguous[\s\S]{0,300}like\('phone', `%\$\{lastTen\}`\)\.limit\(2\)/.test(w));
+
+  ok('16.6 a create failure refuses the request rather than writing it couple-less',
+     /REFUSE\.COUPLE_FAILED/.test(w) && /could not attach a couple/.test(w));
+
+  // F-42.2 is filed, not cured — and named where the next sitting will look.
+  ok('16.7 the gate trap is named in comment, by path and symbol',
+     /onboardingPredicate\.js/.test(read('src/lib/couple/assistance.js'))
+     && /onboarding\.gate_enabled/.test(read('src/lib/couple/assistance.js')));
+
+  // R-42.1
+  ok('16.8 the button suffix is the eight-hex form the public door parses',
+     /enquiry_ref: enquiryToken\(item\.id\)/.test(w) && !/enq-\$\{item\.id\}/.test(w));
+  if (typeof A.enquiryToken === 'function') {
+    ok('16.8b driven: a full uuid yields enq- plus eight hex',
+       A.enquiryToken('5b8e563f-0e43-4c53-a670-e4b53cbd39b4') === 'enq-5b8e563f');
+  } else { ok('16.8b driven — enquiryToken absent', false); }
+
+  // DRIVEN, on the async tail — the first cut of this asserted `(async()=>true)() && true`,
+  // which is always truthy and tests nothing.
+  DRIVEN.push(async (Mod) => {
+    if (typeof Mod.lastTenIsAmbiguous !== 'function') { ok('16.9 driven — lastTenIsAmbiguous absent', false); return; }
+    const db = (n) => ({ from: () => ({ select: () => ({ like: () => ({ limit: () => ({
+      data: Array.from({ length: n }, (_, i) => ({ id: `u${i}` })) }) }) }) }) });
+    const two  = await Mod.lastTenIsAmbiguous(db(2), '9876543210');
+    const one  = await Mod.lastTenIsAmbiguous(db(1), '9876543210');
+    const none = await Mod.lastTenIsAmbiguous(db(0), '9876543210');
+    const blank = await Mod.lastTenIsAmbiguous(db(2), '');
+    ok('16.9 driven: two users on one last ten is ambiguous; one and none are not',
+       two === true && one === false && none === false);
+    ok('16.9b driven: no last ten is not ambiguous — it is nothing to ask about',
+       blank === false);
+  });
+}
+
 console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
   if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
 })();
