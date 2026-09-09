@@ -31,7 +31,16 @@
 //
 // TRANSPORT: sends go through the real sendWa gate. The caller (marketingIndex, or the bench)
 // passes `sendWa` + `sendWaDeps`; the marketing line's free-form + template both ride Meta Cloud
-// API (metaCloud) because MARKETING_WHATSAPP_NUMBER is a Meta phone-number-id, not a Twilio number.
+// API (metaCloud).
+//
+// ⚠ F-41.149 — THIS COMMENT USED TO CALL MARKETING_WHATSAPP_NUMBER A META
+// PHONE-NUMBER-ID. It is not one. That variable holds the E.164 IN TWILIO DRESS — `whatsapp:+918810531764`
+// — and `MARKETING_PHONE_NUMBER_ID` is the Meta id. The two were transposed, and the
+// sentence read as an argument for the transport it was explaining. `normalizeTo`
+// (metaCloud.js:65) folds the Twilio form to bare digits, which is why the value works
+// everywhere despite the label being wrong; a wrong comment on a working value is the
+// hardest kind to notice, and the reason R-41.131's link builder had to derive the
+// number rather than trust this line.
 // With no injected deps, sendWa's Meta defaults apply (creds-gated — Movement B).
 //
 // DISCLOSED WINDOW MODEL: WhatsApp's 24h customer-service window is ROLLING — each inbound reopens

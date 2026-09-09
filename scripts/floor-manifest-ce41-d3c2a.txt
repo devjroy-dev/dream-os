@@ -1,0 +1,27 @@
+CE-41 · SEAT D · D3c2a (dream-os) · FLOOR MANIFEST
+base: 3135d3184b4262bca37008c6a710e39dba4a1d15
+
+b66_inbound_consent   GREEN  22/22   was 13/13 — +9 (§6 the link, §7 the comment, 4.4)
+b20_a2 · b65 · b64_mutations · b61 · b62_mutations · b63_mutations   all exit 0
+BOTH WAYS: cured GREEN 22/22 · uncured RED, fourteen NAMED reds
+
+NO MIGRATION. NO NEW RAILWAY VARIABLE — MARKETING_WHATSAPP_NUMBER is already set, and
+normalizeTo (metaCloud.js:65) ALREADY strips `whatsapp:` and `+`. No sibling was needed;
+the chair's "normalizeTo's sibling, or the same function if it already accepts that
+form" resolved to the second, derived by running it on both dresses.
+
+⚠ THIS IS PART OF D3c2, NOT ALL OF IT. Cut and proven here: the link builder, F-41.107's
+cure, F-41.149's comment. NOT cut: F-41.128's public enquiry read, the fan-out confirm,
+and the pwa frame. Named in the handover, not absorbed.
+
+F-41.107 CURED (R-41.144). The cell compared the consent arm to the FIRST
+`openProspectConversation` — there are three, and the START arm opens one. It passed for
+the wrong reason and would have passed if the arm moved above that call. Anchored now on
+the slice beginning at the consent arm itself. 4.4 asserts the file still has more than
+one such call, so the cure cannot silently become vacuous.
+
+§6 GUARDED — FOURTH BENCH THIS SITTING. Its first cut called A.enquiryToken unguarded and
+threw at an uncured tree: zero failures, no verdict, which reads as a clean run.
+
+7.1 CAUGHT MY OWN CORRECTION. The comment I wrote QUOTED the sentence it was correcting,
+so the wrong claim was still in the file. Reworded to describe rather than reproduce it.

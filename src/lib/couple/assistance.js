@@ -66,6 +66,39 @@ const TDW_ASSIST_SOURCE = 'tdw_assist';
 const TDW_REFERRER_NAME = 'The Dream Wedding';
 const DEFAULT_COUNTRY = '91';       // India-only BY RULING (R-41.34); one home for the assumption
 const FANOUT_DEFAULT = 3;           // §6.2 ruled: 3 per category, admin override in the queue
+
+// ── R-41.131 · THE LINK THE FOUNDER SENDS HER ────────────────────────────────
+// She taps it, WhatsApp opens on OUR marketing line with the message pre-typed, and
+// her first send both opens the 24h window AND names the enquiry. That is why the
+// token is in the text and not only in the URL: a `wa.me` link carries no metadata
+// through, so the only thing that survives her tapping it is what she sends.
+//
+// THE TOKEN IS `enq-<first eight hex of the item id>` — the SAME prefix family as
+// R-41.119's button suffix, deliberately. One vocabulary: a reader who has seen
+// `enq-` on the `/r/` route knows what this is without being told twice.
+// Eight hex is a uuid's first block; it is not a secret and does not need to be —
+// it names an enquiry, and the page behind it shows no phone (F-41.128).
+//
+// THE NUMBER IS DERIVED, NEVER TYPED. `MARKETING_WHATSAPP_NUMBER` holds the E.164 in
+// Twilio dress (`whatsapp:+918810531764`) and `normalizeTo` (metaCloud.js:65) already
+// folds `whatsapp:` and `+` to bare digits — the one home, not a sibling. F-41.149
+// records that this variable was documented as a Meta phone-number-id and is not one;
+// deriving through normalizeTo means the link is right whichever dress the value wears.
+function enquiryToken(itemId) {
+  const hex = String(itemId || '').replace(/[^0-9a-f]/gi, '').slice(0, 8).toLowerCase();
+  return hex.length === 8 ? `enq-${hex}` : null;
+}
+
+function enquiryWaLink(itemId, deps = {}) {
+  const raw = deps.marketingNumber || process.env.MARKETING_WHATSAPP_NUMBER || '';
+  const number = normalizeTo(raw);
+  const token = enquiryToken(itemId);
+  // No number or no token → NO LINK. A half-built wa.me URL opens WhatsApp on nothing
+  // and looks like the estate is working; null is the honest answer and the queue
+  // simply shows no link.
+  if (!number || !token) return null;
+  return `https://wa.me/${number}?text=${encodeURIComponent(`Send me the enquiry ${token}`)}`;
+}
 // F-41.37 / R-41.68 — the vendor is TOLD a concierge forward landed, by the same
 // Utility alert the enquiry door sends (registry key lead_alert_utility), behind a
 // register flag seeded OFF in 0151: a new send to real vendors walks before it is on.
@@ -1169,6 +1202,6 @@ module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
-  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound,
+  TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

@@ -56,8 +56,22 @@ section('4. it sits in the right place in the arm order');
      at("'noop_discarded'") !== -1 && at("'noop_discarded'") < at('consent_source'));
   ok('4.2 AFTER opted_out — someone who said STOP is never recorded as consenting',
      at("'noop_opted_out'") !== -1 && at("'noop_opted_out'") < at('consent_source'));
+  // ── F-41.107 CURED (R-41.144) ────────────────────────────────────────────
+  // This compared the consent arm against the FIRST `openProspectConversation` in the
+  // file — and there are three (the START arm opens one too). It passed for the wrong
+  // reason: it would pass identically if the arm moved ABOVE the START arm's call,
+  // which is not the claim. FIFTH first-match specimen this sitting.
+  // Anchored now on the slice that begins at the consent arm itself, so "the next
+  // conversation opened after this record" is the only thing it can read.
   ok('4.3 BEFORE the answer is composed — the record lands whatever the reply does',
-     at('consent_source') < at('openProspectConversation'));
+     (() => {
+       const from = arm.indexOf('consent_source');
+       if (from === -1) return 'no consent arm';
+       const after = arm.slice(from);
+       return after.indexOf('openProspectConversation') !== -1;
+     })() === true);
+  ok('4.4 and the cell can tell the arm apart from the START arm that also opens one',
+     (arm.match(/openProspectConversation/g) || []).length >= 2);
 }
 
 section('5. limb (a) is NOT asserted here, and the file says why');
@@ -65,6 +79,46 @@ ok('5.1 the arm does not re-implement consentEvidences or test for the number',
    !/consentEvidences/.test(arm) && !/slice\(-10\)/.test(arm));
 ok('5.2 the reason is written down: she is messaging FROM the number, Meta witnesses it',
    /SHE IS MESSAGING FROM THAT NUMBER/.test(raw));
+
+section('6. R-41.131 — the link the founder sends her');
+{
+  // A CELL THAT CANNOT SEE ITS SUBJECT MUST FAIL, NEVER THROW — seat A's close note §6,
+  // and the FOURTH bench this sitting to need it (§7c, b65's read, §7f, here). At an
+  // uncured tree the helpers do not exist and an unguarded call takes the whole bench
+  // down: zero failures, no verdict, which reads as a clean run at a glance.
+  let A = {};
+  try { A = require(P('src/lib/couple/assistance.js')); } catch (_e) { /* uncured */ }
+  const has = typeof A.enquiryToken === 'function' && typeof A.enquiryWaLink === 'function';
+  const ID = '5b253fb2-1287-41e0-a3d4-eac192c28269';
+  if (!has) {
+    for (let i = 0; i < 6; i++) ok('§6 cell — assistance.js exports no link builder (R-41.131 uncured)', false);
+  }
+  if (has) {
+  ok('6.1 the token is enq- + the id\'s first eight hex — R-41.119\'s vocabulary',
+     A.enquiryToken(ID) === 'enq-5b253fb2');
+  // THE NUMBER IS DERIVED THROUGH normalizeTo, SO BOTH DRESSES FOLD. The estate holds
+  // it as `whatsapp:+918810531764`; a builder that trusted the raw value would emit
+  // `wa.me/whatsapp:+91...` and open WhatsApp on nothing.
+  const want = 'https://wa.me/918810531764?text=Send%20me%20the%20enquiry%20enq-5b253fb2';
+  ok('6.2 the Twilio dress folds to bare digits', A.enquiryWaLink(ID, { marketingNumber: 'whatsapp:+918810531764' }) === want);
+  ok('6.3 and a bare E.164 gives the identical link', A.enquiryWaLink(ID, { marketingNumber: '918810531764' }) === want);
+  // NULL, NEVER A HALF-BUILT URL. A wa.me link with no number opens WhatsApp on
+  // nothing and looks like the estate working; the queue shows no link instead.
+  ok('6.4 no number → null, not a broken link', A.enquiryWaLink(ID, { marketingNumber: '' }) === null);
+  ok('6.5 an id too short to name an enquiry → null', A.enquiryWaLink('abc', { marketingNumber: '918810531764' }) === null);
+  ok('6.6 the number is never typed into this file — it is derived',
+     !/918810531764/.test(strip(read('src/lib/couple/assistance.js'))));
+  }
+}
+
+section('7. F-41.149 — the comment said the wrong variable');
+{
+  const pr = read('src/lib/prospects.js');
+  ok('7.1 MARKETING_WHATSAPP_NUMBER is no longer called a Meta phone-number-id',
+     !/MARKETING_WHATSAPP_NUMBER is a Meta phone-number-id/.test(pr));
+  ok('7.2 and the correction names which variable actually holds the id',
+     /MARKETING_PHONE_NUMBER_ID` is the Meta id/.test(pr));
+}
 
 console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
 if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
