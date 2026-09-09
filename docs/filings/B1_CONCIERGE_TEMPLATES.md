@@ -1,6 +1,6 @@
 # FILING B1 — THE CONCIERGE TEMPLATES AND THE INTRODUCTION · SEALED
 
-**Base:** dream-os `4fe3a667fc90f87548c2b062e288b0e8c361aab7`
+**Base:** dream-os `33f8c15bce86ebdc7184a1d7813058ff917a54b8`
 **Seat:** CE-41 LE-B (the filing seat) · **Sealed by the chair 2026-09-08, 12:27 IST**
 **WABA:** The Dream Wedding Direct `1739793260373677` · business portfolio `995204059832918`
 **Rulings applied:** R-41.4 (a/b/c) · R-41.11 · R-41.13 · R-41.30 · R-41.31 · R-40.58 · R-40.128 n/a
@@ -200,8 +200,21 @@ which no cell can read. **That gap is structural.** The honest cure is not an in
 habit: **the Edit screen read once per template at filing, recorded, and never inferred from a
 preview again.**
 
-**Currently owed under that habit:** row 10's button type and target; row 10a's components; and
-row 10a's body, which this seat declined to write from a description rather than a reading.
+**The habit's first test, and it passed.** Row 10a (`tdw_assist_lead_outside_v2`) was witnessed
+twice on 2026-09-09: **the preview at 07:42** for body and slots, **the Edit screen at 07:53**
+for components — URL, dynamic, base `https://thedreamwedding.in/r/` + `{{1}}`. The preview
+rendered that button as *Visit website* with a link icon, **which is the same chrome a
+quick-reply would have shown**. F-41.114 is what happens when that chrome is read as a witness.
+**Two readings, eleven minutes apart, and the entry is complete rather than plausible.**
+
+**Currently owed under the habit:** row 10's button type and target, still held with the founder.
+Nothing else.
+
+**And the habit paid for itself immediately.** Because row 10a's body was left OWED rather than
+inferred from v1, the transcription that arrived could be compared against v1 line by line — and
+that comparison is what established that **no fact was lost**, only the framing moved from
+invitation to notice. Had a plausible body been written first, the comparison would have been
+against this seat's guess, and R-41.118 would have been ruled on a fiction.
 
 ## 6 · THE RECORD LINE
 

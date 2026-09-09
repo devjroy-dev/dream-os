@@ -155,31 +155,58 @@ handset.
 **Filed and Active 2026-09-09 07:42 IST.** Meta template ID **`2544506315978894`**.
 Button: URL, target suffix **`/r/{{1}}`**. Witnessed at the Manager's **preview** panel.
 
-**⚠ THE BODY IS NOT RECORDED HERE, AND THAT IS DELIBERATE.** The relay naming this template
-referred to *"the body above"* — text this seat has not been given. **It is not written from
-inference, from v1, or from a description of a screen.** An entry whose body is guessed is the
-exact failure this document has now recorded three times (F-41.63, F-41.114, F-41.80): a second
-place holding a fact the filing already held, authored beside it rather than derived from it.
+**Witnessed at the Manager's preview, founder's capture 2026-09-09 07:42 IST**, with the filed
+sample values. Variables: `{{1}}` = vendor name as TDW holds it, `{{2}}` = wedding month,
+`{{3}}` = city, `{{4}}` = category **as a bare noun**, `{{5}}` = budget figure, digits only.
 
-**OWED, and the entry is incomplete until it lands:** the body verbatim and the variable list in
-slot order, read from the Manager. **Components — that the button is a URL button and its full
-base — are owed at the Edit screen under R-41.116**, held with the founder; a preview witnesses
-text and slots, never components.
+> Hi {{1}}, you have a new enquiry through The Dream Wedding: a couple planning a {{2}} wedding in {{3}} needs a {{4}}, with a budget of about Rs {{5}}. The full enquiry is on the page below.
 
-**WHAT IS ALREADY SIGNIFICANT, AND IT MAY REOPEN R-41.30.** Row 10 (`v1`,
+**Components witnessed at the Edit screen, 2026-09-09 07:53 IST (R-41.116 satisfied):** URL
+button, **dynamic**, base `https://thedreamwedding.in/r/` with `{{1}}` at the end. Label renders
+as *Visit website* with a link icon in the preview — **which is exactly why the preview is not a
+component witness**: that same chrome would have appeared over a quick-reply, and F-41.114 is
+what happens when it does.
+
+**Five slots, same order as v1** — `name · month · city · category · budget`. Nothing was
+re-ordered, so R-41.97's cell reads both versions against the same shape.
+
+**WHAT v2 GAVE UP, AND WHAT IT DID NOT.** The invitation clauses went: *"asked The Dream Wedding
+to find them…"*, *"…has been matched to you"*, and *"Reply STOP REQUESTS…"*. They are replaced by
+*"you have a new enquiry through The Dream Wedding"* and *"The full enquiry is on the page
+below."*
+
+**No fact was lost.** Month, city, trade and budget all carry, and the recipient, the lane and
+the intent are unchanged. **The framing moved from invitation to notice, and that is what earned
+the category** — which is the same manoeuvre row 11 used to earn Utility by leading with *the
+request you sent* rather than *we found*. Meta's Utility test is satisfied by a message that
+reports a thing rather than solicits an action; v1 asked, v2 tells.
+
+**One thing did go, and it should be recorded as a decision rather than an omission.** The
+`STOP REQUESTS` line was in v1 deliberately — a functional control for a recipient who never
+opted in, modelled on `morning_nudge`'s pause instruction. Utility requires no opt-out, so its
+absence is compliant. But the outsider is still a stranger, and she now has no stated way to
+stop. **The lane's STOP handling still applies at the send arm regardless of the body**; what is
+gone is her being *told* about it. Flagged once, not reopened.
+
+**R-41.118 — THE OUTSIDER ALERT ROUTES TO v2.** Founder's word. v1 retires from the registry on
+D2's deploy and remains Active at Meta as history only. **The hole R-41.30 accepted is therefore
+closed by routing, not by appeal** — see below for what that was worth.
+
+**WHAT THIS WAS WORTH — R-41.30's hole, closed.** Row 10 (`v1`,
 `1627376372249131`) was filed UTILITY and **approved as MARKETING** — the reclassification whose
 cost the seal records at length: charged on every send, no free window, no volume tier, and the
 `131049` throttle landing hardest on outsiders who have never messaged TDW.
 
-**This template is UTILITY and Active.** If it carries the same intent on the same lane to the
-same recipients, then **the outsider alert has a Utility path after all**, and the hole R-41.30
-accepted as uncurable is curable by routing the arm at `v2` instead of `v1`.
+**It carries the same intent, on the same lane, to the same recipients — verified against the transcription above.** So the outsider alert has a Utility path, and the hole is closed by pointing the arm at `v2`.
 
-**That is not asserted — it is the question the body answers.** Whatever changed between the two
-bodies is what earned Utility, and until this seat can read it, it cannot say whether v2 is the
-same message that finally passed or a narrower one that gave something up. **The chair may want
-that comparison before A2's forward arm names a template**, because the arm currently points at
-a Marketing template with a documented delivery hole and a Utility twin now exists beside it.
+**Concretely, per delivered alert:** `Rs 0.12` in place of `Rs 0.86`, and `Rs 0.00` inside an
+open service window where v1 could never be free. Volume tiers apply to Utility and never to
+Marketing. And the `131049` per-user marketing throttle — which landed hardest on exactly the
+quiet outsiders the feature exists to reach — **no longer applies at all.**
+
+R-41.30's instrument (`status='failed'`, `error_code=131049` on `assistance_forwards`) stays
+built. It becomes a safety net rather than the whole of the cure, and it still catches any other
+send failure on that arm.
 
 ### 11 · `assist_found_vendor` — UTILITY · bride line · Meta name **`tdw_assist_found_vendor`**
 **Added CE-41 seat B (B1, 2026-09-08) — R-41.4(b).** Variables: `{{1}}` = bride's name, `{{2}}` = category **as a bare noun**, `{{3}}` = wedding month, `{{4}}` = vendor's display name. Meta template ID **`3160852754105015`**.
@@ -306,7 +333,7 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 9 | `circle_place_ready` | `tdw_circle_place_ready` | UTILITY | **approved** | 2026-08-13 — TDW_14 D-2. First draft refused by Meta's pre-submission classifier as Marketing; rewritten on `vendor_welcome`'s Utility-earning precedent and filed. Dashboard: **Active – Quality pending** (Active is the approval; "Quality pending" is the quality rating — the same reading `demo_lead_alert` and `enquiry_alert_vendor` carry). Meta ID `2069520823656352`. Wire-witnessed live: accepted, delivered, read, and rendered on the handset. |
 
 | 10 | `assist_lead_outside` | `tdw_assist_lead_outside` | **MARKETING** (filed UTILITY) | **approved** | 2026-09-08 — CE-41 B1. Filed UTILITY, **approved as MARKETING**; the category moved at review, not after. Dashboard: Active – Quality pending. Meta ID `1627376372249131`. R-41.30: accept, no appeal. The `131049` hole and its instrument are recorded at the §2 entry. |
-| 10a | `assist_lead_outside_v2` | `tdw_assist_lead_outside_v2` | **UTILITY** | **approved** | Filed and Active 2026-09-09 07:42 IST. Meta ID `2544506315978894`. URL button, suffix `/r/{{1}}`. **Body and variable list OWED** — not recorded from inference (see §2 row 10a). Components owed at the Edit screen (R-41.116). **A Utility twin of row 10's Marketing template; may reopen R-41.30.** |
+| 10a | `assist_lead_outside_v2` | `tdw_assist_lead_outside_v2` | **UTILITY** | **approved** | Filed and Active 2026-09-09 07:42 IST. Meta ID `2544506315978894`. Body and five slots witnessed at the preview 07:42; **components witnessed at the Edit screen 07:53** — URL, dynamic, base `https://thedreamwedding.in/r/` + `{{1}}`. **R-41.118: the outsider alert routes here**; v1 retires from the registry on D2's deploy and stays Active at Meta as history. Closes R-41.30's `131049` hole by routing. |
 | 11 | `assist_found_vendor` | `tdw_assist_found_vendor` | UTILITY | **in review** | 2026-09-08 filed and approved; **re-filed 2026-09-09 06:35 IST** and now **In review**. F-41.114: filed with a **quick-reply** button, not the URL button this document described; re-filed with a dynamic URL button `https://thedreamwedding.in/v/{{1}}`, text *See their page*. Body and slot order unchanged and witnessed at the Edit screen. Meta ID `3160852754105015` as recorded; re-confirm on the next Manager reading. |
 | 12 | `assist_found_outside` | `tdw_assist_found_outside` | UTILITY | **approved** | 2026-09-08 — CE-41 B1. Approved UTILITY as filed. Dashboard: Active – Quality pending. Meta ID `3115277355330375`. |
 | 13 | `introduction` | `tdw_introduction` | MARKETING | **approved** | 2026-09-08 — CE-41 B1. MARKETING **as filed** (R-41.11), not a reclassification. Dashboard: Active – Quality pending. Meta ID `1757650692328688`. Its handle-only twin is chartered but unfiled (R-41.31). |
