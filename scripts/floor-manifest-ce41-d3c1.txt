@@ -1,0 +1,29 @@
+CE-41 · SEAT D · D3c1 (dream-os) · FLOOR MANIFEST
+base: 1267e43de63d7d888e478890360d9ef8e001750d
+
+b66_inbound_consent       GREEN  13/13   NEW
+b20_a2_assistance_bench   exit 0   b65_room_on_the_wire exit 0
+b64_mutations             GREEN 6/6      b61_switchboard_bench GREEN 64 · 0
+b62_mutations             GREEN 18/18    b63_mutations GREEN 30/30
+BOTH WAYS: cured GREEN 13/13 · uncured RED on nine cells
+
+NO MIGRATION. 0156's CHECK already admits 'whatsapp' — the fourth source this arm
+writes was there from the start, so nothing is owed. (0157 had to widen the CHECK for
+'founder_attested'; this one did not, and the difference is worth noticing: the value
+was foreseen, the attestation was not.)
+
+THE EXTRACTOR DERIVATION, RECORDED:
+  src/lib/metaInbound.js exports THREE walkers over one entry[].changes[] envelope,
+  split only by ch.field — normalizeMetaInbound (value.messages), extractStatuses
+  (receipts), extractTemplateStatusUpdates (template status). F-41.125's account_update
+  receiver is a FOURTH sibling of that exact shape, beside the third as ruled.
+  BUT D3c1 NEEDED NONE OF THEM: marketingIndex.js:74 already calls normalizeMetaInbound
+  and already loops inbound messages. This arm is a branch inside the handler that loop
+  calls, and adds no extractor.
+  SO D3c1 TOUCHES metaInbound.js ZERO TIMES AND D3c3 ONCE. They share only
+  marketingIndex's router, which D3c1 does not modify either. No anchor D3c1 writes is
+  one D3c3 will move — the split holds and the order is free.
+
+ARM ORDER IS LOAD-BEARING AND ASSERTED: after opted_out and after discarded, before the
+answer is composed. Someone who said STOP is never recorded as consenting; a discarded
+row is not re-consented; and the record lands whatever the reply does.

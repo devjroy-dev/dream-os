@@ -281,6 +281,46 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
     return { action: 'noop_discarded', phone, prospectId: prospect.id };
   }
 
+  // ── R-41.131 · THE INBOUND DOOR · HER REPLY IS THE CONSENT ─────────────────
+  // The cheaper path, and not a gate. R-41.122 put her words in a column and
+  // R-41.132 made them evidence rather than a precondition; the founder still has
+  // to ask by hand in a DM and paste the answer. THIS ARM CLOSES THAT LOOP: when
+  // she replies to us HERE, on WhatsApp, her own message IS the record — TDW never
+  // typed it, never summarised it, and did not have to.
+  //
+  // ⚠ IT RECORDS AND NEVER OVERWRITES. A row that already has consent keeps its
+  // first words; evidence is not editable after the fact (the same position
+  // forwardToProspect takes). So this is additive only: a prospect who replies
+  // twice does not have her record rewritten by the second message.
+  //
+  // WHY `whatsapp` AND NOT `instagram_dm`: 0156's CHECK admits four sources and
+  // this is the one that means "she said it on this thread". The distinction is
+  // Meta's to care about — the DM is a claim TDW makes, this is a message Meta
+  // itself delivered — and collapsing them would throw away the stronger evidence.
+  //
+  // LIMB (a) IS NOT ASSERTED HERE AND MUST NOT BE. consentEvidences requires her
+  // words to contain the number, because in the DM she is ASKED to supply it. On
+  // this thread she does not need to: SHE IS MESSAGING FROM THAT NUMBER, and Meta
+  // is the witness. The reply is recorded as her words and `consentEvidences` will
+  // read it exactly as it reads any other — if her text happens not to contain the
+  // digits, the queue shows no record and the founder still has the DM path. This
+  // arm makes evidence CHEAPER TO GET, never weaker to hold.
+  if (!prospect.consent_text && text && text.trim()) {
+    try {
+      await updateProspect(supabase, prospect.id, {
+        consent_text: text,               // verbatim: not trimmed, not summarised
+        consent_source: 'whatsapp',
+        consent_at: now,
+        consent_recorded_by: 'inbound:whatsapp',
+      });
+      console.log(`[prospects:consent] ${phone} recorded from her own reply (R-41.131)`);
+    } catch (e) {
+      // NEVER fails the turn. She has written to us and must get an answer; losing
+      // the record costs a line in the queue, throwing would cost the conversation.
+      console.warn('[prospects:consent]', e && e.message);
+    }
+  }
+
   // replied → open the conversation → in_session; re-stamp the rolling window anchor.
   const conversation = await openProspectConversation(supabase, prospect);
   await logMessage(supabase, conversation.id, { direction: 'inbound', body: text, sentBy: 'prospect' });
