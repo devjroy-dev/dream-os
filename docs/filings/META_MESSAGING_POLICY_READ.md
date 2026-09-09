@@ -1,6 +1,6 @@
 # FILING B4·9 — THE WHATSAPP BUSINESS MESSAGING POLICY, READ WHOLE
 
-**Base:** dream-os `0fb3ee234818eecc0146fec391272d6e85e791c7`
+**Base:** dream-os `b66b99b3d1293708d6a046f8538c6b2d9932865f`
 **Seat:** CE-41 LE-B · read 2026-09-09 from the founder's paste of the canonical text
 (`whatsapp.com/legal/business-policy`)
 **F-41.33 closes on this read plus the APAC annex (B4·8).**
@@ -24,7 +24,24 @@ throttling; §1 governs whether the message may be sent at all.
 ### One refinement R-41.122 needs, and it is limb (a)
 
 R-41.122 cures limb (b): ask in the Instagram DM, record the answer on the `prospects` row, and
-the arm refuses without it. **That is right and it is the whole cure for (b).**
+the arm refuses without it. **That was right when written and it is no longer what ships.**
+
+**AMENDED 2026-09-09 — R-41.132 and R-41.135.** The founder ruled the same morning that **the
+record is EVIDENCE, NOT A GATE**: the arm does **not** refuse a forward for want of a consent
+record, and there is no paste box — one optional tick writes `founder_attested`
+(`0156_prospect_consent_record`, `0157_consent_source_founder_attested`).
+
+**So §1's two limbs are met by the founder's DM habit and his attestation, not by code.** That
+is a coherent position while he handles every vendor relationship personally, and it is his to
+hold. **But the tree must not claim an enforcement that was reversed**, and this paragraph is
+corrected rather than left reading as though the arm were a gate.
+
+**What follows from evidence-not-gate, stated once and not reopened:** the compliance question
+becomes *did the founder actually ask* rather than *did the system require it*. There is no
+instrument for that and there is not meant to be. The habit is the control, and its failure mode
+is a busy week — which is exactly the class of risk the estate accepts elsewhere by naming it
+(R-41.30's hole, F-41.126's opt-in exposure) rather than by building against it. **Named here so
+the next reader knows the gate's absence was chosen, not missed.**
 
 **But (a) says she must have GIVEN TDW the number.** If the number was read off her public
 Instagram bio and the DM only asks *"may we send you the enquiry on WhatsApp at this number?"*,
@@ -37,7 +54,7 @@ Her reply then supplies the number and the permission in the same message, and *
 opt-in on the row should store her words verbatim**, because the words are what evidence limb
 (a) as well as (b).
 
-**Reported for the chair; the queue's outsider field should capture the reply, not a checkbox.**
+**Reported for the chair; the queue's outsider field captures the reply where the founder records one — an optional attestation under R-41.135, not a required field.**
 
 **§1 also requires** — mandatory, not best practice — *"Maintain a WhatsApp Business profile with
 customer support contact information and one or more of the following: email address, website
