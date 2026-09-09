@@ -183,7 +183,8 @@ it.
 **Chosen: DNS TXT record, on the domain property `thedreamwedding.in`.**
 
 Google offers HTML file upload, HTML meta tag, Google Analytics, Google Tag Manager, and DNS.
-The reasons for DNS here, in order of weight:
+
+**FIRST LIST — why DNS, not the other four. Reasoning, not taps. Nothing here is a step.**
 
 1. **A domain property covers every subdomain and both protocols in one verification** —
    `thedreamwedding.in`, `www`, and `api` together. The URL-prefix methods verify one prefix
@@ -196,7 +197,9 @@ The reasons for DNS here, in order of weight:
 4. **The founder already holds the DNS pane** — he is adding a CNAME there in §2 of this packet.
    One sitting, two records.
 
-**Steps.**
+**SECOND LIST — the taps. This is what the founder's card means by "§4, the second list,
+taps 1–6".**
+
 1. `search.google.com/search-console` — signed in as **`dev@thedreamwedding.in`**, the same
    identity that owns the Cloud project. A property verified under a personal account is a
    property the Cloud project cannot use.

@@ -24,8 +24,10 @@ This packet is **§1, §2 and §3 only.** Sections 4 and 5 do not run and are re
 the record of what Branch B would have cost — three to five weeks and a video that could not
 have been filmed until G3.1 s2 built its door.
 
-**§6's homepage finding still binds**, and so do requirements 5 and 6 of §2: **A4 is the only
-thing left between the estate and a durable refresh token.**
+**§6's homepage finding still binds** — its *link* half is discharged by A4 (§2 item 5), its
+*describes-the-functionality* half is not, and card 4a is where it is read. Requirements 5 and 6
+of §2 are **no longer blocking**: A4 landed at `dreamos-pwa@cc109bd7` (F-42.14). What is left
+between the estate and a durable refresh token is the card in §7 and nothing else.
 
 The branch table below is kept as written, unedited, so the reasoning that produced the right
 answer stays legible.
@@ -106,8 +108,8 @@ before touching the button.
 | 2 | No unowned domain on Authorised domains | **B3·1** — `api.thedreamwedding.in` replaces the `up.railway.app` dependency; TDW cannot prove ownership of Railway's domain and never could |
 | 3 | Branding accurate: app name, logo, support email, home page URI, privacy policy URI all represent the app's real identity | founder, §3 |
 | 4 | Homepage **publicly accessible**, not behind login; relevance to the app clear; describes the app's functionality; links to the privacy policy | **§6 — a finding, see below** |
-| 5 | Privacy policy on the **same domain** as the homepage, **linked from** the homepage, **linked from the consent screen**, and the two links **identical** | **A4** (B3·1 §5a's veto block) — **BLOCKING** |
-| 6 | Privacy policy discloses how the app accesses, uses, stores and shares Google user data | **A4** — **BLOCKING** |
+| 5 | Privacy policy on the **same domain** as the homepage, **linked from** the homepage, **linked from the consent screen**, and the two links **identical** | **A4 LANDED** (F-42.14) — `dreamos-pwa@cc109bd7` · homepage link `app/(landing)/page.tsx:864`, the string `https://thedreamwedding.in/privacy`, absolute, no trailing slash; `/terms` beside it at `:866`. The consent-screen side is §3 tap 2 and must be **the same string**. On the tree only — the surface is witnessed at §7 card 4a |
+| 6 | Privacy policy discloses how the app accesses, uses, stores and shares Google user data | **A4 LANDED** (F-42.14) — `dreamos-pwa@cc109bd7` · `app/privacy/page.tsx:299–316`, §5 *Your Google account*, `:301` heading and `:303–315` paragraph. Read access only; the pre-A4 text that described a write the estate never held is gone |
 | 7 | OAuth clients not ready for production deleted from the project | founder: check **Clients**; there should be exactly one, `TDW Backend (dream-os production)` |
 | 8 | Owner/editor roles and the support + developer contact emails current | founder — Google emails these addresses and a missed mail pauses the review |
 
@@ -145,7 +147,7 @@ org-less project and fails only at the first real grant (`TDW_INFRA_GOOGLE_OAUTH
 7. **Then read the console and record what it says**, before any grant:
    - Does it show a data-access review as required, or none?
    - Is a user cap shown, and what number?
-   This reading is §7's record line and it is what tells the chair which branch is live.
+   This reading is §8's record line and it is what tells the chair which branch is live.
 8. **Walk it once, deliberately.** Open the consent screen as
    `dev@thedreamwedding.in`. Two things to look at, and they are the point of B3·1:
    - Does it read **The Dream Wedding**, or a host? `TDW_INFRA_GOOGLE_OAUTH.md` §5 item 10
@@ -277,7 +279,37 @@ the privacy words, which is the tidy outcome rather than a second one.
 
 ---
 
-## 7 · RECORD LINE
+## 7 · THE FOUNDER'S CARD (CE-42 · G2 s2 (a))
+
+Chair-issued, CE-42 seat G2. **This card replaces the one at kickoff 3 §6.** It is the only
+thing the founder reads; every step ends with a paste. Steps 1–3 are B3·1's taps, 4a–4b are
+this packet's.
+
+1. **CNAME** — B3·1 §2, taps 1–6. Paste what `https://api.thedreamwedding.in/` shows.
+2. **Redirect URI + scope list** — B3·1 §3, taps 1–7. Paste both redirect URIs and the scope
+   list reading **two**.
+3. **Search Console** — B3·1 §4, **the second list**, taps 1–6. Domain property, TXT record,
+   never removed. Paste the Verified screen.
+4. **4a · Pre-flight — no publish yet.** §2 items 7 and 8, which have no home in §3:
+   - **Clients** in `tdw-business-solutions` (`authuser=2`): exactly one OAuth client,
+     `TDW Backend (dream-os production)`. Delete any other.
+   - Owner/editor roles current, and both the support and developer contact emails current —
+     Google mails these and a missed mail pauses the review.
+   - Then, on a phone: open `thedreamwedding.in` and `thedreamwedding.in/privacy`. The footer
+     shows the privacy link; both pages answer; `/privacy` §5 reads **Your Google account**.
+     This walk is the witness for §2 items 5 and 6 and for §6's homepage finding — the tree
+     says landed, the surface outranks the tree.
+   - Paste one screenshot of each page.
+5. **4b · Publish — one sitting.** B3·2 §3, taps 1–8. **Tap 8 is not cosmetic:** the consent
+   walk as `dev@thedreamwedding.in` is the grant that mints the refresh token step 5 measures.
+   Skip it and day eight reads nothing. Paste **Publishing status = Production**, with the date.
+6. **Day 8** — the chair hands the check line on that day, not before (conditional-withheld).
+7. **The code turn** — `business.manage` at the gate, R-41.47. Chartered only after step 5
+   reads green. Withheld.
+
+---
+
+## 8 · RECORD LINE
 
 ```
 B3·2 · publish the OAuth app on the split scopes
