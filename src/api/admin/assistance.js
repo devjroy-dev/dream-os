@@ -77,7 +77,14 @@ router.post('/', asyncHandler(async (req, res) => {
     origin:       'admin',
     items:        b.items,
   });
-  if (!out.ok) return res.status(out.code === 'insert_failed' || out.code === 'items_failed' ? 500 : 400).json({ ok: false, code: out.code, error: out.error });
+  // F-42.73: a vendor's number is a CONFLICT with a record that already exists, not a
+  // malformed body — and it must be distinguishable from R-42.7's blank-city 400 on
+  // the same door, which is what the founder's console could not tell apart.
+  if (!out.ok) return res.status(
+    out.code === 'insert_failed' || out.code === 'items_failed' ? 500
+    : out.code === REFUSE.VENDOR_NUMBER ? 409
+    : 400
+  ).json({ ok: false, code: out.code, error: out.error });
   return res.status(201).json({ ok: true, request: out.request, items: out.items, admin_notified: !!(out.notify && out.notify.sent) });
 }));
 

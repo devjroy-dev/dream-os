@@ -498,8 +498,27 @@ const ADMIN  = 'src/api/admin/assistance.js';
   section('§7d · F-41.102 — the forward door names its refusals, the create door defaults safe');
   {
     const door = strip(read('src/api/admin/assistance.js'));
+    // AMENDED BY LABEL AT D5c (R-41.121). This pinned the spelling `? 500 : 400`, and
+    // F-42.73 made the expression three-way (`? 500 : 409 : 400`) without touching the
+    // MEANING the cell names — the create door still blames the caller for a code it
+    // does not recognise. It now reads the door's own status expression and asserts its
+    // FINAL alternative, so a fourth branch tomorrow leaves it green and a changed
+    // default reds it.
     ok('§7d: the create door DEFAULTS to 400 — an unrecognised code blames the caller',
-       /\? 500\s*:\s*400/.test(door));
+       (() => {
+         const i = door.indexOf('const out = await createAssistanceRequest');
+         if (i < 0) return 'create door not found';
+         const j = door.indexOf('res.status(', i);
+         if (j < 0) return 'no status call after the create';
+         let depth = 0, k = j + 'res.status('.length - 1;
+         for (; k < door.length; k++) {
+           if (door[k] === '(') depth++;
+           else if (door[k] === ')') { depth--; if (depth === 0) break; }
+         }
+         const expr = door.slice(j + 'res.status('.length, k);
+         const tail = expr.trim().split(':').pop().trim();
+         return tail === '400' ? true : `create door defaults to ${tail}`;
+       })() === true);
     ok('§7d: the forward door still defaults to 500, so every refusal it can return must be NAMED',
        /:\s*500;/.test(door));
     ok('§7d: no_consent_record is named in the caller-at-fault branch, not left to the fallback',
@@ -896,6 +915,60 @@ const ADMIN  = 'src/api/admin/assistance.js';
        /'Add a city to file the request\.'/.test(admDoor)
        && /'Add a city before forwarding this outside TDW\.'/.test(strip(read(ASSIST)))
        && !/before forwarding/.test(admDoor));
+  }
+
+  // ═══ §F-42.73 · a vendor's number at the couple intake ═════════════════════
+  {
+    const A3 = require('../src/lib/couple/assistance');
+    const noSendV = { env: {}, sendWa: async () => ({ sent: false }) };
+
+    // MAKEUPBYSWATIROY's fixture is already in seededDb; the walk's own case was
+    // DEV440. Both are vendors, and the point is that the REFUSAL NAMES WHICH.
+    let db = seededDb();
+    let r = await A3.createAssistanceRequest(db, {
+      phone: '8595356978', name: 'Typed By Mistake', city: 'Delhi', origin: 'admin',
+      items: [{ category: 'makeup', budget_rs: 30000 }],
+    }, noSendV);
+    ok('F-42.73: a vendor\'s number is refused with its own code, not couple_failed',
+       !r.ok && r.code === 'vendor_number' && r.code !== 'couple_failed');
+    ok('F-42.73: the sentence NAMES the vendor, from the row — the founder stops guessing',
+       !r.ok && /@MAKEUPBYSWATIROY/.test(r.error || '')
+       && /A vendor cannot file a couple's request\./.test(r.error || ''));
+    ok('F-42.73: and it never says "try again" — that path could never be retried',
+       !r.ok && !/try again/i.test(r.error || ''));
+    ok('F-42.73: it refuses BEFORE the write — no request row, no items',
+       (db._t.assistance_requests || []).length === 0 && (db._t.assistance_request_items || []).length === 0);
+
+    // The couple that IS a couple still files — the gate must not catch her.
+    db = seededDb();
+    r = await A3.createAssistanceRequest(db, {
+      couple_id: 'couple-priya', phone: '+919625759924', city: 'Delhi', origin: 'bride',
+      items: [{ category: 'makeup', budget_rs: 30000 }],
+    }, noSendV);
+    ok('F-42.73: a real couple is untouched by the gate', r.ok === true);
+
+    // A number nobody holds still materialises a couple (D4's arm, unbroken).
+    db = seededDb();
+    r = await A3.createAssistanceRequest(db, {
+      phone: '9000011111', name: 'Brand New', city: 'Delhi', origin: 'admin',
+      items: [{ category: 'makeup', budget_rs: 30000 }],
+    }, noSendV);
+    ok('F-42.73: a number belonging to nobody still gets its couple — D4\'s arm is not gated',
+       r.ok === true && !!r.request.couple_id);
+
+    const doorA = strip(read('src/api/admin/assistance.js'));
+    const doorC = strip(read('src/api/couple/assistance.js'));
+    ok('F-42.73: both create doors answer 409 — a conflict with a record, not a malformed body',
+       /out\.code === REFUSE\.VENDOR_NUMBER \? 409/.test(doorA)
+       && /out\.code === REFUSE\.VENDOR_NUMBER \? 409/.test(doorC));
+    ok('F-42.73: and 409 separates it from R-42.7\'s blank-city 400 on the SAME door',
+       /REFUSE\.NO_CITY, error:/.test(doorA) && /status\(400\)\.json\(\{ ok: false, code: REFUSE\.NO_CITY/.test(doorA));
+
+    // Asked, not inferred from another module's error text.
+    const w = strip(read(ASSIST));
+    ok('F-42.73: the question is asked of the ROW, never matched against a thrown message',
+       /const vendorOwner = await vendorForPhone\(supabase, phone\);/.test(w)
+       && !/already registered as vendor/.test(w));
   }
 
   // ═══ §M ═══

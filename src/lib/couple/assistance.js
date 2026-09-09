@@ -150,6 +150,17 @@ const REFUSE = Object.freeze({
   // D4 — the two ways a request can fail to get a couple.
   AMBIGUOUS_COUPLE: 'ambiguous_couple',
   COUPLE_FAILED:    'couple_failed',
+  // ── F-42.73 · A VENDOR IS NOT A COUPLE, AND THE NUMBER IS NOT A MISTAKE ────
+  // The founder typed DEV440's number at the typed-request form — the right instinct
+  // for a test number — and got "Could not create the account for this number. Try
+  // again." three times. Both halves of that sentence were false: the account exists,
+  // and trying again could never work, because `ensureCoupleRow` refuses a `users`
+  // row already bound to a vendor and always will.
+  //
+  // This is F-41.151's shape one door earlier: the same person on the wrong side of a
+  // boundary. There the cure was a REDIRECT naming the handle, and it is the same
+  // here — the refusal says whose number it is, so the founder stops guessing.
+  VENDOR_NUMBER:   'vendor_number',
   // F-41.100 / R-41.123 — the ruled cap, warn-and-confirm. Not a wall: the founder
   // can pass it, but he passes it ON PURPOSE.
   FANOUT_REACHED:  'fanout_reached',
@@ -275,10 +286,33 @@ async function createAssistanceRequest(supabase, params, deps = {}) {
       return { ok: false, code: REFUSE.AMBIGUOUS_COUPLE,
                error: 'Two accounts share those ten digits. Resolve them before filing this request.' };
     }
+    // ── F-42.73 · ASKED BEFORE IT IS ATTEMPTED ────────────────────────────────
+    // This runs ONLY for a number that is not already a couple — findCoupleIdByLastTen
+    // has just come back empty — so it costs one query on the path that was about to
+    // do a write anyway, and none at all on the common path.
+    //
+    // ASKED, NOT INFERRED FROM THE THROW. `ensureCoupleRow` does refuse this, and the
+    // catch below could have matched on its message — but a refusal built by
+    // string-matching another module's error text is a refusal that goes silent the
+    // day that text is reworded. `vendorForPhone` is the estate's own question and it
+    // answers with the ROW, which is where the handle in the sentence comes from.
+    // NEVER typed: the founder is told which vendor, by name, from the record.
+    const vendorOwner = await vendorForPhone(supabase, phone);
+    if (vendorOwner) {
+      const who = vendorOwner.routing_handle ? `@${vendorOwner.routing_handle}`
+                : vendorOwner.business_name || 'a vendor already on TDW';
+      console.log(`[assistance:create] phone=${phone} belongs to vendor ${who} — REFUSED vendor_number`);
+      return { ok: false, code: REFUSE.VENDOR_NUMBER,
+               error: `This number belongs to a vendor (${who}). A vendor cannot file a couple's request.` };
+    }
+
     try {
       const ids = await ensureCoupleRow(supabase, e164FromLastTen(phone), p.name || null);
       couple_id = (ids && ids.couple_id) || null;
     } catch (e) {
+      // COUPLE_FAILED keeps its sentence and is now what it always claimed to be: a
+      // transient failure worth retrying. The one case that could never be retried
+      // has its own code and its own words above.
       console.error('[assistance:create] could not attach a couple:', e && e.message);
       return { ok: false, code: REFUSE.COUPLE_FAILED,
                error: 'Could not create the account for this number. Try again.' };

@@ -1,0 +1,11 @@
+# CE-42 · SEAT D2 · packet D5c (dream-os) — declared manifest (F-14.16).
+# Base: 7615cf3624fb5e9f5163c6ff5bbc140aca609ec7 (re-pinned twice from f3e9ff0, past
+#        the Victor micro and 4a packet 3a; all four manifest paths and the five
+#        files this bench reads outside it verified blob-identical throughout.
+#        3a's mount line is src/api/vendor/core.js, not src/api/couple/core.js.)
+src/lib/couple/assistance.js
+src/api/admin/assistance.js
+src/api/couple/assistance.js
+scripts/b20_a2_assistance_bench.js
+docs/TDW_CE42_D5c_DREAMOS_HANDOVER.md
+scripts/floor-manifest-ce42-d5c.txt

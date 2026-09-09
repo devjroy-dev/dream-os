@@ -100,7 +100,11 @@ async function fileAssistanceRequest(req, res, origin) {
   });
 
   if (!out.ok) {
-    const status = out.code && out.code.startsWith('insert') || out.code === 'items_failed' ? 500 : 400;
+    // F-42.73: the same conflict can reach the bride and /plan doors — a vendor who
+    // signs in as a couple and files the sheet — so the status is the same here.
+    const status = out.code && out.code.startsWith('insert') || out.code === 'items_failed' ? 500
+      : out.code === REFUSE.VENDOR_NUMBER ? 409
+      : 400;
     return res.status(status).json({ ok: false, code: out.code, error: out.error });
   }
   return res.json({
