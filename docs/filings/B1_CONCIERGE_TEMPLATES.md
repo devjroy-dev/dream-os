@@ -1,6 +1,6 @@
 # FILING B1 — THE CONCIERGE TEMPLATES AND THE INTRODUCTION · SEALED
 
-**Base:** dream-os `18e46be19684b65ad51ba44049694c389aeb9093`
+**Base:** dream-os `4fe3a667fc90f87548c2b062e288b0e8c361aab7`
 **Seat:** CE-41 LE-B (the filing seat) · **Sealed by the chair 2026-09-08, 12:27 IST**
 **WABA:** The Dream Wedding Direct `1739793260373677` · business portfolio `995204059832918`
 **Rulings applied:** R-41.4 (a/b/c) · R-41.11 · R-41.13 · R-41.30 · R-41.31 · R-40.58 · R-40.128 n/a
@@ -176,6 +176,32 @@ independently of the filing rather than derived from it. Cure is `src/`, F-41.63
 **unwitnessed on the wire**, and their registry entries — whenever written — must be derived from
 the Manager, not authored beside it. **The first live send on each is still its first order
 proof, and that sentence has now cost the estate one garbled message.**
+
+## 5b · THREE FAILURES ON FOUR TEMPLATES, AND THEY ARE ONE SHAPE
+
+Set down now that the third has closed, because they are the same failure wearing three costumes:
+
+| | What disagreed | Caught by |
+|---|---|---|
+| **F-41.63** | the **registry** disagreed with the filing about **slot order** | a garbled message on the founder's handset |
+| **F-41.114** | **this document** disagreed with the filing about a **button type** | the Edit screen, a day later |
+| **F-41.80** | a **constant** disagreed with the body about who supplies **the article** | every outsider alert reading *"a a makeup artist"* |
+
+**Every one is a second place holding a fact the filing already held, authored beside it rather
+than derived from it. None was caught by the document that was wrong.** Two were caught on a
+handset; one on a screen.
+
+**R-41.97's cell closes the registry-versus-document gap** — it asserts `templates.js`'s
+`variables` array against §2, literal subsequence for literal subsequence.
+
+**Nothing closes the document-versus-Meta gap, and R-41.116 is why.** Components — whether a
+button is a URL or a quick-reply, and what it targets — are visible only on the Edit screen,
+which no cell can read. **That gap is structural.** The honest cure is not an instrument but a
+habit: **the Edit screen read once per template at filing, recorded, and never inferred from a
+preview again.**
+
+**Currently owed under that habit:** row 10's button type and target; row 10a's components; and
+row 10a's body, which this seat declined to write from a description rather than a reading.
 
 ## 6 · THE RECORD LINE
 
