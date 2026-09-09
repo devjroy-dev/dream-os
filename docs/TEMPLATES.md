@@ -188,8 +188,13 @@ absence is compliant. But the outsider is still a stranger, and she now has no s
 stop. **The lane's STOP handling still applies at the send arm regardless of the body**; what is
 gone is her being *told* about it. Flagged once, not reopened.
 
-**R-41.118 — THE OUTSIDER ALERT ROUTES TO v2.** Founder's word. v1 retires from the registry on
-D2's deploy and remains Active at Meta as history only. **The hole R-41.30 accepted is therefore
+**R-41.118 — THE OUTSIDER ALERT ROUTES TO v2, AND IT HAS LANDED.** Verified at `417c9f8`:
+`src/lib/templates.js:787` keeps the key `assist_lead_outside` and repoints it at
+`name: 'tdw_assist_lead_outside_v2'`, `category: 'UTILITY'`, `line: 'marketing'`,
+`variables: ['name','month_year','city','category_noun','budget_rs']` — the same five slots in
+the same order this entry records, with the category field carrying its own comment that Utility
+on the marketing PNID is lawful because **category and phone number are independent**. v1 is out
+of the registry and remains Active at Meta as history only. **The hole R-41.30 accepted is therefore
 closed by routing, not by appeal** — see below for what that was worth.
 
 **WHAT THIS WAS WORTH — R-41.30's hole, closed.** Row 10 (`v1`,
