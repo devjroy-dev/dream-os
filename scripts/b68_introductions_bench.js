@@ -376,6 +376,104 @@ const capDouble = (status) => ({
     T('§9 the FK is to vendors, cascading', /references public\.vendors\(id\) on delete cascade/.test(sql));
   }
 
+  // ── §10 · THE DOOR (CE-42 seat E2, the 4a door rider) ──────────────────────
+  // e-5's cells. §1-§9 proved the arm was CORRECT and not one of them asked
+  // whether anything CALLED it, which is the whole of what went wrong on
+  // 2026-09-10. These are that question, in eight parts.
+  console.log('\n§10 the door');
+  {
+    const T_INTRO = require(path.join(ROOT, 'src/engine/dist/core/tools/introduce.js'));
+    const T_RELAY = require(path.join(ROOT, 'src/engine/dist/core/tools/relayCouple.js'));
+    const seat = require(path.join(ROOT, 'src/lib/vendor/introductionSeat.js'));
+    const donnaSrc = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/donna.ts'), 'utf8');
+    const doorSrc = fs.readFileSync(path.join(ROOT, 'src/lib/vendorInbound.js'), 'utf8');
+    const strip = (t) => t.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const donna = strip(donnaSrc);
+    const door = strip(doorSrc);
+
+    // 1 · both names are in the bag Donna is handed.
+    T('§10.1 the two hands are in DONNA_TOOLS',
+      /const DONNA_TOOLS[^\n]*\.\.\.INTRODUCTION_TOOLS/.test(donna));
+    T('§10.1 and the file they come from is imported',
+      /import \{[^}]*INTRODUCTION_TOOLS[^}]*\} from '\.\/tools\/introduce\.js'/.test(donna));
+
+    // 2 · the three families share no member. THE WALK'S OWN LESSON: donna_lead
+    //     took the ask because nothing else could, and a collision here would be
+    //     the same failure with a different owner.
+    const I = [...T_INTRO.INTRODUCTION_SIGNAL_NAMES];
+    const R = [...T_RELAY.RELAY_SIGNAL_NAMES];
+    T('§10.2 introduction ∩ relay is empty', I.every(n => !T_RELAY.RELAY_SIGNAL_NAMES.has(n)));
+    T('§10.2 relay ∩ introduction is empty', R.every(n => !T_INTRO.INTRODUCTION_SIGNAL_NAMES.has(n)));
+    T('§10.2 neither family contains donna_lead',
+      !I.includes('donna_lead') && !R.includes('donna_lead'));
+    T('§10.2 the introduction family is exactly two', I.length === 2);
+
+    // 3/4 · each seat keeps only its own. Driven through the REAL collectSignals.
+    const relayTurn = { tool_calls: [{ name: 'donna_relay_stage', input: { recipient: 'Priya', message: 'x' } }] };
+    const introTurn = { tool_calls: [{ name: 'donna_introduction_stage', input: DRAFT }] };
+    const leadTurn  = { tool_calls: [{ name: 'donna_lead', input: { phone: '+919999000111' } }] };
+    T('§10.3 a relay turn carries NO introduction signal', seat.collectSignals(relayTurn).length === 0);
+    T('§10.3 a lead turn carries NO introduction signal', seat.collectSignals(leadTurn).length === 0);
+    T('§10.4 an introduction turn IS collected', seat.collectSignals(introTurn).length === 1);
+    T('§10.4 and it is collected from a NESTED donna_call too (relaySeat.js:650 shape)',
+      seat.collectSignals({ tool_calls: [{ name: 'x', input: {}, donna_calls: [introTurn.tool_calls[0]] }] }).length === 1);
+
+    // 5 · signal-only. The engine branch authors no `plain` and no `mutated`.
+    const outcome = T_INTRO.executeIntroductionStage(DRAFT);
+    T('§10.5 the hand returns display and NOTHING else',
+      Object.keys(outcome).length === 1 && typeof outcome.display === 'string');
+    T('§10.5 it does not claim the deed is done',
+      !/\b(sent|introduced|delivered)\b/i.test(outcome.display));
+
+    // 6 · the seat maps a staged signal onto the arm, three slots intact.
+    {
+      const db = makeDb();
+      const out = await seat.runIntroductionSeat(db, VENDOR, introTurn, { ownerWords: 'x' });
+      T('§10.6 the seat stages through the real arm', out && out.kind === 'staged' && db.rows.length === 1);
+      T('§10.6 all three slots reached the row',
+        db.rows[0].recipient_phone === DRAFT.recipient_phone
+        && db.rows[0].recipient_name === DRAFT.recipient_name
+        && db.rows[0].where_met === DRAFT.where_met);
+      T('§10.6 and the page_code came off her own row, never the model',
+        db.rows[0].page_code === 'DEV440');
+    }
+
+    // 7 · a missing slot answers with the founder-vetoed ask, BY CONSTANT.
+    {
+      const db = makeDb();
+      const partial = { tool_calls: [{ name: 'donna_introduction_stage',
+        input: { recipient_phone: '+919999000111', recipient_name: 'Anita Verma' } }] };
+      const out = await seat.runIntroductionSeat(db, VENDOR, partial, { ownerWords: 'x' });
+      T('§10.7 a missing where_met refuses', out && out.kind === 'refused:no_where');
+      T('§10.7 and answers with the vetoed byte, read from its one home',
+        out.line === lines.VICTOR_LINES.INTRO_ASK_WHERE);
+      T('§10.7 and wrote no row', db.rows.length === 0);
+    }
+
+    // 8 · the walk's own ask produces the vetoed SHOW frame carrying /v/DEV440.
+    {
+      const db = makeDb();
+      const out = await seat.runIntroductionSeat(db, VENDOR, introTurn, { ownerWords: 'x' });
+      T('§10.8 the SHOW frame is the relaySeat byte, reused not re-minted',
+        /^Here is the draft:/.test(String(out.line)));
+      T('§10.8 it names the recipient and the number, as E3 requires',
+        /Send this to Anita Verma \(\+919999000111\)\?$/.test(String(out.line)));
+      T('§10.8 the filled body is the FILED template body',
+        String(out.line).includes('this is Dev Roy Photography, and we met at the Verma wedding'));
+    }
+
+    // THE DOOR ITSELF — the call that did not exist on 2026-09-10.
+    T('§10.9 vendorInbound CALLS the seat', /runIntroductionSeat\(supabase, vendor, effectiveResult/.test(door));
+    T('§10.9 at the same seam as the relay seat, in its own try',
+      door.indexOf('runRelaySeat(supabase') < door.indexOf('runIntroductionSeat(supabase'));
+    T('§10.9 the door line replaces the model prose when the seat acted',
+      /if \(!relayOut && !relayReplacedCostume && introOut && introOut\.line\)/.test(door));
+    T('§10.9 the relay statement above it is untouched (b06 §11.5 asserts it byte-identical)',
+      /if \(!relayReplacedCostume && relayOut && relayOut\.line\) \{\n      replyText = relayOut\.line;/.test(doorSrc));
+    T('§10.9 no transport is injected — the arm requires sendWa at its own call site',
+      !/runIntroductionSeat\(supabase, vendor, effectiveResult, \{\s*sendWa:/.test(door));
+  }
+
   console.log(`\nb68 ${pass}/${pass + fail}`);
   if (fail) process.exit(1);
 })().catch((e) => { console.error('b68 THREW:', e && e.stack); process.exit(1); });

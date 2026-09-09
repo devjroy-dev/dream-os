@@ -2066,6 +2066,49 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       }
     } catch (e) { console.error('[relay:wa]', e && e.message); }
 
+    // ── R9-J1 · THE INTRODUCTION SEAT (CE-42 seat E2, the 4a door rider) ──────
+    // e-5's cure at the door end. 4a shipped `introductions.js`, `0161` and the
+    // router arm with NOTHING that could reach them, so on 2026-09-10 DEV440's
+    // ask went to `donna_lead` — the only hand in the bag that could take a
+    // number and a note. This is the call that was missing.
+    //
+    // THE SAME SEAM, DELIBERATELY. `replyText` is final here and `sendWhatsApp`
+    // is the next statement; the relay seat above chose this seam for that reason
+    // and an introduction has the same requirement. Its own `try`, because an
+    // introduction fault must not cost the vendor his reply (F-06.141's class).
+    //
+    // DISJOINT BY CONSTRUCTION, NOT BY ORDER. `INTRODUCTION_SIGNAL_NAMES` and
+    // `RELAY_SIGNAL_NAMES` share no member, so a turn cannot enter both seats;
+    // running this one second is a reading order, never a precedence rule, and a
+    // cell asserts the disjointness in both directions.
+    let introOut = null;
+    try {
+      const { runIntroductionSeat } = require('./vendor/introductionSeat');
+      introOut = await runIntroductionSeat(supabase, vendor, effectiveResult, {
+        // NO TRANSPORT IS INJECTED HERE, AND THAT IS DELIBERATE. `sendIntroduction`
+        // lazily requires `src/lib/sendWa.js` at its own call site, exactly as
+        // src/lib/couple/assistance.js:1052 does, because a TEMPLATE send is not
+        // this door's `sendWhatsApp` — it is the template-aware dispatcher, and
+        // handing over the wrong one would type-check and then send nothing. The
+        // `deps.sendWa` seam on the seat exists for the bench and for nobody else.
+        hasTransport: true,
+        // The OWNER'S OWN INBOUND, never the model's prose — E3 asks whether HE
+        // affirmed and whether HE named the stored recipient.
+        ownerWords: body,
+      });
+      if (introOut && introOut.line) {
+        console.log(`[introduction:wa] ${introOut.kind}${introOut.introductionId ? ` introduction=${introOut.introductionId}` : ''}`);
+        // F-06.158's cure, one lane over: without this the SHOW frame exists only
+        // on the wire, so Victor asks 「 Send this to <name> (<number>)? 」 and holds
+        // no record of asking, and the vendor's affirmative answers a question the
+        // thread never contains.
+        try {
+          const { patchComposedReply } = require('../api/vendor-engine/chat');
+          await patchComposedReply(supabase, effectiveResult, `\n\n${introOut.line}`);
+        } catch (e) { console.warn('[introduction:wa composed-reply]', e && e.message); }
+      }
+    } catch (e) { console.error('[introduction:wa]', e && e.message); }
+
     // ── TDW_06 F-06.164's CURE (R-29.30) — LANE SELECTION, NOT A REWORD ──────
     // F3's sentence 「 That didn't land — nothing was changed. 」 is founder-vetoed
     // for the FILING lane and knows nothing about a wire. Shipped after a RELAY
@@ -2220,6 +2263,25 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       replyText = relayOut.line;
       relayReplacedCostume = true;
       console.log(`[relay:wa] door_line_stands_alone — the seat acted (${relayOut.kind}); the model does not narrate it`);
+    }
+
+    // ── R9-J1 · THE SAME LAW, THE INTRODUCTION LANE ──────────────────────────
+    // When the machinery acted, the model does not narrate the act. The line the
+    // vendor reads is derived from the store — a staged row, an E3 refusal, a
+    // send, Meta's own error code — and Victor's prose about it is never better
+    // evidence than the act.
+    //
+    // ADDITIVE, AND IT TOUCHES NOTHING ABOVE. The statement above is asserted
+    // BYTE-IDENTICAL by `b06_forkc_wireguard_bench` §11.5 and its own comment
+    // records why: reshaping the one line that ships an interception to add a
+    // feature beside it is how that guard dies quietly. So this sits below it and
+    // widens no condition. The `!relayOut` guard makes the disjointness explicit
+    // rather than assumed — the two signal sets share no member, so both lanes
+    // can never produce a line on one turn, and if that ever changes this line
+    // refuses instead of racing.
+    if (!relayOut && !relayReplacedCostume && introOut && introOut.line) {
+      replyText = introOut.line;
+      console.log(`[introduction:wa] door_line_stands_alone — the seat acted (${introOut.kind}); the model does not narrate it`);
     }
 
     // ── F-06.176's SECOND HALF — THE THREAD FOLLOWS THE WIRE ─────────────────

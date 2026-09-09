@@ -1,0 +1,72 @@
+# CE-42 · SEAT E2 · 4a DOOR RIDER · FLOOR MANIFEST
+# base: b3b59956b3d8aaadedc42c8016a5ccad4ca0434e   (r2; cut at c1c17db, RE-PINNED after D5)
+#
+# ── THE FILE TABLE · [F-14.16] ──────────────────────────────────────────────
+# MACHINE-READ by run-floor.sh --delivery: everything after '#' is stripped,
+# blanks dropped, and any dirty path not listed below refuses the run.
+# src/engine/dist/ is NOT here and never will be: it is gitignored (.gitignore:26,
+# `git ls-files src/engine/dist` -> 0) and Railway's `npm run build` produces it
+# at deploy. `npm run build` therefore runs in the verify block BEFORE the floor,
+# because a tsc failure would otherwise surface as a boot crash on Railway
+# instead of a red in his terminal.
+
+docs/TDW_CE42_4a_DOOR_HANDOVER.md
+scripts/b06_forkc_wireguard_bench.js
+scripts/b68_introductions_bench.js
+scripts/floor-manifest-ce42-4a-door.txt
+src/engine/src/core/donna.ts
+src/engine/src/core/tools/introduce.ts
+src/lib/vendor/introductionSeat.js
+src/lib/vendorInbound.js
+
+# ── THE RE-PIN, DERIVED BLOB BY BLOB (D2's method, chair-ruled) ─────────────
+# `git rev-parse origin/main:<path>` for every path in the table above, compared
+# against the same read at c1c17db. The FOUR files this rider MODIFIES are all
+# UNMOVED across D5:
+#   scripts/b06_forkc_wireguard_bench.js  0b1c2bc5b79ca8d92ea39a688558e4fc0f6f859b
+#   scripts/b68_introductions_bench.js    c5945b59f910e343330ff93edc88bf7a5a96a884
+#   src/engine/src/core/donna.ts          03578e331553c6aebdebd9d801b26f434a8abce9
+#   src/lib/vendorInbound.js              50f7086632ea9bd095404130032f2ff832f752f2
+# The other four are this rider's own new files and are ABSENT at both tips, which
+# is what a new file reads as and not a miss. NOTHING WAS REBUILT: no modified
+# path moved, so the cut stands byte-for-byte and only its base line changed.
+# D5 touched src/api/couple/assistance.js, src/lib/couple/assistance.js,
+# src/api/public/enquiry.js, src/api/admin/assistance.js and b20_a2 — no
+# intersection with this rider's eight.
+#
+# ── WHAT WAS RUN ────────────────────────────────────────────────────────────
+# npm run build (tsc -p src/engine/tsconfig.json)   exit 0
+# RE-RUN AT b3b5995 AFTER D5, not carried from the c1c17db cut (R-38.19):
+# b68_introductions_bench    GREEN 125/125  (was 99/99 — +26, the eight door cells)
+# b06_forkc_wireguard_bench  GREEN 113/113  (was 113/113; §5.8d's census 5 -> 6)
+# b06_relay_hand_bench       exit 0         (the relay lane, unmoved)
+# b40_victor_sitting_bench   GREEN 113/113  (unmoved)
+# b64_template_slots_bench   GREEN 134/134  (unmoved)
+# b55_g2_reviews_bench       exit 0         (unmoved)
+# b20_a2_assistance_bench    GREEN 180/180  (D5's own, unmoved by this rider)
+#
+# THE FULL FLOOR WAS NOT RUN AND NO FLOOR NUMBER IS CLAIMED — 180 benches exceed
+# the seat container's per-command limit. The founder's
+# `--delivery scripts/floor-manifest-ce42-4a-door.txt --check` is the floor of record.
+#
+# ── COUNT MOVEMENT, DISCLOSED ───────────────────────────────────────────────
+# b68 99 -> 125 (+26): §10, the eight door cells and their parts.
+# b06 §5.8d: the replyText writer census 5 -> 6, NOT loosened. Unlike F-42.65 and
+# F-42.67, this count IS its guarantee — the enumeration is the property and an
+# unnamed writer is exactly what must red. Writer 6 is named with its own witness,
+# in the cell's own four-amendment idiom. It caught this rider, which is the cell
+# working, and it is the only bench in the estate that noticed the door had moved.
+#
+# ── BOTH WAYS · FIVE DOOR MUTATIONS, EACH RED ───────────────────────────────
+# M14 the hands removed from DONNA_TOOLS        -> b68 124/125
+# M15 the door stops calling the seat           -> b68 123/125
+# M16 the door line never replaces the prose    -> b68 124/125
+# M17 the two signal families made to collide   -> b68 123/125
+# M18 the seat stops filtering by family        -> b68 120/125
+# CURED, all restored                           -> b68 125/125
+#
+# ── NOT PROVEN HERE ─────────────────────────────────────────────────────────
+# WHETHER THE MODEL PICKS THE TOOL. Cells 1-8 prove the door cannot confuse the
+# three families once a signal is emitted; which signal gets emitted is a property
+# of the two founder-vetoed descriptions in introduce.ts, and its only witness is
+# the founder's handset. Row J1 closes on the walk, not on this bench.

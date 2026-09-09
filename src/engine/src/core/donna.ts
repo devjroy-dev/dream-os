@@ -34,6 +34,10 @@ import { DONNA_LEAD_TOOL, executeDonnaLead } from './tools/donnaLead.js'; // TDW
 // TDW_06 THE HAND (R-29.17 arm 1b · R-29.25 arm (a)) — the relay's TWO SIGNALS.
 // SIGNAL-ONLY: they write nothing and send nothing. The door holds the organs.
 import { RELAY_TOOLS, RELAY_SIGNAL_NAMES, executeRelayStage, executeRelaySend } from './tools/relayCouple.js';
+// R9-J1 · CE-42 seat E2, the 4a door rider. e-5: 4a shipped the arm and nothing
+// that could reach it, so an introduction ask went to `donna_lead`. These are the
+// two hands that reach it. Same shape as the relay pair above, deliberately.
+import { INTRODUCTION_TOOLS, INTRODUCTION_SIGNAL_NAMES, executeIntroductionStage, executeIntroductionSend } from './tools/introduce.js';
 import { checkMoneyProvenance } from './provenanceHold.js'; // M-2 — the mechanical-floors ZIP
 import { vendorIdFromAgent } from './vendorIdentity.js'; // TDW_02: rebuild reads the typed lead plane
 import { phoneKey, nameKey } from './phoneKey.js';
@@ -342,7 +346,7 @@ export async function snapshotText(agentId: string): Promise<string> {
 // a fallback, with plain text). A segment ends when she speaks. Her message history is
 // returned as a DonnaSession so the NEXT call resumes the same conversation — that is
 // what makes the exchange two-way instead of a one-shot.
-const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, ...RELAY_TOOLS, LISTEN_HARVEY_TALK_TOOL];
+const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, ...RELAY_TOOLS, ...INTRODUCTION_TOOLS, LISTEN_HARVEY_TALK_TOOL];
 // TDW_06 THE HAND — THE CACHE COST OF THE TWO NEW SCHEMAS, NAMED AND ACCEPTED
 // (R-29.17). DONNA_TOOLS rides DONNA_STATIC_PREFIX's cached region, so the two
 // schemas are a ONE-OFF cache-window re-write, not a per-turn charge. Lawful
@@ -662,6 +666,25 @@ export async function runDonnaTurn(
           outcome = tu.name === 'donna_relay_stage'
             ? executeRelayStage(input as Parameters<typeof executeRelayStage>[0])
             : executeRelaySend(input as Parameters<typeof executeRelaySend>[0]);
+          record(tu.name, tu.input, outcome.display);
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
+          continue;
+        }
+        // R9-J1 · THE INTRODUCTION HANDS. The paragraph above governs these too and
+        // is not repeated: signal-only, no `mutated`, no `plain`, no snapshot item,
+        // no `refused` array — an introduction signal has no receipt to contribute
+        // and handing one over would give the composer material to narrate a send
+        // the door has not performed yet.
+        //
+        // A SEPARATE BRANCH, NOT A WIDENED ONE. Folding these names into
+        // RELAY_SIGNAL_NAMES would make one set answer for two motions to two
+        // different kinds of recipient — a client who wrote in, and a stranger met
+        // in person — and the two seats below would then have to re-separate what
+        // this line had merged. The sets are disjoint and a cell asserts it.
+        if (INTRODUCTION_SIGNAL_NAMES.has(tu.name)) {
+          outcome = tu.name === 'donna_introduction_stage'
+            ? executeIntroductionStage(input as Parameters<typeof executeIntroductionStage>[0])
+            : executeIntroductionSend(input as Parameters<typeof executeIntroductionSend>[0]);
           record(tu.name, tu.input, outcome.display);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;

@@ -641,7 +641,27 @@ t('§5.8d THE REPORT-ONLY ERA, RETIRED BY RULING — recorded, not silently drop
   // it was gated on the wire guard arming, and the guard PASSED a fabricated send.
   // This writer depends on no ladder verdict. Re-authored STRICTER again: writer 5
   // must carry its own flag on the next statement, so an unguarded fifth still reds.
-  assert.strictEqual(writes, 5, 'the seat writes replyText from an unexpected number of places (costume-retry + imperative-retry + glitch line + relay-outcome replacement + relay-claim replacement = 5)');
+  // LABELLED AMENDMENT (CE-42 seat E2, the 4a door rider, e-5; COUNT PRESERVED).
+  // A SIXTH writer: the INTRODUCTION seat's door line. Same law as writers 4 and
+  // 5 in a third lane — when the machinery acted, the model does not narrate the
+  // act — and it arrives because R9-J1's arm shipped with no door at all and an
+  // introduction ask went to `donna_lead` on 2026-09-10.
+  //
+  // THIS CELL CAUGHT IT, AND THAT IS THE CELL WORKING. Unlike the two count
+  // proxies retired this block (F-42.65's key census, F-42.67's button census),
+  // THIS count IS the guarantee: the enumeration is the property, an unnamed
+  // writer is exactly what must red, and the honest amendment is to name the new
+  // one rather than to loosen the number. R-41.138, on the side where it holds.
+  //
+  // WRITER 6'S GUARD IS IN ITS PREDICATE, NOT A TRAILING FLAG. Writers 4 and 5
+  // set `relayReplacedCostume` on the next statement because they compete with
+  // each other for one lane. Writer 6 is in a lane whose signal set is DISJOINT
+  // from the relay's by construction (introduce.ts's INTRODUCTION_SIGNAL_NAMES,
+  // asserted disjoint by b68 §10.2), so it cannot race them — and it still
+  // refuses rather than races: `!relayOut && !relayReplacedCostume` is pinned
+  // below, so if that disjointness is ever broken this writer stands down
+  // instead of overwriting an acted relay turn.
+  assert.strictEqual(writes, 6, 'the seat writes replyText from an unexpected number of places (costume-retry + imperative-retry + glitch line + relay-outcome replacement + relay-claim replacement + introduction door line = 6)');
   // AMENDED (rider 4, F-06.189 α; COUNT PRESERVED). Writer 5's gate re-aimed from
   // 「 outcome AND a claim in the prose 」 to 「 OUTCOME 」 alone — the vocabulary
   // clause is what walk ten walked through. The witness renamed with it.
@@ -652,6 +672,8 @@ t('§5.8d THE REPORT-ONLY ERA, RETIRED BY RULING — recorded, not silently drop
   assert.ok(/if \(s2line\) replyText = s2line;/.test(seat), 'writer 3 — the interception line — is gone');
   assert.ok(/replyText = relayOut\.line;\s*\n\s*relayReplacedCostume = true;/.test(seat),
     'writer 4 — the relay-outcome replacement — is gone, or is UNGUARDED and could replace an honest turn');
+  assert.ok(/if \(!relayOut && !relayReplacedCostume && introOut && introOut\.line\) \{\s*\n\s*replyText = introOut\.line;/.test(seat),
+    'writer 6 — the introduction door line — is gone, or is UNGUARDED and could replace an acted relay turn');
 });
 
 t('§5.9 STAGE 2 IS SCOPED — the CLASSIFIER stays pure; interception lives at the seats alone', () => {
