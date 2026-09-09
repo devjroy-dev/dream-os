@@ -34,19 +34,20 @@ const ARM = 'src/lib/couple/assistance.js';
 const BEN = 'scripts/b64_template_slots_bench.js';
 
 const CURED_VARS = "    variables: ['name', 'month_year', 'city', 'category_noun', 'budget_rs'],";
+// D2 / R-41.118: the cured body is v2's. M1's "pre-cure" is now v1's MARKETING body,
+// which is what F-41.63 fixed and R-41.118 then replaced wholesale — restoring it still
+// reds 1.c, and for the same reason: its literals are not the document's.
+// ANCHOR DRIFT IS THE HAZARD HERE. These constants are transcribed from templates.js and
+// die silently the moment it moves — seat G lost eight anchors this way one packet ago
+// (its §5), and this seat lost b62_mutations M6 to its own byte (c-41.43). The harness
+// reports "matched 0 times" rather than passing, which is the only reason that is survivable.
 const CURED_BODY =
   '    body:\n' +
-  '      "Hi {{1}}, a couple planning a {{2}} wedding in {{3}} asked The Dream Wedding to " +\n' +
-  '      "find them a {{4}}, and their request has been matched to you with a budget of " +\n' +
-  '      "about Rs {{5}}. The request is held on the page below. Reply STOP REQUESTS if " +\n' +
-  '      "you would rather not receive these.",';
+  '      "Hi {{1}}, you have a new enquiry through The Dream Wedding: a couple planning " +\n' +
+  '      "a {{2}} wedding in {{3}} needs a {{4}}, with a budget of about Rs {{5}}. The full " +\n' +
+  '      "enquiry is on the page below.",';
 
-const PRE_CURE =
-  "    variables: ['name', 'city', 'category_words', 'month_year', 'budget_rs'],\n" +
-  '    body:\n' +
-  '      "Hello {{1}}, this is The Dream Wedding. A couple in {{2}} is looking for {{3}} " +\n' +
-  '      "for a wedding in {{4}}, with a budget around Rs {{5}}. Join The Dream Wedding to " +\n' +
-  '      "see the request and reply to them from your own account.",';
+// PRE_CURE retired: M1 now carries its two halves inline (see M1's note).
 
 // The two adjacent send-arm lines, cured. Swapping them is the live F-41.63 defect.
 const ARM_23 =
@@ -61,8 +62,19 @@ const ARM_23_CONSISTENT =
   "    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided', // {{3}} month_year";
 
 const MUT = [
+  // TWO EDITS, not one concatenated anchor: a comment block now sits between the
+  // `variables` line and the `body` line, and the joined anchor died on it
+  // ("matched 0 times"). Two edits is also the truer shape — F-41.63 was a wrong
+  // body AND a wrong slot order, and either alone reds 1.c.
   { id: 'M1 F-41.63 returns — the pre-cure body and slot order restored',
-    edits: [[TPL, CURED_VARS + '\n' + CURED_BODY, PRE_CURE]],
+    edits: [
+      [TPL, CURED_VARS, "    variables: ['name', 'city', 'category_noun', 'month_year', 'budget_rs'],"],
+      [TPL, CURED_BODY,
+        '    body:\n' +
+        '      "Hello {{1}}, this is The Dream Wedding. A couple in {{2}} is looking for {{3}} " +\n' +
+        '      "for a wedding in {{4}}, with a budget around Rs {{5}}. Join The Dream Wedding to " +\n' +
+        '      "see the request and reply to them from your own account.",'],
+    ],
     cell: 'literal subsequences identical' },
 
   { id: 'M2 the variables array is permuted, the body untouched (§1 cannot see it; §2 must)',
@@ -74,8 +86,11 @@ const MUT = [
     cell: 'vars order is bound to templates.js variables' },
 
   { id: 'M4 a registry entry gains a §2 row while still named witnessless (partition, rule 5)',
+    // The old target (`tdw_assist_lead_outside`) is RETIRED and unregistered since
+    // R-41.118, so 1.q never fires for it — the mutation went unobservable rather
+    // than uncaught. Re-aimed at the live compared entry.
     edits: [[BEN, "  'tdw_lead_alert_basic', 'tdw_lead_alert_utility', 'tdw_payment_reminder',",
-                  "  'tdw_lead_alert_basic', 'tdw_lead_alert_utility', 'tdw_payment_reminder', 'tdw_assist_lead_outside',"]],
+                  "  'tdw_lead_alert_basic', 'tdw_lead_alert_utility', 'tdw_payment_reminder', 'tdw_assist_lead_outside_v2',"]],
     cell: 'is NOT on NO_S2_WITNESS' },
 
   { id: 'M5 a name leaves NO_S2_WITNESS without gaining a §2 row (partition, other edge)',

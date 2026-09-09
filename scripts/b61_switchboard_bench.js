@@ -158,7 +158,20 @@ const graphFetch = (statusWord, extra = []) => async (url) => ({
     });
     await cell('reason() names the state', () => /flag\.review_ask_send is off on the switchboard/.test(cap.reason('flag.review_ask_send')) ? true : 'reason does not name the state');
     await cell('seat A\'s constant and contract survive the replacement (CAPABILITY_KEYS, IS_STUB=false)', () =>
-      cap.CAPABILITY_KEYS.TDW_ASSIST_LEAD_OUTSIDE === 'template.tdw_assist_lead_outside' && cap.IS_STUB === false ? true : 'constant or flag moved');
+      // CE-41 seat D, R-41.118: this TRANSCRIBED the constant's VALUE, so it broke the
+      // day the outsider alert legitimately versioned to v2 — the class seat G's §8.1
+      // names (a mirror carrying its own copy of the thing it mirrors). Re-cut to DERIVE:
+      // the constant must still exist, still be a `template.` key, and still agree with
+      // what the registry actually holds for the assist_lead_outside entry. That is the
+      // contract seat A's cell was defending; the literal was never the point.
+      (() => {
+        const k = cap.CAPABILITY_KEYS.TDW_ASSIST_LEAD_OUTSIDE;
+        const reg = require(path.join(ROOT, 'src/lib/templates.js'));   // b61 has no P(); ROOT is its home
+        const e = (reg.TEMPLATES || reg.templates || reg).assist_lead_outside;
+        if (typeof k !== 'string' || !k.startsWith('template.')) return 'constant moved or is not a template key';
+        if (!e || k !== `template.${e.name}`) return `constant ${k} disagrees with the registry (${e && e.name})`;
+        return cap.IS_STUB === false ? true : 'IS_STUB moved';
+      })());
     await cell('recordSweep refuses on/off (above the sweep\'s hand)', async () => {
       try { await cap.recordSweep('flag.review_ask_send', { status: 'on' }, { supabase: db }); return 'accepted status=on'; }
       catch (e) { return /above the sweep/.test(e.message) ? true : e.message; }

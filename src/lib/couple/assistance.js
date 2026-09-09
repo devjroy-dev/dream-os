@@ -46,7 +46,7 @@
 //
 // ── THE SEND ARMS ARE DARK (R-41.8, R-41.20) ────────────────────────────────
 // The outsider forward's template send sits FULLY COMMENTED behind
-// `cap.on('template.tdw_assist_lead_outside')` — the read is a stub returning
+// `cap.on('template.tdw_assist_lead_outside_v2')` (R-41.118; v1's key retired in 0155) — the read is a stub returning
 // false until seat C ships the register. The bride "we found you" templates are
 // seat D's (roadmap §2 row D). Template names and Meta ids, filed by seat B and
 // Active at Meta 2026-09-08, are recorded in TEMPLATE_REFS below so the arm that
@@ -76,7 +76,25 @@ const MAX_SEARCH = 10;              // R-40.72's ≤10 precedent for a forward l
 
 // Filed by seat B; referenced, never sent, in s1.
 const TEMPLATE_REFS = Object.freeze({
-  lead_outside:  { name: 'tdw_assist_lead_outside',  meta_id: '1627376372249131', category: 'MARKETING', line: 'marketing' },
+  // R-41.118 - THE OUTSIDER ALERT IS v2, AND IT IS UTILITY.
+  // v1 was Marketing filed as Utility (R-41.30, "accept, no appeal"), and the
+  // per-user MARKETING cap is what refused it: 131049, four times, on one test
+  // handset in a single night. The honest Utility shape existed all along - an
+  // ENQUIRY NOTICE, not an invitation - and the re-file found it. v1's key is
+  // retired in 0155; its rows keep their words (S2-5 is keyed on the code, and
+  // 131049 cannot arise on a Utility send, so the sentence stays true for the
+  // rows that carry it).
+  // CATEGORY AND LINE ARE INDEPENDENT: Utility on the MARKETING PNID. Receipts
+  // therefore stay on marketingIndex's arm, which F-41.60 gave applyStatusEvent.
+  lead_outside:  { name: 'tdw_assist_lead_outside_v2', meta_id: '2544506315978894', category: 'UTILITY',  line: 'marketing' },
+  // R-41.4(b)/(c) - the two bride arms. Derived from docs/TEMPLATES.md rows 11
+  // and 12 (seat B's Manager readings), NEVER authored beside them: row 10's
+  // whole lesson was an entry written independently of its filing.
+  // found_vendor is IN REVIEW at Meta, not Active (F-41.114 re-filed its button),
+  // so its key stays shut until the Manager says otherwise. The register is what
+  // tells us; this constant records only what was witnessed.
+  found_vendor:  { name: 'tdw_assist_found_vendor',    meta_id: '3160852754105015', category: 'UTILITY',  line: 'bride' },
+  found_outside: { name: 'tdw_assist_found_outside',   meta_id: '3115277355330375', category: 'UTILITY',  line: 'bride' },
   found_vendor:  { name: 'tdw_assist_found_vendor',  meta_id: '3160852754105015', category: 'UTILITY',   line: 'bride' },
   found_outside: { name: 'tdw_assist_found_outside', meta_id: '3115277355330375', category: 'UTILITY',   line: 'bride' },
 });
@@ -534,7 +552,8 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
 
   // ── THE SEND ARM · LIVE (A10, R-41.83 as amended) ────────────────────────
   // A2 shipped this commented; the chair woke it. The gate is the register key
-  // `template.tdw_assist_lead_outside` (Marketing, Meta 1627376372249131). When
+  // `template.tdw_assist_lead_outside_v2` (UTILITY, Meta 2544506315978894; R-41.118).
+  // v1's key is retired in 0155 and this arm no longer reads it. When
   // the key is ON this sends FOR REAL to whatever number the founder typed —
   // there is no second gate, which is why the packet's first founder step is to
   // shut the key before applying and the walk's first step is to open it.

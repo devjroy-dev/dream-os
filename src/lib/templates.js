@@ -786,16 +786,76 @@ const TEMPLATES = {
   // NO PHONE OF THE COUPLE'S RIDES THIS BODY (roadmap §7, the standing refusal).
   assist_lead_outside: {
     key: 'assist_lead_outside',
-    name: 'tdw_assist_lead_outside',
+    name: 'tdw_assist_lead_outside_v2',
     language: TEMPLATE_LANGUAGE,
     line: 'marketing',
-    category: 'MARKETING',
+    category: 'UTILITY',                      // R-41.118 - Utility on the MARKETING PNID; the two are independent
     variables: ['name', 'month_year', 'city', 'category_noun', 'budget_rs'],
+    // Byte-for-byte docs/TEMPLATES.md §2 row 10a - the founder's Manager preview,
+    // 2026-09-09 07:42 IST. The invitation clauses are gone ("asked The Dream Wedding
+    // to find them", "has been matched to you", "Reply STOP REQUESTS"); what is left is
+    // a notice about an enquiry that exists, which is what Utility means.
     body:
-      "Hi {{1}}, a couple planning a {{2}} wedding in {{3}} asked The Dream Wedding to " +
-      "find them a {{4}}, and their request has been matched to you with a budget of " +
-      "about Rs {{5}}. The request is held on the page below. Reply STOP REQUESTS if " +
-      "you would rather not receive these.",
+      "Hi {{1}}, you have a new enquiry through The Dream Wedding: a couple planning " +
+      "a {{2}} wedding in {{3}} needs a {{4}}, with a budget of about Rs {{5}}. The full " +
+      "enquiry is on the page below.",
+    status: 'approved',
+  },
+
+  // ── R-41.4(b) · THE BRIDE IS TOLD A TDW VENDOR WAS FOUND ──────────────────
+  // Derived from docs/TEMPLATES.md §2 row 11 — seat B's Manager reading — and NOT
+  // authored beside it. Row 10's whole lesson was an entry written independently
+  // of its filing: it was internally consistent for a day and the send arrived
+  // garbled. Body below is that row's blockquote, byte for byte.
+  //
+  // ⚠ IN REVIEW AT META, NOT ACTIVE. F-41.114 re-filed the button (it was a quick
+  // reply, not the URL this entry once claimed) and the edit is being assessed.
+  // `status: 'pending'` is the honest word: the send arm refuses a non-approved
+  // template by construction, and the register key (0155) is the second gate. The
+  // day the Manager reads Active, this becomes 'approved' — a one-word edit with a
+  // reading behind it, never a guess.
+  // [F-06.85: conditioned on row 11's state. Its next sitting must re-read the
+  //  Manager before touching this word.]
+  //
+  // {{2}} IS A BARE NOUN. The body reads "we have matched a {{2}}" — the ARTICLE IS
+  // IN THE LITERAL. F-41.80 is what happens when the value carries one too, and
+  // scripts/b64_template_slots_bench.js §3 composes literal and value for every
+  // entry that has a trade slot, finding it by shape. This entry is covered the
+  // moment it exists.
+  assist_found_vendor: {
+    key: 'assist_found_vendor',
+    name: 'tdw_assist_found_vendor',
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',
+    category: 'UTILITY',
+    variables: ['name', 'category_noun', 'month_year', 'vendor_name'],
+    body:
+      "Hi {{1}}, we have matched a {{2}} to the request you sent The Dream Wedding " +
+      "for your {{3}} wedding. {{4}} is on The Dream Wedding, and their recent work " +
+      "and open dates are on the page below.",
+    status: 'pending',
+  },
+
+  // ── R-41.4(c) · THE BRIDE IS TOLD AN OUTSIDER WAS FOUND ───────────────────
+  // docs/TEMPLATES.md §2 row 12, byte for byte. NO BUTTON — she replies on the
+  // thread and the founder arranges it by hand, which is the whole shape of s1's
+  // concierge and the reason no vendor page can be linked for someone who has not
+  // joined. {{4}} is the Instagram handle; {{3}} is the bare noun again ("matched
+  // to a {{3}}").
+  //
+  // ⚠ NO PHONE OF THE OUTSIDER'S RIDES THIS BODY, and none of the couple's rides
+  // the outsider's — roadmap §7's standing refusal runs BOTH ways on this plane.
+  assist_found_outside: {
+    key: 'assist_found_outside',
+    name: 'tdw_assist_found_outside',
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',
+    category: 'UTILITY',
+    variables: ['name', 'month_year', 'category_noun', 'ig_handle'],
+    body:
+      "Hi {{1}}, the request you sent The Dream Wedding for your {{2}} wedding has " +
+      "been matched to a {{3}}, and their work is on Instagram at {{4}} \u2014 reply here " +
+      "and we will arrange the introduction.",
     status: 'approved',
   },
 

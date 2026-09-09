@@ -361,7 +361,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
       { createLead: async () => { throw new Error('must not create a lead for an outsider'); }, cap: { on: () => false, reason: (k) => `${k} is off on the switchboard` }, sendWa: async () => { throw new Error('must not send while off'); } });
     // c-41.10 · replaces `... && /stub/.test(f.dark.reason)`: the register is real, the row seeds
     // `approved` ("Meta yes, the founder not yet") and the reason no longer says stub.
-    ok('key OFF → the outsider forward succeeds, is DARK, and quotes the switchboard\'s reason', f.ok && f.dark && f.dark.reason === 'template.tdw_assist_lead_outside is off on the switchboard');
+    ok('key OFF → the outsider forward succeeds, is DARK, and quotes the switchboard\'s reason', f.ok && f.dark && f.dark.reason === 'template.tdw_assist_lead_outside_v2 is off on the switchboard');
     const pr = db._t.prospects;
     ok('ONE prospects row: source manual, state cold (R-41.14), phone 91+last ten (prospects.js:94\'s format), handle without @', pr.length === 1 && pr[0].source === 'manual' && pr[0].state === 'cold' && pr[0].phone === '919811122333' && pr[0].ig_handle === 'rahulshoots' && pr[0].name === 'Rahul');
     ok('prospects.category = the item\'s trade, city = the request\'s, notes name the item as a courtesy', pr[0].category === 'photography' && pr[0].city === 'Delhi' && pr[0].notes.includes(s.photo.id));
@@ -382,7 +382,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
     // RETIRED-BY-RULING (A10/R-41.83): the block is the arm now, not a comment.
     ok('the send is reached only through the register key — no env var, no second path', /capFn\(cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE\) === true/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code) && !/uncomment/i.test(read(ASSIST)));
     ok('the read is cap.on() on the one key, never an env var', /cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code));
-    ok('the filed template names + Meta ids are recorded once (TEMPLATE_REFS)', A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131' && A.TEMPLATE_REFS.found_vendor.meta_id === '3160852754105015' && A.TEMPLATE_REFS.found_outside.meta_id === '3115277355330375');
+    ok('the filed template names + Meta ids are recorded once (TEMPLATE_REFS)', A.TEMPLATE_REFS.lead_outside.meta_id === '2544506315978894' && A.TEMPLATE_REFS.found_vendor.meta_id === '3160852754105015' && A.TEMPLATE_REFS.found_outside.meta_id === '3115277355330375');
     // ═══ A10 · the live arm, key ON ═══
     db = seededDb(); s = await seedRequest(db); const sends = [];
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', ig_handle: '@rahulshoots', name: 'Rahul' } },
@@ -399,7 +399,11 @@ const ADMIN  = 'src/api/admin/assistance.js';
     ok('five vars in META\'s order, the trade a bare noun: name · month and year · city · trade · budget in Indian grouping, no glyph', Array.isArray(oc.vars) && oc.vars.length === 5 && oc.vars[0] === 'Rahul' && oc.vars[1] === 'February 2027' && oc.vars[2] === 'Delhi' && oc.vars[3] === 'photographer' && oc.vars[4] === '2,50,000' && !/\u20b9/.test(JSON.stringify(oc.vars)));
     ok('NO phone of the couple rides the body (roadmap §7, the standing refusal)', !JSON.stringify(oc.vars || []).includes('9625759924') && !JSON.stringify(oc.vars || []).includes('+91'));
     ok('the wamid lands on assistance_forwards.wamid with status sent + sent_at', db._t.assistance_forwards[0].wamid === 'wamid.OUT1' && db._t.assistance_forwards[0].status === 'sent' && !!db._t.assistance_forwards[0].sent_at && f.alert.sent === true);
-    ok('the registry entry is Marketing, approved, marketing line, five variables; the writer names Meta id', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate('assist_lead_outside'); return t.isApproved('assist_lead_outside') && e.category === 'MARKETING' && e.line === 'marketing' && e.variables.length === 5 && A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131'; })());
+    // c-41.61: R-41.118 moved the outsider alert to v2 (Utility, Meta 2544506315978894).
+    // These cells named v1's key, category and id. Re-cut to the WITNESSED v2 facts
+    // (docs/TEMPLATES.md §2 row 10a), not relaxed: UTILITY is asserted by name, so a
+    // silent slide back to MARKETING reds.
+    ok('the registry entry is Utility, approved, MARKETING line, five variables; the writer names Meta id', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate('assist_lead_outside'); return t.isApproved('assist_lead_outside') && e.category === 'UTILITY' && e.line === 'marketing' && e.variables.length === 5 && A.TEMPLATE_REFS.lead_outside.meta_id === '2544506315978894'; })());
     db = seededDb(); s = await seedRequest(db);
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } },
       { cap: { on: () => true }, sendWa: async () => { const e = new Error('This message was not delivered to maintain healthy ecosystem engagement.'); e.body = { error: { code: 131049 } }; throw e; } });

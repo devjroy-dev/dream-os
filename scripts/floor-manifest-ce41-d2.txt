@@ -1,0 +1,53 @@
+CE-41 · SEAT D · D2 (dream-os) · FLOOR MANIFEST
+base: 0fb3ee234818eecc0146fec391272d6e85e791c7   (seat B's B1f)
+run:  the seat's container, node, after `npm install`
+
+FLOOR = NAMED BASE, no delta.
+
+b64_template_slots_bench     GREEN  122/122   was 108/108 — +14 (three entries now compared, +5.4/5.5)
+b64_mutations                GREEN    7/7     M1 split into two edits, M4 re-aimed
+b20_a2_assistance_bench      GREEN  126/126   three cells re-cut (c-41.61); COUNT UNCHANGED
+b61_switchboard_bench        GREEN   64 · 0   one cell re-cut (awaiting a number); COUNT UNCHANGED
+b62_mutations                GREEN   18/18
+b62_g34_s2_bench             exit 0
+b63_mutations                GREEN   30/30    (was 20/20 — seat F's F2 added ten; inherited, not this seat's)
+
+BOTH WAYS, BY COMMAND:
+  b64 cured GREEN 122/122 · uncured RED on 7 cells (4.p ×3, 4.q, 5.3, 5.4, 5.5)
+  b20_a2 cured GREEN 126/126 · uncured RED
+
+  b61's re-cut cell is GREEN ON BOTH TREES, and that is correct — it now asserts a
+  CONTRACT (the constant agrees with the registry) which holds on either version.
+  Non-vacuity proved by two hand mutations instead:
+    · constant drifts from the registry → RED "constant template.tdw_assist_lead_outside
+      disagrees with the registry (tdw_assist_lead_outside_v2)"
+    · constant stops being a template key → RED "constant moved or is not a template key"
+
+COUNT MOVEMENTS, DISCLOSED:
+  b64          108 → 122   (+14: assist_found_vendor ×5, assist_found_outside ×5,
+                            §3 ×2 for each new trade-slot entry, 5.4, 5.5)
+  b64_mutations  7 →  7    (no movement; M1 became two edits, M4 re-aimed)
+  b20_a2       126 → 126   (no movement)
+  b61           64 →  64   (no movement)
+  b63           20 →  30   INHERITED from seat F's F2, not this seat's.
+
+FOUR ANCHORS DIED ON THIS SEAT'S OWN EDITS, ALL RE-DERIVED:
+  b64_mutations M1  the joined VARS+BODY anchor — a comment block now sits between them
+  b64_mutations M4  aimed at a name R-41.118 RETIRED, so its cell no longer fires for it
+                    (unobservable, not uncaught — the harness said "matched 0 times")
+  b61 §4            transcribed the constant's VALUE
+  b20_a2 ×3         c-41.61
+  Seat G's §5 named this exact class one packet ago ("foreseeable, and not foreseen")
+  and this seat lost b62_mutations M6 to it (c-41.43). The harness reporting
+  "matched 0 times" rather than passing is the only reason it is survivable.
+
+MIGRATION 0155 — ladder tail derived by command immediately before allocation:
+  `ls db/migrations | grep -E '^[0-9]{4}' | sort | tail -1` → 0154. Not claimed; chair-allocated.
+  NOT RUN by this seat (all SQL is the founder's). Its two CHECK constraints are
+  witnessed against 0149 lines 23–24, named in the file.
+
+INHERITED RED, NOT THIS SEAT'S, NOT TOUCHED:
+  b39_telemetry_bench  REDS 3.1–3.4, 5.3   F-41.64, seat C
+  b61_mutations        M8 dead anchor      F-41.65, seat C
+CONTAINER GAP, DECLARED:
+  b63_f1_model_routes_bench  exit 1 on missing engine/dist — identical at the uncured origin.

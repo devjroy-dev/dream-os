@@ -268,7 +268,13 @@ async function setAutoOn(key, { auto_on, walk_ref }, by, opts = {}) {
  * (R-41.20) and the nine doors' keys beside it, so grep finds every reader.
  */
 const CAPABILITY_KEYS = Object.freeze({
-  TDW_ASSIST_LEAD_OUTSIDE: 'template.tdw_assist_lead_outside',   // Block 20 s1, forwardAssistanceItem (dark)
+  // CROSS-SEAT (CE-41 seat D, R-41.118 / R-41.4): the outsider alert moved to v2
+  // (Utility) and the two bride arms joined the plane. v1's key is retired in 0155
+  // and no reader names it. Every key a reader in this tree names lives here, so a
+  // grep for the constant finds every reader (this roster's own docstring).
+  TDW_ASSIST_LEAD_OUTSIDE: 'template.tdw_assist_lead_outside_v2', // Block 20 s2, forwardAssistanceItem (dark until flipped)
+  TDW_ASSIST_FOUND_VENDOR: 'template.tdw_assist_found_vendor',    // Block 20 s2, the bride arm - IN REVIEW at Meta
+  TDW_ASSIST_FOUND_OUTSIDE: 'template.tdw_assist_found_outside',  // Block 20 s2, the bride arm
   CONTRACT_SIGN_SEND:      'flag.contract_sign_send',
   CONTRACT_COPY_SEND:      'flag.contract_copy_send',
   PAYMENT_REMINDER_SEND:   'flag.payment_reminder_send',

@@ -159,8 +159,19 @@ const NO_S2_WITNESS = [
 // §2 entries with no registry entry. These LEAVE this list when a seat registers
 // them; `assist_found_*` are seat D's in D2/D3 and that is when §1 starts
 // comparing them.
+// D2 moved TWO NAMES OFF THIS LIST IN ONE CUT, and that is the partition working
+// exactly as ruled: registering an entry reds §4.q until its name leaves here, and
+// §1 starts comparing it the same instant. `assist_found_vendor` and
+// `assist_found_outside` are now registered (R-41.4(b)/(c)) and are compared.
+// The v1 name `tdw_assist_lead_outside` is a THIRD case and a new one: it has a §2
+// heading (row 10, kept as the v1 record) and no registry entry, because R-41.118
+// renamed the entry to v2. It is not "not yet registered" — it is RETIRED, and the
+// two states are not the same claim. A retired name that quietly reappeared in the
+// registry should red, so it is named here with its reason rather than deleted from
+// the bench's sight.
 const NOT_YET_REGISTERED = [
-  'tdw_assist_found_outside', 'tdw_assist_found_vendor', 'tdw_introduction',
+  'tdw_assist_lead_outside',   // RETIRED by R-41.118 — row 10 is the v1 record; the entry is now v2
+  'tdw_introduction',
   'tdw_referral_invite',
 ];
 
@@ -295,8 +306,18 @@ ok(`5.1 every registry tdw_ entry is either compared or named (compared ${compar
    compared.length + NO_S2_WITNESS.length === regKeys.length);
 ok('5.2 the two named lists do not overlap',
    !NO_S2_WITNESS.some(n => NOT_YET_REGISTERED.includes(n)));
-ok('5.3 assist_lead_outside is in the COMPARED set, not on a named list',
-   compared.includes('tdw_assist_lead_outside'));
+// D2: the outsider alert is v2 now (R-41.118). This cell names the LIVE outsider
+// alert, whatever its version — its point is that the send arm's own template is
+// never allowed to sit on a named list unexamined. Naming v2 explicitly (rather
+// than matching a prefix) keeps that: when v3 arrives, this cell reds and forces
+// the reading, which a `startsWith` would have let slide.
+ok('5.3 the live outsider alert (v2) is in the COMPARED set, not on a named list',
+   compared.includes('tdw_assist_lead_outside_v2'));
+ok('5.4 both bride arms are COMPARED now that they are registered (R-41.4(b)/(c))',
+   compared.includes('tdw_assist_found_vendor') && compared.includes('tdw_assist_found_outside'));
+ok('5.5 the retired v1 name has no registry entry and is named as retired',
+   !regKeys.some(k => REG[k].name === 'tdw_assist_lead_outside')
+   && NOT_YET_REGISTERED.includes('tdw_assist_lead_outside'));
 
 console.log(`\n${fail === 0 ? 'GREEN' : 'RED'} — b64_template_slots_bench ${pass}/${pass + fail}`);
 if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
