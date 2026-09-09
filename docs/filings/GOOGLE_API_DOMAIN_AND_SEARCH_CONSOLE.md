@@ -117,11 +117,23 @@ The order is: **Railway first, registrar second.** Railway hands you the value.
    Vercel's and belongs to the PWA. This is the subdomain and only the subdomain.
 3. Railway displays a **CNAME target** of the form `<something>.up.railway.app`. **Copy it
    exactly.** That value, not any value written in any document.
-4. At the registrar holding `thedreamwedding.in` DNS, add:
+4. **In Vercel → Domains → `thedreamwedding.in` → DNS Records**, add **both** records Railway
+   asks for. **F-42.19:** the zone is registered with a third party but served by **Vercel
+   nameservers**, so the registrar's DNS pane is decorative and the records must go here.
+   Railway mints **two**, not one, and neither value is derivable — copy both verbatim:
 
    | Type | Name | Value | TTL |
    |---|---|---|---|
-   | `CNAME` | `api` | *(the target Railway displayed, verbatim)* | automatic / 3600 |
+   | `CNAME` | `api` | *(the target Railway displayed, verbatim)* | 60 |
+   | `TXT` | `_railway-verify.api` | *(the `railway-verify=…` string Railway displayed, verbatim)* | 60 |
+
+   The TXT is what Railway reads while it says *Validating domain ownership*; without it the
+   CNAME resolves and the domain never activates.
+
+   **The zone carries a wildcard**, so every unconfigured label already answers on Vercel's edge
+   with a `DEPLOYMENT_NOT_FOUND` page. An explicit `api` record beats the wildcard — nothing
+   needs removing, and **do not remove it**. It also means *the domain answering in a browser is
+   not proof the record landed*: tap 6 is the proof, and only tap 6.
 
 5. Wait for Railway to report the domain **verified / active**. Minutes to an hour, occasionally
    longer.
@@ -205,11 +217,16 @@ taps 1–6".**
    property the Cloud project cannot use.
 2. **Add property → Domain** → enter `thedreamwedding.in` (no `https://`, no `www`).
 3. Google displays a **TXT record** beginning `google-site-verification=`. Copy it exactly.
-4. At the registrar, add:
+4. **In Vercel → Domains → `thedreamwedding.in` → DNS Records** (F-42.19 — the same pane as §2
+   tap 4, not the registrar), add:
 
    | Type | Name | Value | TTL |
    |---|---|---|---|
-   | `TXT` | `@` *(or blank — the apex)* | `google-site-verification=…` verbatim | automatic / 3600 |
+   | `TXT` | `@` *(or blank — the apex)* | `google-site-verification=…` verbatim | 60 |
+
+   A CNAME from May reading `yr2kzeyuikgy → gv-fofn2czma64t66.dv.googlehosted.com` already sits
+   in this pane. It is an older Google verification record, it is **not** this one, and it is not
+   to be edited or removed.
 
 5. Return to Search Console → **Verify**. If it fails, wait and retry — DNS propagation, not a
    wrong record, is the usual cause. Do not add a second record on a failure.
@@ -376,8 +393,9 @@ only that it be present, visible without signing in, and byte-identical to the c
 URI. This is the one byte of A4 whose *words* are not this seat's to draft — it is a link, and
 naming its label would be reaching into a surface.
 
-**The trio is BLOCKING B3·2.** Requirements 5 and 6 of B3·2 §2 are exactly these bytes, and they
-are the last thing between the estate and a durable refresh token.
+**The trio LANDED at `dreamos-pwa@cc109bd7` (F-42.14).** Requirements 5 and 6 of B3·2 §2 are
+exactly these bytes and are marked landed there. The tree says so; the surface is witnessed at
+B3·2 §7 card 4a, and the surface outranks the tree.
 
 ## 6 · WHAT THIS PACKET DOES NOT DO
 
@@ -399,8 +417,18 @@ are the last thing between the estate and a durable refresh token.
 
 ```
 B3·1 · api.thedreamwedding.in + Search Console
-CNAME api → <RAILWAY TARGET>            added <DATE>   Railway status: <active>
-https://api.thedreamwedding.in/ reachable over TLS: <yes/no>
+
+STEP 1 CLOSED 2026-09-10 (CE-42 · G2 · card step 1 · F-42.18 CLOSED)
+  CNAME api               → b3f9r8hu.up.railway.app            added 2026-09-10, TTL 60
+  TXT   _railway-verify.api → railway-verify=b0ea88b0…          added 2026-09-10, TTL 60
+  pane: Vercel DNS (F-42.19) · Railway status: active, tick shown
+  https://api.thedreamwedding.in/ over TLS: YES, padlock present
+    body: {"status":"alive","service":"dream-os","version":"0.11.1-alpha"}
+  resolution proof: api.thedreamwedding.in and b3f9r8hu.up.railway.app both → 69.46.46.48;
+    an impossible label still falls to the Vercel wildcard, so the explicit record is the
+    one answering.
+
+STILL OPEN
 redirect URI added (both listed):        <yes/no>
 Search Console domain property thedreamwedding.in, TXT, verified <DATE>, as dev@thedreamwedding.in
 consent screen after the move reads: <"The Dream Wedding" | a host — if a host, this is a finding>
