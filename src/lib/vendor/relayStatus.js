@@ -394,6 +394,48 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: fnRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE EIGHTH HOME · public.introductions (0161) ────────────────────────
+      // R-41.11 / roadmap row J1: the vendor's own outbound to a person she met.
+      // APPENDED, never reordered — each home is tried only on a miss, so the
+      // seven above cost nothing and their behaviour is unchanged.
+      //
+      // NUMBERING, NAMED SO IT IS NOT RE-DERIVED: this file counts HOMES and
+      // 0158's comment counts ARMS ("the eighth router arm"), because `messages`
+      // above is a home this ladder does not number. Both are right about
+      // different things; this comment exists so the next reader does not file a
+      // finding against one of them.
+      //
+      // R-40.110 IN THE SAME DELIVERY, FOR THE SECOND TIME. 0158 was the first
+      // table not to ship a wamid column with no arm; this is the second.
+      // `uq_introductions_wamid` is UNIQUE and PARTIAL on `wamid IS NOT NULL`, so
+      // `> 1` is unreachable — checked anyway, because every arm above checks it
+      // and the one that skipped would be the weakest.
+      //
+      // WHY A RECEIPT MATTERS MORE ON THIS PLANE THAN ANY ABOVE IT. Every
+      // recipient is a stranger to the WABA and the template is MARKETING, so a
+      // share of these are withheld under Meta's per-user cap — and R-41.11
+      // forbids any follow-up. `error_code` landing here is what lets the vendor
+      // be told NOT DELIVERED instead of reading Meta's silence as the person's
+      // answer (B1_CONCIERGE_TEMPLATES.md:88-92).
+      const iv = await supabase
+        .from('introductions')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, vendor_id, status');
+      const ivRows = Array.isArray(iv && iv.data) ? iv.data : [];
+      if (ivRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=introduction', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: ivRows[0], reason: 'introduction' };
+      }
+      if (ivRows.length > 1) {
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=introduction_ambiguous', `matched=${ivRows.length}`, errFields(status),
+          ' SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: ivRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

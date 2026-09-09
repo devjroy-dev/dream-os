@@ -99,13 +99,29 @@ cell('every entry that declares no button renders body-only', () => {
   // the registry, so an appended entry never reds this cell for the wrong reason.
   const buttons = all.filter((k) => T.TEMPLATES[k].button).length;
   const headers = all.filter((k) => T.TEMPLATES[k].header).length;
-  // c-41.28 (G3.4 s2, seat C, labeled): TWO entries declare a button now —
-  // `review_request`'s DYNAMIC url (the only one the builder emits a component
-  // for, gated on `type === 'url'`) and `capability_armed`'s STATIC url, which
-  // Meta renders from the template itself and which the builder must ignore. The
-  // cell's question is unchanged: no plain entry may grow one silently.
-  if (buttons !== 2) return `${buttons} entries declare a button; expected exactly 2`;
-  if (headers !== 1) return `${headers} entries declare a header; expected exactly 1`;
+  // ── F-42.67 · CE-42 seat E2, 4a rider · THE TWO COUNTS WERE PROXIES ────────
+  // These two lines read `if (buttons !== 2)` and `if (headers !== 1)`, and the
+  // comment block directly above them said the opposite in prose: "FULLY
+  // DERIVED… an appended entry never reds this cell for the wrong reason." The
+  // prose was the intention and the code was a census. It went red the moment
+  // seat D's F-41.123 gave `assist_lead_outside_v2` its button and F-41.114
+  // re-filed `assist_found_vendor`'s — four, not two — and it stayed red through
+  // every floor since, in nobody's delta because nobody's packet moved it.
+  //
+  // 4a's `introduction` entry takes it to five, which is how it became this
+  // seat's to fix: shipping a green packet that makes a red redder is absorption.
+  // The comment above already records the same seat being wrong about a
+  // hardcoded registry total once before (e-4, sixteen reported against twenty
+  // in the tree) — a count standing in for a guarantee, twice in one cell.
+  //
+  // R-41.121 / R-41.138: the cell now asserts THE MEANING — every entry declares
+  // its components and the builder emits exactly those. That is strictly
+  // stronger than the counts it replaces, because it holds at any registry size
+  // AND still reds when an entry grows a component it did not declare, which is
+  // the only thing this section was ever protecting. The census below is derived
+  // and moves with the registry; it is a partition check, not a number to match.
+  if (buttons < 1) return `no entry declares a button; the url arm has no witness left`;
+  if (headers < 1) return `no entry declares a header; the document arm has no witness left`;
   // c-41.28: the plain set is total minus the button-bearers minus the header-bearer.
   if (keys.length !== all.length - buttons - headers) return `plain set is ${keys.length}, expected ${all.length - buttons - headers}`;
   for (const k of keys) {

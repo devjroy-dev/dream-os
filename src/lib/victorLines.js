@@ -61,6 +61,76 @@ const VICTOR_LINES = {
   //     lives in the Advisor room alone; the lane is business, always.
   ADVISOR_ON_WHATSAPP:
     "Advisor mode lives in the app — open the Advisor room there. Here on WhatsApp it's business, always.",
+
+  // ── 6, 7, 8 · THE INTRODUCTION SLOTS · FOUNDER-VETOED 2026-09-10 (W-1, 4a) ──
+  // R-41.11's three facts, and the whole soul radius of packet 4a beside byte 9.
+  // The chair's W-1 ruling: "those four strings and the four reused bytes are the
+  // whole soul radius of 4a. Nothing else." No persona name, no new voice.
+  //
+  // WHY ONLY THREE SLOTS ARE ASKED FOR. docs/TEMPLATES.md §2 entry 13 declares
+  // {{1}} recipient's name, {{2}} the vendor or business name, {{3}} where they
+  // met — and the url button's suffix. {{2}} is `vendors.business_name` and the
+  // suffix is `vendors.routing_handle`; both are read off her own row and are
+  // NEVER asked. Asking a vendor her own business name is friction she did not
+  // ask for (relaySeat.js:296's rule, applied one lane over).
+  //
+  // THE DOOR SPEAKS THESE AND THE MODEL NEVER PARAPHRASES THEM — R-40.2's
+  // "never re-voiced" clause, which is the load-bearing half of the approved-copy
+  // law: a paraphrase of a vetoed byte is an unvetoed byte.
+  //
+  // `them / their`, where the relay lane says `her`. The recipient of an
+  // introduction is a stranger of unknown gender; guessing would put a wrong word
+  // in the vendor's mouth to a person she met once. Chair-ruled: "a stranger's
+  // gender is not ours to guess."
+
+  // 6 · the number. The country code is asked for as a FACT, not a courtesy:
+  //     users.phone is stored E.164 (+919888294440, the founder's own row read
+  //     2026-09-10) and D4 put a country-code twin refusal on the tree.
+  INTRO_ASK_NUMBER:
+    "What's their number? Include the country code.",
+
+  // 7 · the name. Literally true — the body opens `Hi {{1}}, this is {{2}}`.
+  //     On the walk this is the ONE question the vendor sees, because her ask
+  //     ("send my page to <number>, met at <place>") gives the other two.
+  INTRO_ASK_NAME:
+    "What's their name? It goes at the top of the message.",
+
+  // 8 · where they met. R-41.11 stated as a fact rather than a request: names the
+  //     place they met or it does not send. `where_met` is NOT NULL in 0161, so
+  //     this sentence and the column are one law in two places on purpose.
+  INTRO_ASK_WHERE:
+    "Where did you meet them? I can't send this without it.",
+
+  // ── 9 · NOT DELIVERED · FOUNDER-VETOED (chair's B3 ruling, carried verbatim) ─
+  // docs/filings/B1_CONCIERGE_TEMPLATES.md:88-92 is the reason this byte exists:
+  // every recipient of an introduction has, by construction, never messaged this
+  // WABA, so a share of sends are silently withheld under Meta's per-user
+  // MARKETING cap — and R-41.11 forbids any follow-up. A THROTTLED introduction
+  // and an IGNORED introduction are indistinguishable to the vendor unless the
+  // send arm says otherwise, and without this line she reads Meta's silence as
+  // the person's answer. "I will not retry" is not a limitation being confessed;
+  // it is R-41.11's no-follow-up law spoken out loud.
+  //
+  // NOT relaySeat.js's `sendFailedLine`: that byte says "Nothing reached her" and
+  // "The draft is saved", both wrong here — the recipient's gender is unknown and
+  // there is no draft to save on a plane where the body is fixed at Meta.
+  INTRO_NOT_DELIVERED:
+    'Not delivered. WhatsApp did not accept it, and I will not retry.',
+
+  // ── 10 · ALREADY INTRODUCED · FOUNDER-VETOED (chair's ruling, 4a re-cut) ────
+  // The gap 4a's first cut declared and did not fill. R-41.11 is two halves of
+  // one law — no cold numbers, and no follow-up to an unanswered introduction —
+  // and `uq_introductions_vendor_recipient` (0161) makes it structural. The arm
+  // refuses BEFORE the database does (R-41.146: the double refuses what the
+  // database refuses), but until this byte existed that refusal was SILENT on her
+  // glass: a typed code, a log line, and nothing said. A structural law the
+  // vendor cannot hear is a dead end wearing a rule's clothes.
+  //
+  // "go once" is the law stated, not a limitation apologised for. There is
+  // deliberately no "would you like to…" — every alternative this estate could
+  // offer her here is the follow-up R-41.11 forbids.
+  INTRO_ALREADY_SENT:
+    'Already sent to this number. Introductions go once.',
 };
 
 // ── LINE 4 · THE MONEY SHAPE ────────────────────────────────────────────────
@@ -98,6 +168,12 @@ const LINE_HASHES = {
   EXPENSE_NO_HAND: 'c400bc688434a6bfa9fc2414bd3590f2f1fcb4739975b096eab0a380d2e42291',
   LEDGER_UNREADABLE: '70af765dfab2ef49bf14b41c717fd3e00c437893083689b288000db2e635570f',
   ADVISOR_ON_WHATSAPP: 'eedc31106b740fb72b827807031f7f57d9bb532565c642ce0b22518bbdc21851',
+  // CE-42 seat E2, packet 4a — the four introduction bytes, vetoed 2026-09-10.
+  INTRO_ASK_NUMBER:    '66995d580664ba33182811f99c0ac42cabcd69a2ce4d6c0c49d57379b49f42a7',
+  INTRO_ASK_NAME:      '8bd926211ca8f0c1da754d34c9f258dc9052fc0c1afa0829bd9e145a1ccad516',
+  INTRO_ASK_WHERE:     'cade222061fa8919361dcddf6a846fdfbf2a1b8e13f80494190bbe03f50345e7',
+  INTRO_NOT_DELIVERED: 'cae4e06a365bb2ba619aab4fc819a181509203856c2899ecaa08d48b4d4dee57',
+  INTRO_ALREADY_SENT:  '73e72a65f4c850fe64b132023d86214598bb76eaadd6f834c98a781909482092',
 };
 
 function sha256(s) {
@@ -121,6 +197,26 @@ function assertLineHashes() {
   }
   return true;
 }
+
+// ── F-42.46 · THE LOAD-TIME GUARD THIS FILE CLAIMED AND DID NOT HAVE ────────
+// CE-42 seat E2, packet 4a. The comment above `assertLineHashes` has said since
+// CE-40 that it is "called at module load so an edited byte cannot ship quietly:
+// the process that requires this module dies at boot rather than speaking an
+// unvetoed sentence to a vendor", and the header at :8 says the same. NO SUCH
+// CALL EXISTED at fd9d0da4 — derived by command: the only occurrences of the
+// symbol in this file were its definition (:111) and its export (:131), and the
+// only caller anywhere in the tree was scripts/b40_victor_sitting_bench.js:234.
+//
+// So the enforcement was a BENCH, not a boot: an edited byte shipped fine and
+// spoke to a vendor, and only a floor run said otherwise. This file's own
+// closing sentence names why that is not good enough — "a copy law that fails
+// open is a copy law that is not enforced" — and it was describing itself.
+//
+// One line, and now the two mechanisms are what the comment always promised: a
+// runtime self-check AND a committed literal, different in kind, because a
+// self-check alone re-derives the hash of whatever the file now says and agrees
+// with itself.
+assertLineHashes();
 
 module.exports = {
   VICTOR_LINES,

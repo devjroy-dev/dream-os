@@ -180,7 +180,14 @@ const NO_S2_WITNESS = [
 // the bench's sight.
 const NOT_YET_REGISTERED = [
   'tdw_assist_lead_outside',   // RETIRED by R-41.118 — row 10 is the v1 record; the entry is now v2
-  'tdw_introduction',
+  // `tdw_introduction` LEFT THIS LIST at CE-42 seat E2, packet 4a. F-42.36: it
+  // had been Active at Meta since 2026-09-08 with `docs/TEMPLATES.md:514`
+  // recording its registry entry as **none** — the one template J1 sends had no
+  // home in the file R-40.94 makes the defining source. 4a wrote the entry, and
+  // this list is the register of that absence, so the name comes off it here in
+  // the same delivery. Its slot comparison (§1) switches on with the entry, which
+  // is the whole point of the list: an unregistered name is EXEMPTED from the
+  // comparison, never silently skipped by it.
   'tdw_referral_invite',
 ];
 

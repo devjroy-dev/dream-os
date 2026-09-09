@@ -232,10 +232,23 @@ function classify(reply, message, facts, mode) {
   // ── §5 · R-40.2, THE FIVE RATIFIED BYTES ────────────────────────────────────────────
   console.log('\n  §5 R-40.2 — the founder\'s bytes, hash-carried');
   T('the module self-check passes', lines.assertLineHashes() === true);
+  // ── CE-42 seat E2, packet 4a · THE FIVE INTRODUCTION BYTES JOIN THE PIN ────
+  // Chair-ruled at the re-cut: "b40 pins five." ONE HOME for the committed half
+  // of the approved-copy law — this bench is where a vetoed byte's hash is a
+  // literal, and 4a's bench (b68) deliberately does NOT re-pin them, because two
+  // benches holding the same hash literal is two homes for one fact and they
+  // drift apart the first time one is edited. b68 asserts BEHAVIOUR (the
+  // load-time guard, the absence of a persona name, which byte each refusal
+  // speaks); this asserts the BYTES.
   const PINNED = {
     EXPENSE_NO_HAND: 'c400bc688434a6bfa9fc2414bd3590f2f1fcb4739975b096eab0a380d2e42291',
     LEDGER_UNREADABLE: '70af765dfab2ef49bf14b41c717fd3e00c437893083689b288000db2e635570f',
     ADVISOR_ON_WHATSAPP: 'eedc31106b740fb72b827807031f7f57d9bb532565c642ce0b22518bbdc21851',
+    INTRO_ASK_NUMBER:    '66995d580664ba33182811f99c0ac42cabcd69a2ce4d6c0c49d57379b49f42a7',
+    INTRO_ASK_NAME:      '8bd926211ca8f0c1da754d34c9f258dc9052fc0c1afa0829bd9e145a1ccad516',
+    INTRO_ASK_WHERE:     'cade222061fa8919361dcddf6a846fdfbf2a1b8e13f80494190bbe03f50345e7',
+    INTRO_NOT_DELIVERED: 'cae4e06a365bb2ba619aab4fc819a181509203856c2899ecaa08d48b4d4dee57',
+    INTRO_ALREADY_SENT:  '73e72a65f4c850fe64b132023d86214598bb76eaadd6f834c98a781909482092',
   };
   for (const k of Object.keys(PINNED)) {
     T(`  ${k} is byte-frozen at its ratified hash`, lines.sha256(lines.VICTOR_LINES[k]) === PINNED[k]);
@@ -248,9 +261,24 @@ function classify(reply, message, facts, mode) {
   T('THE CURE\'S OWN REFUSALS NEVER CONVICT — line 3 over an UNREADABLE block',
     classify(lines.VICTOR_LINES.LEDGER_UNREADABLE, 'who owes me money',
       { ok: false, unreadable: true, rowCount: 0, handles: { amounts: [], numbers: [], names: [] } }) === null);
+  // ── CE-42 seat E2, packet 4a · THE COUNT WAS A PROXY AND THE PROXY BROKE ───
+  // This cell read `Object.keys(VICTOR_LINES).length === 3`. The GUARANTEE
+  // R-VS.13 names is that line 2 was vacated and NO REPLACEMENT WAS MINTED —
+  // `relaySeat.js`'s `second_costume:relay_lane` already owns that sentence and a
+  // second home for it would be the disease wearing a veto. The count was never
+  // that guarantee; it was a spelling that happened to hold while this file
+  // carried exactly the CE-40 set. 4a added four bytes from a different sitting
+  // (the R-41.11 introduction slots) and the proxy reddened while the law it
+  // stands for was untouched — R-41.121: a cell asserts the MEANING the law
+  // names, never a spelling. R-41.138: a cell counts only when the count IS the
+  // guarantee. Re-pinned on the guarantee itself, which is now strictly stronger:
+  // the three CE-40 bytes are present, the vacated key is absent, and NO key in
+  // the module re-voices the vacated sentence under a different name.
   T('R-40.2 line 2 is VACATED and no replacement was minted (R-VS.13)',
-    Object.keys(lines.VICTOR_LINES).length === 3
-    && lines.VICTOR_LINES.LEAD_SEND_NO_WIRE === undefined);
+    lines.VICTOR_LINES.LEAD_SEND_NO_WIRE === undefined
+    && ['EXPENSE_NO_HAND', 'LEDGER_UNREADABLE', 'ADVISOR_ON_WHATSAPP']
+      .every((k) => typeof lines.VICTOR_LINES[k] === 'string')
+    && !Object.values(lines.VICTOR_LINES).some((l) => /no line to (him|her)/i.test(l)));
   T('  …and the struck phrase left the tree with it — A12.2 needs no exemption',
     !Object.values(lines.VICTOR_LINES).some((l) => /word for word/i.test(l)));
   T('containsVetoedLine survives the ladder\'s sentence re-join (whitespace-normalised)',

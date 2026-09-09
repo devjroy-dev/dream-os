@@ -283,6 +283,25 @@ const CAPABILITY_KEYS = Object.freeze({
   WEDDING_CONSENT_SEND:    'flag.wedding_consent_send',
   REVIEW_ASK_SEND:         'flag.review_ask_send',
   WEDDING_REEL:            'flag.wedding_reel',
+  // ── CE-42 seat E2, packet 4a (F-42.31) ────────────────────────────────────
+  // The roster's law is "every key a READER in this tree names", and both of
+  // these now have one. It is NOT "every seeded row": 34 keys are seeded across
+  // db/migrations and 23 had no constant at fd9d0da4 — the eight `perm.*` rows
+  // land in 4b WITH their first readers, not before, because a constant with no
+  // reader is a name nobody greps for.
+  //
+  // TDW_INTRODUCTION is read DIRECTLY at the door, not through a `flag.*`
+  // (chair's ruling): `template.*` rows are gates in their own right — the
+  // precedent is src/lib/couple/assistance.js:384, and 0149:61-65 says so in the
+  // migration. So there is no `flag.introduction_send` and no TEMPLATE_GUARDS
+  // entry in src/capabilitiesSweep.js; the sweep's R-41.35 disarm reaches this
+  // row directly, which is the whole reason a second gate would have been noise.
+  TDW_INTRODUCTION:        'template.tdw_introduction',
+  // F-41.144's other half. `flag.assist_forward_alert` was seeded by 0151:19 and
+  // has a live reader, and the admin card rendered its RAW KEY because no
+  // constant existed for the copy map to key on. Named here so a grep for this
+  // roster finds that reader too.
+  ASSIST_FORWARD_ALERT:    'flag.assist_forward_alert',
 });
 
 module.exports = {

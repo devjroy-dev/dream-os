@@ -903,6 +903,65 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── R-41.11 · J1 INTRODUCTIONS — HER OWN OUTBOUND ─────────────────────────
+  // CE-42 seat E2, packet 4a. F-42.36: this template has been Active at Meta
+  // since 2026-09-08 (ID 1757650692328688) and `docs/TEMPLATES.md:514` recorded
+  // its registry entry as **none** — the one template J1 sends had no home in
+  // the file R-40.94 makes the defining source. This is that entry.
+  //
+  // BODY BYTE-FOR-BYTE from docs/TEMPLATES.md §2 entry 13 (:283), which is seat
+  // B's record of the filed string. NOT authored beside it: row 10's whole
+  // lesson (F-41.123) was an entry written independently of its filing, and
+  // Meta holds the body exactly — a registry that has drifted builds a payload
+  // Meta refuses at send time. The founder witnesses components on the Edit
+  // screen and DISCARDS; no edit is made at the Manager (chair's ruling, B2).
+  //
+  // CATEGORY IS MARKETING **AS FILED**, not a reclassification (TEMPLATES.md
+  // §3 row 13). Arguing Utility for a stranger receiving a portfolio is the
+  // misuse that earns a written warning and a seven-day utility restriction on
+  // the WABA. Hence the opt-out sentence in the body: present and mandatory.
+  //
+  // LINE IS `marketing` AND THAT IS THE WALK'S LINE, NOT HER OWN. Fork A ruled
+  // (β) for real vendors — her own WABA on R9 — and (α) for the walk only, from
+  // MARKETING_WHATSAPP_NUMBER (PNID 1171408606064102) to the founder's handset.
+  // F-42.44: TEMPLATES.md:280 calls this "the vendor line for the J1 walk"; the
+  // ruling wins and seat B holds the doc correction.
+  //
+  // THE BUTTON. `base` is documentation — Meta holds it and the send never
+  // transmits it. The suffix is `page_code`, which is a COPY of
+  // vendors.routing_handle taken at send time (0161), so DEV440's message
+  // carries `DEV440` and resolves at src/api/public/vendorCard.js:447. An
+  // OBJECT is passed to the builder, never an array: F-41.123 — the builder
+  // reads a url button's suffix by the button's own variable name and refuses
+  // to read it positionally, because the button's {{1}} and the body's {{1}}
+  // are two different variables that happen to share a number.
+  //
+  // ⚠ THE HANDLE-ONLY SHAPE OF R-41.11 IS NOT THIS TEMPLATE AND IS NOT FILED.
+  // A body either carries a URL button or it does not; `tdw_introduction_handle`
+  // is chartered at R-41.31 and unfiled (TEMPLATES.md:291), so on this arm the
+  // recipient receives the PAGE. F-42.35: the kickoff's card promised page AND
+  // handle and the filed body cannot carry both. Card re-cut by the chair.
+  introduction: {
+    key: 'introduction',
+    name: 'tdw_introduction',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'MARKETING',
+    variables: ['recipient_name', 'vendor_name', 'where_met'],
+    button: {
+      type: 'url',
+      index: 0,
+      text: 'See my work',                   // renders from the base; Meta's own chrome
+      base: 'https://thedreamwedding.in/v/',
+      variable: 'page_code',                 // the SUFFIX, her routing_handle — never a full URL
+    },
+    body:
+      "Hi {{1}}, this is {{2}}, and we met at {{3}} \u2014 I wanted to send you my work, " +
+      "so here is my page with recent weddings and my open dates. Reply STOP and I will " +
+      "not message you again.",
+    status: 'approved',
+  },
+
   admin_assist_request: {
     key: 'admin_assist_request',
     name: 'tdw_admin_assist_request',

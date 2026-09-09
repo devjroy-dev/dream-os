@@ -1,0 +1,103 @@
+# CE-42 · SEAT E2 · 4a (dream-os) · R9-J1 INTRODUCTIONS · FLOOR MANIFEST
+# base: 09317d6bceb168afa23bac01ab7fa088f18a0b14   (r3; r2 pinned the same base)
+#
+# ── THE FILE TABLE · [F-14.16] ──────────────────────────────────────────────
+# THIS SECTION IS MACHINE-READ. run-floor.sh --delivery parses this file for
+# BARE PATHS: everything after a '#' is stripped, blanks are dropped, and any
+# dirty path NOT listed below refuses the run as contamination. The r2 cut of
+# this manifest was PROSE ONLY (e-4) — it named no path, so --delivery would
+# have refused all eleven, and the verify line asked for --check instead, which
+# refuses ANY dirty tree (e-3). The floor was unrunnable at the exact moment
+# the delivery needed it. The manifest must be the artefact its own consumer
+# can read; prose alone is a manifest only to a human.
+#
+# THIRTEEN paths at the rider. The r3 cut declared eleven; the rider adds
+# scripts/b55_g2_reviews_bench.js (F-42.67, the count cell re-pinned on its
+# guarantee) and scripts/floor-base.txt (c-42.12, the chair's line: the named
+# base gains b05_f0550_ping_drain_bench, 23 -> 24). Derived by `git status
+# --porcelain` after a clean-room apply at 09317d6 — this manifest is among them
+# because an untracked file is dirt like any other.
+
+db/migrations/0161_introductions.sql
+docs/TDW_CE42_4a_HANDOVER.md
+scripts/b40_victor_sitting_bench.js
+scripts/b64_template_slots_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/b68_introductions_bench.js
+scripts/floor-base.txt
+scripts/floor-manifest-ce42-4a.txt
+src/lib/capabilities.js
+src/lib/templates.js
+src/lib/vendor/introductions.js
+src/lib/vendor/relayStatus.js
+src/lib/victorLines.js
+
+# CE-42 · SEAT E2 · 4a (dream-os) · R9-J1 INTRODUCTIONS · FLOOR MANIFEST
+# base: 09317d6bceb168afa23bac01ab7fa088f18a0b14   (RE-CUT; the first cut pinned fd9d0da4)
+#
+# ── WHAT MOVED AT THE RE-CUT ─────────────────────────────────────────────────
+# R8-1 landed 0160_date_checks.sql and scripts/b67_r8_date_checks_bench.js. Two
+# consequences, both derived rather than assumed:
+#   • b67 → b68. R-40.86: bench numbers are PER REPO. 4a's number was derived at
+#     fd9d0da4, before R8-1's push, and a number derived against a tree that has
+#     moved is not a derived number. Renamed, not reused.
+#   • 0161's header lost a paragraph. It described the OUT_OF_ORDER.json record R8
+#     would owe if 4a reached origin first. 0160 landed first, the ladder is
+#     contiguous, and no record is owed — so the paragraph is STRUCK rather than
+#     left to read as a live condition.
+# No file in this packet collides with R8-1's four: `git diff --name-only
+# fd9d0da4..09317d6` intersected with this packet's eleven paths is EMPTY.
+#
+# ── WHAT WAS RUN ─────────────────────────────────────────────────────────────
+# b68_introductions_bench    GREEN  99/99    (new; 93/93 at the first cut, +6 for the fifth byte)
+# b40_victor_sitting_bench   GREEN 113/113   (was 108/108 — +5, the five introduction pins)
+# b64_template_slots_bench   GREEN 134/134   (was 131/131 — +3)
+# b67_r8_date_checks_bench   exit 0          (R8-1's own, unmoved by this packet)
+# b20_a2_assistance_bench    GREEN 165/165   (unmoved)
+# b66_inbound_consent        GREEN  77/77    (unmoved)
+#
+# ⚠ THE FULL FLOOR WAS NOT RUN AND NO FLOOR NUMBER IS CLAIMED. `npm ci` (196
+# packages) and `npm run build` (src/engine/dist present) both succeeded, so
+# LESSON 1 and both preflight warnings were cleared — but `bash
+# scripts/run-floor.sh --check` over 180 benches exceeds this container's
+# per-command execution limit and did not finish its warm pass. R-38.19: the floor
+# is DERIVED AT THE CUT, never quoted. THE FOUNDER'S `--check` IS THE FLOOR OF
+# RECORD. A hollow green is worse than a declared gap.
+#
+# ── COUNT MOVEMENT, DISCLOSED NOT ABSORBED ───────────────────────────────────
+# b40 108 → 113 (+5). Chair-ruled: "b40 pins five." The five introduction bytes
+# join PINNED, so this bench is the ONE HOME for the committed half of the
+# approved-copy law. b68 re-pins NONE of them and has a cell asserting it re-pins
+# none — two benches holding one hash literal is two homes for one fact, and the
+# first edit to either makes them disagree while both stay green about themselves.
+# b64 131 → 134 (+3). `tdw_introduction` gains a registry entry, so §1's slot
+# comparison switches on (+4) and its 4.q "still unregistered" cell retires (-1).
+# b68 93 → 99 (+6). The fifth byte: two identity cells, two behaviour cells, and
+# the one-home pair.
+#
+# ── BOTH WAYS · TWELVE MUTATIONS OF PRODUCTION CODE, EACH RED ────────────────
+# UNCURED (bench alone at the base)             → cannot resolve introductions.js
+# M1  gate forced armed                          → b68 93/99
+# M2  chipState: sent-without-wamid → 'sent'     → b68 98/99
+# M3  approvalNames: always true                 → b68 92/99
+# M4  the load-time assertLineHashes() removed   → b68 98/99
+# M5  the router arm's table renamed             → b68 95/99
+# M6  uq_introductions_vendor_recipient cut      → b68 98/99
+# M7  TDW_INTRODUCTION cut from the roster       → b68 98/99
+# M8  the vacated R-40.2 line 2 re-minted        → b40 red
+# M9  a CE-40 vetoed byte removed                → b40 red
+# M10 the ALREADY_INTRODUCED refusal made silent → b68 97/99
+# M11 b40 stops pinning the fifth byte           → b68 98/99
+# M12 the fifth byte edited by one character     → b40 red
+# CURED, all restored                            → b68 99/99 · b40 113/113
+#
+# M8, M9 and M12 exist because 4a re-pinned a b40 cell that had read
+# `Object.keys(VICTOR_LINES).length === 3` (F-42.65). The re-pin is strictly
+# STRONGER than the count it replaced: a count cannot tell a re-minted line 2 from
+# an unrelated byte, and M8 proves the new form can.
+#
+# ── NOT PROVEN HERE ──────────────────────────────────────────────────────────
+# No live send. No database. b68's supabase double applies 0161's status CHECK and
+# its partial UNIQUE (R-41.146) and is a double, not a mock — but a double is not
+# Postgres. 0161 itself was applied by the founder ahead of this ZIP and its
+# verify row read table_present 1 · indexes 5 · columns 14.
