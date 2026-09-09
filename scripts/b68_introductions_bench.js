@@ -79,6 +79,17 @@ function makeDb(seed = []) {
     q.select = () => q;
     q.eq = (col, val) => { q._filters.push([col, val]); return q; };
     q.neq = (col, val) => { q._neq.push([col, val]); return q; };
+    // ── ADDED FOR §11 (the doors) — ADDITIVE, NOTHING ABOVE CHANGES ──────────
+    // The GET door reads `.order(...)` and then AWAITS the builder itself, with
+    // no `.limit()` or `.single()` to resolve it. A double that could not be
+    // awaited returned express's HTML error page and the cell parsed it as JSON,
+    // which is how a 500 nearly read as a bench defect.
+    q.order = () => q;
+    // `maybeSingle()` is the send door's read (introductions.js:165) and returns
+    // ONE ROW OR NULL, never an error on a miss — that is what lets the door
+    // answer 404 instead of 500 for an id that is not hers.
+    q.maybeSingle = () => { const m = match(); return Promise.resolve({ data: m[0] || null, error: null }); };
+    q.then = (resolve, reject) => Promise.resolve({ data: match(), error: null }).then(resolve, reject);
     q.limit = () => Promise.resolve({ data: match(), error: null });
     q.single = () => {
       const m = match();
@@ -472,6 +483,152 @@ const capDouble = (status) => ({
       /if \(!relayReplacedCostume && relayOut && relayOut\.line\) \{\n      replyText = relayOut\.line;/.test(doorSrc));
     T('§10.9 no transport is injected — the arm requires sendWa at its own call site',
       !/runIntroductionSeat\(supabase, vendor, effectiveResult, \{\s*sendWa:/.test(door));
+  }
+
+  // ── §11 · THE THREE DOORS (CE-42 seat E2, 4a packet 3a · F-42.82) ──────────
+  // Driven through the REAL express router with a stubbed supabase and a stubbed
+  // cap, so every cell exercises the shipped handler and not a re-implementation.
+  console.log('\n§11 the doors');
+  {
+    const express = require(path.join(ROOT, 'node_modules/express'));
+    const capMod2 = require(path.join(ROOT, 'src/lib/capabilities.js'));
+
+    const mount = (db, planeOn) => {
+      // cap.on/reason are module-level and the door reads them directly, so the
+      // bench primes the REAL module rather than injecting a double — the door's
+      // own read path is what is under test.
+      capMod2._prime([{ key: 'template.tdw_introduction', kind: 'template',
+        status: planeOn ? 'on' : 'approved', evidence: null, checked_at: null,
+        flipped_at: null, flipped_by: null, auto_on: false, walk_ref: null, updated_at: null }]);
+      const app = express();
+      app.use(express.json());
+      app.use((req, _res, next) => {
+        req.app.locals.supabase = db;
+        req.vendor = VENDOR;
+        next();
+      });
+      // The two middlewares are pass-throughs here: auth is not this cell's
+      // subject and stubbing it is not the same as skipping it — §11.0 asserts
+      // the SHIPPED file names them, which is where auth is actually proven.
+      const mod = path.join(ROOT, 'src/api/vendor/introductions.js');
+      delete require.cache[require.resolve(mod)];
+      delete require.cache[require.resolve(path.join(ROOT, 'src/api/middleware/requireAuth.js'))];
+      delete require.cache[require.resolve(path.join(ROOT, 'src/api/middleware/resolveVendor.js'))];
+      require.cache[require.resolve(path.join(ROOT, 'src/api/middleware/requireAuth.js'))] =
+        { exports: (_q, _s, n) => n() };
+      require.cache[require.resolve(path.join(ROOT, 'src/api/middleware/resolveVendor.js'))] =
+        { exports: () => (_q, _s, n) => n() };
+      app.use('/introductions', require(mod));
+      return app;
+    };
+
+    const call = (app, method, url, body) => new Promise((resolve) => {
+      const http = require('http');
+      const srv = http.createServer(app).listen(0, () => {
+        const req = http.request({ port: srv.address().port, path: url, method,
+          headers: { 'content-type': 'application/json' } }, (r) => {
+          let b = ''; r.on('data', (c) => { b += c; });
+          r.on('end', () => {
+            srv.close();
+            let parsed;
+            // NEVER JSON.parse BLIND. A 500 ships express's HTML page and a blind
+            // parse turns a real failure into a SyntaxError three frames away
+            // from the door that caused it.
+            try { parsed = JSON.parse(b || '{}'); } catch { parsed = { _nonjson: b.slice(0, 200) }; }
+            resolve({ status: r.statusCode, body: parsed });
+          });
+        });
+        req.end(body ? JSON.stringify(body) : undefined);
+      });
+    });
+
+    // §11.0 · AUTH IS ON EVERY DOOR. Asserted against the SHIPPED SOURCE, because
+    // the harness above stubs the middlewares and a cell that proved auth through
+    // a stub would prove nothing at all.
+    {
+      const src = fs.readFileSync(path.join(ROOT, 'src/api/vendor/introductions.js'), 'utf8');
+      const code = src.split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+      const routes = code.match(/router\.(get|post)\(/g) || [];
+      const guarded = code.match(/requireAuth, resolveVendor\(\)/g) || [];
+      T('§11.0 every door carries requireAuth + resolveVendor', routes.length === 3 && guarded.length === 3);
+      T('§11.0 the send door scopes the row to HER vendor id',
+        /\.eq\('vendor_id', vendor\.id\)/.test(code));
+      T('§11.0 it is mounted on the vendor router',
+        /router\.use\('\/introductions', require\('\.\/introductions'\)\)/
+          .test(fs.readFileSync(path.join(ROOT, 'src/api/vendor/core.js'), 'utf8')));
+    }
+
+    // §11.1 · GET — a list, and NOT a phonebook.
+    {
+      const db = makeDb();
+      await intro.stageIntroduction(db, { vendor: VENDOR, draft: DRAFT });
+      const r = await call(mount(db, true), 'GET', '/introductions');
+      T('§11.1 the list answers 200', r.status === 200);
+      const row = r.body.introductions[0];
+      T('§11.1 it carries the name and where they met', row.recipient_name === 'Anita Verma' && row.where_met === DRAFT.where_met);
+      T('§11.1 it carries the LAST FOUR and never the number', row.recipient_phone_last4 === '0111');
+      T('§11.1 the full number is NOWHERE on the wire',
+        !JSON.stringify(r.body).includes(DRAFT.recipient_phone));
+      T('§11.1 the chip is the DERIVED state, false for a staged row', row.chip === 'not_sent');
+    }
+
+    // §11.2 · POST — the arm's three refusals, forwarded with distinct codes.
+    {
+      const app = mount(makeDb(), true);
+      const r = await call(app, 'POST', '/introductions', { recipient_phone: '+919999000111', recipient_name: 'Anita Verma' });
+      T('§11.2 a missing slot is 400', r.status === 400);
+      T('§11.2 its code is missing_slot', r.body.code === 'missing_slot');
+      T('§11.2 and the message is the FOUNDER-VETOED ask, not a door sentence',
+        r.body.error === lines.VICTOR_LINES.INTRO_ASK_WHERE);
+    }
+    {
+      const db = makeDb();
+      const app = mount(db, true);
+      await call(app, 'POST', '/introductions', DRAFT);
+      const again = await call(app, 'POST', '/introductions', DRAFT);
+      T('§11.2 a second introduction is 409', again.status === 409);
+      T('§11.2 its code is already_introduced', again.body.code === 'already_introduced');
+      T('§11.2 and the message is the vetoed byte from the ARM, not a client guess',
+        again.body.error === lines.VICTOR_LINES.INTRO_ALREADY_SENT);
+      T('§11.2 and no second row was written', db.rows.length === 1);
+    }
+    {
+      const db = makeDb();
+      const r = await call(mount(db, false), 'POST', '/introductions', DRAFT);
+      T('§11.2 a dark plane is 503', r.status === 503);
+      T('§11.2 its code is dark', r.body.code === 'dark');
+      T('§11.2 the message is cap.reason()\'s own sentence',
+        /is approved on the switchboard/.test(String(r.body.error)));
+      T('§11.2 the staged row SURVIVES the refusal — the walk needs it', db.rows.length === 1);
+    }
+
+    // §11.3 · POST 201 — the preview reads the FILED template, never a copy.
+    {
+      const db = makeDb();
+      const r = await call(mount(db, true), 'POST', '/introductions', DRAFT);
+      T('§11.3 a good stage is 201', r.status === 201);
+      T('§11.3 it returns the filled body from templates.js\'s entry',
+        r.body.body_filled === intro.filledBody({
+          recipient_name: DRAFT.recipient_name, vendor_name: VENDOR.business_name, where_met: DRAFT.where_met }));
+      T('§11.3 which is the FILED string with its slots filled',
+        r.body.body_filled.startsWith('Hi Anita Verma, this is Dev Roy Photography, and we met at'));
+      T('§11.3 and the page url is built from HER handle', r.body.page_url === 'https://thedreamwedding.in/v/DEV440');
+    }
+
+    // §11.4 · SEND — E3 on the SERVER.
+    {
+      const db = makeDb();
+      const app = mount(db, true);
+      const st = await call(app, 'POST', '/introductions', DRAFT);
+      const bad = await call(app, 'POST', `/introductions/${st.body.id}/send`, { recipient_name: 'Rohan Mehta' });
+      T('§11.4 a wrong name is 409', bad.status === 409);
+      T('§11.4 its code is name_mismatch', bad.body.code === 'name_mismatch');
+      T('§11.4 and NOTHING moved — the row is still staged', db.rows[0].status === 'staged');
+      const empty = await call(app, 'POST', `/introductions/${st.body.id}/send`, {});
+      T('§11.4 no name at all is refused too', empty.status === 409 && db.rows[0].status === 'staged');
+      const missing = await call(app, 'POST', '/introductions/row-999/send', { recipient_name: 'Anita Verma' });
+      T('§11.4 an unknown id is 404, never someone else\'s row', missing.status === 404);
+    }
   }
 
   console.log(`\nb68 ${pass}/${pass + fail}`);

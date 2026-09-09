@@ -1,0 +1,48 @@
+# CE-42 · SEAT E2 · 4a PACKET 3a · THE THREE DOORS (F-42.82) · FLOOR MANIFEST
+# base: b37e0e0b39948d4ca16d3afdaa575df750677a93   (r2; cut at f3e9ff0, RE-PINNED after the Victor micro)
+#
+# ── THE FILE TABLE · [F-14.16] ──────────────────────────────────────────────
+# MACHINE-READ by run-floor.sh --delivery. src/engine/dist/ is not here: it is
+# gitignored and Railway's `npm run build` makes it at deploy, so `npm run build`
+# runs FIRST in the verify block.
+
+docs/TDW_CE42_4a_DOORS_HANDOVER.md
+scripts/b68_introductions_bench.js
+scripts/floor-manifest-ce42-4a-doors.txt
+src/api/vendor/core.js
+src/api/vendor/introductions.js
+
+# ── THE RE-PIN, DERIVED AT MY OWN TIP ──────────────────────────────────────
+# The chair derived core.js and b68 blob-identical across the micro. RE-DERIVED
+# HERE ANYWAY, because a hash carried in a relay is a hash from another tree:
+#   scripts/b68_introductions_bench.js  dd7f432b1d3e4db12e6885d8ab4018cf48c5bf23  unmoved
+#   src/api/vendor/core.js              1644706fb7c14ba0b6bdad89dd09a97a0e953137  unmoved
+# The other three are this packet's own new files, ABSENT at both tips. The micro
+# touched chat.js, wireGuardVictor.js, b40 and its own two docs — no intersection.
+# NOTHING WAS REBUILT: only the base line moved. Benches RE-RUN at b37e0e0 (R-38.19).
+#
+# ── WHAT WAS RUN, at b37e0e0 ────────────────────────────────────────────────
+# npm run build (tsc)        exit 0
+# b68_introductions_bench    GREEN 153/153  (was 125/125 — +28, §11's door cells)
+# b06_forkc_wireguard_bench  GREEN 113/113  (unmoved)
+# b40_victor_sitting_bench   GREEN 129/129  (the MICRO moved it 113 -> 129, not this packet)
+# b64_template_slots_bench   GREEN 134/134  (unmoved)
+# b20_a2_assistance_bench    GREEN 184/184  (D5's, unmoved by this packet)
+# THE FULL FLOOR WAS NOT RUN AND NO NUMBER IS CLAIMED — 180 benches exceed the
+# seat container's per-command limit. The founder's --delivery run is the record.
+#
+# ── BOTH WAYS · SIX DOOR MUTATIONS ──────────────────────────────────────────
+# M19 the list leaks the full number             -> 152/153
+# M20 E3 removed from the send door              -> 150/153
+# M21 the dark gate removed from POST /          -> 150/153
+# M22 the send door stops scoping to her vendor  -> 152/153
+# M23 the router unmounts the doors              -> 152/153
+# M24 the door mints its own refusal sentence    -> 152/153
+# CURED                                          -> 153/153
+#
+# ⚠ M22 FIRST REPORTED GREEN AND THAT WAS A VACUOUS MUTATION, NOT A WEAK CELL.
+# The sed carried an apostrophe from the line's trailing comment, the shell ate
+# it, and NOTHING WAS EDITED — so the bench passed a tree it had already passed.
+# Re-run by byte-level replace with the edit VERIFIED before the run, it reds at
+# 152/153. A mutation that does not mutate is a green that means nothing, and it
+# looks exactly like a guard working. Named here so the number is not read as one.

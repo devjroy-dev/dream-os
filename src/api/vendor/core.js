@@ -75,6 +75,11 @@ router.use('/ig',          require('./ig'));
 router.use('/collab',      require('./collab'));
 router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
 router.use('/referrals',   require('./referrals')); // Block 19 G5.1 — the overflow exchange's READ doors (the forward is on /leads)
+// R9-J1 · CE-42 seat E2, 4a packet 3a (F-42.82). The three introduction doors:
+// the arm and its WhatsApp seat existed and NOTHING had an address, so R-42.8's
+// screen had nothing to call. Every refusal these doors return is the ARM's,
+// forwarded with a code; they decide nothing themselves.
+router.use('/introductions', require('./introductions'));
 router.use('/couture',     require('./couture'));
 router.use('/featured',    require('./featured'));
 // TDW_10 BILLING v2 — the vendor's own money door (subscribe/cancel/upgrade).
