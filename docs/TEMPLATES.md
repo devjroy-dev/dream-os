@@ -91,7 +91,16 @@ The filed body is **truthful rather than merely compliant**: `invite_circle_memb
 **Note (08):** `TDW_08_DEMO_FINAL.md` §P1 amends this body with a remove line ("Don't want this? {remove_link} — one tap, gone.") and re-submits. Not pulled forward; named so 08's executor finds the pointer here.
 
 ### 10 · `assist_lead_outside` — **MARKETING** (filed UTILITY) · marketing line · Meta name **`tdw_assist_lead_outside`**
-**Added CE-41 seat B (B1, 2026-09-08) — the concierge's outsider lead alert, R-41.4(a).** Variables: `{{1}}` = vendor name as TDW holds it, `{{2}}` = wedding month, `{{3}}` = city, `{{4}}` = category, `{{5}}` = budget figure, digits only. Meta template ID **`1627376372249131`**.
+**Added CE-41 seat B (B1, 2026-09-08) — the concierge's outsider lead alert, R-41.4(a).** Variables: `{{1}}` = vendor name as TDW holds it, `{{2}}` = wedding month, `{{3}}` = city, `{{4}}` = category **as a bare noun**, `{{5}}` = budget figure, digits only. Meta template ID **`1627376372249131`**.
+
+**F-41.80 — the article belongs to the body, not to the value.** All three concierge bodies
+supply the indefinite article themselves (*"find them a {{4}}"*, *"matched a {{2}}"*,
+*"matched to a {{3}}"*). A value that carries its own article renders **"a a makeup artist"**,
+which is what every outsider alert read until D0b cured it (`CATEGORY_ARTICLE` → `CATEGORY_NOUN`,
+bare nouns, sole reader derived). **The category variable is a bare noun in all three entries**,
+and the constant that supplies it has one home. Recorded here because this document is where a
+later seat will look up what to pass, and the last two failures on these templates — F-41.63 and
+F-41.114 — both began with a second document disagreeing with the filing.
 
 > Hi {{1}}, a couple planning a {{2}} wedding in {{3}} asked The Dream Wedding to find them a {{4}}, and their request has been matched to you with a budget of about Rs {{5}}. The request is held on the page below. Reply STOP REQUESTS if you would rather not receive these.
 
@@ -104,7 +113,13 @@ Button: URL, label `View the request`, base `https://thedreamwedding.in/assist/`
 **DIVERGENCE FOUND AND CORRECTED — 2026-09-09 (F-41.63).** The body and variable order above
 are **unchanged and correct**: witnessed at WhatsApp Manager's preview panel, founder's capture
 01:30 on 2026-09-09 — this body verbatim, slot order **month · city · category**, the
-`STOP REQUESTS` line present, the `View the request` URL button attached.
+`STOP REQUESTS` line present, and a button labelled `View the request` attached.
+
+**That witness is narrowed by F-41.114 (see row 11).** A preview panel renders a button's label
+but **does not distinguish a URL button from a quick-reply button**. So this template's body,
+slots and the *presence and label* of its button are witnessed; **its button type and target URL
+are not.** They need the **Edit-template** screen, and until that reading exists this entry does
+not claim them.
 
 **The registry disagreed with it.** `src/lib/templates.js:772-784` (at `6c7acdc`) carried a
 different body — *"Hello {{1}}, this is The Dream Wedding. A couple in {{2}} is looking for {{3}}
@@ -136,16 +151,44 @@ handset.
 **No caller ships with this template** at the seal. The concierge forward arm is seat A's (packet A2), dark behind the switchboard.
 
 ### 11 · `assist_found_vendor` — UTILITY · bride line · Meta name **`tdw_assist_found_vendor`**
-**Added CE-41 seat B (B1, 2026-09-08) — R-41.4(b).** Variables: `{{1}}` = bride's name, `{{2}}` = category, `{{3}}` = wedding month, `{{4}}` = vendor's display name. Meta template ID **`3160852754105015`**.
+**Added CE-41 seat B (B1, 2026-09-08) — R-41.4(b).** Variables: `{{1}}` = bride's name, `{{2}}` = category **as a bare noun**, `{{3}}` = wedding month, `{{4}}` = vendor's display name. Meta template ID **`3160852754105015`**.
 
 > Hi {{1}}, we have matched a {{2}} to the request you sent The Dream Wedding for your {{3}} wedding. {{4}} is on The Dream Wedding, and their recent work and open dates are on the page below.
 
 Button: URL, label `See their page`, base `https://thedreamwedding.in/v/` with a dynamic suffix (the vendor code, R-40.15's address family).
 
+**F-41.114 — THE BUTTON WAS NOT WHAT THIS ENTRY SAID, AND IT WAS RE-FILED.** Chair-derived from
+the founder's **Edit-template** screen: this template was originally filed with a **quick-reply
+button, not a URL button.** The line above described the intent; the filing carried something
+else, and the two disagreed for a day without either document noticing.
+
+**Re-filed 2026-09-09 06:35 IST** with a dynamic URL button — `https://thedreamwedding.in/v/{{1}}`,
+button text **See their page**. **State: In review**, so this template is *not* Active while the
+edit is assessed. Meta template ID as recorded above unless the Manager shows otherwise on the
+next reading — an edit ordinarily retains the ID, but this seat has not witnessed that and does
+not assert it.
+
+**The body and slot order are confirmed correct.** Witnessed at the Edit screen, 2026-09-09:
+**name · category (a bare noun) · month · vendor_name** — exactly the four variables and the
+order this entry records. Nothing in the text changed; only the button did.
+
+**WHAT THIS TEACHES ABOUT THE OTHER WITNESSES, AND IT NARROWS TWO OF THEM.** Rows 10 and 12 were
+witnessed from the Manager's **preview panel**. **A preview renders a button's label but does
+not distinguish a URL button from a quick-reply button** — which is exactly how this divergence
+survived. Therefore:
+
+- **Row 12 is unaffected** — it has no button, and absence is visible in a preview.
+- **Row 10's witness must be read narrowly.** Its body, slot order and the *presence and label*
+  of a button are witnessed; **its button TYPE and target URL are not.** Row 10's own entry is
+  amended to say so rather than leaving a stronger claim standing than the evidence supports.
+
+**The general form, for the next reader: the preview panel witnesses text and slots; only the
+Edit screen witnesses components.**
+
 **Copy provenance:** the verb **found** is deliberately absent. Meta's categorisation guide lists under *Retargeting* — which is Marketing **even where the user asked for it** — the example *"We found a {{car}} that meets your saved search."* The filed body leads instead with *the request you sent*, which names the bride's own action and puts the message inside Meta's second Utility prong. Approved UTILITY as filed; the manoeuvre held.
 
 ### 12 · `assist_found_outside` — UTILITY · bride line · Meta name **`tdw_assist_found_outside`**
-**Added CE-41 seat B (B1, 2026-09-08) — R-41.4(c).** Variables: `{{1}}` = bride's name, `{{2}}` = wedding month, `{{3}}` = category, `{{4}}` = Instagram handle. Meta template ID **`3115277355330375`**. **No button.**
+**Added CE-41 seat B (B1, 2026-09-08) — R-41.4(c).** Variables: `{{1}}` = bride's name, `{{2}}` = wedding month, `{{3}}` = category **as a bare noun**, `{{4}}` = Instagram handle. Meta template ID **`3115277355330375`**. **No button.**
 
 > Hi {{1}}, the request you sent The Dream Wedding for your {{2}} wedding has been matched to a {{3}}, and their work is on Instagram at {{4}} — reply here and we will arrange the introduction.
 
@@ -232,7 +275,7 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 9 | `circle_place_ready` | `tdw_circle_place_ready` | UTILITY | **approved** | 2026-08-13 — TDW_14 D-2. First draft refused by Meta's pre-submission classifier as Marketing; rewritten on `vendor_welcome`'s Utility-earning precedent and filed. Dashboard: **Active – Quality pending** (Active is the approval; "Quality pending" is the quality rating — the same reading `demo_lead_alert` and `enquiry_alert_vendor` carry). Meta ID `2069520823656352`. Wire-witnessed live: accepted, delivered, read, and rendered on the handset. |
 
 | 10 | `assist_lead_outside` | `tdw_assist_lead_outside` | **MARKETING** (filed UTILITY) | **approved** | 2026-09-08 — CE-41 B1. Filed UTILITY, **approved as MARKETING**; the category moved at review, not after. Dashboard: Active – Quality pending. Meta ID `1627376372249131`. R-41.30: accept, no appeal. The `131049` hole and its instrument are recorded at the §2 entry. |
-| 11 | `assist_found_vendor` | `tdw_assist_found_vendor` | UTILITY | **approved** | 2026-09-08 — CE-41 B1. Approved UTILITY as filed. Dashboard: Active – Quality pending. Meta ID `3160852754105015`. |
+| 11 | `assist_found_vendor` | `tdw_assist_found_vendor` | UTILITY | **in review** | 2026-09-08 filed and approved; **re-filed 2026-09-09 06:35 IST** and now **In review**. F-41.114: filed with a **quick-reply** button, not the URL button this document described; re-filed with a dynamic URL button `https://thedreamwedding.in/v/{{1}}`, text *See their page*. Body and slot order unchanged and witnessed at the Edit screen. Meta ID `3160852754105015` as recorded; re-confirm on the next Manager reading. |
 | 12 | `assist_found_outside` | `tdw_assist_found_outside` | UTILITY | **approved** | 2026-09-08 — CE-41 B1. Approved UTILITY as filed. Dashboard: Active – Quality pending. Meta ID `3115277355330375`. |
 | 13 | `introduction` | `tdw_introduction` | MARKETING | **approved** | 2026-09-08 — CE-41 B1. MARKETING **as filed** (R-41.11), not a reclassification. Dashboard: Active – Quality pending. Meta ID `1757650692328688`. Its handle-only twin is chartered but unfiled (R-41.31). |
 
