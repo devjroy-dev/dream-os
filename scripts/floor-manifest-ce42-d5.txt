@@ -1,0 +1,20 @@
+# CE-42 · SEAT D2 · packet D5 (dream-os) — the declared manifest for this delivery.
+# F-14.16: a floor is measured on a clean tree, or on a tree whose dirt is DECLARED.
+# Base: c1c17db50917582bc9ee24da6a0487a0365fa074 (re-pinned from 09317d6 after 4a;
+#        all five source blobs verified byte-identical across the two tips)
+#
+# What moved, and why:
+#   src/api/couple/assistance.js  — the public mount (ruling ii); F-42.55's reserved
+#                                   door deleted; the two routes share one handler.
+#   src/lib/couple/assistance.js  — F-42.58's city gate on the outsider arm, REFUSE.NO_CITY.
+#   src/api/admin/assistance.js   — NO_CITY into the 409 map (F-41.102 kept in step).
+#   src/api/public/enquiry.js     — F-42.57, the trade in English from the one noun home.
+#   scripts/b20_a2_assistance_bench.js — §D5, and one sealed cell amended by label.
+#   docs/TDW_CE42_D5_DREAMOS_HANDOVER.md — new.
+src/api/couple/assistance.js
+src/lib/couple/assistance.js
+src/api/admin/assistance.js
+src/api/public/enquiry.js
+scripts/b20_a2_assistance_bench.js
+docs/TDW_CE42_D5_DREAMOS_HANDOVER.md
+scripts/floor-manifest-ce42-d5.txt

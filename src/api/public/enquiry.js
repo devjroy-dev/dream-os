@@ -49,7 +49,10 @@
 // that does not exist). Same idiom, same directory, one less thing to be surprised by.
 const express = require('express');
 const router  = express.Router();
-const { publicEnquiry } = require('../../lib/couple/assistance');
+// F-42.57 — `categoryNoun` comes from the writer's module, which is the estate's ONE
+// home for the trade's English (CATEGORY_NOUN at src/lib/couple/assistance.js:423).
+// It was already exported; nothing new is minted here and nothing is copied.
+const { publicEnquiry, categoryNoun } = require('../../lib/couple/assistance');
 
 // The bands. Deliberately coarse and deliberately few — a band with ten steps is a
 // figure wearing a disguise. `Rs` per the wallet law: no glyph, no K/L/Cr.
@@ -99,7 +102,18 @@ router.get('/:token', async (req, res) => {
     ok: true,
     found: true,
     enquiry: {
-      category:    row.category || null,
+      // ── F-42.57 · THE TRADE IN ENGLISH, NOT THE DATABASE'S TOKEN ─────────
+      // This handed out `row.category` raw, so the page read `photography` — and
+      // would have read `venue_catering` and `content_creator` the day either was
+      // forwarded. R-40.88: no underscore leaves a document. Worse than the
+      // underscore: the WhatsApp message that brings her here renders `{{4}}`
+      // through this same function (assistance.js:1077 area), so the message said
+      // "needs a venue and caterer" and the page said "venue_catering" — one fact,
+      // two spellings, one of them not English.
+      //
+      // `categoryNoun` returns 'vendor' for anything it does not know, so an
+      // unmapped token degrades to a true word rather than leaking the column.
+      category:    row.category ? categoryNoun(row.category) : null,
       city:        row.city || null,
       month:       monthYear(row.wedding_date),
       budget_band: budgetBand(row.budget_rs),

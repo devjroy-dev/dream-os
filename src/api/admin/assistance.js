@@ -95,7 +95,7 @@ router.post('/items/:itemId/forward', asyncHandler(async (req, res) => {
       // roster that grows independently. Adding a code to the writer cannot make
       // this line notice. The cell below asserts the two stay in step — every
       // REFUSE value is either mapped here or named as deliberately a 500.
-      : [REFUSE.CLOSED, REFUSE.VENDOR_UNAVAILABLE, REFUSE.ALREADY_HAS, REFUSE.BAD_TARGET, REFUSE.NO_PHONE, REFUSE.NO_CONSENT_RECORD, REFUSE.ALREADY_A_VENDOR, REFUSE.FANOUT_REACHED, 'ambiguous_prospect'].includes(out.code) ? 409
+      : [REFUSE.CLOSED, REFUSE.VENDOR_UNAVAILABLE, REFUSE.ALREADY_HAS, REFUSE.BAD_TARGET, REFUSE.NO_PHONE, REFUSE.NO_CONSENT_RECORD, REFUSE.ALREADY_A_VENDOR, REFUSE.FANOUT_REACHED, REFUSE.NO_CITY, 'ambiguous_prospect'].includes(out.code) ? 409
       : 500;
     // F-41.151: the refusal CARRIES THE VENDOR. The sentence names a handle and the
     // queue offers the TDW forward beside it; without this the founder reads "@DEV440"

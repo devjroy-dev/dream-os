@@ -153,6 +153,19 @@ const REFUSE = Object.freeze({
   // F-41.100 / R-41.123 — the ruled cap, warn-and-confirm. Not a wall: the founder
   // can pass it, but he passes it ON PURPOSE.
   FANOUT_REACHED:  'fanout_reached',
+  // ── F-42.58 · THE TEMPLATE MUST NOT NAME A CITY THE REQUEST DOES NOT HOLD ──
+  // `tdw_assist_lead_outside_v2`'s body renders `{{3}}` through `assistanceCity`,
+  // whose fallback is the literal `India` (ASSIST_WORDS.cityUnknown). An outsider
+  // therefore read "a couple planning a wedding in India" over a blank column, and
+  // the page she tapped through to drew no City row at all — one fact, two answers,
+  // and the message's version is not true. `India` is not a city.
+  //
+  // THE CURE IS UPSTREAM AND IT IS NOT A TEMPLATE EDIT. R-42.2 forbids one, and
+  // deleting the clause would need Meta re-review; emptying `{{3}}` is worse still
+  // (Meta refuses an empty variable at send, so every cityless forward would die at
+  // the door with a 131008 nobody asked for). So the claim is never MADE: the
+  // outsider forward refuses and the founder retypes the request with a city.
+  NO_CITY:         'no_city',
   // R-41.122 — Meta Messaging Policy §1's two limbs, refused under one code because
   // the founder's next step is the same either way: go back to the DM and get her
   // words. The SENTENCE distinguishes them; the code does not need to.
@@ -868,6 +881,28 @@ async function alertVendorOfForward(supabase, { forwardId, vendor, request }, de
 }
 
 async function forwardToProspect(supabase, { item, request, target }, deps) {
+  // ── F-42.58 · GATED ON ADMIN-TYPED ONLY, AND THE REST IS FILED, NOT WIDENED ──
+  // The chair ruled the ADMIN door (2026-09-10) and the narrow scope is the right
+  // one for a reason worth writing down: an admin-typed request is the founder's own
+  // keystrokes and he can refile it with a city in ten seconds. A bride-lane or
+  // /plan request has NO remedy — the sheet's city is optional and amend-after-Send
+  // (R-41.95) is not built — so gating those would STRAND them: unforwardable to any
+  // outsider, with nothing the founder or she could do about it. A gate with no door
+  // out is worse than the sentence it prevents.
+  //
+  // ⚠ THE RESIDUE IS REAL AND IS F-42.63, NOT A SILENT PASS: a cityless request of
+  // origin `bride` or `public` still sends "in India". It closes when R-41.95 gives
+  // the queue a way to add the city. Named here so the next seat reads the hole
+  // rather than the gate and assumes the class is covered.
+  if (request.origin === 'admin' && !(request.city && String(request.city).trim())) {
+    console.log(`[assistance:forward] item=${item.id} request=${request.id} origin=admin city=blank \u2014 REFUSED no_city`);
+    return {
+      ok: false,
+      code: REFUSE.NO_CITY,
+      error: 'Add a city before forwarding this outside TDW.',
+    };
+  }
+
   const lastTen = normalizePhone(target.phone);
   if (!lastTen) return { ok: false, code: REFUSE.NO_PHONE, error: 'A ten-digit WhatsApp number is required.' };
   const ig = target.ig_handle ? String(target.ig_handle).trim().replace(/^@/, '') : null;

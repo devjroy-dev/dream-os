@@ -36,12 +36,33 @@ router.get('/', asyncHandler(async (req, res) => {
   return res.json(out);
 }));
 
-router.post('/', asyncHandler(async (req, res) => {
+// ── THE ONE FILING PATH, TWO DOORS · R-41.94 (D5) ───────────────────────────
+// The bride lane and the public link differ in EXACTLY ONE FACT — which door she
+// came through — so they are one function and two three-line routes, not two
+// handlers. A second copy of the session read, the profile coalesce and the
+// response shape would be a second home for all three, and the day one of them is
+// corrected the other keeps the defect (one-home law).
+//
+// ⚠ `origin` IS THIS FILE'S ARGUMENT, NEVER THE CALLER'S. The chair ruled (ii) at
+// D5's read-first, and the reason survives the refactor: `origin` is a provenance
+// fact and a body field would let any signed-in bride label her request `public`.
+// The value is chosen HERE, by which route was matched, and the shared body type
+// in the pwa (`AssistRequestBody`) gained no field.
+//
+// BOTH DOORS SIT UNDER `requireCoupleAuth` (core.js:13). The public caller is not
+// anonymous by the time she reaches this: /plan puts the bride-line OTP BEFORE the
+// POST, so she arrives holding a session and her couple_id comes from it, not from
+// a phone in the body. See F-42.55 at the foot of this file for the door that was
+// reserved here for the opposite architecture and is deleted with it.
+async function fileAssistanceRequest(req, res, origin) {
   const supabase = req.app.locals.supabase;
   const { couple_id, user_id } = req.coupleUser;
   const body = req.body || {};
 
-  // Her phone from the session, never the body. users: id :1069 · phone :1070 · name :1071.
+  // Her phone from the session, never the body. `users` at docs/db/PUBLIC_SCHEMA.md
+  // :1232-1244 (id :1235 · phone :1236 · name :1237) — RE-DERIVED at 09317d6, F-42.59:
+  // the line numbers this comment used to carry pointed into `referral_alerts` after
+  // the 0154 regen. Paths and column names survive a regen; line numbers do not.
   const { data: user } = await supabase
     .from('users')
     .select('id, phone, name')
@@ -74,7 +95,7 @@ router.post('/', asyncHandler(async (req, res) => {
     area:         body.area,
     wedding_date,
     brief:        body.brief,
-    origin:       'bride',
+    origin,
     items:        body.items,
   });
 
@@ -91,36 +112,33 @@ router.post('/', asyncHandler(async (req, res) => {
     admin_notified: !!(out.notify && out.notify.sent),
     admin_notify_refusal: out.notify && !out.notify.sent ? out.notify.refusal : null,
   });
-}));
+}
 
-// ── THE PUBLIC LINK · RESERVED FOR SITTING 2 (seat D) — conditional-withheld ─
-// A caller who never had the app fills the sheet from a link, lands as a couple,
-// and her request is on file (roadmap §2 row D). Not this sitting's: the door
-// below is fully commented. UNCOMMENT STEP, when seat D is chartered: remove the
-// `/*` and `*/`, mount this file's `publicRouter` in src/api/router.js OUTSIDE
-// `requireCoupleAuth` (it cannot live under core.js's mount), and write the
-// couple-materialisation the writer does not yet do (`origin:'public'` is already
-// accepted by the writer and the 0148 CHECK).
-/*
-const publicRouter = express.Router();
-publicRouter.post('/', asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const body = req.body || {};
-  const out = await createAssistanceRequest(supabase, {
-    couple_id:    null,
-    phone:        body.phone,
-    name:         body.name,
-    city:         body.city,
-    area:         body.area,
-    wedding_date: body.wedding_date,
-    brief:        body.brief,
-    origin:       'public',
-    items:        body.items,
-  });
-  if (!out.ok) return res.status(400).json({ ok: false, code: out.code, error: out.error });
-  return res.json({ ok: true, request_id: out.request.id, message: SENT_MESSAGE });
-}));
-module.exports.publicRouter = publicRouter;
-*/
+// POST /api/v2/couple/assistance          — the bride lane's sheet.
+router.post('/', asyncHandler(async (req, res) => fileAssistanceRequest(req, res, 'bride')));
+
+// POST /api/v2/couple/assistance/public   — the same sheet, reached from /plan by a
+// caller who had never opened the app. `origin:'public'` was admitted by the writer
+// (:221) and the 0148 CHECK long before this door existed; s1 reserved the word and
+// s2 spends it. Express matches exact paths, so this cannot shadow `/` above.
+router.post('/public', asyncHandler(async (req, res) => fileAssistanceRequest(req, res, 'public')));
+
+// ── F-42.55 · THE RESERVED DOOR IS DELETED, NOT UNCOMMENTED ─────────────────
+// A2 left a fully-written second router here under the conditional-withheld rule,
+// with its release step stated: mount OUTSIDE `requireCoupleAuth`, take `phone`
+// from the BODY with `couple_id: null`, and write the couple-materialisation the
+// writer did not yet do. Its own words are not requoted — a cell asserts their
+// absence from this file, and a quotation would defeat the cell.
+//
+// Its condition arrived — D4 gave the writer `ensureCoupleRow` — and the ruling
+// went the OTHER WAY, which is why this is a deletion and not an uncomment. That
+// door had no session: anyone could POST a request against anyone's ten digits, and
+// the writer would have attached it to that stranger's couple row or created one.
+// R-41.94's OTP is not a courtesy on the way to the sheet; it is the only thing
+// standing between a public URL and an open spam door. Ruling (ii), D5.
+//
+// Deleted rather than left commented because a withheld block whose condition has
+// been decided is no longer withheld — it is dead ink that reads as a plan, and the
+// next seat to open this file would have taken it for one.
 
 module.exports = router;

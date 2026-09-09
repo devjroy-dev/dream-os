@@ -777,9 +777,105 @@ const ADMIN  = 'src/api/admin/assistance.js';
     const none = await A.getLatestAssistanceForCouple(dbr, 'couple-nobody');
     ok('F-41.29: a couple with no request reads request:null', none.ok && none.request === null && none.items.length === 0);
   }
-  ok('the s2 public door is fully commented with its uncomment step stated (conditional-withheld)', !/publicRouter/.test(brideDoor) && /publicRouter/.test(read(BRIDE)) && /UNCOMMENT STEP/.test(read(BRIDE)));
+  // AMENDED BY LABEL AT D5 (F-42.55). This cell held A2's reserved `publicRouter`
+  // in its commented state — correct while the block was withheld, and a pin on a
+  // fact the ruling has now decided. The door is LIVE, mounted inside the auth gate,
+  // and A2's body-phone shape is deleted. Re-cut to the property that outlives both:
+  // the public door exists, it is under the same router as the bride door (and so
+  // under requireCoupleAuth), and the reserved shape is gone from the file entirely.
+  ok('F-42.55: the public door is live under the couple router, and the reserved body-phone door is gone',
+     /router\.post\('\/public'/.test(brideDoor)
+     && !/publicRouter/.test(read(BRIDE))
+     && !/UNCOMMENT STEP/.test(read(BRIDE)));
   ok('no persona name in any string of the two doors or the writer', !/Victor|Donna|Harvey|Mira\b|Eliza|Meridian/.test(brideDoor + adminDoor + strip(read(ASSIST))));
   ok('the 0142 witness for peer_discoverable is named in the writer (R-41.9 regen owed)', /peer_discoverable[\s\S]{0,120}0142/.test(read(ASSIST)));
+
+  // ═══ §D5 · the public mount · the city gate · the trade in English ═════════
+  {
+    const A2 = require('../src/lib/couple/assistance');
+    const bd = strip(read(BRIDE));
+
+    // ── F-42.55 / ruling (ii) · ONE FILING PATH, TWO DOORS ────────────────────
+    ok('F-42.55: both doors run the ONE handler — no second copy of the session read or the response',
+       (bd.match(/async function fileAssistanceRequest\(/g) || []).length === 1
+       && (bd.match(/fileAssistanceRequest\(req, res, '(bride|public)'\)/g) || []).length === 2);
+    ok('F-42.55: `origin` is chosen by the ROUTE, never read from the body — a bride cannot label herself public',
+       /fileAssistanceRequest\(req, res, 'bride'\)/.test(bd)
+       && /fileAssistanceRequest\(req, res, 'public'\)/.test(bd)
+       && !/body\.origin/.test(bd) && !/origin:\s*body\./.test(bd));
+    ok('F-42.55: the public door is mounted on the couple router, which sits under requireCoupleAuth',
+       /router\.post\('\/public'/.test(bd)
+       && /router\.use\(requireCoupleAuth\)/.test(strip(read('src/api/couple/core.js')))
+       && /router\.use\('\/assistance'/.test(strip(read('src/api/couple/core.js'))));
+
+    // The writer already admitted the word; this asserts the door spends the one it admits.
+    ok('F-42.55: the word the door sends is one the writer and the 0148 CHECK both accept',
+       /\['bride', 'admin', 'public'\]\.includes\(p\.origin\)/.test(strip(read(ASSIST)))
+       && /CHECK \(origin IN \('bride', 'admin', 'public'\)\)/.test(read('db/migrations/0148_assistance_requests.sql')));
+
+    // ── F-42.58 · the city gate, driven both ways ─────────────────────────────
+    const noSendD = { env: {}, sendWa: async () => ({ sent: false }) };
+    const target = { kind: 'prospect', phone: '9811122333', consent_text: 'yes, 9811122333',
+                     consent_source: 'instagram_dm', consent_recorded_by: 'admin:test' };
+
+    let db = seededDb();
+    let blank = await A2.createAssistanceRequest(db, { phone: '98 7654 3210', name: 'Typed Couple', origin: 'admin', items: [{ category: 'photography', budget_rs: 100000 }] }, noSendD);
+    let f = await A2.forwardAssistanceItem(db, { itemId: blank.items[0].id, target }, {});
+    ok('F-42.58: admin-typed with no city → the outsider forward REFUSES, in the founder\'s vetoed words',
+       !f.ok && f.code === 'no_city' && f.error === 'Add a city before forwarding this outside TDW.');
+    ok('F-42.58: and it refuses BEFORE it writes — no prospect, no forward row, nothing to undo',
+       db._t.prospects.length === 0 && db._t.assistance_forwards.length === 0);
+
+    db = seededDb();
+    blank = await A2.createAssistanceRequest(db, { phone: '98 7654 3210', origin: 'admin', items: [{ category: 'photography', budget_rs: 100000 }] }, noSendD);
+    f = await A2.forwardAssistanceItem(db, { itemId: blank.items[0].id, target: { kind: 'vendor', vendor_id: 'v-swati' } },
+      { createLead: async (sb, vendorId, params) => ({ ok: true, lead: { id: 'lead-tdw', ...params, vendor_id: vendorId }, deduped: false }),
+        cap: { on: () => false, reason: (k) => `${k} is off on the switchboard` } });
+    ok('F-42.58: the gate is the OUTSIDER arm only — a TDW forward of the same cityless request still goes',
+       f.ok === true);
+
+    db = seededDb();
+    const withCity = await A2.createAssistanceRequest(db, { phone: '98 7654 3210', city: 'Jaipur', origin: 'admin', items: [{ category: 'photography', budget_rs: 100000 }] }, noSendD);
+    f = await A2.forwardAssistanceItem(db, { itemId: withCity.items[0].id, target }, {});
+    ok('F-42.58: a city present → the outsider forward passes the gate', f.ok === true && f.code !== 'no_city');
+
+    // ⚠ THIS CELL WAS VACUOUS ON ITS FIRST CUT AND THE MUTATION CAUGHT IT. Passing
+    // `city: '   '` THROUGH the writer proves nothing: the writer trims at :232, so
+    // the row already holds `''` and `!request.city` and the trimmed test agree. The
+    // gate reads a ROW, and rows also arrive from backfills and the SQL editor, which
+    // never pass the writer. So the whitespace is written STRAIGHT INTO THE ROW, which
+    // is the only shape in which the two spellings disagree.
+    db = seededDb();
+    const spaces = await A2.createAssistanceRequest(db, { phone: '98 7654 3210', city: 'Jaipur', origin: 'admin', items: [{ category: 'photography', budget_rs: 100000 }] }, noSendD);
+    db._t.assistance_requests.find(r => r.id === spaces.request.id).city = '   ';
+    f = await A2.forwardAssistanceItem(db, { itemId: spaces.items[0].id, target }, {});
+    ok('F-42.58: a city of spaces is not a city — the gate reads .trim(), not truthiness',
+       !f.ok && f.code === 'no_city');
+
+    // The RESIDUE, asserted as residue so it cannot be mistaken for coverage (F-42.63).
+    db = seededDb();
+    const brideBlank = await A2.createAssistanceRequest(db, { couple_id: 'couple-priya', phone: '+919625759924', origin: 'bride', items: [{ category: 'photography', budget_rs: 100000 }] }, noSendD);
+    f = await A2.forwardAssistanceItem(db, { itemId: brideBlank.items[0].id, target }, {});
+    ok('F-42.63 is the RESIDUE, not a gap in the gate: a cityless BRIDE request still forwards (no remedy exists until R-41.95)',
+       f.ok === true);
+    ok('F-42.63 is named at the gate, so the next seat reads the hole and not only the rule',
+       /F-42\.63/.test(read(ASSIST)));
+
+    // ── F-42.57 · the trade in English on the public door ─────────────────────
+    const noun = A2.categoryNoun;
+    ok('F-42.57: the public door reads the ONE noun home and hands out no column token',
+       /categoryNoun\(row\.category\)/.test(strip(read('src/api/public/enquiry.js')))
+       && !/category:\s*row\.category \|\| null/.test(strip(read('src/api/public/enquiry.js'))));
+    ok('F-42.57: R-40.88 — no underscore can leave that door, for any token the sheet can send',
+       A2.TEMPLATE_REFS && Object.keys(require('../src/agent/categories').VENDOR_CATEGORIES || {}).length >= 0
+       && ['photography','venue_catering','content_creator','other','decor','planning','makeup','hairstylist','jewellery','designer','performer']
+            .every(t => !noun(t).includes('_')));
+    ok('F-42.57: the page and the WhatsApp message now say the SAME word — both render through categoryNoun',
+       noun('venue_catering') === 'venue and caterer' && noun('content_creator') === 'content creator'
+       && /categoryNoun\(item\.category\)/.test(strip(read(ASSIST))));
+    ok('F-42.57: an unmapped token degrades to a true word, never to the raw column',
+       noun('a_token_nobody_mapped') === 'vendor');
+  }
 
   // ═══ §M ═══
   section('§M · MUTATIONS — production code, each expected to REDDEN a named cell');
