@@ -1,0 +1,85 @@
+CE-41 · SEAT G · G2 (dream-os) · FLOOR MANIFEST
+base: 3ffe9c9162aa659a544aec5a93ec5a16011395fd
+      Derived by command at the cut. `git merge-base --is-ancestor cc00ea3 origin/main`
+      returns 0 — G1 IS IN THE DEPLOYED TREE, and 3ffe9c9's own diff against
+      cc00ea3 is ONE FILE, docs/TDW_CE41_F_CLOSE.md, 207 lines. So Railway's
+      active deployment carries G1 and the three walk witnesses are live.
+run:  the seat's container, node v22, after `npm install` + `npm run build:engine`
+
+FLOOR = NAMED BASE, no delta.
+
+b65_g1_wa_advisor_off_bench     GREEN   42/42    was 29/29 — §8 adds 13 cells (G2)
+b65_mutations                   GREEN   33/33    was 21/21 — M23-M34 added (G2)
+b63_f1_model_routes_bench       GREEN   57/57    was 57/57 — one anchor re-derived
+b63_mutations                   GREEN   30/30
+b61_switchboard_bench           exit 0
+b64_template_slots_bench        GREEN 108/108
+b64_mutations                   GREEN   7/7
+b20_a2_assistance_bench         GREEN 126/126
+b62_mutations                   GREEN  18/18
+b62_g34_s2_bench                GREEN  42/42
+
+NO MIGRATION. G2 writes nothing and adds no SQL. Ladder tail stays 0154 (this
+seat's own, applied and witnessed at G1).
+
+COUNT MOVEMENTS, DISCLOSED NOT ABSORBED:
+  b65             29 -> 42    (+13: §8.1-8.13)
+  b65_mutations   21 -> 33    (+12: M23-M34)
+  b63             57 -> 57    (no movement; one anchor re-derived, below)
+  every other count unchanged.
+
+BOTH WAYS, BY COMMAND (worktree at 3ffe9c9, engine rebuilt there):
+  b65 cured    GREEN  42/42
+  b65 uncured  RED    33/42
+     RED: 8.1 · 8.2 · 8.3 · 8.4 · 8.5 · 8.7 · 8.8 · 8.9 · 8.13
+     GREEN uncured, correctly: 8.6 (modeOverride is already business-only at G1),
+     8.10 (a sheet turn with no assertion already stays business), 8.11 (R-41.104
+     already fences the WA route), 8.12 (G1 added no writer either). Four cells
+     that assert something G1 established and G2 must not break — regression
+     witnesses, not proofs of this packet, and named as such rather than counted
+     toward the delta.
+
+EIGHT ANCHORS RE-DERIVED, NOT RETIRED — A CORRECTION NUMBER IS OWED:
+  Seven in b65_mutations (M1, M2, M6, M8, M9, M10, M12) and one in b63
+  ('the surface argument DEFAULTS to pwa_vendor'). Each pinned a line R-41.107
+  rewrote; each reported `?? target matched 0 times` or a red on an untouched
+  subject. A dead anchor is neither a pass nor a proof (F-41.65's class, c-41.46's
+  own subject). Every SUBJECT is unchanged; only the bytes were re-derived by
+  command against the cured tree. b63's was pinning the WHOLE parameter list to
+  assert a default — re-cut to assert the default alone, and VERIFIED GREEN AT
+  BOTH TREES (57/57 uncured at 3ffe9c9 as well as cured), so it is not weakened.
+  This seat's c-41.45-.49 is spent; the chair allocates.
+
+TWO CELLS FOUND WEAK BY THE HARNESS, RE-CUT NOT SHIPPED:
+  · 8.1 CARRIED ITS OWN COPY OF THE THING IT MIRRORS. It hard-coded
+    `modeOverride ?? roomAssert ?? columnMode` as "the engine's term", so M24
+    (inverting the engine's actual order) left it GREEN and only 8.4's regex
+    caught the inversion. A mirror that transcribes its subject proves nothing.
+    Re-cut to PARSE the `??` chain out of loop.ts and apply the terms in the order
+    the file actually holds. M24 now reds 8.1 as named.
+  · 8.8 counted the FUNCTION DEFINITION as a third call site and reported 3/2 on
+    a correct tree.
+
+TWO MUTATIONS FOUND UNSOUND BY THEIR OWN RUN, RE-CUT:
+  · M27's first cut swapped the surface and override lines and was a NO-OP — the
+    WhatsApp door always passes `modeOverride: 'business'`, so both orders return
+    business and nothing could tell them apart. Re-cut to REMOVE the surface term.
+  · M28's first cut was UNOBSERVABLE, and that is itself a derivation worth
+    keeping: `roomAssert` can only say `advisor` and an `advisor` column resolves
+    advisor, so terms 3 and 4 CANNOT CONFLICT and their relative order has no
+    witness. Re-cut to drive the failure that IS observable — a business column
+    SUPPRESSING the page's assertion.
+
+THE TWO-PACKAGE MIRROR, DECLARED:
+  The room's resolution has two readers that must never disagree — the ROUTE
+  (`resolveVendorRoom`, src/lib/modelRouter.js) and the ROOM (loop.ts:299). They
+  live in different packages (`vendor-suit-engine`, own tsconfig, compiled to
+  dist), so a literal one home is not available. §8.1 drives BOTH across all 16
+  input combinations and asserts they agree, reading the engine's order out of the
+  source rather than transcribing it. This is the honest second-best and it is
+  stated here rather than left to be discovered.
+
+INHERITED RED, NOT THIS SEAT'S, NOT TOUCHED:
+  b39_telemetry_bench   REDS 3.1, 3.2, 3.3, 3.4, 5.3        F-41.64, seat C
+  b61_mutations         M8 dead anchor (subject woke)        F-41.65, seat C
+  Not run in this floor; carried forward unchanged.

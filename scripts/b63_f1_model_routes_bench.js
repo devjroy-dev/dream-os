@@ -459,8 +459,14 @@ const LIVE_MARKETING = { provider: 'anthropic', model: 'claude-haiku-4-5-2025100
   });
 
   await cell('the surface argument DEFAULTS to pwa_vendor (the old literal)', () => {
+    // ANCHOR RE-DERIVED at CE-41 seat G · G2. This pinned the WHOLE parameter
+    // list, so R-41.107 adding `roomAssert` to the signature reddened a cell whose
+    // SUBJECT — the surface defaults to the old literal — is untouched and still
+    // true. A cell that asserts a default should assert the default; pinning every
+    // sibling parameter makes it a tripwire on unrelated growth. Correction number
+    // owed; this seat's c-41.45-.49 is spent.
     const src = codeOf('src/api/vendor-engine/chat.js');
-    return /buildLlmForTurn\(\{ supabase, vendor, agentId, surface = 'pwa_vendor' \}\)/.test(src) ? true : 'no default';
+    return /async function buildLlmForTurn\(\{[^}]*surface = 'pwa_vendor'/.test(src) ? true : 'no default';
   });
 
   // ═════ §8 · THE MIGRATION ═════════════════════════════════════════════════

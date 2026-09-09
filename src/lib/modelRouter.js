@@ -165,6 +165,62 @@ function waLaneMode() {
   return 'business';
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// CE-41 · SEAT G · G2 · R-41.107 — THE ROOM, RESOLVED ONCE FOR BOTH READERS
+// ══════════════════════════════════════════════════════════════════════════
+// THE ROOM IS A PROPERTY OF THE ROOM, NOT OF THE VENDOR. That sentence is the
+// whole of R-41.107 and it is the founder's, derived from a surface: the Advisor
+// page at `/vendor/advisor` is its own shell with its own ask bar, and the shared
+// Ask TDW sheet — the same component on `/vendor/rooms` and `/vendor/support` —
+// opened on top of it and answered as business inside it. The room was a page and
+// a sentence; it had no mechanism. `engine.agents.victor_mode` was the mechanism
+// that used to exist, and it is a PERSISTENT COLUMN: the chip that wrote it was
+// removed without draining what it wrote, leaving one agent of twenty-seven in a
+// room the app has no control to leave (F-41.113, chair-numbered).
+//
+// SO THE ASSERTION IS PER-TURN AND WRITES NOTHING. A page that knows which room
+// it is says so with the turn; nothing persists; there is no state to get stuck
+// in. The chair refused the two alternatives on this seat's evidence: a new
+// switch is F-40.3 a third time, and an invisible auto on/off needs a write on
+// LEAVING, which a PWA cannot promise — tab closed, app killed, signal lost, back
+// gesture, memory reclaimed — so it manufactures stranded rows on the commonest
+// exits.
+//
+// WHY THE RESOLUTION LIVES HERE. It has TWO readers that must never disagree: the
+// ROUTE (`buildLlmForTurn`, which picks the `advisor` tier slot) and the ROOM
+// (`loop.ts:299`, which picks the lens, the tool set and `estateInRoom`). The two
+// live in different PACKAGES — `src/engine` is `vendor-suit-engine`, its own
+// tsconfig, compiled to `dist` — so a literal one home spanning both is not
+// available. THIS IS THE HONEST SECOND-BEST AND IT IS DECLARED, NOT PAPERED: the
+// door resolves here; the engine carries the same three-term precedence at :299;
+// and `b65` §8 drives BOTH across the full input matrix and asserts they agree on
+// every combination. A disagreement is a bench red, not a production surprise.
+//
+// THE PRECEDENCE, CHAIR-RULED, IN ORDER:
+//   1. the SURFACE — `wa_vendor` is `waLaneMode()` and nothing else can speak
+//      (R-41.104). An assertion arriving on that lane is not weighed, it is not
+//      reachable: the WhatsApp door does not send one and this function would
+//      refuse it if it did.
+//   2. `modeOverride` — the door saying `business`. Narrow by type ('business'
+//      only) so no door can ever push a vendor INTO the advisory room.
+//   3. `roomAssert` — the page saying `advisor`. Narrow by type the other way:
+//      a page can assert the advisory room and nothing else, so this field can
+//      never be used to force someone OUT of a room either.
+//   4. the COLUMN — what `engine.agents.victor_mode` holds. Last, and on its way
+//      out: it retires in a later packet, and until then it is what keeps the one
+//      orphan row's app behaviour unchanged.
+//
+// THE TWO FIELDS ARE DELIBERATELY NOT ONE. A single `room?: 'business'|'advisor'`
+// would be smaller and would walk straight through `b65_mutations` M3, which
+// exists to RED exactly that widening. Two fields, two polarities, two intents,
+// each unable to express the other's — the asymmetry IS the fence.
+function resolveVendorRoom({ surface, modeOverride, roomAssert, columnMode }) {
+  if (surface === 'wa_vendor') return waLaneMode();
+  if (modeOverride === 'business') return 'business';
+  if (roomAssert === 'advisor') return 'advisor';
+  return columnMode === 'advisor' ? 'advisor' : 'business';
+}
+
 const VENDOR_ROLES = Object.freeze(['provider', 'donna']);
 // CE-41 · SEAT G · R-41.104 (Fork C, chair-ruled) — `advisor` IS A PER-SURFACE
 // TIER, NOT A UNIVERSAL ONE.
@@ -419,4 +475,8 @@ module.exports = {
   // the route (`buildLlmForTurn`) and by the door that hands the engine its room
   // (`vendorInbound.js`, both `runTurn` sites). No third reader.
   waLaneMode,
+  // CE-41 seat G · G2 (R-41.107): the room's resolution, read by the ROUTE here
+  // and mirrored by the ROOM at `loop.ts:299`. b65 §8 drives both and asserts
+  // they agree; the mirror is declared, never assumed.
+  resolveVendorRoom,
 };

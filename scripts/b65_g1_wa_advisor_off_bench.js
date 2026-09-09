@@ -145,8 +145,12 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
   });
 
   await cell('2.2 the room predicate prefers the override over the row', () => {
+    // ANCHOR RE-DERIVED at G2: R-41.107 inserts `args.roomAssert` between the
+    // override and the column, so the two-term expression this cell pinned no
+    // longer exists. The SUBJECT is unchanged — the door must still beat the row —
+    // and §8.4 owns the full ruled order. Correction number owed; range spent.
     const c = codeOf('src/engine/src/core/loop.ts');
-    return /args\.modeOverride\s*\?\?\s*agent\.victor_mode/.test(c) ? true : 'loop.ts:299 still reads the row alone';
+    return /args\.modeOverride\s*\?\?[\s\S]{0,40}agent\.victor_mode/.test(c) ? true : 'loop.ts:299 still reads the row alone';
   });
 
   await cell('2.3 ABSENT the override the predicate is byte-identical (regression law)', () => {
@@ -154,7 +158,7 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
     // The compiled term, read as source: `??` with the row on the right is the
     // whole regression proof — a PWA turn passes nothing and lands on the row.
     const c = fs.readFileSync(path.join(ROOT, 'src/engine/dist/core/loop.js'), 'utf8');
-    return typeof runTurn === 'function' && /modeOverride\s*\?\?\s*agent\.victor_mode/.test(c)
+    return typeof runTurn === 'function' && /modeOverride\s*\?\?[\s\S]{0,40}victor_mode/.test(c)
       ? true : 'the compiled engine does not carry the ?? term';
   });
 
@@ -364,6 +368,161 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
     const v = req('src/api/vendor-engine/chat.js')
       .wireGuardClassify('vendor-1', advisorRoomResult('Done — I have logged that expense for you.'), null, { message: 'log Rs 5,000 travel' });
     return v && v.kind === 'costume' ? true : `advisor act-claim verdict is ${v && v.kind}`;
+  });
+
+  sec('§8 G2 · R-41.107 — THE ROOM IS THE ROOM\'S, NOT THE VENDOR\'S');
+
+  // The full input matrix, driven against BOTH readers. This is the section that
+  // makes the two-package mirror honest: `resolveVendorRoom` (the route, in
+  // `modelRouter.js`) and `loop.ts:299`'s expression (the room, in the engine)
+  // cannot share a home across a package boundary, so instead they are driven
+  // side by side over every combination and asserted equal.
+  const MATRIX = [];
+  for (const surface of ['pwa_vendor', 'wa_vendor']) {
+    for (const modeOverride of [undefined, 'business']) {
+      for (const roomAssert of [undefined, 'advisor']) {
+        for (const columnMode of ['business', 'advisor']) {
+          MATRIX.push({ surface, modeOverride, roomAssert, columnMode });
+        }
+      }
+    }
+  }
+  // THE ENGINE'S ORDER IS READ OUT OF `loop.ts`, NOT TRANSCRIBED. The first cut
+  // hard-coded `modeOverride ?? roomAssert ?? columnMode` here and called it the
+  // engine's term — so a mutation INVERTING the engine's own order left this cell
+  // green and only §8.4's regex caught it. A mirror that carries its own copy of
+  // the thing it is mirroring proves nothing. This parses the `??` chain from the
+  // source and applies the terms in the order the file actually holds them.
+  const engineOrder = (() => {
+    const c = codeOf('src/engine/src/core/loop.ts');
+    const m = c.match(/const assertedRoom = \(([^)]*)\)/);
+    if (!m) return null;
+    return m[1].split('??').map((x) => x.trim())
+      .map((x) => x.replace(/^args\./, '').replace(/^agent\.victor_mode$/, 'columnMode'))
+      .filter(Boolean);
+  })();
+  const engineTerm = (a) => {
+    if (!engineOrder) return undefined;
+    for (const term of engineOrder) if (a[term] != null) return a[term];
+    return undefined;
+  };
+
+  await cell('8.1 the route resolver and the engine term agree on ALL 16 combinations', () => {
+    const { resolveVendorRoom } = req('src/lib/modelRouter.js');
+    if (!engineOrder || engineOrder.length !== 3) return `could not read the engine's precedence: ${JSON.stringify(engineOrder)}`;
+    const bad = [];
+    for (const m of MATRIX) {
+      const route = resolveVendorRoom(m);
+      // The engine is only ever reached with the WhatsApp door's own arguments on
+      // that lane, so the surface term is applied here exactly as the door applies
+      // it — `modeOverride: 'business'` at both runTurn sites, never an assertion.
+      const asEngineSees = m.surface === 'wa_vendor'
+        ? { modeOverride: 'business', roomAssert: undefined, columnMode: m.columnMode }
+        : m;
+      const room = engineTerm(asEngineSees) === 'advisor' ? 'advisor' : 'business';
+      if (route !== room) bad.push(`${m.surface}/${m.modeOverride || '-'}/${m.roomAssert || '-'}/${m.columnMode}: route=${route} room=${room}`);
+    }
+    return bad.length === 0 ? true : bad.join(' · ');
+  });
+
+  await cell('8.2 the PRECEDENCE is modeOverride, then roomAssert, then the column', () => {
+    const { resolveVendorRoom } = req('src/lib/modelRouter.js');
+    const r = (o) => resolveVendorRoom({ surface: 'pwa_vendor', ...o });
+    if (r({ modeOverride: 'business', roomAssert: 'advisor', columnMode: 'advisor' }) !== 'business') return 'roomAssert beat modeOverride';
+    if (r({ roomAssert: 'advisor', columnMode: 'business' }) !== 'advisor') return 'the column beat roomAssert';
+    if (r({ columnMode: 'advisor' }) !== 'advisor') return 'the column stopped being read';
+    if (r({ columnMode: 'business' }) !== 'business') return 'a bare business column did not resolve business';
+    return true;
+  });
+
+  await cell('8.3 the SURFACE wins over everything — an assertion cannot reach the WhatsApp lane', () => {
+    const { resolveVendorRoom } = req('src/lib/modelRouter.js');
+    return resolveVendorRoom({ surface: 'wa_vendor', roomAssert: 'advisor', columnMode: 'advisor' }) === 'business'
+      ? true : 'R-41.104 was overridden by an assertion';
+  });
+
+  await cell('8.4 the engine carries the three-term precedence in that order', () => {
+    const c = codeOf('src/engine/src/core/loop.ts');
+    return /args\.modeOverride\s*\?\?\s*args\.roomAssert\s*\?\?\s*agent\.victor_mode/.test(c)
+      ? true : 'loop.ts:299 does not carry the ruled order';
+  });
+
+  await cell('8.5 roomAssert is `advisor`-ONLY on the type — no door can force a vendor OUT either', () => {
+    const t = read('src/engine/src/core/loop.ts');
+    return /roomAssert\?:\s*'advisor';/.test(t) ? true : 'roomAssert is not advisor-only';
+  });
+
+  await cell('8.6 modeOverride is STILL `business`-only — M3 keeps its subject', () => {
+    const t = read('src/engine/src/core/loop.ts');
+    return /modeOverride\?:\s*'business';/.test(t) ? true : 'modeOverride widened';
+  });
+
+  await cell('8.7 the door reads `room`, accepts only `advisor`, and never 400s on a bad one', () => {
+    const c = codeOf('src/api/vendor-engine/chat.js');
+    if (!/body\.room === 'advisor' \? 'advisor' : undefined/.test(c)) return 'the door does not fail-closed on body.room';
+    // `mode` is documented on this door as accepted-and-ignored; giving it a
+    // behaviour would change meaning under existing callers.
+    return !/body\.mode/.test(c) ? true : 'the door reads body.mode';
+  });
+
+  await cell('8.8 BOTH PWA paths thread it — SSE and JSON, route and room', () => {
+    const c = codeOf('src/api/vendor-engine/chat.js');
+    // COUNTS CALL SITES, NOT THE DEFINITION. The first cut matched
+    // `buildLlmForTurn({ ... roomAssert` and caught `async function
+    // buildLlmForTurn({ ..., roomAssert })` as a third site — an instrument
+    // fault that reported 3/2 on a correct tree.
+    const wiring = (c.match(/await buildLlmForTurn\(\{[^}]*roomAssert/g) || []).length;
+    const turns  = (c.match(/runTurn\(\{\s*roomAssert|roomAssert, agentId/g) || []).length;
+    return wiring === 2 && turns === 2 ? true : `${wiring} route sites, ${turns} turn sites — expected 2 and 2`;
+  });
+
+  await cell('8.9 DRIVEN: the Advisor page\u2019s assertion routes the advisor tier on a business column', async () => {
+    const { buildLlmForTurn } = req('src/api/vendor-engine/chat.js');
+    // THE CACHE MUST BE BUST OR THE CELL MEASURES AN EARLIER CELL. `resolveModel`
+    // memoises per key for CACHE_MS; §1's cells populated it, so the first cut of
+    // this cell saw ZERO model reads and reported the route had asked for nothing.
+    // b63's own driven cells do this for the same reason.
+    req('src/lib/modelRouter.js')._resetRouteCache();
+    const db = makeDb({ 'model.pwa_vendor.advisor': { provider: 'deepseek', model: 'deepseek-v4-flash' } }, { 'agent-1': 'business' });
+    const w = await buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'agent-1', roomAssert: 'advisor' });
+    if (!db._reads.includes('model.pwa_vendor.advisor')) return `asked for ${db._reads.filter(k => /^model\./.test(k)).join(',') || 'no model key'}`;
+    return w.route && w.route.provider === 'deepseek' ? true : `route is ${JSON.stringify(w.route)}`;
+  });
+
+  await cell('8.10 DRIVEN: the shared sheet sends nothing and stays business on a business column', async () => {
+    const { buildLlmForTurn } = req('src/api/vendor-engine/chat.js');
+    req('src/lib/modelRouter.js')._resetRouteCache();
+    const db = makeDb({}, { 'agent-1': 'business' });
+    const w = await buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'agent-1' });
+    return !db._reads.includes('model.pwa_vendor.advisor') && w.tierOverride
+      ? true : 'a sheet turn with no assertion reached the advisor tier';
+  });
+
+  await cell('8.11 DRIVEN: an assertion NEVER reaches the WhatsApp lane\u2019s route', async () => {
+    const { buildLlmForTurn } = req('src/api/vendor-engine/chat.js');
+    req('src/lib/modelRouter.js')._resetRouteCache();
+    const db = makeDb({}, { 'agent-1': 'advisor' });
+    const w = await buildLlmForTurn({ supabase: db, vendor: { tier: 'essential' }, agentId: 'agent-1', surface: 'wa_vendor', roomAssert: 'advisor' });
+    if (db._reads.includes('engine.agents.victor_mode')) return 'the WA route read the column';
+    return !db._reads.includes('model.wa_vendor.advisor') && w.tierOverride ? true : 'the WA route reached an advisor tier';
+  });
+
+  await cell('8.12 R-41.107 WRITES NOTHING — no new applyModeFlip site anywhere', () => {
+    const door = codeOf('src/api/vendor-engine/chat.js');
+    const wa   = codeOf('src/lib/vendorInbound.js');
+    const mode = codeOf('src/api/vendor-engine/vendorMode.js');
+    // vendorMode.js keeps its ONE writer and its ONE PATCH caller; nothing else
+    // in the estate may write the column, and G2 adds no writer at all.
+    const total = (door.match(/applyModeFlip\(/g) || []).length
+      + (wa.match(/applyModeFlip\(/g) || []).length
+      + (mode.match(/applyModeFlip\(/g) || []).length;
+    return total === 3 ? true : `${total} applyModeFlip occurrences, expected 3 (definition + PATCH caller + the WA business arm)`;
+  });
+
+  await cell('8.13 the witness line names which term decided', () => {
+    const c = codeOf('src/engine/src/core/loop.ts');
+    return /assert=\$\{/.test(c) && /source=\$\{roomSource\}/.test(c)
+      ? true : 'the [engine:mode] line does not name assert= and source=';
   });
 
   console.log(`\n  b65_g1_wa_advisor_off  ${pass}/${pass + fail}`);

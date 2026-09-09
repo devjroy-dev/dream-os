@@ -39,7 +39,7 @@ const {
 } = require('../../lib/wireGuardVictor');
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
-const { resolveModel, fallbackSurfaceFor, waLaneMode } = require('../../lib/modelRouter');   // TDW_02 P5 · CE-41 F-41.46 · seat G R-41.104
+const { resolveModel, fallbackSurfaceFor, waLaneMode, resolveVendorRoom } = require('../../lib/modelRouter');   // TDW_02 P5 · CE-41 F-41.46 · seat G R-41.104/.107
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { OCCUPYING_KINDS, isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set + the one rule (Q-B3-10, CE-ratified)
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
@@ -2815,7 +2815,7 @@ async function readVictorMode({ supabase, agentId }) {
 // exists. The fallback FACT is not spelled here — `fallbackSurfaceFor` reads it off the
 // lane registry, so the borrowing is stated once, in `modelRouter.js`, where the admin
 // door reads the same registry.
-async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendor' }) {
+async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendor', roomAssert }) {
   const productTier = (vendor && vendor.tier) || 'basic';
   // F-06.4: the advisor room routes on its own key; every other mode routes on the
   // product tier exactly as before. The ENGINE tier (capabilities/caps) always follows
@@ -2832,9 +2832,19 @@ async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendo
   // charter binds them to one home so route and room cannot disagree. The
   // comparison stays against `'advisor'` — the ROOM's word, from 0080's CHECK —
   // and `waLaneMode()` returning anything else is what makes this lane business.
-  const victorMode = surface === 'wa_vendor'
-    ? waLaneMode()
-    : await readVictorMode({ supabase, agentId });
+  //
+  // CE-41 SEAT G · G2 (R-41.107) — THE ROUTE FOLLOWS THE ASSERTED ROOM, and it
+  // MUST. A cure that taught only `loop.ts:299` about `roomAssert` would put the
+  // Advisor page's turns in the advisory room on the BUSINESS model, because the
+  // column is on its way out and will soon never say `advisor` at all. Route and
+  // room reading one resolution is the same principle G1 shipped for the
+  // WhatsApp lane; only the number of terms has grown.
+  //
+  // The column is still read on the PWA lane — last in the precedence, and only
+  // until it retires. It is what keeps the one orphan `advisor` row's app
+  // behaviour unchanged in the meantime.
+  const columnMode = surface === 'wa_vendor' ? null : await readVictorMode({ supabase, agentId });
+  const victorMode = resolveVendorRoom({ surface, roomAssert, columnMode });
   const routeTier = victorMode === 'advisor' ? 'advisor' : productTier;
   const route = await resolveModel(supabase, surface, routeTier,
     { fallbackSurface: fallbackSurfaceFor(surface, routeTier) });
@@ -3159,6 +3169,25 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
   const body    = req.body || {};
   const message = typeof body.message === 'string' ? body.message.trim() : '';
   if (!message) return res.status(400).json({ ok: false, error: 'message is required.' });
+  // ── CE-41 · SEAT G · G2 · R-41.107 — THE CONTRACT WITH THE PWA ─────────────
+  // ONE FIELD, `room`, ONE LEGAL VALUE, `'advisor'`. Absent, empty, misspelled,
+  // or anything else => NO ASSERTION, and the turn falls through the precedence
+  // to the column exactly as every turn did before this seam. FAIL-CLOSED and
+  // silent: a 400 here would make a page that sent a stale value unable to talk
+  // at all, and the honest failure of a bad assertion is the business room, which
+  // is where R-39.22 puts anyone whose room cannot be established.
+  //
+  // WHO SENDS IT: the ADVISOR PAGE'S OWN ASK BAR (`/vendor/advisor`), and nothing
+  // else. THE SHARED ASK TDW SHEET SENDS NOTHING and stays business on every page
+  // it opens on — the founder's ruling, 2026-09-09. Whether that sheet today has
+  // page context is moot by that ruling: it must not send one.
+  //
+  // NOT `mode`. This door's own header says `ai_primer / mode are accepted and
+  // ignored`, so `mode` is a live word here with an existing meaning (ignored),
+  // and giving an ignored field a behaviour is how a caller that has been sending
+  // it harmlessly for months starts changing rooms without anyone deciding that.
+  // A new word for a new contract.
+  const roomAssert = body.room === 'advisor' ? 'advisor' : undefined;
 
   // ── SSE streaming path ──────────────────────────────────────────────────────
   // When the PWA sends Accept: text/event-stream, stream Victor's reply token by token
@@ -3190,12 +3219,13 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         if (!res.writableEnded) res.write('data: [DONE]\n\n');
         return res.end();
       }
-      const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId }); // TDW_02 P5 · P7b ctx
+      const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId, roomAssert }); // TDW_02 P5 · P7b ctx · G2 R-41.107
       const calendarSnapshot = await fetchCalendarSnapshot(req);
       const scratchpad = await fetchScratchpad(req);
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
       const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
       const result = await runTurn({
+        roomAssert, // G2 (R-41.107): the Advisor page's own bar, this turn only, no write
         agentId: req.agentId,
         message,
         calendarSnapshot,
@@ -3298,12 +3328,12 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     if (metaPre && metaPre.state === 'capped') {
       return res.json({ ok: true, capped: true, reply: cappedReplyFor(metaPre), tool_calls: [], refresh: false, meta: metaPre });
     }
-    const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId }); // TDW_02 P5 · P7b ctx
+    const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId, roomAssert }); // TDW_02 P5 · P7b ctx · G2 R-41.107
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
     const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
-    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
+    const result    = await runTurn({ roomAssert, agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
     if (result.provider_downgrade) {
       logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
     }

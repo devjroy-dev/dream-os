@@ -180,6 +180,25 @@ type RunTurnArgs = {
   // row decides, byte-identical to the pre-cure engine (regression law), which
   // is what the PWA door passes.
   modeOverride?: 'business';
+  // ── CE-41 · SEAT G · G2 · R-41.107 ────────────────────────────────────────
+  // THE ROOM A PAGE ASSERTS ABOUT ITSELF, for this turn and no other. Its twin
+  // above and it are deliberately TWO FIELDS with opposite polarity: this one can
+  // only ever say `advisor`, `modeOverride` can only ever say `business`, and
+  // neither can express the other's word. A single `room?: 'business'|'advisor'`
+  // would be smaller and would let a door push a vendor either way — F-40.3's
+  // shape, which `modeOverride`'s narrow type was minted to refuse and which
+  // `b65_mutations` M3 exists to RED.
+  //
+  // WRITES NOTHING. `engine.agents.victor_mode` is a persistent column and that
+  // persistence is the disease: the PWA chip wrote `advisor` and was then removed
+  // without draining what it wrote, stranding one agent of twenty-seven in a room
+  // the app has no control to leave (F-41.113). An assertion that rides the turn
+  // has no state to strand anyone in.
+  //
+  // ABSENT => the precedence below falls through to the column exactly as it did
+  // before this seam (regression law), which is what every door except the
+  // Advisor page's own ask bar passes.
+  roomAssert?: 'advisor';
   onEvent?: (e: TurnEvent) => void;
 };
 
@@ -319,7 +338,22 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // byte it has always been. `estateInRoom` (:302 below) follows from here, so
   // the lens (:487), the tool set (:567) and every estate block (:311-313,
   // :494-532) come with it: ONE term, and the room is whole.
-  const isAdvisor = !isConsult && ((args.modeOverride ?? agent.victor_mode) as string | null) === 'advisor';
+  // CE-41 seat G · G2 (R-41.107): THE PRECEDENCE, chair-ruled, in order —
+  // `modeOverride` (a door saying business), then `roomAssert` (a page saying
+  // advisor), then the column. THIS EXPRESSION IS A MIRROR of
+  // `modelRouter.js`'s `resolveVendorRoom`, which the ROUTE reads, and the two
+  // live in different packages so a literal one home is not available. Declared,
+  // not papered: `b65` §8 drives BOTH across the full input matrix and asserts
+  // they agree on every combination — a disagreement is a bench red rather than
+  // a lane routing business while it answers advisory, which is exactly the
+  // half-cure G1's read-first reported as blocking.
+  //
+  // The surface term is absent here BY CONSTRUCTION: `wa_vendor` reaches this
+  // file only through the WhatsApp door, which passes `modeOverride: 'business'`
+  // at both its `runTurn` sites and never passes an assertion. The router's
+  // resolver carries the surface term because it is called on both lanes.
+  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? agent.victor_mode) as string | null;
+  const isAdvisor = !isConsult && assertedRoom === 'advisor';
   // ── R-41.105's WITNESS ────────────────────────────────────────────────────
   // The founder's walk (§6) reads THIS to know the room, because the estate has
   // no other line that says it: `soul=` exists at exactly one site in the estate
@@ -335,8 +369,14 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // only caller that passes the field. DECLARED, not absorbed; the chair rules
   // before push (packet §0).
   // eslint-disable-next-line no-console
+  // G2 adds `assert=` beside `override=`: the two are different claims by
+  // different doors and a single field could not say which spoke. `source=`
+  // names the term that actually decided, so a turn's room is legible without
+  // re-deriving the precedence from this file.
+  const roomSource = args.modeOverride ? 'override' : (args.roomAssert ? 'assert' : 'column');
   console.log(`[engine:mode] room=${isConsult ? 'consult' : (isAdvisor ? 'advisor' : 'business')} `
-    + `override=${args.modeOverride ? 'yes' : 'no'}`);
+    + `override=${args.modeOverride ? 'yes' : 'no'} assert=${args.roomAssert ? 'yes' : 'no'} `
+    + `source=${roomSource}`);
   // The estate lives ONLY in a business room. Consult is ephemeral (no owner even);
   // advisor keeps the OWNER but drops all estate. One predicate for the reads below.
   const estateInRoom = !isConsult && !isAdvisor;
