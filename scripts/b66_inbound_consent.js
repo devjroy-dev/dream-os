@@ -371,6 +371,12 @@ section('14. F-41.75 — one money format, no L');
   }
 }
 
+section('15. R-41.131 — the link reaches the queue');
+{
+  const w = strip(read('src/lib/couple/assistance.js'));
+  ok('15.1 every item the queue reads carries its wa_link', /wa_link: enquiryWaLink\(i\.id\)/.test(w));
+}
+
 console.log(`\n${fail ? 'RED' : 'GREEN'} — b66_inbound_consent ${pass}/${pass + fail}`);
   if (fail) { console.log('FAILED: ' + fails.join(' · ')); process.exit(1); }
 })();

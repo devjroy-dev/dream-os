@@ -1,0 +1,5 @@
+CE-41 · SEAT D · D3c3b (dream-os) · FLOOR MANIFEST
+base: e0ffee4ab71c1d2b2902e3741d664993d281c582
+b66_inbound_consent   GREEN  69/69   +1 (§15)
+NO MIGRATION. One line: wa_link on every queue item, missing because D3c3 was pushed
+from the pre-fold ZIP. The pwa's link line hides without it.

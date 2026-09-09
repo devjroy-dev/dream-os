@@ -1327,7 +1327,9 @@ async function getAssistanceRequest(supabase, requestId) {
   return {
     ok: true,
     request,
-    items: (items || []).map(i => ({ ...i, forwards: byItem.get(i.id) || [] })),
+    // R-41.131: the link the founder sends her. Built HERE because the marketing
+    // number is a server env the pwa cannot read; the queue only copies it.
+    items: (items || []).map(i => ({ ...i, forwards: byItem.get(i.id) || [], wa_link: enquiryWaLink(i.id) })),
     fanout_default: FANOUT_DEFAULT,
   };
 }
