@@ -436,6 +436,32 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: ivRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE NINTH HOME · public.broadcast_recipients (0164) ────────────────
+      // G4.3, CE-42 4b-2: her broadcast to past couples on the marketing line.
+      // APPENDED after introductions, never reordered. R-40.110 in the SAME
+      // delivery as the table: `uq_broadcast_recipients_wamid` is UNIQUE and
+      // PARTIAL on `wamid IS NOT NULL`, so `> 1` is unreachable — checked anyway,
+      // as every arm above checks it. A `refused_stopped` row carries no wamid and
+      // is never reached by this update.
+      const bv = await supabase
+        .from('broadcast_recipients')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, vendor_id, status');
+      const bvRows = Array.isArray(bv && bv.data) ? bv.data : [];
+      if (bvRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=broadcast', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: bvRows[0], reason: 'broadcast' };
+      }
+      if (bvRows.length > 1) {
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=broadcast_ambiguous', `matched=${bvRows.length}`, errFields(status),
+          ' SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: bvRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

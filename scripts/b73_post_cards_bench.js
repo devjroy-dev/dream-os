@@ -142,10 +142,24 @@ const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((
     assert.strictEqual(pc.titleLine({ title: 'Priya & Arjun', venue: 'Leela Palace' }), 'Priya & Arjun at Leela Palace');
     assert.strictEqual(pc.titleLine({ title: 'Wedding at Leela Palace', venue: 'Leela Palace' }), 'Wedding at Leela Palace');
   });
-  await cell('2.4 F-42.172 reading: a non-photography vendor gets no "Photographed by"', async () => {
+  await cell('2.4 F-42.172 ruled: the role line reads by category — makeup is "Makeup by", never "Photographed by"', async () => {
     const c = pc.captionFor({ page, vendor: { ...VENDOR, category: 'makeup' } });
-    assert.ok(!/Photographed by/.test(c), c);
-    assert.strictEqual(c, 'Wedding. More on my page: thedreamwedding.in/v/DEV440');
+    assert.strictEqual(c, 'Wedding. Makeup by Dev Roy Photography. More on my page: thedreamwedding.in/v/DEV440');
+    for (const [cat, verb] of [['photography', 'Photographed by'], ['decor', 'D\u00e9cor by'], ['planning', 'Planned by']]) {
+      assert.strictEqual(pc.creditSentence({ business_name: 'S', category: cat }), `${verb} S`, cat);
+    }
+  });
+  await cell('2.6 F-42.172 (a): the RAW word reads first — mehendi/mehndi/henna are "Mehendi by" though categoryFraming folds them to other', async () => {
+    for (const cat of ['mehendi', 'Mehndi artist', 'henna']) {
+      assert.strictEqual(pc.creditSentence({ business_name: 'S', category: cat }), 'Mehendi by S', cat);
+    }
+    const cf = fs.readFileSync(path.join(ROOT, 'src/lib/vendor/categoryFraming.js'), 'utf8');
+    assert.ok(/'mehendi':\s*'other'/.test(cf), 'the alias to other was touched — the ruling says it stands');
+  });
+  await cell('2.7 F-42.172: a category with no ruled verb falls to "By {business_name}"', async () => {
+    for (const cat of ['hairstylist', 'transport', 'jewellery', null]) {
+      assert.strictEqual(pc.creditSentence({ business_name: 'S', category: cat }), 'By S', String(cat));
+    }
   });
   await cell('2.5 no bare placeholder across a matrix of absent slots', async () => {
     for (const city of [null, '', 'Jaipur']) for (const venue of [null, 'The Oberoi']) for (const name of [null, 'Studio X'])
@@ -250,7 +264,8 @@ const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((
     const code = strip(fs.readFileSync(path.join(ROOT, 'src/api/vendor/posts.js'), 'utf8'));
     const routes = code.match(/router\.(get|post|put|patch|delete)\(/g) || [];
     const guarded = code.match(/requireAuth, resolveVendor\(\)/g) || [];
-    assert.ok(routes.length === 1 && guarded.length === 1, `${routes.length} routes, ${guarded.length} guarded`);
+    // 4b-2 adds GET/POST /broadcast to this file: three doors, three guards — the count is the guarantee.
+    assert.ok(routes.length === 3 && guarded.length === 3, `${routes.length} routes, ${guarded.length} guarded`);
     const core = strip(fs.readFileSync(path.join(ROOT, 'src/api/vendor/core.js'), 'utf8'));
     assert.ok(/router\.use\('\/posts',\s*require\('\.\/posts'\)\)/.test(core), 'not mounted at /posts');
   });

@@ -962,6 +962,84 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── CE-42 · 4b-2 · R6 · G4.3 — THE TWO BROADCASTS AND J1-IN's NOTICE ────────
+  // Bodies byte-for-byte from docs/TEMPLATES.md rows 15/16/17 at d27144f (chair-
+  // vetoed; filed by the founder at the Manager 2026-09-10). F-42.201: all three
+  // had a §2 row and no registry entry, which reddened b64 §4.p; these entries
+  // are the cure and the pair leaves the named base in this packet.
+  //
+  // couple_broadcast / referral_broadcast — MARKETING, marketing line (fork 7,
+  // introductions' precedent, until R9 gives her her own WABA). `{{1}}` is her
+  // business name; there is NO couple-name slot because most rows in the ruled
+  // list carry none. The button's suffix is `page_code` — a COPY of her
+  // routing_handle, passed as an OBJECT key (F-41.123), exactly as `introduction`.
+  // The switchboard rows `template.tdw_couple_broadcast` / `..._referral_...`
+  // (0164 statement 6) are the gates, read directly at the door.
+  couple_broadcast: {
+    key: 'couple_broadcast',
+    name: 'tdw_couple_broadcast',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'MARKETING',
+    variables: ['vendor_name'],
+    button: {
+      type: 'url',
+      index: 0,
+      text: 'See my work',
+      base: 'https://thedreamwedding.in/v/',
+      variable: 'page_code',
+    },
+    body:
+      'Hi, this is {{1}}. It was lovely being part of your wedding. Here is my page with my ' +
+      'newest work and open dates. Reply STOP and I will not message you again.',
+    status: 'approved',   // Active – Quality pending, ID 1397634775892426 (TEMPLATES.md row 16)
+  },
+
+  referral_broadcast: {
+    key: 'referral_broadcast',
+    name: 'tdw_referral_broadcast',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'MARKETING',
+    variables: ['vendor_name'],
+    button: {
+      type: 'url',
+      index: 0,
+      text: 'See my work',
+      base: 'https://thedreamwedding.in/v/',
+      variable: 'page_code',
+    },
+    body:
+      'Hi, this is {{1}}. If a friend or someone in your family is getting married, I would ' +
+      'love to hear from them. Here is my page to pass on. Reply STOP and I will not message you again.',
+    // ACTIVE – Quality pending at Meta, ID 1057756639996847 — the founder's
+    // WhatsApp Manager capture, 2026-09-10 14:45 IST (Template insights,
+    // "Marketing · Updated on 10 Sep 2026"). It was In review when TEMPLATES.md
+    // row 17 was written; this is the one-word edit that entry promised the day
+    // the Manager read Active. The switchboard row (0164 statement 6, seeded
+    // `pending`) is still the gate: the sweep reads Meta and moves it, and the
+    // founder's tap turns it on.
+    status: 'approved',
+  },
+
+  // introduction_reply — UTILITY, vendor line (F-42.96: J1-IN's notice to the
+  // VENDOR that a stranger replied). NOT YET FILED at Meta (TEMPLATES.md row 15),
+  // so `draft`: no arm sends it at 4b-2; this entry is the registry's record of
+  // the chair-ruled words so b64 compares them, and the arm that sends it is its
+  // own packet. `{{1}}` the recipient's name, `{{2}}` where they met. No button.
+  introduction_reply: {
+    key: 'introduction_reply',
+    name: 'tdw_introduction_reply',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['recipient_name', 'where_met'],
+    body:
+      'Hi, {{1}} replied to the introduction you sent after meeting at {{2}}. The reply is saved ' +
+      'as a lead. Open your Leads on The Dream Wedding to read it.',
+    status: 'draft',
+  },
+
   admin_assist_request: {
     key: 'admin_assist_request',
     name: 'tdw_admin_assist_request',

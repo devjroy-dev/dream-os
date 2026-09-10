@@ -220,6 +220,30 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
     }
   }
 
+  // ── 4b-2 · F-42.171 · IS SHE ONE OF A VENDOR'S PAST COUPLES? ─────────────────
+  // J1-IN r2's shape, one table over. Reached only when no introduction matched.
+  // The arm (src/lib/vendor/broadcasts.js) is the one writer for its table; this
+  // is a call, never a second writer. ABOVE the STOP arm for the same reason the
+  // branch above is: `:STOP` opens with `findOrCreateProspectByPhone`, and a
+  // couple who says STOP to HER vendor's broadcast must never become TDW's
+  // prospect — `opted_out` is cross-line (sendWa.js's global refusal) and would
+  // silence that vendor's own contract and payment messages to her. Her STOP
+  // NEVER falls through; any other text is recorded and falls through only for a
+  // live Closer conversation.
+  let broadcastMatched = false;
+  if (!introMatched) {
+    const bcMod = require('./vendor/broadcasts');
+    const bcRow = await bcMod.matchInboundBroadcast(supabase, phone);
+    if (bcRow) {
+      broadcastMatched = true;
+      const prospect = await findProspectByPhone(supabase, phone);
+      const verdict = await bcMod.applyBroadcastInbound(supabase, {
+        row: bcRow, text, isStop: isStopWord(text), prospect,
+      });
+      if (!verdict.fallThrough) return verdict;
+    }
+  }
+
   // ── STOP → opt out (cross-line), then send the ONE courtesy confirmation ──────────────────
   if (isStopWord(text)) {
     const prospect = await findOrCreateProspectByPhone(supabase, phone);
@@ -373,7 +397,7 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
   // path that is not an introduction fall-through, so the R-41.131 door is
   // untouched for everyone it was built for — including this same woman, on the
   // day she writes to TDW herself.
-  if (!introMatched && !prospect.consent_text && text && text.trim()) {
+  if (!introMatched && !broadcastMatched && !prospect.consent_text && text && text.trim()) {
     try {
       await updateProspect(supabase, prospect.id, {
         consent_text: text,               // verbatim: not trimmed, not summarised

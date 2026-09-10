@@ -1,0 +1,18 @@
+# scripts/floor-manifest-ce42-4b2-os.txt — CE-42 4b-2 (dream-os), seat R6 [F-14.16]. Every path this ZIP writes.
+src/lib/vendor/broadcasts.js
+src/lib/vendor/postCards.js
+src/lib/vendor/relayStatus.js
+src/lib/prospects.js
+src/lib/capabilities.js
+src/lib/templates.js
+src/api/vendor/posts.js
+db/migrations/0163_broadcast_fee_and_probe_config.sql
+db/migrations/0164_broadcasts.sql
+scripts/b75_broadcasts_bench.js
+scripts/b73_post_cards_bench.js
+scripts/b66_inbound_consent.js
+scripts/b40_victor_sitting_bench.js
+scripts/floor-base.txt
+scripts/floor-manifest-ce42-4b2-os.txt
+docs/handovers/CE42_4B1_CARDS_HANDOVER.md
+docs/handovers/CE42_4B2_BROADCASTS_HANDOVER.md

@@ -48,8 +48,17 @@ section('2. it NEVER overwrites — evidence is not editable after the fact');
 // this bench ends with MORE coverage of this arm than it had, not less.
 ok('2.1 guarded on the absence of an existing record',
    /!prospect\.consent_text && text && text\.trim\(\)/.test(arm));
+// ── AMENDED BY LABEL — CE-42 seat R6, 4b-2 (F-42.171, R-41.121) ─────────────
+// 4b-2 adds `!broadcastMatched &&` to the same guard: a couple replying to HER
+// vendor's broadcast is no more TDW's consent than a stranger replying to an
+// introduction (F-42.127's class, one table over). 2.3 pinned the two conditions
+// ADJACENT, so it reddened over a spelling while its meaning held. It now pins
+// each condition on the guard's own line; 2.4 is the new condition's cell.
+const guardLine = (arm.split('\n').find((l) => /!prospect\.consent_text && text && text\.trim\(\)/.test(l)) || '');
 ok('2.3 F-42.127 — an introduction-matched reply is never consent evidence',
-   /!introMatched && !prospect\.consent_text/.test(arm));
+   /!introMatched\b/.test(guardLine));
+ok('2.4 F-42.171 — a broadcast-matched reply is never consent evidence',
+   /!broadcastMatched\b/.test(guardLine));
 ok('2.2 an empty or whitespace reply is not a record',
    /text && text\.trim\(\)/.test(arm));
 

@@ -302,6 +302,12 @@ const CAPABILITY_KEYS = Object.freeze({
   // constant existed for the copy map to key on. Named here so a grep for this
   // roster finds that reader too.
   ASSIST_FORWARD_ALERT:    'flag.assist_forward_alert',
+  // ── CE-42 seat R6, packet 4b-2 · G4.3 ───────────────────────────────────
+  // Read DIRECTLY at the broadcast door (TDW_INTRODUCTION's precedent: a
+  // template.* row is a gate in its own right — no flag.*, no TEMPLATE_GUARDS
+  // entry). Seeded by 0164 statement 6; the sweep moves them.
+  COUPLE_BROADCAST:        'template.tdw_couple_broadcast',
+  REFERRAL_BROADCAST:      'template.tdw_referral_broadcast',
 });
 
 module.exports = {

@@ -36,13 +36,16 @@
 //     it names. A second copy that a bench holds to the first is the estate's
 //     answer when a copy cannot be avoided (R-41.140's spirit).
 //
-// ═══ F-42.172 · "PHOTOGRAPHED BY" IS A CLAIM ABOUT A ROLE — READING, DECLARED ═
-// The vetoed caption says "Photographed by {business_name}". That is true for a
-// photography vendor and false for a makeup artist posting the same page. Until
-// the chair rules role wording, the sentence is emitted ONLY when
-// normaliseCategory(vendor.category) === 'photography'; for every other category
-// it DROPS, by the same never-a-bare-placeholder rule that drops a missing city.
-// No new byte is invented. Pinned by b73 cells 3.5/3.6.
+// ═══ F-42.172 · THE ROLE LINE — RULED (CE-42, 4b-2) ══════════════════════════
+// "Photographed by" claimed a role, and a makeup artist posting the same page is
+// not the photographer. The chair's founder-signed set, read BY CATEGORY:
+//   photography → "Photographed by" · makeup → "Makeup by" · decor → "Décor by"
+//   planning → "Planned by" · mehendi → "Mehendi by"
+//   anything without a ruled verb → "By {business_name}".
+// MEHENDI READS HER RAW WORD FIRST (ruling (a)): categoryFraming.js aliases
+// mehendi/mehndi/henna to 'other' (founder ⑤) and that alias stands untouched, so
+// the normalised category alone could never reach "Mehendi by". The raw word is
+// read first, then the normalised category, then the fallback.
 'use strict';
 
 const W = require('./weddings');
@@ -110,17 +113,38 @@ function titleLine(page) {
   return `${title} at ${venue}`;
 }
 
-/** F-42.172's reading: the role sentence only when the role is true. */
+/** F-42.172 (ruled): the role verbs, the fallback, and the raw words read first. */
+const ROLE_LINE = Object.freeze({
+  photography: 'Photographed by',
+  makeup:      'Makeup by',
+  decor:       'D\u00e9cor by',
+  planning:    'Planned by',
+  mehendi:     'Mehendi by',
+});
+const ROLE_FALLBACK = 'By';
+const RAW_ROLE_WORDS = Object.freeze([
+  { re: /\b(mehendi|mehndi|henna)\b/i, role: 'mehendi' },
+]);
+
+/** Her role key: the raw word first, then the normalised category; null if unruled. */
+function roleOf(category) {
+  const raw = String(category || '');
+  for (const w of RAW_ROLE_WORDS) if (w.re.test(raw)) return w.role;
+  const n = normaliseCategory(category);
+  return Object.prototype.hasOwnProperty.call(ROLE_LINE, n) ? n : null;
+}
+
+/** "Photographed by Dev Roy Photography" · "By Studio X" · null with no name. */
 function creditSentence(vendor) {
   const name = String((vendor && vendor.business_name) || '').trim();
   if (!name) return null;
-  if (normaliseCategory(vendor.category) !== 'photography') return null;
-  return `Photographed by ${name}`;
+  const role = roleOf(vendor.category);
+  return `${role ? ROLE_LINE[role] : ROLE_FALLBACK} ${name}`;
 }
 
 /**
- * THE CAPTION — the vetoed byte, filled:
- *   "{title} — {city}. Photographed by {business_name}. More on my page: thedreamwedding.in/v/{code}"
+ * THE CAPTION — the vetoed byte, filled; the role line reads by category (F-42.172):
+ *   "{title} — {city}. {Role line} {business_name}. More on my page: thedreamwedding.in/v/{code}"
  * A slot with no true value DROPS with its own punctuation; nothing renders bare.
  */
 function captionFor({ page, vendor }) {
@@ -271,6 +295,7 @@ async function buildCards(supabase, vendor, deps = {}) {
 
 module.exports = {
   KINDS, KIND_ORDER, CARD_FONTS, CARD_INK, COPY,
+  ROLE_LINE, ROLE_FALLBACK, roleOf,
   siteHost, pageAddress, titleLine, creditSentence, captionFor,
   findLastGallery, transformationFor, publicIdOf, cardUrl, isConfigured, buildCards,
 };

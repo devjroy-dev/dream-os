@@ -21,5 +21,3 @@ RED: b51_referrals_bench
 RED: b59_g34_reminders_bench
 RED: b59_mutations
 RED: b61_mutations
-RED: b64_mutations
-RED: b64_template_slots_bench

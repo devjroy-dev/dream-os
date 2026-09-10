@@ -1,7 +1,11 @@
 // src/api/vendor/posts.js — THE "POSTS & ADS" ROOM'S DOORS (R6 rung 1).
 // CE-42 seat R6, packet 4b-1. Mounted at /api/v2/vendor/posts (core.js).
 //
-//   GET /cards — the three cards and the caption from her last gallery.
+//   GET /cards       — the three cards and the caption from her last gallery.
+//   GET /broadcast   — 4b-2: her past couples (count, names or last four), the
+//                      fee upper bound in paise, both bodies, both gates, and the
+//                      referral's next date if this IST year's is spent.
+//   POST /broadcast  — 4b-2: { kind: 'couple' | 'referral' } — the send.
 //
 // THE DOOR DECIDES NOTHING (the Introductions doors' shape, 4a packet 3a). Every
 // refusal is the arm's (src/lib/vendor/postCards.js), forwarded with its code:
@@ -23,6 +27,7 @@ const asyncHandler  = require('../../lib/asyncHandler');
 // `err(res, status, message, code)` — the code is a STRING (src/lib/response.js).
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const postCards = require('../../lib/vendor/postCards');
+const bc = require('../../lib/vendor/broadcasts');
 
 const STATUS_FOR = Object.freeze({
   no_gallery: 404,
@@ -40,6 +45,30 @@ router.get('/cards', requireAuth, resolveVendor(), asyncHandler(async (req, res)
     return errRes(res, STATUS_FOR[out.code] || 500, out.error, out.code);
   }
   return okRes(res, { page: out.page, caption: out.caption, cards: out.cards });
+}));
+
+// ── 4b-2 · THE BROADCAST DOORS ─────────────────────────────────────────────────
+// The door decides nothing: every refusal is the arm's, forwarded as a CODE. The
+// screen maps each code to its vetoed byte — and `dark` in particular to "Not
+// switched on yet.", never `cap.reason()`'s sentence (F-42.193: a switchboard key
+// never reaches vendor glass; the admin card keeps it).
+const SEND_STATUS = Object.freeze({
+  bad_kind: 400, dark: 503, no_address: 409, already_this_year: 409, no_couples: 409, fee_unavailable: 500,
+});
+
+router.get('/broadcast', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const out = await bc.preview(req.app.locals.supabase, req.vendor);
+  return okRes(res, out);
+}));
+
+router.post('/broadcast', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const kind = String((req.body && req.body.kind) || '');
+  const out = await bc.sendBroadcast(req.app.locals.supabase, { vendor: req.vendor, kind });
+  if (!out.ok) {
+    const msg = out.code === 'no_address' ? postCards.COPY.NO_ADDRESS : out.code;
+    return errRes(res, SEND_STATUS[out.code] || 500, msg, out.code);
+  }
+  return okRes(res, { broadcast_id: out.broadcast_id, sent: out.sent, not_delivered: out.not_delivered, refused_stopped: out.refused_stopped });
 }));
 
 module.exports = router;

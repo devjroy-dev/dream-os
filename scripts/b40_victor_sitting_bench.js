@@ -945,8 +945,15 @@ function classify(reply, message, facts, mode) {
         T('  …carrying present, readable, rows AND truncated', /truncated: !!ctx\.expenseFacts\.truncated/.test(body));
         T('  …and its ABSENT shape is present:false, never a missing key',
           /\{ present: false, readable: null, rows: 0, truncated: false \}/.test(body));
+        // ── AMENDED BY LABEL — CE-42 seat R6, 4b-2 cut 3 (R-41.121, chair-ruled (a)) ──
+        // The cell's MEANING is "expense_facts rides the existing jsonb: no DDL was
+        // added for it". Its SPELLING was "no file numbered 0163–0169 exists" — a
+        // clock: the first unrelated migrations past the rider's tail (0163/0164,
+        // G4.3's broadcasts) reddened it with the rider's claim still true. It now
+        // asserts the meaning: no migration anywhere names expense_facts.
         T('  …ZERO DDL — no migration is added by this rider',
-          fs.readdirSync(path.join(ROOT, 'db/migrations')).filter((f) => /^016[3-9]/.test(f)).length === 0);
+          fs.readdirSync(path.join(ROOT, 'db/migrations')).filter((f) => f.endsWith('.sql')
+            && /expense_facts/.test(fs.readFileSync(path.join(ROOT, 'db/migrations', f), 'utf8'))).length === 0);
       }
 
       // ── §27 · F-42.147 · THE DATE CHECK LEFT THE VERB (r3) ─────────────────────
