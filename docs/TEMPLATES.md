@@ -23,6 +23,51 @@ The webhook spec (`TDW_05_WEBHOOK_FINAL.md`, authored 2026-07-14) described **Tw
 - The **opt-out line** (`Reply STOP to opt out.`) is present on `marketing_opener` only. The nudges carry a functional pause instruction (`STOP MORNINGS`), which is a service control, not a marketing opt-out.
 - Variable **values** supplied at send time must themselves contain no newline, tab, or run of 4+ spaces (Meta rejects those in parameters). The registry's summary vars are built as single-line strings for this reason.
 
+## 1a. URL buttons — what Meta stores, and the two bends (F-42.129)
+
+**THE RULE, and it binds every future URL-button filing.** At the Manager, a dynamic URL button's
+base is entered as the **base URL alone** — `https://thedreamwedding.in/v/` — and **nothing else**.
+Meta appends its own `{{1}}` to whatever is entered and stores the result. Typing `{{1}}` yourself
+files a base that ends in **two** of them. The sample-value field takes the **suffix alone**
+(`DEV440`), never a full URL. This is a filing rule, not a code rule, and no packet can cure a
+base that was typed wrong.
+
+**WHAT META ACTUALLY HOLDS.** Both filed URL-button bases store a **literal `{{1}}`** at the end
+of the base, and the send-time parameter is **appended to it rather than substituted into it**.
+Witnessed twice by the founder, long-pressing the button and copying the link, 2026-09-10:
+
+- `https://thedreamwedding.in/r/%7B%7B1%7D%7Denq-…` — `tdw_assist_lead_outside_v2`
+- `https://thedreamwedding.in/v/%7B%7B1%7D%7DMAKEUPBYSWATIROY` — `tdw_introduction`
+
+So the address that arrives is `{{1}}<suffix>`, and every recipient landed on the wrong answer
+until each family grew a strip. **No template was edited to fix this (R-42.2)** — the bases are
+recorded as Meta holds them, per row, and the two bends live in the pwa.
+
+**THE TWO BENDS, BOTH LANDED, both to be retired at Meta's next edit window.**
+
+| family | bend | at | landed |
+|---|---|---|---|
+| `/r/` (D5a, **F-42.1**) | `META_PLACEHOLDER` matching `{{1}}` or `%7B%7B1%7D%7D` at the head, stripped at `:138` | `dreamos-pwa app/r/[code]/route.ts:129` | pwa `a96e2e2` |
+| `/v/` (R8, **F-42.128**) | `stripMetaPlaceholder`, same pattern, exported from one home and read by all three `/v/` surfaces — `app/v/[code]/page.tsx:302,355` · `app/v/[code]/date/page.tsx:145` · `app/v/[code]/w/[slug]/page.tsx:151,205` | `dreamos-pwa lib/public/metaPlaceholder.ts:52,60` | pwa `a96e2e2` |
+
+The two patterns are separate copies by ruling — the `/r/` handler is a route handler on the
+public edge with no React runtime — and they are **pinned to each other by `b71` §1.4**, which
+asserts the source text of both is identical, so they cannot drift apart in silence.
+
+**⚠ STRIP, DO NOT DECODE (c-42.5).** Next decodes dynamic segment params before the handler sees
+them, so `%7B%7B1%7D%7D` arrives as `{{1}}`. A `decodeURIComponent` here would be a **second**
+decode and would throw `URIError` on any code holding a bare `%` — a 500 where there is a sentence
+today. Both spellings are matched anyway, so no assumption about the runtime's decoding is
+load-bearing.
+
+**Both bends die together.** When a base is corrected at an edit window to substitute rather than
+append, that family's strip retires with it (`route.ts:127`, `metaPlaceholder.ts:47-51`). Leaving a
+silent rewrite on a public path afterwards is its own defect.
+
+**F-42.129 stays open** as the question this section does not answer: `/r/` was found and cured at
+D5a, and `/v/` — the same base shape, the same Manager, filed the same week — was not checked until
+R8. That is the finding.
+
 ## 2. The bodies (six from Block 05 P2, plus `demo_lead_alert` from Block 07 P1)
 
 ### 1 · `marketing_opener`  — MARKETING · marketing line · Meta name **`tdw_marketing_opener`**
@@ -161,6 +206,11 @@ sample values. Variables: `{{1}}` = vendor name as TDW holds it, `{{2}}` = weddi
 
 > Hi {{1}}, you have a new enquiry through The Dream Wedding: a couple planning a {{2}} wedding in {{3}} needs a {{4}}, with a budget of about Rs {{5}}. The full enquiry is on the page below.
 
+**Base as Meta holds it (§1a, F-42.129):** `https://thedreamwedding.in/r/{{1}}` — the literal
+`{{1}}` is stored and the `enq-` suffix is **appended** to it, so the code arrives as
+`{{1}}enq-<token>`. Bent at `app/r/[code]/route.ts:129` (F-42.1, pwa `a96e2e2`); not edited at
+Meta (R-42.2).
+
 **Components witnessed at the Edit screen, 2026-09-09 07:53 IST (R-41.116 satisfied):** URL
 button, **dynamic**, base `https://thedreamwedding.in/r/` with `{{1}}` at the end. Label renders
 as *Visit website* with a link icon in the preview — **which is exactly why the preview is not a
@@ -220,6 +270,8 @@ send failure on that arm.
 
 Button: URL, label `See their page`, base `https://thedreamwedding.in/v/` with a dynamic suffix (the vendor code, R-40.15's address family).
 
+**Base as Meta holds it (§1a, F-42.129):** `https://thedreamwedding.in/v/{{1}}` — literal `{{1}}` stored, suffix appended. Bent at `lib/public/metaPlaceholder.ts:52` (F-42.128, pwa `a96e2e2`). **Unwalked on this row** — no send arm exists yet, so the shape is inherited from row 13's witness on the same base, not witnessed here.
+
 **F-41.114 — THE BUTTON WAS NOT WHAT THIS ENTRY SAID, AND IT WAS RE-FILED.** Chair-derived from
 the founder's **Edit-template** screen: this template was originally filed with a **quick-reply
 button, not a URL button.** The line above described the intent; the filing carried something
@@ -277,16 +329,59 @@ slot, which is what makes the derivation checkable rather than merely intended.
 
 **Roadmap §7 held:** the outsider's phone does not appear, and the handle is the only identifier that leaves. The couple reaches an outside vendor only after that vendor joins.
 
-### 13 · `introduction` — MARKETING · her own WABA on R9; the vendor line for the J1 walk · Meta name **`tdw_introduction`**
+### 13 · `introduction` — MARKETING · her own WABA on R9; the **marketing** line for the J1 walk · Meta name **`tdw_introduction`**
+
+**F-42.44 CORRECTED 2026-09-10 (CE-42 seat G2).** This heading read *"the vendor line for the J1 walk"* and contradicted **R-41.11** — a MARKETING template never rides a Utility lane. The walk ran on the marketing line and the registry always said so: `src/lib/templates.js:948` carries `line: 'marketing'`, and `:925–926` records the two arms — **(β)** her own WABA on R9 for real vendors, **(α)** the walk only, from `MARKETING_WHATSAPP_NUMBER` (PNID `1171408606064102`) to the founder's handset. The registry wins; the document is now what the wire is.
 **Added CE-41 seat B (B1, 2026-09-08) — R-41.11, Victor as her closer.** Variables: `{{1}}` = recipient's name, `{{2}}` = vendor or business name, `{{3}}` = where they met. Meta template ID **`1757650692328688`**.
 
 > Hi {{1}}, this is {{2}}, and we met at {{3}} — I wanted to send you my work, so here is my page with recent weddings and my open dates. Reply STOP and I will not message you again.
 
 Button: URL, label `See my work`, base `https://thedreamwedding.in/v/` with a dynamic suffix (her storefront, wedding page or reel — all under the fixed domain).
 
+**Base as Meta holds it (§1a, F-42.129):** `https://thedreamwedding.in/v/{{1}}` — literal `{{1}}` stored, suffix appended. **Witnessed on the wire 2026-09-10:** the founder long-pressed *See my work* and copied `https://thedreamwedding.in/v/%7B%7B1%7D%7DMAKEUPBYSWATIROY`. Bent at `lib/public/metaPlaceholder.ts:52` (F-42.128, pwa `a96e2e2`); walked green — the button now opens the page. Not edited at Meta (R-42.2).
+
 **Category, argued and not argued down.** MARKETING **as filed**, not a reclassification. A vendor sending a stranger her portfolio is promotional in Meta's frame and in plain English; arguing Utility here is the misuse that earns a written warning and a seven-day utility-messaging restriction on the WABA. Hence the opt-out sentence, present and mandatory.
 
 **What the marketing throttle means here.** Every recipient of an introduction has, by construction, never messaged that WABA, so a share of introductions will be silently withheld under the per-user marketing cap — and R-41.11 forbids any follow-up to an unanswered introduction. **A throttled introduction and an ignored introduction are indistinguishable to the vendor unless the send arm says otherwise.** The Utility cure that answered F-40.176 is not available to this body at any wording. R-41.30's instrument is therefore owed on J1's arm too: the error code recorded per send, and the vendor told *not delivered*, never left to read Meta's silence as the person's answer.
+
+**Registry witness:** `src/lib/templates.js:944-963` at `aaa238e` — `key: 'introduction'`,
+`name: 'tdw_introduction'`, `line: 'marketing'`, `category: 'MARKETING'`,
+`variables: ['recipient_name', 'vendor_name', 'where_met']`, `status: 'approved'`, and a `button`
+arm (`:951-957`) declaring `type: 'url'`, `text: 'See my work'`, `base:
+'https://thedreamwedding.in/v/'`, `variable: 'page_code'`. The three slots and their order agree
+with this entry. **Note §8's census row for `tdw_introduction` (`tdw_introduction | … | registry
+key: none`) is a snapshot taken at `534059f8` and is stale here — §8 is generated and is not
+evidence; this paragraph is.**
+
+**F-42.93 — A COMMENT MISCOUNT ON THIS ARM, OPEN, CODE LEFT TO J1-IN r2.** Two comments say this
+lane carries **four** founder-vetoed bytes. It carries **five**: `INTRO_ASK_NUMBER`,
+`INTRO_ASK_NAME`, `INTRO_ASK_WHERE`, `INTRO_NOT_DELIVERED`, `INTRO_ALREADY_SENT`
+(`src/lib/victorLines.js:102,108,114,130,145`; hashes `:187-191`; both objects count five by
+command). **The two sites to cure**, derived at `aaa238e`:
+
+- `src/lib/vendor/introductions.js:58` — *"Four founder-vetoed bytes from src/lib/victorLines.js"*.
+- `src/lib/victorLines.js:186` — *"the four introduction bytes, vetoed 2026-09-10"*, labelling a
+  `LINE_HASHES` block that holds five. **This second site is not in the original filing and is
+  recorded here so the cure does not close half of it.**
+
+Comment-only. No byte speaks wrongly and nothing on the wire is affected.
+
+**THREE SITES SAY "four" AND MUST BE LEFT ALONE.** A seat grepping `four` in these two files gets
+five hits, and three of them are correct:
+
+- `src/lib/vendor/introductions.js:59` — *"Four bytes REUSED byte-exact from relaySeat.js"*. Four
+  bytes are named at `:60`; `recipientLabel`, destructured beside them, is a renderer
+  (`src/lib/vendor/relaySeat.js:107`), not a byte.
+- `src/lib/victorLines.js:80` — *"those four strings and the four reused bytes are the whole soul
+  radius of 4a"*. This is **the chair's W-1 ruling quoted verbatim**, and it was true when ruled:
+  the radius was bytes 6, 7, 8 (the three asks) plus byte 9 (`INTRO_NOT_DELIVERED`).
+  `INTRO_ALREADY_SENT` (`:145`) arrived after it. A quoted ruling is not re-voiced to match a
+  later tree.
+- `src/lib/vendor/introductions.js:46` — *"W-1 caps 4a's soul radius at four strings"*. The same
+  ruling restated, same standing.
+
+So the count that is wrong is the count **of the file's own current contents**; the count of what
+the chair once ruled is right, and editing it would put words in the chair's mouth.
 
 **Open at the seal (R-41.31):** the handle-only shape of R-41.11 has no template. A body either carries a URL button or it does not, so a second template **`tdw_introduction_handle`** — no button, the handle as a variable in the body — is chartered for a B1b packet at the founder's next Manager session. Not blocking; R9 is gated regardless.
 
@@ -321,6 +416,38 @@ stricter than Meta's. Meta accepted the filing, and the wire has now delivered a
 twice. The house-style red carried no behavioural cost and there is a witness for it rather
 than an argument. Disposed under c-41.4; `b51` §14 retired by ruling.
 
+### 15 · `introduction_reply` — UTILITY (filed) · vendor line · Meta name **`tdw_introduction_reply`**
+**Added CE-42 seat G2 (G2-B, 2026-09-10) — F-42.96.** ⚠ **NOT YET FILED.** Body ruled by the chair
+2026-09-10; the founder files it at the Manager as a **new template, not an edit** (steps in
+`docs/TDW_CE42_G2B_HANDOVER.md`). Meta template ID **owed** — recorded here and in §3 row 15 when
+the filing clears. Variables: `{{1}}` = the recipient's name, `{{2}}` = where they met.
+**No button.**
+
+> Hi, {{1}} replied to the introduction you sent after meeting at {{2}}. The reply is saved as a lead. Open your Leads on The Dream Wedding to read it.
+
+149 characters · **149 bytes** utf-8 · sha256 `71da762a9c9d31f203e6caae5c279829de6d580b9c5955ba8c0f9f15868ee960`.
+
+**Why this template exists.** J1-IN (F-42.69) makes a stranger's reply to an introduction into a
+lead for that vendor (`source='introduction'`). She had no notice that it happened.
+`lead_alert_utility` cannot carry it: it says *couple*, *wedding* and *through your page*, and
+**none of the three is true of an introduction** — the recipient is not a couple, there is no
+wedding, and the lead came from a message the vendor sent by hand, not from her storefront.
+
+**Two slots, and the page code is not one of them.** A first draft carried a third slot for the
+vendor's `page_code`. **Vetoed by the chair 2026-09-10:** the page code is a routing handle, it is
+registry vocabulary, and it does not go on a vendor's glass. She does not need to be told her own
+handle to read her own leads.
+
+**Category is filed, not predicted (R-40.58).** Filed **UTILITY** and Meta decides at review. The
+body is built on the Utility-earning shape rows 10a and 11 used: it **reports a thing that has
+already happened** — a reply arrived, it is saved — rather than inviting the vendor into anything.
+The closing sentence points at a screen she already owns. If Meta reclassifies, the reclassification
+is recorded in §3 as row 10's was, and no argument is made against it.
+
+**Compliance against §1:** variables sequential from 1, no gaps · the body neither begins nor ends
+with a variable · the pair is separated by real words · single line · Utility carries no opt-out
+line, and the vendor is the customer here, not a stranger.
+
 ## 3. Submission tracker
 
 All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`) and **all six were approved the same day** (the four in review cleared within minutes). `status` mirrors the registry's `status` field in `src/lib/templates.js`; all six read `approved`. `demo_invite` was approved as **UTILITY** — the tightened copy held, so no category reconciliation was needed.
@@ -336,20 +463,19 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 7 | `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY | **approved** | 2026-07-29 — Meta approved ~17:31 UTC, Utility retained (dashboard: Active – Quality pending). Flipped in `src/lib/templates.js` at TDW_07 P2. |
 | 8 | `vendor_welcome` | `tdw_vendor_welcome` | UTILITY | **approved** | 2026-08-06 — filed by the founder for TDW_10 ADMIN P3's mint. The FIRST draft was refused by Meta's own pre-submission classifier as Marketing (「 so couples can find you 」 is a benefit claim); the filed body follows `demo_invite`'s Utility-earning precedent — an account that EXISTS and the action that services it, promising nothing. Dashboard: Active – Quality pending. Flipped in `src/lib/templates.js` at the P3 close. |
 | 9 | `circle_place_ready` | `tdw_circle_place_ready` | UTILITY | **approved** | 2026-08-13 — TDW_14 D-2. First draft refused by Meta's pre-submission classifier as Marketing; rewritten on `vendor_welcome`'s Utility-earning precedent and filed. Dashboard: **Active – Quality pending** (Active is the approval; "Quality pending" is the quality rating — the same reading `demo_lead_alert` and `enquiry_alert_vendor` carry). Meta ID `2069520823656352`. Wire-witnessed live: accepted, delivered, read, and rendered on the handset. |
-
 | 10 | `assist_lead_outside` | `tdw_assist_lead_outside` | **MARKETING** (filed UTILITY) | **approved** | 2026-09-08 — CE-41 B1. Filed UTILITY, **approved as MARKETING**; the category moved at review, not after. Dashboard: Active – Quality pending. Meta ID `1627376372249131`. R-41.30: accept, no appeal. The `131049` hole and its instrument are recorded at the §2 entry. |
 | 10a | `assist_lead_outside_v2` | `tdw_assist_lead_outside_v2` | **UTILITY** | **approved** | Filed and Active 2026-09-09 07:42 IST. Meta ID `2544506315978894`. Body and five slots witnessed at the preview 07:42; **components witnessed at the Edit screen 07:53** — URL, dynamic, base `https://thedreamwedding.in/r/` + `{{1}}`. **R-41.118: the outsider alert routes here**; v1 retires from the registry on D2's deploy and stays Active at Meta as history. Closes R-41.30's `131049` hole by routing. |
 | 11 | `assist_found_vendor` | `tdw_assist_found_vendor` | UTILITY | **in review** | 2026-09-08 filed and approved; **re-filed 2026-09-09 06:35 IST** and now **In review**. F-41.114: filed with a **quick-reply** button, not the URL button this document described; re-filed with a dynamic URL button `https://thedreamwedding.in/v/{{1}}`, text *See their page*. Body and slot order unchanged and witnessed at the Edit screen. Meta ID `3160852754105015` as recorded; re-confirm on the next Manager reading. |
 | 12 | `assist_found_outside` | `tdw_assist_found_outside` | UTILITY | **approved** | 2026-09-08 — CE-41 B1. Approved UTILITY as filed. Dashboard: Active – Quality pending. Meta ID `3115277355330375`. |
 | 13 | `introduction` | `tdw_introduction` | MARKETING | **approved** | 2026-09-08 — CE-41 B1. MARKETING **as filed** (R-41.11), not a reclassification. Dashboard: Active – Quality pending. Meta ID `1757650692328688`. Its handle-only twin is chartered but unfiled (R-41.31). |
+| 14 | `referral_alert` | `tdw_referral_alert` | UTILITY | **approved** | 2026-09-08 recorded (filed 2026-09-07) — CE-41 F-41.6's first cure. Active – Quality pending. Meta ID `1526630866155035`. Wire-witnessed: 2 sent, 2 delivered, 2 read. Slot order proven by render. |
+| 15 | `introduction_reply` | `tdw_introduction_reply` | UTILITY (filed) | **not filed** | Body ruled 2026-09-10 (CE-42 G2, F-42.96). Founder files as a NEW template at the Manager, vendor line, no button; steps in `docs/TDW_CE42_G2B_HANDOVER.md`. Meta ID **owed** — recorded here on approval. |
 
 **Reading of the four (CE-41 B1, 2026-09-08).** All four filed and Active on **The Dream Wedding Direct** (`1739793260373677`) on one day, language `en`, from WhatsApp Manager by the founder. **Wire-unwitnessed:** no send arm exists for any of them, so unlike `circle_place_ready` the slot order here is proven only by the Manager's own preview render, never by a message on a handset. The first send on each is therefore also its first order proof — `variables` is ordered from the render, never from the filing form, and that reading is still owed for all four.
 
 **Two records this file does not carry, named so the next reader does not mistake absence for cleanliness.** (i) §2 has no entry **8** — `vendor_welcome` appears in this tracker as row 8 but was never given a body entry above. (ii) This file documents thirteen templates; the WABA holds nineteen Active. §2 and §3 are behind the WABA and have been since Block 10. Neither is CE-41 seat B's to repair, and neither was repaired here.
 
 **A note on §1 and this cut.** Seat B wrote §2 and §3 only. **§1 is the chair's** at this seal (c-41.4): `FINDINGS_LOG:5057` banks an amendment — *real words or a comma-separated clause between variable pairs* — that line 20 of this file never received, and F-40.220's disposal rides on it. The four bodies above obey the **stricter** unamended reading regardless, so they are compliant under either text. **If this packet and the chair's §1 edit are in flight together, apply this one first**; two writers on one file is the collision that R-40.82 exists to catch.
-
-| 14 | `referral_alert` | `tdw_referral_alert` | UTILITY | **approved** | 2026-09-08 recorded (filed 2026-09-07) — CE-41 F-41.6's first cure. Active – Quality pending. Meta ID `1526630866155035`. Wire-witnessed: 2 sent, 2 delivered, 2 read. Slot order proven by render. |
 
 ## 4. Language code
 

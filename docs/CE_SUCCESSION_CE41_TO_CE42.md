@@ -1,5 +1,7 @@
 ═══ TDW · CE-41 → CE-42 · SUCCESSION NOTE · 2026-09-09 23:30 IST ═══
 
+*Formerly `docs/TDW_CE_SUCCESSION_NOTE_22.md`; cited by CE-42's chat kickoffs under that name.* (Renamed 2026-09-10, CE-42 seat G2, c-42.25. That filename belongs to the twenty-second chair's own note at `docs/specs/TDW_CE_SUCCESSION_NOTE_22.md`, 2026-08-05, which `docs/specs/TDW_CE_SUCCESSION_NOTE_23.md:6` and `docs/FINDINGS_LOG.md:3991` both point at. This note is CE-41's and belongs in the `CE_SUCCESSION_CE<n>_TO_CE<n+1>` series with CE-37→CE-38 through CE-40→CE-41.)
+
 **Read this whole file before ruling anything. Derive both tips by command before the first relay. The founder relays; the chair rules; seats cut; the founder applies, walks, pushes.**
 
 ---
@@ -50,15 +52,17 @@ Seat D's images are near their limit; if it fills, open D2 (Opus 5) with this fi
 
 ## 4 · CE-42 ROADMAP — THE FOUNDER'S ORDER: 1 → 3 → 2 → 4
 
+*Corrected 2026-09-10 (CE-42 seat G2, F-42.44's sitting). The row letters below were wrong as written: R8 read "row G", and R6/R7/R9 read "rows F, H, J". Derived at `docs/specs/TDW_CE41_ROADMAP.md` §2 (`:34`): row **F** = R8 Open dates & rates (`:45`) · row **G** = G2 s2, Google, ~10-27 (`:46`) · row **H** = R6 Posts & ads (`:47`) · row **I** = R7 s3 (`:48`) · row **J** = R9 Your own number (`:49`). The cause is visible in this section: item 3 below IS G2 s2, the true row G, so item 2 was given item 3's row and the rest shifted down one.*
+
 Do the Google *waits* in parallel with (1) — they are the founder's taps, not a seat's.
 
 **1 · Concierge s2 (seat D).** F-41.155 (c) first. Then: the public intake link `/plan` (R-41.94: the sheet pre-filled, phone → bride-line OTP = signup, request writes with `couple_id`, `origin='public'`); amend-after-Send (R-41.95's shape; per-item status, request status derived); **no decline control** — R-41.143: a forward not acted on in 48h (`admin_config.assist_lapse_hours`, seeded 48) lapses, frees the slot, reads *No reply in 48h*, stops counting as found; F-41.156; R-42.1; the Switchboard restrictions row + its store; the outsider inbound door's reply arm (R-41.131 — `enq-<8 hex>` in her first message answers with the enquiry; the link builder exists, the branch answers today, confirm the reply half is wired). Mock-first stands for every new surface; frames under **R-41.140** (tokens emitted from `lib/worklist/theme.ts` — `tools/advisor_frame_emit.mjs` — never hand-typed; both arms; 374); the chair holds every copy veto (R-41.98 delegated), founder's rule: plain, short, direct.
 
 **3 · G2 s2 — Google.** Founder taps first (B3·1/B3·2 in `docs/filings/`): domain + redirect URI, Search Console, brand verification + **publish in one sitting**, then the day-8 refresh-token check (F-19.13 discharged by A4; the seven-day death ends on publish). Then the code turn: the second scope set, `business.manage` at the gate (R-41.47). Dated ~10-27 in the roadmap; the taps can start now.
 
-**2 · R8 — Open dates & rates** (roadmap §2 row G): the vendor's availability and price bands on her `/v/` page; shares seat C's reminder plane; mock-first; R-41.114's wallet law (`Rs X,XX,XXX` whole figures; paise only where paise exist; no `L`/`k`).
+**2 · R8 — Open dates & rates** (roadmap §2 row **F**): the vendor's availability and price bands on her `/v/` page; shares seat C's reminder plane; mock-first; R-41.114's wallet law (`Rs X,XX,XXX` whole figures; paise only where paise exist; no `L`/`k`).
 
-**4 · R6 / R7 / R9 s3** (rows F, H, J): Instagram insights + publishing behind the `perm.*` gates; ads read; the Tech Provider click (R9) only after the counsel item F-41.121 is answered by the standard-form paragraph and R-41.130's date resolves. R-41.80: every granted permission exercised on the test account within 7 days, monthly after.
+**4 · R6 / R7 / R9 s3** (rows **H, I, J**): Instagram insights + publishing behind the `perm.*` gates; ads read; the Tech Provider click (R9) only after the counsel item F-41.121 is answered by the standard-form paragraph and R-41.130's date resolves. R-41.80: every granted permission exercised on the test account within 7 days, monthly after.
 
 **Then, when there is a seat free:** Block 09's floor (F-41.13 middleware→proxy, F-41.44/.45, F-41.113 draining the retired `victor_mode` column, F-41.143 the raw-text-instrument sweep); the soul sitting under W-1 (F-41.112 the guard's self-configuration family, F-41.127's escalation line in Victor's repertoire, the "50k" prompt leak, F-41.129 Mira's two-door greeting — couples reach the marketing line from Instagram now).
 
