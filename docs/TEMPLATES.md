@@ -28,9 +28,13 @@ The webhook spec (`TDW_05_WEBHOOK_FINAL.md`, authored 2026-07-14) described **Tw
 **THE RULE, and it binds every future URL-button filing.** At the Manager, a dynamic URL button's
 base is entered as the **base URL alone** — `https://thedreamwedding.in/v/` — and **nothing else**.
 Meta appends its own `{{1}}` to whatever is entered and stores the result. Typing `{{1}}` yourself
-files a base that ends in **two** of them. The sample-value field takes the **suffix alone**
-(`DEV440`), never a full URL. This is a filing rule, not a code rule, and no packet can cure a
-base that was typed wrong.
+files a base that ends in **two** of them. ~~The sample-value field takes the **suffix alone**
+(`DEV440`), never a full URL.~~ **F-42.194 (CE-42, 2026-09-10): that sentence was never witnessed
+at a Manager, and the Manager's validator refutes it** — a suffix-only sample is refused with
+*"Please enter a valid website URL"* and *Submit* stays grey (founder's screen, 12:59 IST). **The
+sample takes the full URL: `https://thedreamwedding.in/v/DEV440`.** It is review-only and changes
+nothing stored; the base rule above is untouched. This is a filing rule, not a code rule, and no
+packet can cure a base that was typed wrong.
 
 **WHAT META ACTUALLY HOLDS.** Both filed URL-button bases store a **literal `{{1}}`** at the end
 of the base, and the send-time parameter is **appended to it rather than substituted into it**.
@@ -448,6 +452,59 @@ is recorded in §3 as row 10's was, and no argument is made against it.
 with a variable · the pair is separated by real words · single line · Utility carries no opt-out
 line, and the vendor is the customer here, not a stranger.
 
+### 16 · `couple_broadcast` — MARKETING (filed) · marketing line · Meta name **`tdw_couple_broadcast`**
+**Added CE-42 seat G2 (2026-09-10) — R6, bodies vetoed by the chair.** **FILED 2026-09-10, ACTIVE.**
+Meta template ID **`1397634775892426`** · **Marketing as filed**, not a reclassification · dashboard
+*Active – Quality pending* (13:05 IST). Filed by the founder at the Manager (steps in
+`docs/TDW_CE42_G2C_HANDOVER.md`). Variable:
+`{{1}}` = the vendor's name as she is known to the couple. Recipients are couples she has served.
+
+> Hi, this is {{1}}. It was lovely being part of your wedding. Here is my page with my newest work and open dates. Reply STOP and I will not message you again.
+
+157 characters · **157 bytes** utf-8, ASCII only · sha256 `34372e352e4b1cc0539533f55b20bffc8e94fda0219d81d16869d0e8fe0f35e0`.
+
+Button: URL, label `See my work` (11 bytes), **dynamic**, base entered at the Manager as
+`https://thedreamwedding.in/v/` **and nothing else** (§1a, F-42.129 — Meta appends its own `{{1}}`;
+the sample is the **full** URL `https://thedreamwedding.in/v/DEV440`, F-42.194). The dynamic suffix is the vendor's page code —
+the registry arm names it `page_code`, row 13's family. **Base as Meta holds it: founder-attested,
+not photographed (2026-09-10)** — the founder confirmed both filings carry the same button shape as
+the earlier `/v/` filings, which Meta holds as `https://thedreamwedding.in/v/{{1}}` (§1a, row 13).
+So the `/v/` strip (`lib/public/metaPlaceholder.ts:52`) covers these rows on that attestation; the
+first live send's long-press copy is the wire witness, as it was for row 13.
+
+### 17 · `referral_broadcast` — MARKETING (filed) · marketing line · Meta name **`tdw_referral_broadcast`**
+**Added CE-42 seat G2 (2026-09-10) — R6, bodies vetoed by the chair.** **FILED 2026-09-10, IN
+REVIEW.** Meta template ID **`1057756639996847`** · **Marketing as filed** · *In review* at 13:06 IST;
+the founder expects it to clear within minutes. Status updates on the next Manager reading. Variable: `{{1}}` = the
+vendor's name. The ask is a pass-on: the recipient forwards the page, she is not asked to buy.
+
+> Hi, this is {{1}}. If a friend or someone in your family is getting married, I would love to hear from them. Here is my page to pass on. Reply STOP and I will not message you again.
+
+181 characters · **181 bytes** utf-8, ASCII only · sha256 `168486231d88968cf45acc513fc29f1d513ea1fb8c7db6f2818066cee97d8af2`.
+
+Button: URL, label `See my work` (11 bytes), **dynamic**, base entered at the Manager as
+`https://thedreamwedding.in/v/` **and nothing else** (§1a, F-42.129 — Meta appends its own `{{1}}`;
+the sample is the **full** URL `https://thedreamwedding.in/v/DEV440`, F-42.194). The dynamic suffix is the vendor's page code —
+the registry arm names it `page_code`, row 13's family. **Base as Meta holds it: founder-attested,
+not photographed (2026-09-10)** — the founder confirmed both filings carry the same button shape as
+the earlier `/v/` filings, which Meta holds as `https://thedreamwedding.in/v/{{1}}` (§1a, row 13).
+So the `/v/` strip (`lib/public/metaPlaceholder.ts:52`) covers these rows on that attestation; the
+first live send's long-press copy is the wire witness, as it was for row 13.
+
+**Rows 16 and 17 together — against §1, category, and what is not on the tree yet.**
+- **§1:** one variable each, so sequencing and adjacency hold trivially · neither body begins nor
+  ends with a variable (`Hi,` … `again.`) · single line · the opt-out sentence is present — the
+  same sentence row 13 carries. §1's own line that the opt-out is on `marketing_opener` *only* is
+  stale by rows 13, 16 and 17; §1 is the chair's (c-41.4) and is not edited here.
+- **Category is filed, not predicted (R-40.58).** MARKETING as filed: both are promotional in
+  Meta's frame and in plain English, and neither has a Utility shape at any wording.
+- **The STOP promise is kept on this line:** `src/lib/prospects.js:67` (the stop set) and `:223`
+  (opt-out, cross-line, then one courtesy confirmation on the marketing line, `:252`).
+- **Registry: not on the tree.** Neither name appears anywhere in `src/` or `docs/` at `548944a`.
+  The `src/lib/templates.js` entries — key, `line: 'marketing'`, `category`, the `button` arm with
+  `variable: 'page_code'` — are **R6's in 4b-2** (chair, 2026-09-10). Until they land, §8's census
+  will read these two as WABA-only, and that reading is correct.
+
 ## 3. Submission tracker
 
 All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`) and **all six were approved the same day** (the four in review cleared within minutes). `status` mirrors the registry's `status` field in `src/lib/templates.js`; all six read `approved`. `demo_invite` was approved as **UTILITY** — the tightened copy held, so no category reconciliation was needed.
@@ -470,6 +527,8 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 13 | `introduction` | `tdw_introduction` | MARKETING | **approved** | 2026-09-08 — CE-41 B1. MARKETING **as filed** (R-41.11), not a reclassification. Dashboard: Active – Quality pending. Meta ID `1757650692328688`. Its handle-only twin is chartered but unfiled (R-41.31). |
 | 14 | `referral_alert` | `tdw_referral_alert` | UTILITY | **approved** | 2026-09-08 recorded (filed 2026-09-07) — CE-41 F-41.6's first cure. Active – Quality pending. Meta ID `1526630866155035`. Wire-witnessed: 2 sent, 2 delivered, 2 read. Slot order proven by render. |
 | 15 | `introduction_reply` | `tdw_introduction_reply` | UTILITY (filed) | **not filed** | Body ruled 2026-09-10 (CE-42 G2, F-42.96). Founder files as a NEW template at the Manager, vendor line, no button; steps in `docs/TDW_CE42_G2B_HANDOVER.md`. Meta ID **owed** — recorded here on approval. |
+| 16 | `couple_broadcast` | `tdw_couple_broadcast` | MARKETING (as filed) | **approved** | 2026-09-10 — CE-42 R6, bodies vetoed by the chair. Filed and **Active – Quality pending** at 13:05 IST. Meta ID `1397634775892426`. URL button `See my work`, base `/v/` only; sample the full URL (F-42.194). Held base founder-attested. Wire-unwitnessed: no send arm; registry entry R6's (4b-2). |
+| 17 | `referral_broadcast` | `tdw_referral_broadcast` | MARKETING (as filed) | **in review** | 2026-09-10 — as row 16, same sitting. **In review** at 13:06 IST. Meta ID `1057756639996847`. |
 
 **Reading of the four (CE-41 B1, 2026-09-08).** All four filed and Active on **The Dream Wedding Direct** (`1739793260373677`) on one day, language `en`, from WhatsApp Manager by the founder. **Wire-unwitnessed:** no send arm exists for any of them, so unlike `circle_place_ready` the slot order here is proven only by the Manager's own preview render, never by a message on a handset. The first send on each is therefore also its first order proof — `variables` is ordered from the render, never from the filing form, and that reading is still owed for all four.
 

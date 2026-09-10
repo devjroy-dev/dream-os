@@ -196,12 +196,19 @@ The path is derived by mount arithmetic and is unchanged:
    scopes and are not part of the split. Five before, four after, one removed.
 7. Under **Branding → Authorised domains**, confirm `thedreamwedding.in` is present.
 
-**The env variable is a separate act and is NOT part of this packet.** `GOOGLE_OAUTH_REDIRECT_URI`
-does not exist in Railway today and §4 item 1 records that nothing in `src/` reads it — G3.1 s2
-writes that constant and its `isConfigured()` assertion. Setting a variable no code reads is how
-a dead control comes to return `true`. **Registering both URIs now costs nothing and blocks
-nothing**; the cutover to the new host happens in G3.1 s2's own packet, with the code that reads
-it.
+**The env variable is a separate act and is NOT part of this packet.** Registering both URIs
+costs nothing and blocks nothing; the cutover to the new host is its own act.
+
+**F-42.191 CORRECTED 2026-09-10 (CE-42 seat G2).** This paragraph said `GOOGLE_OAUTH_REDIRECT_URI`
+*"does not exist in Railway today"* and that *"nothing in `src/` reads it"*. Both halves were
+stale when the card ran. G3.1 s2 landed the reader: `src/lib/vendor/googleOAuth.js:57`
+(`redirectUri()` returns the variable), `:60–70` (`isConfigured()` asserts its path is
+`GOOGLE_CALLBACK_PATH`, `:31`), and it is sent at `:76` and `:99`. The variable existed on Railway
+holding the `up.railway.app` host (`docs/TDW_19_G31_S2_HANDOVER.md:25`) — Railway's own
+*"Variable overwrite detected"* dialog witnessed it 2026-09-10 12:11 IST. The cutover ran at
+4b·1 under the chair's ruling A and is recorded at §7 below. The two dated records that say the
+opposite — `docs/TDW_INFRA_GOOGLE_OAUTH.md:35` (CE-40, before the door existed) and the G3.1 s2
+handover's `:25` value — are true of their own dates and are left as written.
 
 ---
 
@@ -487,7 +494,24 @@ STEP 3 CLOSED 2026-09-10 ~01:43 IST (CE-42 · G2 · card step 3)
     last read 10 Nov 2025 (Google's cached read, not a fresh crawl).
   a 2022 sitemap.website.xml row reads "Couldn't fetch" — old site, left alone.
 
-STILL OPEN
-consent screen after the move reads: <"The Dream Wedding" | a host — if a host, this is a finding>
-Verification Centre data-access status reads: <verbatim>
+STEP 4 CLOSED 2026-09-10 12:38 IST (CE-42 · G2 · card step 5 = 4b · order as walked at B3·2 §7)
+  4b·1 12:11  Railway dream-os (production, the service carrying api.thedreamwedding.in):
+              GOOGLE_OAUTH_REDIRECT_URI OVERWRITTEN railway host → api host (F-42.191), deployed
+  4b·2 12:16  door witnessed sending it — authorize URL redirect_uri =
+              https%3A%2F%2Fapi.thedreamwedding.in%2Fapi%2Fv2%2Fvendor%2Fsolutions%2Fgoogle%2Fcallback
+              no "railway" anywhere; client 214847546988-8to1…; scope = the four
+  4b·3 12:19  railway redirect URI DELETED — ONE remains, the api. line · "OAuth client saved"
+  4b·4 12:21  dream-os-production.up.railway.app REMOVED from Authorised domains —
+              ONE remains, thedreamwedding.in · "Branding changes saved"
+  → §1's item 8 ("unpassable") is discharged: no unowned domain on the consent screen.
+
+CONSENT SCREEN — §5 item 10 CURED, proven on a real consent screen 2026-09-10 12:32–12:34 IST:
+  chooser  "Choose an account — to continue to The Dream Wedding" + TDW logo
+           (12:16, pre-verification, it read "to continue to thedreamwedding.in" — the host
+            moved from railway to ours at 4b·1; the NAME arrived with brand verification)
+  consent  "Sign in to The Dream Wedding" · "The Dream Wedding wants access to your Google
+           Account" · TDW logo · no unverified-app interstitial
+Verification Centre data-access status reads (12:28, after publish):
+  "Verification is not required since your app is not requesting any sensitive or restricted
+   scopes."
 ```

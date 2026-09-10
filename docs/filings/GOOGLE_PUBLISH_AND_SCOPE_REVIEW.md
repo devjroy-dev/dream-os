@@ -108,7 +108,7 @@ before touching the button.
 | 2 | No unowned domain on Authorised domains | **B3·1** — `api.thedreamwedding.in` replaces the `up.railway.app` dependency; TDW cannot prove ownership of Railway's domain and never could |
 | 3 | Branding accurate: app name, logo, support email, home page URI, privacy policy URI all represent the app's real identity | founder, §3 |
 | 4 | Homepage **publicly accessible**, not behind login; relevance to the app clear; describes the app's functionality; links to the privacy policy | **§6 — a finding, see below** |
-| 5 | Privacy policy on the **same domain** as the homepage, **linked from** the homepage, **linked from the consent screen**, and the two links **identical** | **A4 LANDED** (F-42.14) — `dreamos-pwa@cc109bd7` · homepage link `app/(landing)/page.tsx:864`, the string `https://thedreamwedding.in/privacy`, absolute, no trailing slash; `/terms` beside it at `:866`. The consent-screen side is §3 tap 2 and must be **the same string**. On the tree only — the surface is witnessed at §7 card 4a |
+| 5 | Privacy policy on the **same domain** as the homepage, **linked from** the homepage, **linked from the consent screen**, and the two links **identical** | **A4 LANDED** (F-42.14) — `dreamos-pwa@cc109bd7` · homepage link `app/(landing)/page.tsx:864`, the string `https://thedreamwedding.in/privacy`, absolute, no trailing slash; `/terms` beside it at `:866`. **Re-derived at `a96e2e2` (CE-42 G2, 2026-09-10): the same two strings now sit at `:797` and `:799`** — lines moved, bytes unchanged; `:864/:866` were true at `cc109bd7`. The consent-screen side is §3 tap 2 and must be **the same string**. On the tree only — the surface is witnessed at §7 card 4a |
 | 6 | Privacy policy discloses how the app accesses, uses, stores and shares Google user data | **A4 LANDED** (F-42.14) — `dreamos-pwa@cc109bd7` · `app/privacy/page.tsx:299–316`, §5 *Your Google account*, `:301` heading and `:303–315` paragraph. Read access only; the pre-A4 text that described a write the estate never held is gone |
 | 7 | OAuth clients not ready for production deleted from the project | founder: check **Clients**; there should be exactly one, `TDW Backend (dream-os production)` |
 | 8 | Owner/editor roles and the support + developer contact emails current | founder — Google emails these addresses and a missed mail pauses the review |
@@ -120,6 +120,15 @@ infra seat and is now the single thing standing between the estate and a durable
 ---
 
 ## 3 · BRAND VERIFICATION AND PUBLISH — the taps, in order, for a phone
+
+**⚠ THE CONSOLE'S ORDER IS NOT THE ORDER BELOW (CE-42 ruling, 2026-09-10).** While the app is in
+**Testing**, Google offers **no** *Verify branding* control: Branding and the Verification centre
+both read *"Verification is not required since your app is configured with a testing publishing
+status"* (witnessed 12:22 IST). Taps 3–5 cannot run before tap 6. **The order walked, and the order
+to use:** 1 → 2 → **6 (Publishing status → Production)** → read the Verification centre → **3–5
+(Verify branding, read, Publish branding)** → 7 → 8. Tap 4's rule survives the swap intact: **no
+grant is minted over a failure** — tap 8 waits on *verified*. If the Verification centre demands a
+data-access review or binds a user cap, stop; the chair rules before tap 3. Recorded at §7 and §8.
 
 Runs on every branch. Every console URL must be opened as **`dev@thedreamwedding.in`** — but
 **the `authuser` index is profile-specific and is not a constant.** This packet was written
@@ -251,7 +260,14 @@ Shots 6 and 7 **each** discharge requirement 4 for one scope. A video showing on
 
 **THIS SHOT LIST IS NOT EXECUTABLE TODAY.** No `googleOAuth.js` exists, no code reads a redirect
 URI, no *Connect Google* control has been built — `TDW_INFRA_GOOGLE_OAUTH.md` §4 item 1 records
-all of it as owed to G3.1 s2. **The same rule that blocks B2·3 blocks this**: a permission for a
+all of it as owed to G3.1 s2.
+
+**F-42.191, SECOND SITE — STALE, 2026-09-10 (CE-42 seat G2).** The paragraph above is F-42.191's
+claim in a second file, and it is not in the original filing; recorded so the cure does not close
+half of it. All three now exist: `src/lib/vendor/googleOAuth.js` (reader `:57`, assertion
+`:60–70`), and *Connect Google* at `dreamos-pwa app/vendor/(shell)/your-website/screen.tsx:596`
+(`a96e2e2`), walked to a live grant 2026-09-10 (§8). The shot list is executable if Branch B ever
+applies. Branch A is live, so it does not. **The same rule that blocks B2·3 blocks this**: a permission for a
 feature that does not exist cannot be filmed. On Branch B this packet waits for G3.1 s2's door.
 **On Branch A it does not wait for anything**, which is the second reason the branch reading at
 §0 is the most valuable tap in B3.
@@ -281,6 +297,13 @@ things before §3 step 3:
 
 If either fails, it is a byte on a surface and therefore **A4's** — the same rider that carries
 the privacy words, which is the tidy outcome rather than a second one.
+
+**READ 2026-09-10 (CE-42 G2, card step 4 / 4a).** On the tree at `dreamos-pwa@a96e2e2`: footer
+`Privacy` → `https://thedreamwedding.in/privacy` at `app/(landing)/page.tsx:797`, `Terms` at `:799`;
+`/privacy` §5 *Your Google account* at `app/privacy/page.tsx:301`. On the surface: **founder's
+attestation** that the footer and §5 read as required — no screenshot was pasted for this one
+check, and it is recorded as attested, not photographed. Google's own automated brand check
+passed against this homepage at 12:29 IST (§8), which is the reading that matters to the review.
 
 ---
 
@@ -312,10 +335,34 @@ this packet's.
      This walk is the witness for §2 items 5 and 6 and for §6's homepage finding — the tree
      says landed, the surface outranks the tree.
    - Paste one screenshot of each page.
+
+   ✅ **CLOSED 2026-09-10 12:02 IST.** One client, `TDW Backend (dream-os production)`, Web
+   application, created 7 Sept 2026 · project number `214847546988` witnessed as the client-ID
+   prefix · IAM: one principal, `dev@thedreamwedding.in`, **Owner** + Organisation Administrator,
+   inherited from `thedreamwedding.in` · developer contact `dev@thedreamwedding.in` (Branding,
+   12:21) · footer and §5: tree + founder's attestation (§6). This Chrome profile reaches `dev@`
+   at **`authuser=1`**; without it the console opens the default account and reads the project as
+   permission-denied (witnessed 11:49 — nothing changed there).
 5. **4b · Publish — one sitting.** B3·2 §3, taps 1–8. **Tap 8 is not cosmetic:** the consent
    walk as `dev@thedreamwedding.in` is the grant that mints the refresh token step 5 measures.
    Skip it and day eight reads nothing. Paste **Publishing status = Production**, with the date.
-6. **Day 8** — the chair hands the check line on that day, not before (conditional-withheld).
+
+   ✅ **CLOSED 2026-09-10 12:38 IST. THE ORDER AS WALKED** (chair's rulings A, B, C, D and the
+   4b·5 order ruling — the console forced it, §3 head):
+   1 · Railway `GOOGLE_OAUTH_REDIRECT_URI` → the `api.` host, deployed (12:11) ·
+   2 · the door witnessed sending `api.` in the authorize URL (12:16) ·
+   3 · railway redirect URI deleted, one remains (12:19) ·
+   4 · railway domain off Authorised domains, one remains (12:21) ·
+   7 · **Publish app → In production** (12:28) ·
+   Verification centre read (12:28) — stop rule **not** triggered ·
+   5 · **Verify branding** → verified (12:28–12:29) ·
+   6 · **Publish branding** → *"verified and is being shown to users"* (12:29) ·
+   8 · consent screen reads **The Dream Wedding** (12:32 — on a state minted at 12:16, **not
+   allowed**: the state TTL is ten minutes, `igOAuth.js:167`, checked `:228`, so that tab was dead) ·
+   9 · fresh Connect, **Allow** (12:34:53) → `?google=connected` → room reads *Connected* (12:38).
+   Step numbers are the founder's 4b card; B3·1 §7 and §8 below carry the readings.
+6. **Day 8** — **2026-09-18, after 12:34:53 IST** (07:04:53 UTC, eight days from the grant's
+   `connected_at`). The chair hands the check line on that day, not before (conditional-withheld).
 7. **The code turn** — `business.manage` at the gate, R-41.47. Chartered only after step 5
    reads green. Withheld.
 
@@ -335,13 +382,34 @@ BRANCH LIVE: A — all five scopes non-sensitive, founder's screen 2026-09-08, r
   2026-09-10 before the removal. F-41.8 CLOSED.
 after the removal: four scopes remain. Only business.manage was removed (R-41.47).
 
-brand verification: <Ready to publish | failed: reason>   verified <DATE>
-branding published <DATE>  (within the 7-day validity window: yes/no)
-publishing status → In production  <DATE>
-console after publishing: data-access review required <yes/no> · user cap shown <n/none>
-consent screen reads: <"The Dream Wedding" | a host — if a host this is a finding>
-tester warning screen gone: <yes/no>
-refresh token durable (first grant + 8 days, still live): <yes/no/not yet>
+publishing status → In production  2026-09-10 12:28 IST
+  (dialog "Push to production?" — plain Confirm; its verification clause fired on the LOGO only:
+   domains 1 of >10, scopes all non-sensitive. Banner after: "Your app requires verification".)
+brand verification: verified 2026-09-10 12:28–12:29 IST (automated, minutes)
+branding published 2026-09-10 12:29 IST  (within the 7-day validity window: yes — same sitting)
+  Branding reads: "Your branding has been verified and is being shown to users."
+console after publishing: data-access review required NO
+  Verification centre: "Verification is not required since your app is not requesting any
+  sensitive or restricted scopes."
+  user cap shown: YES — "1 user / 100 user cap" (Audience, 12:37) — NOT BINDING: Google's own
+  text applies it only to unapproved sensitive or restricted scopes, and none is requested.
+  Binds only if a sensitive scope is ever added before data-access verification; business.manage
+  read non-sensitive (F-41.8) — the code turn re-reads Data access before re-declaring it.
+consent screen reads: "The Dream Wedding" — "Sign in to The Dream Wedding", TDW logo (12:32/12:34)
+tester warning screen gone: yes — no unverified-app interstitial
+THE GRANT (vendor, DEV440 via the pwa Connect — ruling D):
+  vendor_google_connections · google_email dev@thedreamwedding.in · has_refresh_token TRUE
+  scope: siteverification userinfo.email webmasters.readonly openid
+  connected_at 2026-09-10 07:04:53.362 UTC = 12:34:53 IST  ← day 0
+  house row (vendor_id NULL): 0 — OWED, not walked (F-40.261, `/google/connect?house=1`)
+refresh token durable (first grant + 8 days, still live): not yet — read 2026-09-18 after 12:34:53 IST
+F-42.192 OPEN — the callback returns to `/vendor/storefront` (dream-os `src/api/vendor/solutions/
+  google.js:43`, RETURN_PATH; redirect at `:44`), and the only reader of `?google=` is
+  `dreamos-pwa app/vendor/(shell)/your-website/screen.tsx:316` (`a96e2e2`); nothing under
+  `app/vendor/(shell)/storefront/` reads it. A vendor who connects lands on Storefront and never
+  sees the connect confirmed (witnessed 12:34, `/vendor/storefront?google=connected`); the room
+  reads Connected only on a revisit, from `getStatus`/`connected_at`. Cure unruled — which side
+  moves is the chair's call.
 
 Branch B only — justifications pasted <DATE> · demo video <YouTube unlisted link>
 ```
