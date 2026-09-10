@@ -37,6 +37,7 @@ const {
   MONEY_STATE_RE, victorClaim, leadSendClaim, moneyGrounded, victorCostumeLine,
   structurallyImpossible, containsVetoedLine,
   extractAmounts, // F-42.132 arm (1) — the trigger is the figure, not the verb
+  extractSpokenDates, // F-42.147 — the date check rides the trigger, not the verb
 } = require('../../lib/wireGuardVictor');
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
@@ -1994,7 +1995,54 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
     // speaks figures the estate cannot ground, and whether those planes want
     // books of their own. That is a later charter; this limb only makes it
     // countable.
-    if (moneyStateSentence) {
+    // ── F-42.147 · THE DATE CHECK IS DOOR-INDEPENDENT (chair, r3) ─────────────
+    // 2026-09-10 04:44:25, on the record: 「 Yes. Rs 5,000 to the assistant —
+    // logged 1 September as a payment to Swati. 」 classified `unfenced`. The
+    // answer was TRUE and it shipped, but it shipped through the THIRD DOOR,
+    // which does not run the fence — SO THE DATE WAS NEVER CHECKED. Had he said
+    // 10 September, the 00:52:38 lie would have shipped intact with the fence
+    // standing aside.
+    //
+    // The cause was a vocabulary race: `stativeDone` fires on 「 logged as
+    // assistant payment 」 and NOT on 「 logged 1 September as a payment 」, so
+    // which door a true sentence took depended on word order. A guard whose
+    // reach depends on phrasing is a guard that will keep being outrun — this
+    // seat's §24 cell used the first phrasing because it came from the 03:31:35
+    // bytes, and the walk changed the words the next morning (e-4, twice).
+    //
+    // So the check moves to the TRIGGER. A reply carrying BOTH a spoken date and
+    // a spoken figure, on a turn where the EXPENSE BLOCK IS PRESENT, is a claim
+    // about a held row whatever verb introduces it. `stativeDone` stays as one
+    // route in, not the only one.
+    //
+    // WHAT ARMS IT IS THE FIGURE, NOT THE BLOCK'S PRESENCE (c-42.30). The first
+    // cut armed on `expenseFacts` being present — and DERIVED AT THE TREE, that
+    // is every vendor turn: `fetchExpenseFacts` runs unconditionally at both PWA
+    // doors and `buildExpenseFacts` unconditionally in the WA lane, so "the
+    // expense block is the one present" describes a distinction the code cannot
+    // make. Built that way, a relay draft quoting 「 Rs 80k by 13 August 」 and a
+    // lead board reading 「 Rs 4,50,000 budget, filed August 5th 」 both convicted:
+    // real dates, real figures, neither an expense row.
+    //
+    // So the FIGURE names the plane. At least one spoken figure held by the
+    // EXPENSE handles means the sentence is about an expense row, and then its
+    // dates are the expense book's business. Rs 5,000 is a row of his; Rs 80k and
+    // Rs 4,50,000 are not, and the expense book has no opinion about a date beside
+    // them.
+    //
+    // DECLARED HOLE, NUMBERED RATHER THAN GUESSED (F-42.152): a wholly invented
+    // expense claim — an unheld figure AND an unheld date, 「 Rs 7,200 on 3
+    // September 」 alone — does not arm this check and lands `unfenced`. Closing it
+    // by convicting any unheld figure beside a date would convict the relay draft
+    // too, which is the 33 rows. The hard case goes to the next guard sitting with
+    // F-42.147's sibling rather than shipping as a seat's guess.
+    const expenseAmountSet = new Set(
+      (((ctx && ctx.expenseFacts && ctx.expenseFacts.handles) || {}).amounts || []).map(String),
+    );
+    const namesAnExpenseRow = spokenFigures.some((f) => expenseAmountSet.has(String(f)));
+    const datedFigureClaim = namesAnExpenseRow && extractSpokenDates(eligible).length > 0;
+
+    if (moneyStateSentence || datedFigureClaim) {
       // F-42.97/.98: ONE fence call over BOTH blocks (chair ruling 5). Equality
       // merges — a figure held on either plane is his, and the fence asks
       // "invented?", not "which plane". ARM B's addend pools stay per-block

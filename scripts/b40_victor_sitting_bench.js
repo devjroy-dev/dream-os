@@ -949,6 +949,61 @@ function classify(reply, message, facts, mode) {
           fs.readdirSync(path.join(ROOT, 'db/migrations')).filter((f) => /^016[3-9]/.test(f)).length === 0);
       }
 
+      // ── §27 · F-42.147 · THE DATE CHECK LEFT THE VERB (r3) ─────────────────────
+      // ON THE RECORD 2026-09-10 04:44:25: 「 Yes. Rs 5,000 to the assistant —
+      // logged 1 September as a payment to Swati. 」 classified `unfenced`. The
+      // answer was TRUE and it shipped — but through the THIRD DOOR, which does
+      // not run the fence, SO THE DATE WAS NEVER CHECKED. Had he said 10
+      // September the 00:52:38 lie would have shipped with the fence standing
+      // aside. The cause was a vocabulary race: `stativeDone` fires on 「 logged as
+      // assistant payment 」 and not on 「 logged 1 September as a payment 」, and
+      // this seat's §24 cell used the first because it came from the 03:31:35
+      // bytes. The walk changed the words the next morning. e-4, twice.
+      //
+      // WHAT ARMS THE CHECK IS THE FIGURE (c-42.30), not the block's presence: the
+      // first cut armed on `expenseFacts` being present, and that is EVERY vendor
+      // turn, so a relay draft and a lead board both convicted on real dates.
+      console.log('\n  §27 F-42.147 — a dated figure is a claim about a row, whatever verb carries it');
+      const P0444 = 'Yes. Rs 5,000 to the assistant — logged 1 September as a payment to Swati.';
+      T('the 04:44:25 production bytes GROUND — the door no longer depends on phrasing',
+        K(P0444, 'did I log 5000') === 'fact_grounded');
+      T('  …and stativeDone does NOT fire on them (the race this ends)',
+        !wgv.MONEY_STATE_RE.test(P0444));
+      T('  …the 10 September variant CONVICTS', K(P0444.replace('1 September', '10 September'), 'did I log 5000') === 'costume');
+      T('F-42.147\'s own sibling convicts — "Already logged" with an invented date',
+        K('Already logged. Rs 5,000 out on 10 September for assistant payment.', 'did I log 5000') === 'costume');
+      T('  …and its TRUE form grounds',
+        K('Already logged. Rs 5,000 out on 1 September for assistant payment.', 'did I log 5000') === 'fact_grounded');
+      T('ONE HELD FIGURE ARMS THE CHECK — a second, unheld one still convicts',
+        K('Rs 5,000 on 1 September and Rs 7,200 on 3 September.', 'what did I spend') === 'costume');
+      T('THE RELAY DRAFT IS UNTOUCHED — Rs 80k by 13 August is not an expense row',
+        K('Draft ready for approval:\n\n"Please confirm the shoot for Rs 80k by 13 August, else I will take other bookings."\n\nSend this to Priya?', 'message priya') === 'unfenced');
+      T('  …and a LEAD BUDGET with a date is untouched too',
+        K('Priya — new lead (Rs 4,50,000 budget), filed August 5th.', 'what leads') === 'unfenced');
+      // F-42.152, DECLARED AND BENCHED AS A GAP RATHER THAN HIDDEN. A claim built
+      // ENTIRELY of unheld material does not arm the check. Convicting any unheld
+      // figure beside a date would convict the relay draft — the 33 rows — so the
+      // hard case is the next guard sitting's, not a seat's guess. This cell will
+      // go RED when it is cured, and that is the point of it.
+      T('F-42.152 (DECLARED GAP): a wholly invented expense claim lands unfenced',
+        K('Rs 7,200 on 3 September.', 'what did I spend') === 'unfenced');
+
+      // ── §28 · F-42.151 · A PHONE NUMBER IS NOT A RUPEE FIGURE ──────────────────
+      // Seen in `spoken_figures` on the record at 04:44:48: ["918595986978",
+      // "80,000","42,000"]. Noise in the unfenced door; A FALSE CONVICTION IN THE
+      // MONEY-STATE DOOR, because no phone is a held amount.
+      console.log('\n  §28 F-42.151 — the vendor\'s own lead phone stopped being money');
+      T('a +E.164 number is not extracted', wgv.extractAmounts('+918595986978').length === 0);
+      T('a bare ten-plus ungrouped run is not extracted', wgv.extractAmounts('918595986978').length === 0);
+      T('a GROUPED long figure is still money — 10,00,00,000',
+        JSON.stringify(wgv.extractAmounts('Rs 10,00,00,000')) === '["10,00,00,000"]');
+      T('the Rs-prefixed branch is untouched — the prefix is the author saying it is money',
+        JSON.stringify(wgv.extractAmounts('Rs 1,52,000')) === '["1,52,000"]' && JSON.stringify(wgv.extractAmounts('152000')) === '["152000"]');
+      T('THE SENTENCE THAT WOULD HAVE BEEN DESTROYED now grounds',
+        K('Priya Nair owes you Rs 42,000 — reach her on +918595986978.', 'who owes me') === 'fact_grounded');
+      T('  …and a figure beside a phone is still read',
+        JSON.stringify(wgv.extractAmounts('Message sent to +918595986978 at Rs 80,000.')) === '["80,000"]');
+
       // ── §22 · F-40.2 · THE 00:53:25 SPECIMEN, PINNED (cure deferred to Block 09) ──
       // kind=corroborated_lookup, SEVEN donna_find, and: "The invoices I pulled from
       // your book don't exist in the records yet." THE INVOICES EXIST. Donna reads
@@ -978,6 +1033,23 @@ function classify(reply, message, facts, mode) {
 
   const MUT = [
     {
+      name: 'MD1 arm the date check on block PRESENCE again (the refused first cut)',
+      file: 'src/api/vendor-engine/chat.js',
+      from: "    const datedFigureClaim = namesAnExpenseRow && extractSpokenDates(eligible).length > 0;",
+      to: "    const datedFigureClaim = expenseAmountSet.size > 0 && spokenFigures.length > 0 && extractSpokenDates(eligible).length > 0;",
+      probe: `const D = 'Draft ready for approval:\\n\\n"Please confirm the shoot for Rs 80k by 13 August, else I will take other bookings."\\n\\nSend this to Priya?';
+  const v = C(D,'message priya'); OUT(!!v && v.specimen === true);`,
+      expect: 'the relay draft convicts on a real date — c-42.30 exactly, and the 33 rows with it',
+    },
+    {
+      name: 'MD2 drop F-42.151 — the lead phone is money again',
+      file: 'src/lib/wireGuardVictor.js',
+      from: "    if (PHONE_SHAPED.test(m[2])) continue;",
+      to: "    if (false) continue;",
+      probe: `const v = C('Priya Nair owes you Rs 42,000 — reach her on +918595986978.','who owes me'); OUT(!!v && v.specimen === true);`,
+      expect: 'a TRUE money sentence is destroyed because it names her number',
+    },
+    {
       name: 'MC6 remove the third door — the fence rules on planes it has no books for',
       file: 'src/api/vendor-engine/chat.js',
       from: "    } else {\n      kind = 'unfenced';\n    }",
@@ -995,7 +1067,13 @@ function classify(reply, message, facts, mode) {
       // actually holds the line.
       from: "    !moneyStateSentence && !claimsAct && !jotClaim && !narrated && !presenceClaim",
       to: "    !moneyStateSentence && !claimsAct && !jotClaim && !narrated",
-      probe: `const v = C('I have that on file already — Rs 5,000 out on 10 September for assistant payment, confirmed by you.','did I log 5000'); OUT(!!v && v.kind === 'unfenced');`,
+      // RE-AIMED IN THE RUN (r3). The original probe used the 00:52:38 specimen,
+      // which F-42.147 now convicts a SECOND way — held figure plus an unheld date
+      // arms the expense check — so the mutation could no longer fall for the
+      // reason it names. That double cover is a good design fact and a bad cell.
+      // Re-aimed at a presence claim where `!presenceClaim` is the ONLY guard: a
+      // figure on no plane, and no date to arm anything.
+      probe: `const v = C('I have that on file already — Rs 75,000 for the December shoot.','did I quote her'); OUT(!!v && v.kind === 'unfenced');`,
       expect: 'a live conviction is RETIRED by a new class absorbing it — presence_claim goes quiet',
     },
     // ── RIDER r2 · THE WALK'S RED, DRIVEN BOTH WAYS ─────────────────────────────

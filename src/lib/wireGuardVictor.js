@@ -341,9 +341,35 @@ function extractAmounts(text) {
   // there; an inventor could. Narrower than convicting every year, wider than
   // convicting none. Filed rather than hidden.
   const YEAR_SHAPED = /^(?:19|20)\d{2}$/;
-  while ((m = AMOUNT_TOKEN_RE.exec(String(text || '')))) {
+  // ── F-42.151 · A PHONE NUMBER IS NOT A RUPEE FIGURE ─────────────────────────
+  // Seen on the record 2026-09-10 04:44:48, in `spoken_figures`:
+  //   ["918595986978","80,000","42,000"]
+  // Twelve digits, so the bare `\d{4,}` branch took the vendor's own lead phone
+  // as money. In the `unfenced` door that is only noise. IN THE MONEY-STATE DOOR
+  // IT IS A FALSE CONVICTION WAITING ON A PHRASING: 「 Priya Nair owes Rs 42,000 —
+  // reach her on +918595986978 」 is TRUE, and no phone is a held amount, so the
+  // fence would destroy it.
+  //
+  // TWO DISCRIMINATORS, BOTH ALREADY IN THE TEXT and neither guessed:
+  //   · a `+` immediately before the run — an E.164 number, never a price
+  //   · TEN OR MORE digits with NO grouping — the estate renders every figure
+  //     through `rupees()`, which groups above three digits, so an ungrouped
+  //     ten-digit run cannot be a figure this estate wrote
+  // A GROUPED long figure is untouched: `10,00,00,000` keeps its commas and stays
+  // money. The Rs-prefixed branch is untouched entirely — `Rs 918595986978` would
+  // still read, because the prefix is the author saying it is money.
+  const PHONE_SHAPED = /^\d{10,}$/;
+  const src = String(text || '');
+  while ((m = AMOUNT_TOKEN_RE.exec(src))) {
     if (m[1]) { out.push(m[1]); continue; }
-    if (m[2] && !YEAR_SHAPED.test(m[2])) out.push(m[2]);
+    if (!m[2]) continue;
+    if (YEAR_SHAPED.test(m[2])) continue;
+    if (PHONE_SHAPED.test(m[2])) continue;
+    // The character immediately before the match — a `+` makes it a dialled
+    // number whatever its length.
+    const at = m.index + m[0].indexOf(m[2]);
+    if (at > 0 && src[at - 1] === '+') continue;
+    out.push(m[2]);
   }
   // F-42.134: shorthand joins the SAME list, already normalised to rupees, so
   // every consumer — the equality set, ARM B's admission, the figure trigger —

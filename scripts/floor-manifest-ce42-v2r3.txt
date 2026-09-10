@@ -1,0 +1,19 @@
+# CE-42 · SEAT V-2 · RIDER r3 — DECLARED MANIFEST (F-14.16)
+# base: 7160b5f
+#
+# F-42.147 (the date check leaves the verb) · F-42.151 (a phone is not a figure).
+# Both were found ON THE RECORD by the 04:43-04:49 walk, not by a bench.
+#
+# NO MIGRATION. Nothing new is persisted; r2's spoken_figures already carries the
+# evidence both findings were read off.
+#
+# ONE CELL RE-AIMED IN THE RUN, recorded beside itself: MC7's probe used the
+# 00:52:38 specimen, which F-42.147 now convicts a SECOND way, so the mutation
+# could no longer fall for the reason it names. Double cover is a good design fact
+# and a bad cell.
+
+src/lib/wireGuardVictor.js
+src/api/vendor-engine/chat.js
+scripts/b40_victor_sitting_bench.js
+scripts/floor-manifest-ce42-v2r3.txt
+docs/HANDOVER_CE42_V2R3.md
