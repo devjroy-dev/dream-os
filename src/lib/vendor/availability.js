@@ -204,4 +204,95 @@ async function listBlocks(supabase, vendorId, params) {
   return { ok: true, blocks: (rows || []).map(toBlock), total: count || 0 };
 }
 
-module.exports = { blockDate, unblockDate, listBlocks, BLOCK_KIND };
+// ── datePulse — G4.4's DEMAND PULSE, R8-2 (ruled α) ────────────────────────
+//
+// `public.date_checks` (0160) has accumulated since R8-1 and NOTHING READ IT.
+// This is its first and only reader.
+//
+// ⚠ THE GROUPING IS DONE HERE, IN JS, AND THAT IS RULED RATHER THAN LAZY.
+// PostgREST has no GROUP BY, so the two honest shapes were (α) select the rows
+// and fold them here, or (β) a SQL function in a migration. α was ruled: it
+// needs no migration, no index and no new SQL surface, and it is served EXACTLY
+// by the index `0160` already shipped — `date_checks_vendor_checked_idx
+// (vendor_id, checked_at desc)`, which is a vendor-keyed range on `checked_at`,
+// which is precisely the predicate below. O-2 is discharged: the date-keyed
+// index the RATE NUDGE will want still has no caller and still does not ship.
+//
+// ⚠ THE ARITHMETIC LIVES HERE AND THE ROUTE COMPUTES NOTHING — the b58 lesson,
+// stated at `public/availability.js:87`. A bench that re-folds these rows in its
+// own file is testing its own copy and stays green through the defect. `b67` §7
+// imports THIS function, so a mutation to the fold reddens it.
+//
+// ── THE CAP, AND WHY A COUNT MAY WEAR A `+` (RULED: N = 1000) ──────────────
+// 1000 is PostgREST's own default max-rows, so a bare read was already capped
+// at it — silently. Naming it makes the cap a fact the wire can carry instead
+// of a truncation nobody downstream could see. When it bites, EVERY count in
+// the response is a FLOOR, not a total, because the rows we did not read could
+// have belonged to any date. So `truncated` is one flag for the whole response
+// and never per-date, and the glass renders every figure with a trailing `+`.
+//
+// ⚠ AT EXACTLY 1000 REAL ROWS THIS SAYS `truncated:true` AND IS WRONG BY NOTHING.
+// `>=` cannot tell a full page from a full page with more behind it. The error is
+// in the safe direction — «48+» when the truth is «48» understates nothing and
+// claims nothing false — and buying certainty costs a second COUNT query on a
+// door that runs one.
+//
+// ── WHAT IS NOT FILTERED, AND IT IS DELIBERATE ─────────────────────────────
+// `vendors.date_check_enabled` IS NOT CONSULTED. The switch governs whether the
+// PUBLIC DOOR answers a stranger; it does not govern whether she may see demand
+// that already arrived. A vendor who turned the check off on Tuesday still asked
+// a real question of Monday's rows, and blanking them would be the room telling
+// her that last week did not happen. Reverse in one line if the chair reads it
+// the other way.
+//
+// R-40.118, carried from `0160`'s writer: PAST DATES ARE COUNTED. A stranger
+// asking about a date behind us is still demand. The window below is on
+// `checked_at` — WHEN SHE ASKED — and never on `date`, which is WHAT SHE ASKED
+// ABOUT. Those are different questions and only the first has a week in it.
+const PULSE_WINDOW_DAYS = 7;
+const PULSE_MAX_ROWS    = 1000;
+
+async function datePulse(supabase, vendorId, params) {
+  const p    = params || {};
+  const days = Number.isFinite(p.days) && p.days > 0 ? Math.floor(p.days) : PULSE_WINDOW_DAYS;
+  const cap  = Number.isFinite(p.limit) && p.limit > 0 ? Math.floor(p.limit) : PULSE_MAX_ROWS;
+
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+
+  const { data, error } = await supabase
+    .from('date_checks')
+    .select('date')
+    .eq('vendor_id', vendorId)
+    .gte('checked_at', cutoff)
+    .order('checked_at', { ascending: false })
+    .limit(cap);
+
+  // A read that failed is NOT an empty week. The caller must be able to tell
+  // «nobody asked» from «we could not look», because the first is a sentence the
+  // room may speak and the second is one it must not.
+  if (error) return { ok: false, error: error.message };
+
+  const rows = data || [];
+
+  const counts = new Map();
+  for (const r of rows) {
+    if (!r || !r.date) continue;
+    counts.set(r.date, (counts.get(r.date) || 0) + 1);
+  }
+
+  // Busiest first; ties by the NEARER date, which is the one she can still act
+  // on. `localeCompare` is not used — these are ISO strings and lexical order IS
+  // chronological order for them, with no locale able to disagree.
+  const dates = Array.from(counts, ([date, checks]) => ({ date, checks }))
+    .sort((a, b) => (b.checks - a.checks) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  return {
+    ok: true,
+    window_days: days,
+    truncated: rows.length >= cap,
+    dates,
+    total: rows.length,
+  };
+}
+
+module.exports = { blockDate, unblockDate, listBlocks, datePulse, BLOCK_KIND, PULSE_WINDOW_DAYS, PULSE_MAX_ROWS };

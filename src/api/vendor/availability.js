@@ -41,7 +41,50 @@ const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-const { blockDate, unblockDate, listBlocks } = require('../../lib/vendor/availability');
+const { blockDate, unblockDate, listBlocks, datePulse } = require('../../lib/vendor/availability');
+
+// ─── GET /api/v2/vendor/availability/pulse ─────────────────────────────
+//
+// TDW_19 G4.4 · R8-2 — THE DEMAND PULSE. The first and only reader of
+// `public.date_checks` (0160, R8-1).
+//
+// 200 { ok, window_days, truncated, dates: [{ date, checks }], total }
+//
+// ⚠⚠ THIS ROUTE MUST STAY ABOVE `/:vendorId` AND THE REASON IS MECHANICAL, NOT
+// STYLISTIC. Express matches in declaration order, and `/:vendorId` matches the
+// literal segment `pulse` perfectly happily. Declared below it, this handler is
+// never reached: the request falls into the block-list door, `resolveVendor`
+// compares the JWT's vendor id against the string `'pulse'`, and the vendor gets
+// a 403 on her own pulse with nothing in any log to say why. `b67` §8 asserts
+// the order by source position and reddens if the two are ever swapped.
+//
+// AUTH IS MODE A — resolveVendor WITH NO PARAM. The vendor comes from the JWT
+// and there is no `:vendorId` on this address to compare it to. That is
+// deliberate rather than an omission: these rows are a private fact about who is
+// interested in her, and a door that took an id in the path is a door someone
+// will one day call with somebody else's.
+//
+// NO RATE LIMITER. The public writer is bucketed at its own door
+// (`public/availability.js:167`, crew's LIMIT_IP_MISS); this is an authenticated
+// read of her own rows and shares nothing with that lane.
+router.get('/pulse', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+
+  // The route computes NOTHING. Every figure below is `datePulse`'s, so the
+  // bench drives the shipped fold rather than a restatement of it.
+  const result = await datePulse(supabase, req.vendor.id);
+
+  // A failed read is a 500, never `dates: []`. An empty week and an unreadable
+  // one are different sentences and the room must not be handed the wrong one.
+  if (!result.ok) return errRes(res, 500, result.error);
+
+  return okRes(res, {
+    window_days: result.window_days,
+    truncated:   result.truncated,
+    dates:       result.dates,
+    total:       result.total,
+  });
+}));
 
 // ─── GET /api/v2/vendor/availability/:vendorId ─────────────────────────
 //

@@ -258,26 +258,63 @@ function drive(db, code, date, ip) {
       describeDate({ supabase: makeDb({ queryErr: true }), vendorId: VID, date: DATE }),
       describeDate({ supabase: makeDb({ vendor: OPEN, rows: [SANGEET] }), vendorId: VID, date: DATE }),
     ]);
+    // ⚠ AMENDED BY LABEL AT R8-2, NOT DELETED. The ASSERTION is unchanged and
+    // still GREEN — `describeDate` still never returns falsy, and `occupancy.js`
+    // was not touched. What changed is what follows from it: R8-1 recorded this
+    // as the reason `if (!out)` was unreachable; R8-2 RETIRED that condition
+    // with its reader, so this cell now guards the retirement instead. If a later
+    // seat teaches `describeDate` to return falsy, this reddens and the door's
+    // missing branch is found here rather than in production.
     outs.every((o) => o && typeof o === 'object')
-      ? P('§4.1 F-42.47 — `describeDate` never returns falsy', 'so `if (!out)` in the door is unreachable')
+      ? P('§4.1 F-42.47 — `describeDate` never returns falsy', 'which is why the door carries no `!out` branch — retired at R8-2')
       : F('§4.1 F-42.47 — `describeDate` never returns falsy', JSON.stringify(outs));
 
-    // F-42.48: a verify_failed comes back wearing `occupancy:'off'`, which the
-    // door refuses at the R-40.78 gate — so a dropped connection INSIDE the
-    // checker is answered as "no such vendor", the exact thing the door's own
-    // header (:146-150) says must never happen. It is stated, not cured: the
-    // cure changes what a stranger sees and is its own packet's ruling.
-    const vf = outs[1];
-    vf && vf.blocked === null && vf.occupancy === 'off' && vf.reason === 'verify_failed'
-      ? P('§4.2 F-42.48 — verify_failed wears `occupancy:off`', 'the door 404s a read failure at the R-40.78 gate')
-      : F('§4.2 F-42.48 — verify_failed wears `occupancy:off`', JSON.stringify(vf));
+    const src41 = codeOf(read('src/api/public/availability.js'));
+    !/if\s*\(\s*!out\s*\)/.test(src41)
+      ? P('§4.1b F-42.47 — the dead `!out` condition is gone from the door', 'retire-with-the-reader')
+      : F('§4.1b F-42.47 — the dead `!out` condition is gone from the door', 'the unreachable branch is still standing');
 
+    // ⚠ AMENDED BY LABEL AND TIGHTENED AT R8-2. R8-1 filed this as the STATEMENT
+    // of the defect: a verify_failed wears `occupancy:'off'` and the door's bare
+    // gate refused it as a miss. The cure did not change what `describeDate`
+    // returns — it changed what the DOOR reads off it. So this cell now pins the
+    // DISCRIMINATOR the cure depends on: `blocked === null` is what separates
+    // `unknown()` from `off()`, and if occupancy.js ever stopped setting it the
+    // door's gate would silently start 404-ing read failures again. `reason` is
+    // still asserted, but it is no longer what anything branches on.
+    const vf = outs[1];
+    const off42 = await describeDate({ supabase: makeDb({ vendor: { ...OPEN, category: 'planning' } }), vendorId: VID, date: DATE });
+    vf && vf.blocked === null && vf.occupancy === 'off' && vf.reason === 'verify_failed'
+      && off42 && off42.occupancy === 'off' && off42.blocked === false
+      ? P('§4.2 F-42.48 — `blocked:null` separates a dropped read from a real refusal', 'both wear occupancy:off; only one is unknown')
+      : F('§4.2 F-42.48 — `blocked:null` separates a dropped read from a real refusal', JSON.stringify({ vf, off42 }));
+
+    // ⚠ AMENDED BY LABEL AT R8-2 — THE TRIPWIRE FIRED AND THIS IS WHAT IT NOW
+    // GUARDS. R8-1 wrote this cell to assert the DEFECT (404, no row) and said in
+    // its own reason that it "reddens the day the fourth answer becomes
+    // reachable". That day is this one. The cell was not deleted and its subject
+    // did not move: it still drives the real router over a checker whose read
+    // drops. It now asserts the CURE, in all four of its parts.
     _resetBuckets();
     const db = makeDb({ vendor: OPEN, queryErr: true });
     const out = await drive(db, CODE, DATE);
-    out.status === 404 && db.inserts.length === 0
-      ? P('§4.3 F-42.48 driven at the door — 404, no row', 'reddens the day the fourth answer becomes reachable')
-      : F('§4.3 F-42.48 driven at the door — 404, no row', JSON.stringify({ status: out.status, inserts: db.inserts.length }));
+    const b = out.body || {};
+    out.status === 200
+      && b.ok === true
+      // 1. the fourth answer, not a miss — `blocked:null` is what the leaf reads.
+      && b.blocked === null
+      // 2. and it is `:189`'s body byte for byte, so a stranger cannot tell WHICH
+      //    read dropped. `occupancy:'off'` on this wire would be a sentence about
+      //    her trade that is not true and a tell that distinguishes the two.
+      && b.occupancy === 'on'
+      && b.sold === false && b.any_held === false
+      // 3. Q3(a) — the demand was real, so the row lands.
+      && db.inserts.length === 1
+      && db.inserts[0].table === 'date_checks'
+      // 4. and it is still the check and never the asker.
+      && Object.keys(db.inserts[0].row).sort().join(',') === 'date,vendor_id'
+      ? P('§4.3 F-42.48 cured, driven at the door — the fourth word AND the row', '200 blocked:null occupancy:on, one date_checks row')
+      : F('§4.3 F-42.48 cured, driven at the door — the fourth word AND the row', JSON.stringify({ status: out.status, body: b, inserts: db.inserts }));
   }
 
   // ═══ §5 · ONE HOME (comment-stripped, R-40.105) ══════════════════════════
@@ -293,21 +330,49 @@ function drive(db, code, date, ip) {
       ? P('§5.1 exactly ONE `.from(\'date_checks\')` in the door', 'one writer, one home')
       : F('§5.1 exactly ONE `.from(\'date_checks\')` in the door', `${froms} occurrences`);
 
-    // The sole-writer law, derived across the tree rather than asserted: no
-    // other file inserts into this table. `src/` is walked, comments stripped.
-    const others = [];
+    // ── §5.2 · TIGHTENED AT R8-2, AND THE REASON IS THAT IT WAS ABOUT TO LIE ──
+    // R8-1's cell reddened on any file in `src/` that so much as NAMED the table,
+    // and while the table had no reader that was a faithful proxy for the
+    // sole-writer law. R8-2 ships its first reader, and the loose way out would
+    // have been to add `src/lib/vendor/availability.js` to a skip list — which
+    // buys the green by exempting a file from the law rather than by stating the
+    // law properly. The predicate now asks the question the law actually asks:
+    // does any OTHER file INSERT into this table. A reader passes; a second
+    // writer reddens, wherever it hides.
+    const WRITER   = 'src/api/public/availability.js';
+    // ⚠ AND THE READERS ARE DECLARED BY NAME, so the cell TIGHTENS rather than
+    // loosens: a third file naming `date_checks` — reader or not — reddens §5.3
+    // and has to be argued into this list by the seat that adds it.
+    const READERS  = ['src/lib/vendor/availability.js'];
+
+    const namers = [], writers = [];
     const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => {
       const p = path.join(d, e.name);
       if (e.isDirectory()) return walk(p);
       if (!/\.(js|ts)$/.test(e.name)) return;
-      const rel = path.relative(ROOT, p);
-      if (rel === 'src/api/public/availability.js') return;
-      if (/date_checks/.test(codeOf(fs.readFileSync(p, 'utf8')))) others.push(rel);
+      const rel  = path.relative(ROOT, p).split(path.sep).join('/');
+      const code = codeOf(fs.readFileSync(p, 'utf8'));
+      if (!/date_checks/.test(code)) return;
+      if (rel !== WRITER) namers.push(rel);
+      // A writer is a `.from('date_checks')` chain that reaches `.insert(`. The
+      // window is the rest of the statement, so a `.insert(` on some OTHER
+      // table's chain further down the file cannot be misread as this one's.
+      let i = code.indexOf(".from('date_checks')");
+      while (i !== -1) {
+        const stmt = code.slice(i, i + 400).split(';')[0];
+        if (/\.insert\s*\(/.test(stmt) && rel !== WRITER) writers.push(rel);
+        i = code.indexOf(".from('date_checks')", i + 1);
+      }
     });
     walk(path.join(ROOT, 'src'));
-    others.length === 0
-      ? P('§5.2 no second writer anywhere in `src/`', 'sole-writer law, derived')
-      : F('§5.2 no second writer anywhere in `src/`', others.join(', '));
+
+    writers.length === 0
+      ? P('§5.2 no second WRITER anywhere in `src/`', 'sole-writer law, derived — readers are permitted, inserters are not')
+      : F('§5.2 no second WRITER anywhere in `src/`', writers.join(', '));
+
+    namers.slice().sort().join(',') === READERS.slice().sort().join(',')
+      ? P('§5.3 the readers of `date_checks` are exactly the declared set', READERS.join(', '))
+      : F('§5.3 the readers of `date_checks` are exactly the declared set', `found: ${namers.join(', ') || 'none'}`);
   }
 
   // ═══ §6 · 0160 · THE MIGRATION SAYS WHAT IT WRITES ═══════════════════════
@@ -338,6 +403,128 @@ function drive(db, code, date, ip) {
     )
       ? P('§6.5 the table has no column an asker could ride', 'Fork B in the schema')
       : F('§6.5 the table has no column an asker could ride');
+  }
+
+  // ═══ §7 · R8-2 · THE PULSE READ, DRIVEN OVER THE SHIPPED FOLD ════════════
+  // The fold is imported, never restated. b58's tuition, paid once: a cell that
+  // re-implements its subject tests its own copy and stays green through the
+  // defect. A mutation to `datePulse` reddens every cell below.
+  {
+    const { datePulse, PULSE_WINDOW_DAYS, PULSE_MAX_ROWS } = require('../src/lib/vendor/availability');
+
+    // A double that answers the pulse's ONE query and records the predicate it
+    // was asked, so the window and the cap are asserted as ISSUED, not inferred
+    // from the rows that came back.
+    function pulseDb(rows, opts) {
+      const o = opts || {};
+      const seen = {};
+      const api = {
+        seen,
+        from(t) { seen.table = t; return api; },
+        select(c) { seen.select = c; return api; },
+        eq(c, v) { seen[c] = v; return api; },
+        gte(c, v) { seen.gteCol = c; seen.gteVal = v; return api; },
+        order(c, x) { seen.orderCol = c; seen.orderDesc = x && x.ascending === false; return api; },
+        limit(n) { seen.limit = n; return api; },
+        then(res) {
+          return Promise.resolve(res(o.err
+            ? { data: null, error: { message: 'boom' } }
+            : { data: rows, error: null }));
+        },
+      };
+      return api;
+    }
+    const dbOf = (rows, opts) => ({ from: (t) => pulseDb(rows, opts).from(t) });
+
+    // Three checks on 4 Dec, two on 6 Dec, one on a date already behind us.
+    const R = [
+      { date: '2026-12-04' }, { date: '2026-12-04' }, { date: '2026-12-04' },
+      { date: '2026-12-06' }, { date: '2026-12-06' },
+      { date: '2020-01-01' },
+    ];
+
+    const one = pulseDb(R);
+    // ⚠ `.from(t)` IS FORWARDED, NOT SWALLOWED. The first cut of this wrapper
+    // returned `one` without passing `t` through, so `seen.table` was never set
+    // and §7.3 reddened on its own harness rather than on the subject — a cell
+    // failing for a reason that is not the code's is a cell nobody will trust.
+    const src = { from: (t) => one.from(t) };
+    const p1 = await datePulse(src, VID);
+
+    p1.ok === true
+      && p1.dates.length === 3
+      && p1.dates[0].date === '2026-12-04' && p1.dates[0].checks === 3
+      && p1.dates[1].date === '2026-12-06' && p1.dates[1].checks === 2
+      && p1.total === 6
+      ? P('§7.1 the fold groups by `date` and COUNTS ROWS', 'busiest first — 3 on 04 Dec, 2 on 06 Dec')
+      : F('§7.1 the fold groups by `date` and COUNTS ROWS', JSON.stringify(p1));
+
+    // R-40.118 at the reader, not only at the writer: a date behind us is still
+    // demand and is still counted. The cell names the row that proves it.
+    (p1.dates || []).some((d) => d.date === '2020-01-01' && d.checks === 1)
+      ? P('§7.2 R-40.118 — a PAST date is counted like any other', 'the window is on `checked_at`, never on `date`')
+      : F('§7.2 R-40.118 — a PAST date is counted like any other', JSON.stringify(p1.dates));
+
+    // The window and the cap as ISSUED. `checked_at` is WHEN SHE ASKED; keying
+    // the window on `date` would be a different question with a different answer.
+    const iso = /^\d{4}-\d{2}-\d{2}T/.test(one.seen.gteVal || '');
+    const drift = Math.abs((Date.now() - Date.parse(one.seen.gteVal)) / 86400000 - PULSE_WINDOW_DAYS);
+    one.seen.table === 'date_checks'
+      && one.seen.select === 'date'                 // the asker cannot ride a wire that asks for one column
+      && one.seen.vendor_id === VID
+      && one.seen.gteCol === 'checked_at' && iso && drift < 0.01
+      && one.seen.orderCol === 'checked_at' && one.seen.orderDesc === true
+      && one.seen.limit === PULSE_MAX_ROWS && PULSE_MAX_ROWS === 1000
+      ? P('§7.3 the query issued is the one 0160 indexed', 'vendor_id + checked_at >= now-7d desc, limit 1000')
+      : F('§7.3 the query issued is the one 0160 indexed', JSON.stringify({ seen: one.seen, drift }));
+
+    // ⚠ THE CAP IS DRIVEN, NOT READ OFF THE CONSTANT. `truncated` must be false
+    // when the page is short and true when it is full, and the flag is ONE flag
+    // for the whole response because the rows we did not read could have belonged
+    // to any date — so every count becomes a floor together or none does.
+    const p2 = await datePulse(dbOf(R.slice(0, 4)), VID, { limit: 4 });
+    const p3 = await datePulse(dbOf(R.slice(0, 3)), VID, { limit: 4 });
+    p2.truncated === true && p3.truncated === false && p1.truncated === false
+      ? P('§7.4 `truncated` is one flag for the response and rises only at the cap', 'a full page is a floor, a short page is a total')
+      : F('§7.4 `truncated` is one flag for the response and rises only at the cap', JSON.stringify({ p2: p2.truncated, p3: p3.truncated }));
+
+    // An empty week is a SENTENCE the room may speak. A failed read is not.
+    const p4 = await datePulse(dbOf([]), VID);
+    const p5 = await datePulse(dbOf(null, { err: true }), VID);
+    p4.ok === true && p4.dates.length === 0 && p4.total === 0
+      && p5.ok === false && p5.dates === undefined
+      ? P('§7.5 nobody-asked and could-not-look are different answers', 'the zero renders no card; the failure is a 500')
+      : F('§7.5 nobody-asked and could-not-look are different answers', JSON.stringify({ p4, p5 }));
+
+    // The route computes nothing — the b58 law, asserted textually against the
+    // shipped route so a figure re-derived there in a later edit reddens here.
+    const rsrc = codeOf(read('src/api/vendor/availability.js'));
+    /datePulse\s*\(/.test(rsrc)
+      && !/\.from\(['"]date_checks['"]\)/.test(rsrc)
+      && !/reduce\s*\(|new Map\s*\(/.test(rsrc)
+      ? P('§7.6 the route calls the fold and computes none of it', 'one home for the arithmetic')
+      : F('§7.6 the route calls the fold and computes none of it');
+  }
+
+  // ═══ §8 · THE ROUTE ORDER IS LOAD-BEARING ════════════════════════════════
+  // Express matches in declaration order and `/:vendorId` matches the literal
+  // segment `pulse`. Declared below it, the pulse handler is never reached: the
+  // request lands in the block-list door, resolveVendor compares her JWT's id
+  // against the string 'pulse', and she gets a 403 on her own pulse with nothing
+  // in any log to say why. It is a silent failure, so it gets a loud cell.
+  {
+    const rsrc = codeOf(read('src/api/vendor/availability.js'));
+    const iPulse = rsrc.indexOf("router.get('/pulse'");
+    const iParam = rsrc.indexOf("router.get('/:vendorId'");
+    iPulse !== -1 && iParam !== -1 && iPulse < iParam
+      ? P('§8.1 `/pulse` is declared ABOVE `/:vendorId`', 'a literal segment behind a param route is an unreachable route')
+      : F('§8.1 `/pulse` is declared ABOVE `/:vendorId`', JSON.stringify({ iPulse, iParam }));
+
+    // Mode A, and the reason is that these rows are private. A door with an id
+    // in its path is a door someone eventually calls with somebody else's.
+    /router\.get\('\/pulse',\s*requireAuth,\s*resolveVendor\(\)/.test(rsrc)
+      ? P('§8.2 the pulse takes its vendor from the JWT and nowhere else', 'resolveVendor mode A — no paramName')
+      : F('§8.2 the pulse takes its vendor from the JWT and nowhere else');
   }
 
   console.log(`\n${fail === 0 ? 'GREEN' : 'RED'} — ${pass} passed, ${fail} failed\n`);

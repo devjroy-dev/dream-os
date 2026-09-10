@@ -202,7 +202,26 @@ router.get('/:code/:date', asyncHandler(async (req, res) => {
   // R-40.78. `occupancy:'off'` means this trade has no capacity to answer with,
   // for either of its two reasons. The switch is not offered to her at all, so
   // reaching here means a hand-typed URL or a stale link — same miss.
-  if (out && out.occupancy === 'off') return notFound(res);
+  //
+  // ── F-42.48 CURED (R8-2) · `blocked !== null` IS THE WHOLE OF THE CURE ─────
+  // TWO DIFFERENT THINGS WORE ONE FLAG, and this gate could not tell them apart.
+  // `occupancy.js` builds `occupancy:'off'` from two constructors:
+  //   `off()`     (:1102) — `blocked:FALSE`. Ruled off, unmapped, no vendor. A
+  //                         real refusal: there is genuinely no capacity here.
+  //   `unknown()` (:1106) — `blocked:NULL`. `verify_failed` at :1128 / :1136 /
+  //                         :1161. OUR READ DROPPED. Nothing is known about her.
+  // A bare `occupancy === 'off'` refused BOTH, so a dropped connection inside the
+  // checker was answered "no such vendor" — and `app/v/[code]/date/page.tsx:84`
+  // returns null on any !ok, so the whole date page rendered as a miss and took
+  // the enquiry control at its foot with it. A hiccup made her not exist.
+  //
+  // ⚠ THE DISCRIMINATOR IS THE SHAPE, NOT THE LABEL. `out.reason ===
+  // 'verify_failed'` would read the same today and go silent the day occupancy.js
+  // rewords its own string — a refusal built by string-matching another module's
+  // text is a refusal with an expiry date nobody wrote down. `blocked === null` is
+  // what this door's OWN law at :186 already keys the fourth answer on, and it is
+  // `unknown()`'s defining field rather than a description of it.
+  if (out && out.occupancy === 'off' && out.blocked !== null) return notFound(res);
 
   // ── THE RECORD GOES HERE AND NOWHERE ELSE (O-1, ruled) ───────────────────
   // The rule the chair ruled is A RESOLVED VENDOR PAST EVERY GATE, and this is
@@ -217,18 +236,37 @@ router.get('/:code/:date', asyncHandler(async (req, res) => {
   // because there is no vendor identity to attribute the check to — not because
   // a rule excluded it. A row keyed on nobody is not a row.
   //
-  // ⚠ THE EXIT BELOW THIS LINE IS DEAD TODAY, AND F-42.47 IS WHY. `describeDate`
-  // has eight returns (src/lib/vendor/occupancy.js:1110, :1128, :1136, :1137,
-  // :1148, :1158, :1161, :1172) and every one of them is an object, so `!out`
-  // cannot be true. O-1's "record at :171" therefore has no live effect today —
-  // it is not wrong, it is unreachable, and this one call site gives it effect
-  // the moment F-42.47's cure makes that branch reachable. Nothing here needs
-  // to change on that day, which is why the call sits above both exits rather
-  // than being written twice.
+  // ⚠ AND A `verify_failed` NOW REACHES THIS LINE AND RECORDS — Q3, RULED (a).
+  // The demand was real: a stranger typed this vendor's handle and this date,
+  // the handle resolved, and every consent gate passed. The only thing that
+  // failed is OUR read of her calendar, which is not a fact about her demand.
+  // Refusing the row would make the pulse quietly under-count exactly on the
+  // days our own database was unwell.
+  //
+  // ⚠ DECLARED GAP (LD-8): `0160`'s table comment says this row lands "after
+  // every gate (status, discover_paused, date_check_enabled, occupancy) has
+  // passed", and the occupancy clause is now false. `0160` is shipped and
+  // append-only. The sentence is amended by `comment on table` in the next
+  // migration any seat opens — never by editing 0160.
   await recordCheck(supabase, vendor.id, date);
 
-  // The checker's own could-not-see, carried rather than translated.
-  if (!out) {
+  // ── F-42.47 RETIRED WITH ITS READER (R8-2) ────────────────────────────────
+  // The condition that stood here was `!out`, and it was DEAD: `describeDate`'s
+  // eight returns (occupancy.js :1110, :1128, :1136, :1137, :1148, :1158, :1161,
+  // :1172) are all objects, so it could never be true. Curing it would have meant
+  // teaching `describeDate` to return falsy — the exact thing occupancy.js:1105
+  // was written to forbid («Unknown is NOT free»). So the CONDITION is gone and
+  // the BODY stayed, under the one that is reachable.
+  //
+  // ⚠ AND THE BODY IS `:189`'s, BYTE FOR BYTE, WHICH IS THE POINT. Two reads can
+  // drop — the `vendors` lookup above and the checker's own — and a stranger must
+  // not be able to tell which. Falling through to `verdictOf(out)` instead would
+  // put `occupancy:'off'` on a public wire for a momentary hiccup: a permanent-
+  // sounding sentence about her trade, and a byte that tells the two failures
+  // apart. `occupancy:'on'` with `blocked:null` is the fourth answer and nothing
+  // else. The leaf reads `blocked === null` first (`date/page.tsx:112`) and
+  // renders «Couldn't check just now».
+  if (out.blocked === null && out.occupancy === 'off') {
     return res.json(Object.assign({ ok: true }, verdictOf({ date, blocked: null, slots: [], occupancy: 'on' })));
   }
 
