@@ -68,6 +68,12 @@ const cap = require('../capabilities');
 const {
   showBlock, sentLine, deliveredLine, mismatchBlock, recipientLabel,
 } = require('./relaySeat');
+// F-42.90 · THE ESTATE'S NORMALISER, NOT A SECOND SPELLING. `normalizePhone`
+// takes the last ten and returns null below ten; `e164FromLastTen` prefixes
+// DEFAULT_COUNTRY ('91', assistance.js:68, India-only by R-41.34). Both come from
+// the one home rather than being re-minted here, because a '+91' literal in this
+// file would be a second place to change on the day the estate is not India-only.
+const { normalizePhone, e164FromLastTen } = require('../couple/assistance');
 const { VICTOR_LINES } = require('../victorLines');
 const { TEMPLATES } = require('../templates');
 
@@ -198,7 +204,31 @@ async function stageIntroduction(supabase, { vendor, draft }) {
   const missing = nextSlot(draft);
   if (missing) return { ok: false, code: missing.code, ask: missing.ask };
 
-  const phone = trim(draft.recipient_phone);
+  // ── F-42.90 · THE COLUMN HAD NO STORED FORM ────────────────────────────────
+  // THIS LINE READ `trim(draft.recipient_phone)` — whatever the vendor typed.
+  // `+918757788550`, `8757788550` and `+91 87577 88550` all landed verbatim and
+  // were three different values to every equality in the estate. What that cost:
+  //   • `alreadyIntroduced` below matches `.eq('recipient_phone', …)`, and
+  //   • `uq_introductions_vendor_recipient` (0161) is the same equality at the
+  //     database — so R-41.11's no-follow-up law, the ONE law this table exists
+  //     to make structural, was bypassed by retyping the number differently.
+  //     The double refused nothing, because neither half could see two spellings
+  //     of one handset as one handset.
+  //   • and her reply arrives as bare digits through `normalizeTo`
+  //     (metaCloud.js:65), which never matches a stored '+'-form by equality.
+  // NOT a wire defect: `postMessage` repairs exactly-ten at metaCloud.js:163
+  // (F-40.250), so the message did reach her. It repaired the SEND and never
+  // wrote back, so the row kept disagreeing with what was actually sent.
+  const phone = e164FromLastTen(normalizePhone(draft.recipient_phone));
+
+  // `nextSlot` proved the field non-EMPTY; it cannot prove it is a number. A
+  // string of fewer than ten digits normalises to null, and the refusal is the
+  // one the door already speaks — REFUSE.NO_NUMBER with the founder's own vetoed
+  // ask. ZERO NEW BYTES: this arm asks again, it does not invent a sentence.
+  if (!phone) {
+    return { ok: false, code: REFUSE.NO_NUMBER, ask: SLOT_ASKS.recipient_phone };
+  }
+
   const dupe = await alreadyIntroduced(supabase, vendor.id, phone);
   if (dupe) {
     console.log(`[introduction] vendor=${vendor.id} → ${phone} REFUSED ${REFUSE.ALREADY_INTRODUCED} (row ${dupe.id}, ${dupe.status}) — R-41.11, one introduction and no follow-up`);
@@ -314,8 +344,262 @@ async function sendIntroduction(supabase, { vendor, row, answer }, deps = {}) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// J1-IN · THE INBOUND ARM (F-42.69). CE-42 seat E, packet 4a's last.
+// ═══════════════════════════════════════════════════════════════════════════
+// A stranger who received an introduction and replies on the marketing line
+// landed in `handleMarketingInbound`, which knew prospects and STOP and did not
+// know this table. Her reply became nothing.
+//
+// IT LIVES HERE AND NOT IN `prospects.js` BECAUSE OF THE FIRST LINE OF THIS
+// FILE. This module is THE ONE WRITER for `introductions`; `prospects.js` is the
+// marketing lane's own writer and is guarded. So the lane calls in, and the arm
+// below writes — `prospects.js` gains a branch and not a second writer.
+//
+// SHE IS NEVER A PROSPECT — the chair's Fork A ruling, and the reason the branch
+// sits ABOVE the STOP arm rather than after it. `prospects.js:185` opens the STOP
+// arm with `findOrCreateProspectByPhone`, so "STOP first" IS "create a prospect
+// first": a stranger who says no to Mira would have been minted as one of TDW's
+// own marketing rows by saying it. The arm identifies her with a READ, and only
+// an unmatched number reaches :184 — where today's file runs byte-unchanged.
+
+const REACHED = Object.freeze(new Set(['sent', 'sent_no_receipt', 'delivered', 'read']));
+
+/**
+ * DID THIS ROW ACTUALLY REACH HER? Asked through `chipState` and never through a
+ * second list of status words. `chipState` is already the estate's answer to
+ * "row-presence is not a send" and is already benched; a private status set here
+ * would be a second vocabulary for one fact, and the two would drift.
+ *
+ * ⚠ DECLARED WIDENING OF THE RULING'S WORDS. The chair ruled "most recent
+ * sent/delivered row". This set also admits `read` and `sent_no_receipt`. A
+ * `read` row is the LIKELIEST match of all — she read it and then replied — and
+ * excluding it would drop the ordinary case; `sent_no_receipt` is a message that
+ * left with no wamid to prove it, which is a receipt gap and not a send that
+ * did not happen. Named here and in the handover rather than taken quietly.
+ */
+function reachedHer(row) {
+  return REACHED.has(chipState(row));
+}
+
+/**
+ * THE MATCH · BY SUFFIX, NEVER BY EQUALITY.
+ * Her inbound arrives as bare digits (`normalizeTo`, metaCloud.js:65) and this
+ * column has held, historically, whatever the vendor typed (F-42.90). Equality
+ * cannot join those two. `vendorForPhone`'s pattern is the estate's settled
+ * shape for exactly this and is what is used: last ten, `like '%<ten>'`.
+ *
+ * TWO VENDORS, ONE HANDSET: `uq_introductions_vendor_recipient` is PER-VENDOR,
+ * so two vendors may each introduce to one number. The chair ruled MOST RECENT
+ * WINS — she replied to the message she saw, and one message is one lead. The
+ * other vendors' rows stay unanswered, which is the honest outcome: she did not
+ * write to them.
+ *
+ * NO INDEX ON `recipient_phone` ALONE and none added here (0161 indexes
+ * `(vendor_id, created_at desc)` and `wamid`). This is a scan of a small table on
+ * every marketing inbound. NAMED, per the ruling, rather than cured unasked.
+ *
+ * A STOPPED ROW STILL MATCHES. It must: if a stopped row fell through, her next
+ * message would reach :184 and mint the prospect the STOP existed to prevent.
+ */
+async function matchInboundIntroduction(supabase, fromPhone) {
+  const ten = normalizePhone(fromPhone);
+  if (!ten) return null;
+
+  // ⚠ THE TRY IS THE WHOLE CLAIM, AND THE FIRST CUT DID NOT HAVE IT.
+  // This arm handled the RETURNED `error` and nothing else, while the comment
+  // below it promised the lane could never be taken down. The floor proved the
+  // promise false: three prospect-lane benches went ERROR, not RED, on
+  // `supabase.from(...).select(...).like is not a function` — a throw from the
+  // client itself, sailing straight past an `error` check that never ran.
+  // Production always has the table, so this would have sat here as a true-
+  // sounding sentence over code that could not keep it, and the day it mattered
+  // would have been a day the whole marketing lane stopped answering.
+  // The estate's own doctrine at the sibling sites (assistance.js's
+  // notifyCoupleOfFound, enquiryAlert.js's R-R4): every exit is a returned
+  // verdict, every failure is loud, nothing propagates.
+  try {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('id, vendor_id, recipient_phone, recipient_name, where_met, page_code, status, wamid, sent_at, stopped_at, created_at')
+      .like('recipient_phone', `%${ten}`)
+      .order('sent_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      // Degrades to exactly today's behaviour — she falls through to :184. Loud,
+      // because a silent degrade to the old disease is what this packet ends.
+      console.error(`[introduction:in] match FAILED for ${ten}: ${error.message} — falling through to the prospect arms`);
+      return null;
+    }
+
+    const rows = Array.isArray(data) ? data : [];
+    const reached = rows.filter(reachedHer);
+    if (!reached.length) return null;
+    return reached[0];            // already ordered: sent_at desc, then created_at desc
+  } catch (e) {
+    console.error(`[introduction:in] match THREW for ${ten}: ${(e && e.message) || e} — falling through to the prospect arms`);
+    return null;
+  }
+}
+
+/**
+ * HER STOP · THE ROW IS MARKED AND NO PROSPECT IS BORN.
+ * `stopped_at` and NOT a `status` value — migration 0162, and the reason is the
+ * receipt lane: `relayStatus.js:420-425` writes `status` by wamid, so a `stopped`
+ * status would be overwritten by a `read` arriving afterwards, and writing it
+ * over `delivered` would destroy the receipt. Two facts, two columns.
+ *
+ * IDEMPOTENT. A second STOP re-stamps and returns the same verdict; there is
+ * nothing to refuse and refusing would be a message she did not ask for.
+ */
+async function markIntroductionStopped(supabase, rowId) {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from(TABLE).update({ stopped_at: now, updated_at: now }).eq('id', rowId);
+  if (error) {
+    console.error(`[introduction:in] id=${rowId} STOP not recorded: ${error.message}`);
+    return { ok: false, error: error.message };
+  }
+  console.log(`[introduction:in] id=${rowId} STOPPED — row marked, NO prospect created (Fork A)`);
+  return { ok: true, stopped_at: now };
+}
+
+/**
+ * HER REPLY · ONE LEAD, THROUGH THE SOLE WRITER.
+ * `createLead` stays the only door onto `leads` (roadmap §7). `leads.source`
+ * carries no CHECK (PUBLIC_SCHEMA.md:834), so `'introduction'` needs no migration.
+ *
+ * THE SUFFIX PRE-RESOLVE IS RULING §6(a), AND IT IS HERE BECAUSE `leads.js` IS
+ * GUARDED. `createLead`'s dedupe is exact equality (`leads.js:231`) over a column
+ * that holds mixed forms (F-42.70 — one bare-ten row exists). Writing E.164 past
+ * that dedupe would MISS a legacy row and mint a duplicate, which is the second
+ * acceptance cell failing on real data. So the arm carries the widened match and
+ * hands `updateLead` a row id; widening the dedupe itself is F-42.92's charter.
+ *
+ * FILL WHAT IT LACKS, NEVER MOVE WHAT IT HOLDS — `leads.js`'s own R-37.32
+ * doctrine, applied by this caller rather than re-implemented. In particular
+ * `source` IS NOT OVERWRITTEN: a lead that arrived through Discover and later
+ * replied to an introduction still arrived through Discover, and rewriting that
+ * column would be this arm telling a lie about where she came from.
+ */
+async function leadFromIntroduction(supabase, row, { text } = {}) {
+  const { createLead, updateLead } = require('./leads');
+  const ten = normalizePhone(row.recipient_phone);
+  const phone = e164FromLastTen(ten);
+  const notes = `Met at ${row.where_met}`;
+
+  const { data: hits } = await supabase
+    .from('leads')
+    .select('id, name, notes, raw_message, source, created_at')
+    .eq('vendor_id', row.vendor_id)
+    .like('phone', `%${ten}`)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(2);
+
+  const existing = Array.isArray(hits) ? hits : [];
+
+  if (existing.length) {
+    if (existing.length > 1) {
+      // Two leads for ONE vendor and ONE handset is a register already broken for
+      // that vendor. `vendorForPhone` refuses to guess in this shape, but refusing
+      // HERE would discard her enquiry entirely — strictly worse. The newest is
+      // updated and the ambiguity is said out loud.
+      console.warn(`[introduction:in] vendor=${row.vendor_id} has ${existing.length} leads on last-ten ${ten} — updating the newest (${existing[0].id}); F-42.70 register`);
+    }
+    const target = existing[0];
+    const patch = {};
+    if (!target.name && row.recipient_name) patch.name = row.recipient_name;
+    if (!target.notes) patch.notes = notes;
+    if (!target.raw_message && text) patch.raw_message = text;
+
+    if (!Object.keys(patch).length) {
+      console.log(`[introduction:in] lead ${target.id} already holds everything this reply carries — no write`);
+      return { ok: true, leadId: target.id, created: false, updated: false };
+    }
+    const upd = await updateLead(supabase, row.vendor_id, target.id, patch);
+    if (!upd.ok) {
+      console.warn(`[introduction:in] lead ${target.id} update failed: ${upd.error}`);
+      return { ok: true, leadId: target.id, created: false, updated: false };
+    }
+    console.log(`[introduction:in] lead ${target.id} UPDATED from introduction ${row.id} (${Object.keys(patch).join(', ')})`);
+    return { ok: true, leadId: target.id, created: false, updated: true, fields: Object.keys(patch) };
+  }
+
+  const res = await createLead(supabase, row.vendor_id, {
+    name:        row.recipient_name,
+    phone,
+    source:      'introduction',
+    notes,
+    raw_message: text || null,
+  });
+  if (!res.ok) {
+    console.error(`[introduction:in] createLead FAILED for introduction ${row.id}: ${res.error}`);
+    return { ok: false, error: res.error };
+  }
+  console.log(`[introduction:in] lead ${res.lead.id} CREATED source=introduction from ${row.id} (vendor ${row.vendor_id})`);
+  return { ok: true, leadId: res.lead.id, created: !res.deduped, updated: false };
+}
+
+/**
+ * THE ONE ENTRY POINT the marketing lane calls. Returns null when this number is
+ * a stranger to the table, and the lane then runs today's arms byte-unchanged.
+ *
+ * SHE IS ANSWERED WITH SILENCE — §7, ruled. She replied to a MARKETING template
+ * on a WABA that carries its own quality rating, and R-41.11 forbids the
+ * follow-up; an unprompted second message to a stranger who has said one thing is
+ * the exact shape that law exists to refuse, however bland the byte. Her vendor
+ * answers her, inside the window her reply just opened. ZERO NEW BYTES here, and
+ * the vendor's push notice is F-42.96's template, not this packet's.
+ */
+async function handleIntroductionInbound(supabase, { from, text, isStop }) {
+  const row = await matchInboundIntroduction(supabase, from);
+  if (!row) return null;
+
+  // THE MATCH IS OUTSIDE THIS TRY AND THE WRITES ARE INSIDE IT, ON PURPOSE.
+  // The match already fails to null and falling through is correct for an
+  // unmatched number. Once she IS matched, falling through is the ONE thing that
+  // must not happen — :184 would mint her as a prospect, which is Fork A broken —
+  // so a failure past this point returns a verdict naming itself and stops here.
+  // She gets silence either way; what changes is whether the estate lies about
+  // her afterwards.
+  try {
+    if (isStop) {
+      const out = await markIntroductionStopped(supabase, row.id);
+      return { action: 'introduction_stopped', introductionId: row.id, vendorId: row.vendor_id, ok: out.ok };
+    }
+
+    if (row.stopped_at) {
+      // She said stop and has written again. The row is not re-opened and no lead
+      // is made, but she still does NOT fall through — falling through is what
+      // would mint the prospect her STOP refused.
+      console.log(`[introduction:in] id=${row.id} inbound after STOP — no lead, no prospect`);
+      return { action: 'noop_introduction_stopped', introductionId: row.id, vendorId: row.vendor_id };
+    }
+
+    const lead = await leadFromIntroduction(supabase, row, { text });
+    return {
+      action: 'introduction_lead',
+      introductionId: row.id,
+      vendorId: row.vendor_id,
+      leadId: lead.leadId || null,
+      created: !!lead.created,
+      updated: !!lead.updated,
+    };
+  } catch (e) {
+    console.error(`[introduction:in] id=${row.id} THREW after match: ${(e && e.message) || e} — ` +
+      'her reply is NOT filed as a lead and must be recovered by hand; no prospect was created');
+    return { action: 'introduction_failed', introductionId: row.id, vendorId: row.vendor_id, error: String((e && e.message) || e) };
+  }
+}
+
 module.exports = {
   TABLE, TEMPLATE_KEY, REFUSE, SLOT_ASKS, SLOT_ORDER,
+  // J1-IN · the inbound arm
+  reachedHer, matchInboundIntroduction, markIntroductionStopped,
+  leadFromIntroduction, handleIntroductionInbound,
   nextSlot, filledBody, showIntroduction, approvalNames, chipState,
   alreadyIntroduced, stageIntroduction, sendIntroduction,
   // relaySeat's bytes are re-exported so a reader of THIS module sees which four

@@ -180,6 +180,31 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
   const phone   = normalizeTo(from);
   const now     = new Date().toISOString();
 
+  // ── J1-IN · IS SHE SOMEONE A VENDOR INTRODUCED? (F-42.69, ruling B) ────────
+  // ONE READ, ABOVE EVERYTHING, AND IT WRITES NOTHING HERE. The arm lives in
+  // `src/lib/vendor/introductions.js` — that module is the one writer for its own
+  // table and this one is the marketing lane's; the branch is a call, never a
+  // second writer.
+  //
+  // ⚠ IT SITS ABOVE THE STOP ARM AND THAT IS THE WHOLE POINT. The line below
+  // opens with `findOrCreateProspectByPhone`, so "STOP first" is "MINT A PROSPECT
+  // first" — a stranger who said no to a vendor's introduction would have become
+  // one of TDW's own marketing rows by saying it, and `opted_out` is terminal and
+  // CROSS-LINE (:4). The chair's Fork A ruling is that she is never a prospect,
+  // and this placement is that ruling made structural instead of hoped for.
+  //
+  // AN UNMATCHED NUMBER FALLS THROUGH AND EVERYTHING BELOW RUNS BYTE-UNCHANGED.
+  // That is the acceptance cell, and it is why this is a branch and not an edit.
+  //
+  // LAZY REQUIRE, the discipline this file already keeps at :199/:250/:361.
+  {
+    const { handleIntroductionInbound } = require('./vendor/introductions');
+    const introOut = await handleIntroductionInbound(supabase, {
+      from: phone, text, isStop: isStopWord(text),
+    });
+    if (introOut) return introOut;
+  }
+
   // ── STOP → opt out (cross-line), then send the ONE courtesy confirmation ──────────────────
   if (isStopWord(text)) {
     const prospect = await findOrCreateProspectByPhone(supabase, phone);

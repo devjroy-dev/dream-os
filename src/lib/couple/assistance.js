@@ -1537,7 +1537,11 @@ async function searchForwardTargets(supabase, { category, city, q, limit } = {})
 module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
-  normalizePhone, formatRs,
+  // `e164FromLastTen` joins its own pair on the export line (J1-IN, F-42.90).
+  // EXPORT ONLY — not one byte of behaviour. `normalizePhone` was already out
+  // here and its partner was not, so a caller needing E.164 had to re-mint '+91'
+  // and DEFAULT_COUNTRY (:68, India-only by R-41.34) would have had two homes.
+  normalizePhone, e164FromLastTen, formatRs,
   TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE, consentEvidences, consentState, notifyCoupleOfFound, enquiryToken, enquiryWaLink, vendorForPhone, publicEnquiry, lastTenIsAmbiguous, ASSIST_WORDS, assistanceMonth, assistanceCity,
   ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryNoun, monthYearOnly, reconcileStrandedForwards,
 };

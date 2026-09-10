@@ -1,0 +1,59 @@
+# CE-42 · SEAT E · J1-IN · THE INBOUND ARM (F-42.69) — DECLARED MANIFEST (F-14.16)
+# base: 7a18bf6
+#
+# TWO FENCES CROSSED, BOTH BLOB-CHECKED RATHER THAN INHERITED.
+#   e23ab4d → 03c9183  (Victor): relaySeat.js, vendorInbound.js, wireGuardVictor.js,
+#     b40, b06_forkc, a manifest, a handover. The chair's list named `chat.js`; the
+#     actual diff carries `src/lib/vendorInbound.js` and NO chat.js — derived.
+#   03c9183 → 7a18bf6  (R8-2): b67, src/api/public/availability.js,
+#     src/api/vendor/availability.js, src/lib/vendor/availability.js.
+#
+# NINE paths in this radius verified blob-identical across BOTH spans by
+# `git rev-parse <rev>:<path>` — prospects.js, introductions.js, leads.js,
+# assistance.js, victorLines.js, metaCloud.js, sendWa.js, relayStatus.js,
+# api/vendor/introductions.js.
+# relaySeat.js DID change in the first span and introductions.js imports five
+# symbols from it (showBlock, sentLine, deliveredLine, mismatchBlock,
+# recipientLabel) — none of the five signatures moved. An indirect dependency is
+# still a dependency, so it was checked rather than waved past.
+# Ladder tail re-derived at this tip: 0161 → 0162 is correct.
+#
+# ── THE FILE TABLE ──────────────────────────────────────────────────────────
+# MACHINE-READ by run-floor.sh --delivery: everything after '#' is stripped,
+# blanks dropped, and any dirty path NOT listed below refuses the run.
+#
+#   src/lib/vendor/introductions.js — F-42.90 cure at the stage door (the column
+#                                     had no stored form; now E.164 through the
+#                                     estate's own normaliser, the un-normalisable
+#                                     refused with the EXISTING vetoed ask), plus
+#                                     the J1-IN inbound arm: reachedHer,
+#                                     matchInboundIntroduction, markIntroductionStopped,
+#                                     leadFromIntroduction, handleIntroductionInbound.
+#                                     It lives here because this module is the one
+#                                     writer for its own table.
+#   src/lib/prospects.js            — GUARDED. W-1 lift used for ONE branch and
+#                                     nothing else: a read above the STOP arm and an
+#                                     early return on a match. Not one existing line
+#                                     moved; cell 10 is the proof.
+#   src/lib/couple/assistance.js    — EXPORT LINE ONLY. `e164FromLastTen` joins
+#                                     `normalizePhone` on module.exports so the '+91'
+#                                     literal keeps one home (DEFAULT_COUNTRY :68,
+#                                     R-41.34). Zero behaviour.
+#   db/migrations/0162_introductions_stopped_at.sql — chair-allocated. stopped_at, NOT
+#                                     a status value; relayStatus.js:420-425 owns
+#                                     `status` by wamid and would overwrite a STOP.
+#   scripts/b71_j1in_inbound_bench.js — ten cells, nine of them both ways.
+#   scripts/floor-manifest-ce42-j1in-7a18bf6.txt — this file.
+#   docs/HANDOVER_CE42_J1IN.md      — the five lines + declared readings.
+#
+# ── NOT IN THIS DELIVERY, AND SAID SO ───────────────────────────────────────
+# victorLines.js is NOT touched. The CUT named two bytes for it; they are withheld
+# and returned to the chair as a veto sheet. Reasons in the handover.
+
+src/lib/vendor/introductions.js
+src/lib/prospects.js
+src/lib/couple/assistance.js
+db/migrations/0162_introductions_stopped_at.sql
+scripts/b71_j1in_inbound_bench.js
+scripts/floor-manifest-ce42-j1in-7a18bf6.txt
+docs/HANDOVER_CE42_J1IN.md
