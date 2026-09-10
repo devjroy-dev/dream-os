@@ -1,0 +1,42 @@
+# CE-42 · SEAT E · MICRO C · F-42.148 / F-42.149 — DECLARED MANIFEST (F-14.16)
+# base: ff94d75
+#
+# ⚠ THE SPAN CHECKED IS 567ab21 → ff94d75, NOT the 7160b5f → ff94d75 the relay named.
+# This micro was built at 567ab21, so V-2 r2 AND r3 both sit between it and the tip —
+# SEVEN files, not five. Derived rather than inherited:
+#   docs/HANDOVER_CE42_V2R2.md · docs/HANDOVER_CE42_V2R3.md · b40 ·
+#   floor-manifest-ce42-v2r2.txt · floor-manifest-ce42-v2r3.txt ·
+#   src/api/vendor-engine/chat.js · src/lib/wireGuardVictor.js
+# Ten paths in this radius verified blob-identical across the FULL span by
+# `git rev-parse <rev>:<path>`: ensureAuthIdentity.js, couple/auth.js, vendor/auth.js,
+# provisionRole.js, prospects.js, introductions.js, victorLines.js, b05_f059_signup_bench,
+# b66, b71 — all SAME.
+#
+# ── THE FILE TABLE ──────────────────────────────────────────────────────────
+#   src/lib/ensureAuthIdentity.js — asks who holds the identity BEFORE binding; refuses
+#                                   with AuthIdentityBoundElsewhereError naming all three
+#                                   ids. Repairs nothing.
+#   src/api/couple/auth.js        — typed 409 `identity_bound_elsewhere` ahead of the
+#                                   retryable 500. Postgres's constraint name never
+#                                   reaches the caller.
+#   src/api/vendor/auth.js        — the same arm; both doors call ensureAuthIdentity and
+#                                   both had the same message.
+#   scripts/b72_identity_misbind_bench.js — six cells; 1/2/6 red at 567ab21, 3/4/5
+#                                   no-change. Bench number derived free at the cut.
+#   tools/f42148_rebind.js        — D-prime. DRY RUN BY DEFAULT, `--live` required. It is
+#                                   a TOOL, not a code path: nothing requires it, no bench
+#                                   drives it, and it is authorised in SHAPE only — it has
+#                                   NOT been run. Mint before clear; one UPDATE moves Droy
+#                                   old-id -> new-id so he never holds zero identities.
+#   scripts/floor-manifest-ce42-f42148-c.txt — this file.
+#   docs/HANDOVER_CE42_F42148_MICRO_C.md — opens by saying this is a diagnosis, not a fix.
+#
+# NO MIGRATION, NO SCHEMA, NO DATA ACT. D′ is authorised in shape and is NOT in this ZIP.
+
+src/lib/ensureAuthIdentity.js
+src/api/couple/auth.js
+src/api/vendor/auth.js
+scripts/b72_identity_misbind_bench.js
+tools/f42148_rebind.js
+scripts/floor-manifest-ce42-f42148-c.txt
+docs/HANDOVER_CE42_F42148_MICRO_C.md

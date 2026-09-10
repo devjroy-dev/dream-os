@@ -28,7 +28,7 @@ const bcrypt  = require('bcryptjs');
 const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
 const { sendOtpCode } = require('../../lib/otpSend');
-const { ensureAuthIdentity } = require('../../lib/ensureAuthIdentity');
+const { ensureAuthIdentity, AuthIdentityBoundElsewhereError } = require('../../lib/ensureAuthIdentity');
 const { textPresent } = require('../../lib/onboardingPredicate');
 
 // Dedicated service-role client for the GoTrue session exchange (mintSession), kept
@@ -354,6 +354,21 @@ router.post('/verify-otp', async (req, res) => {
   try {
     await ensureAuthIdentity({ supabase, authClient, userId: userRow.id, phone: cleanPhone });
   } catch (err) {
+    // ── F-42.148 · A MIS-BIND IS NOT A TRANSIENT FAILURE ────────────────────
+    // Every other failure here is worth retrying and says so. This one is NOT:
+    // the identity for this phone is held by another users row, and no retry can
+    // change that — so "Please try again" would be an instruction to do a thing
+    // that cannot work, forever. The code is TYPED and Postgres's constraint name
+    // never reaches the caller; the ids live in the server log, where the person
+    // who can act on them will look.
+    if (err instanceof AuthIdentityBoundElsewhereError) {
+      console.error(`[couple:verify-otp] identity mis-bind: auth ${err.authUserId} held by users ` +
+        `${err.holderUserId}, not ${err.userId} — F-42.148, needs a hand`);
+      return res.status(409).json({
+        error:  'This number needs to be reconnected before you can sign in. Please contact support.',
+        reason: 'identity_bound_elsewhere',
+      });
+    }
     console.error('[couple:verify-otp] identity error:', err.message);
     return res.status(500).json({ error: 'Could not create session. Please try again.' });
   }

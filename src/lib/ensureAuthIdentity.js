@@ -50,6 +50,19 @@ async function findAuthUserByPhone(authClient, phone) {
   return null;
 }
 
+// ── F-42.149 · THE INVARIANT THIS ARM CANNOT ASSUME ──────────────────────────
+// A typed refusal, so the door can speak a code and never Postgres's words.
+class AuthIdentityBoundElsewhereError extends Error {
+  constructor({ authUserId, holderUserId, userId }) {
+    super(`auth identity ${authUserId} is already bound to users ${holderUserId}, not ${userId}`);
+    this.name         = 'AuthIdentityBoundElsewhereError';
+    this.code         = 'identity_bound_elsewhere';
+    this.authUserId   = authUserId;
+    this.holderUserId = holderUserId;
+    this.userId       = userId;
+  }
+}
+
 // ensureAuthIdentity — guarantee ONE auth identity for `userId`'s phone, bound onto
 // public.users.auth_user_id. Idempotent and self-healing.
 //   supabase   : app data client (reads/writes public.users) — NOT used for admin ops
@@ -90,6 +103,38 @@ async function ensureAuthIdentity({ supabase, authClient, userId, phone }) {
     if (!authUserId) throw new Error('createUser returned no identity id');
   }
 
+  // ── (2a) F-42.148 · WHO ALREADY HOLDS THIS IDENTITY? ───────────────────────
+  // `users_auth_user_id_key` is UNIQUE (auth_user_id) WHERE auth_user_id IS NOT
+  // NULL (PUBLIC_SCHEMA.md:4053-4054). Without this read the bind below hands
+  // Postgres a collision and the caller gets `duplicate key value violates
+  // "users_auth_user_id_key"` — a sentence that names a CONSTRAINT and NEITHER
+  // ROW. That is not a small difference. On 2026-09-10 it cost a whole read:
+  // the seat inferred a split users register from the constraint name, said so,
+  // and was disproven by one SELECT. An error that cannot name its own subjects
+  // sends the next reader looking for the wrong bug.
+  //
+  // WHAT IT CATCHES IS REAL AND LEGACY: a `+91…` account whose auth identity was
+  // minted in the dead browser-OTP era against a DIFFERENT number, and bound to
+  // somebody else's row. F-42.148's specimen is 2026-06-23, the two rows 21
+  // seconds apart. The lockout is DETERMINISTIC — createUser can never succeed
+  // (the phone owns an identity), the heal always finds that identity, and the
+  // bind always collides — so no retry, ever, changes any step.
+  //
+  // ⚠ IT REFUSES AND DOES NOT REPAIR. Moving a live account's identity is a data
+  // act on somebody's session, not an error path's decision to take at 3am on
+  // behalf of a caller who asked to log in. F-42.149 is the invariant's own
+  // charter; this arm's whole job is to stop lying about why it failed.
+  const { data: holder, error: holderErr } = await supabase
+    .from('users').select('id').eq('auth_user_id', authUserId).maybeSingle();
+  if (holderErr) throw new Error(`identity holder lookup failed: ${holderErr.message}`);
+  if (holder && holder.id !== userId) {
+    console.error(
+      `[ensureAuthIdentity] MIS-BIND REFUSED: auth ${authUserId} is held by users ${holder.id}, ` +
+      `not users ${userId} — F-42.148. This account cannot obtain an identity until the ` +
+      'binding is corrected by hand; no retry will change it.');
+    throw new AuthIdentityBoundElsewhereError({ authUserId, holderUserId: holder.id, userId });
+  }
+
   // (2) Bind the single identity onto public.users. One person, one auth user.
   const { error: linkErr } = await supabase
     .from('users').update({ auth_user_id: authUserId }).eq('id', userId);
@@ -98,4 +143,7 @@ async function ensureAuthIdentity({ supabase, authClient, userId, phone }) {
   return { authUserId, created: !healed, healed };
 }
 
-module.exports = { ensureAuthIdentity, findAuthUserByPhone, phoneDigits };
+module.exports = {
+  ensureAuthIdentity, findAuthUserByPhone, phoneDigits,
+  AuthIdentityBoundElsewhereError,
+};
