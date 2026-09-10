@@ -1721,6 +1721,19 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       moneyFacts = await buildMoneyFacts(supabase, vendor.id);
     } catch (e) { console.warn('[money:wa fact-block]', e && e.message); }
 
+    // F-42.97 (CE-42 V-2) — THE EXPENSE HALF, AND THIS LANE IS WHERE IT HAPPENED.
+    // 00:52:38 was spoken HERE, on the founder's handset, not on the PWA. The
+    // invoice half of his money got a fact block at F-39.73 and the expense half
+    // got silence — and he fills silence. Same contract as the block above and
+    // the same reason for it: never throws, fail-closed inside the block, and it
+    // is built SEPARATELY so an unreadable expense book cannot silence a readable
+    // ledger.
+    let expenseFacts = null;
+    try {
+      const { buildExpenseFacts } = require('./vendor/expenseFacts');
+      expenseFacts = await buildExpenseFacts(supabase, vendor.id);
+    } catch (e) { console.warn('[expenses:wa fact-block]', e && e.message); }
+
     // ── CE-41 · SEAT G · R-41.104 — THE ROOM, HANDED TO THE ENGINE ──────────
     // `buildLlmForTurn` above stopped reading `victor_mode` for the ROUTE. This
     // is the other half and it is the half that matters to the vendor: without
@@ -1734,6 +1747,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       leadPings, // TDW_05 F-05.50(b) — an opaque string, the recentActivity contract
       pendingRelay, // TDW_06 F-06.162 (R-29.29) — the open commitment, door-known
       moneyFacts: moneyFacts ? moneyFacts.block : undefined, // F-39.73 (R-VS.2) — the typed ledger, door-read
+      expenseFacts: expenseFacts ? expenseFacts.block : undefined, // F-42.97 — the expense book, door-read
       // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
       vendorCategory,
       // P6 FORK-B END
@@ -1896,7 +1910,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       // and the fact block's handles. `body` names which capability was asked for —
       // without it 「Done.」 carries no object and cannot be classified at all; the
       // handles are what a money sentence is checked against BY EQUALITY.
-      const verdict = await wireGuardSpecimen(supabase, vendor.id, result, agentId, { message: body, moneyFacts });
+      const verdict = await wireGuardSpecimen(supabase, vendor.id, result, agentId, { message: body, moneyFacts, expenseFacts });
       s2line = stage2Intercept(verdict, true);
       if (s2line) { s2run = (verdict && verdict.run_id) || null; s2arm = 'glitch_line'; }
       // ORDER IS LOAD-BEARING: a turn that is BOTH a costume and an imperative-miss is
@@ -1926,11 +1940,12 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             modeOverride: waLaneMode(),
             agentId, message: body, calendarSnapshot, scratchpad, leadPings, pendingRelay, vendorCategory,
             moneyFacts: moneyFacts ? moneyFacts.block : undefined, // the retry answers from the SAME facts or it answers blind
+            expenseFacts: expenseFacts ? expenseFacts.block : undefined, // Fork D: the retry answers from the SAME expense book too
             tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride,
             transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport,
             donnaModelOverride: llmWiring.donnaModelOverride,
           });
-          const retryVerdict = await wireGuardSpecimen(supabase, vendor.id, retry, undefined, { message: body, moneyFacts });
+          const retryVerdict = await wireGuardSpecimen(supabase, vendor.id, retry, undefined, { message: body, moneyFacts, expenseFacts });
           const retryHands = [];
           for (const tc of (retry.tool_calls || [])) {
             for (const dc of ((tc && tc.donna_calls) || [])) {

@@ -180,6 +180,13 @@ type RunTurnArgs = {
   // block is byte-identical to the pre-cure engine (regression law), exactly as
   // leadPings' and pendingRelay's own contracts state.
   moneyFacts?: string;
+  // F-42.97 (CE-42 V-2): the EXPENSE half of the same seam. OPAQUE STRING,
+  // door-built (lib/vendor/expenseFacts.js). ABSENT => the dynamic tail is
+  // byte-identical to the pre-cure world, exactly as moneyFacts', leadPings' and
+  // pendingRelay's own contracts state. It is a SEPARATE arg rather than a
+  // widening of moneyFacts because the two blocks fail independently: an
+  // unreadable expense book must not silence a readable invoice book.
+  expenseFacts?: string;
   // TDW_04.5 P6 (CE-61, Fork B): the vendor's NORMALISED category, door-computed.
   // THE DOOR NORMALISES, THE ENGINE COMPARES — `normaliseCategory` keeps its one home in
   // lib/vendor/categoryFraming.js, which is the whole point of the ruling: Victor's
@@ -683,7 +690,21 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     // The block ends on the sentence that must govern — these are the only figures for
     // money owed, and the cabinet does not hold this.
     const moneyBlock = (estateInRoom && args.moneyFacts) ? `\n\n${args.moneyFacts}` : '';
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock + moneyBlock;
+    // F-42.97 (CE-42 V-2): DYNAMIC, NEVER CACHED — it changes the moment an expense
+    // is logged or edited. Gated on `estateInRoom` with its four siblings and NOT on
+    // its own: the block carries rupee figures AND dates, and exempting it from the
+    // gate would re-open the neighbouring-line donor pool ruling A-3 closed
+    // (F-04.70's mechanism). SYSTEM TAIL, never the message stream — so a figure
+    // here can INFORM Victor and can never VOUCH for a write.
+    //
+    // IT IS LAST, AND IT IS LAST *AFTER* moneyBlock, WHICH IS THE INSTRUCTION.
+    // CE-77's position doctrine: position inside a paragraph is part of the
+    // instruction. Both blocks end on the sentence that must govern their own
+    // plane, and the expense one governs closest to the answer because the expense
+    // plane is the one that had no facts at all until this sitting — 00:52:38 is
+    // what an unfenced silence produced.
+    const expenseBlock = (estateInRoom && args.expenseFacts) ? `\n\n${args.expenseFacts}` : '';
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock + moneyBlock + expenseBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];

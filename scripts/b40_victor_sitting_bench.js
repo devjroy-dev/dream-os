@@ -68,6 +68,15 @@ const V = '23165e38-6510-4639-ab6a-9f35bab93742'; // DEV440, masterplan test ide
 
 // DEV440's fixture, as the founder's SELECT returns it. Never recalled — the shape is
 // public.invoices' witnessed columns (docs/db/PUBLIC_SCHEMA.md:637, 21 columns).
+// The founder's Expenses room, from his SELECT 2026-09-10. Four rows, and the
+// Rs 5,000 one is the row 00:52:38 invented a date for.
+const EXPENSE_FIXTURE = [
+  { amount: 500,  category: 'assistant', description: 'Payment to Rahul', expense_date: '2026-09-03', created_at: '2026-09-03T18:23:11Z' },
+  { amount: 5000, category: 'assistant', description: 'Payment to Swati', expense_date: '2026-09-01', created_at: '2026-09-01T21:57:04Z' },
+  { amount: 2000, category: 'equipment', description: null,              expense_date: '2026-09-01', created_at: '2026-09-01T15:05:52Z' },
+  { amount: 1000, category: 'assistant', description: 'Test Expense',    expense_date: '2026-09-01', created_at: '2026-09-01T11:47:11Z' },
+];
+
 const FIXTURE = [
   { id: 'i5', invoice_number: '/05', client_name: 'Priya Nair', client_phone: null,
     amount_total: 60000, amount_paid: 0, due_date: null, state: 'unpaid', created_at: '2026-08-01', deleted_at: null },
@@ -404,7 +413,16 @@ function classify(reply, message, facts, mode) {
     const loop = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/loop.ts'), 'utf8');
     T('moneyBlock is gated on estateInRoom AND its own presence',
       /const moneyBlock = \(estateInRoom && args\.moneyFacts\) \? `\\n\\n\$\{args\.moneyFacts\}` : '';/.test(loop));
-    T('  …and it is LAST in the dynamic tail', /\+ relayBlock \+ moneyBlock;/.test(loop));
+    // ── LABELED AMENDMENT (CE-42, seat V-2). RE-AIMED, TEETH KEPT, COUNT PRESERVED,
+    // RATIFY-OR-REVERT. F-42.97 appends the EXPENSE fact block after this one, so
+    // "last" is now the two fact blocks together, money then expense. CE-77's
+    // position doctrine is the untouched SUBJECT: the tail still ends on the
+    // sentences that must govern, and it ends on the plane that had no facts at
+    // all until this sitting. The old anchor `+ relayBlock + moneyBlock;` retires
+    // with the spelling it pinned.
+    T('  …and it is LAST in the dynamic tail', /\+ relayBlock \+ moneyBlock \+ expenseBlock;/.test(loop));
+    T('  …and the expense block is gated on estateInRoom AND its own presence (F-42.97)',
+      /const expenseBlock = \(estateInRoom && args\.expenseFacts\) \? `\\n\\n\$\{args\.expenseFacts\}` : '';/.test(loop));
     T('the three-arg guard caller still classifies exactly as before (optional ctx)',
       chat.wireGuardClassify(V, { reply: 'Nothing on file for Priya.', victor_mode: 'business', tool_calls: [] }) !== null);
     T('  …and a bare "Done." with NO ask is NOT classified (the ask is required)',
@@ -664,6 +682,190 @@ function classify(reply, message, facts, mode) {
       && !['relay', 'records', 'date', 'booking', 'money'].some((c) => wgv.structurallyImpossible(c)));
   }
 
+  // ── §19 · F-42.98 ARM B · THE SUBTOTAL A TRUE ANSWER MAY SPEAK ──────────────────────
+  // THE PRODUCTION BYTES, from engine.evals_runs.transcript->>'reply' at 00:52:18.
+  // NOT a reconstruction: the seat before this one benched a reconstruction, it
+  // classified GREEN, and the live red stayed a mystery for an hour (succession
+  // note §6, "hand-shortened fixtures"). Every cell below drives these bytes or the
+  // founder's own SELECT.
+  console.log('\n  §19 F-42.98 arm B — the true subtotal acquits, everything else still convicts');
+  {
+    const REPLY_0052 = [
+      'Three invoices outstanding, Rs 1,52,000 in all:', '',
+      '**Priya Nair** — Rs 10,000 owed (TDW/DEV440/07, unpaid)',
+      '**Priya Nair** — Rs 42,000 owed (TDW/DEV440/05, advance paid)',
+      '**new test** — Rs 1,00,000 owed (TDW/DEV440/04, unpaid)', '',
+      'Two of those are Priya Nair — Rs 52,000 across two invoices. The third is the test booking at Rs 1,00,000.',
+    ].join('\n');
+    // DEV440's outstanding rows, from the founder's SELECT 2026-09-10. The four
+    // NON-outstanding rows of that same SELECT (/06 and /03 and /02 paid, /01
+    // cancelled) are the negatives below — real money of his, correctly refused.
+    const MF = { ok: true, unreadable: false, rowCount: 3,
+      handles: { amounts: ['10,000', '10000', '42,000', '42000', '1,00,000', '100000', '1,52,000', '152000'],
+        rowAmounts: [10000, 42000, 100000],
+        numbers: ['TDW/DEV440/07', 'TDW/DEV440/05', 'TDW/DEV440/04'], names: [] } };
+
+    T('the 00:52:18 reply ACQUITS, byte-exact — the whole of F-42.98',
+      wgv.moneyGrounded(REPLY_0052, MF));
+    T('  …and it convicted before arm B (the addend pool is what changed)',
+      !wgv.moneyGrounded(REPLY_0052, Object.assign({}, MF, { handles: Object.assign({}, MF.handles, { rowAmounts: [] }) })));
+    T('an INVENTED figure still convicts — Rs 55,000 is no subset sum',
+      !wgv.moneyGrounded(REPLY_0052.replace('52,000', '55,000'), MF));
+    T('a DIFFERENCE still convicts — 42,000 − 10,000',
+      !wgv.moneyGrounded(REPLY_0052.replace('52,000', '32,000'), MF));
+    T('a PRODUCT still convicts',
+      !wgv.moneyGrounded('That is Rs 4,20,000 across the two.', MF));
+    T('/06 PAID Rs 18,000 convicts — a real row, not an outstanding one',
+      !wgv.moneyGrounded('You are owed Rs 18,000 by Nisha Rao.', MF));
+    T('/01 CANCELLED Rs 45,000 convicts',
+      !wgv.moneyGrounded('Ananya Verma still owes Rs 45,000.', MF));
+    T('the OTHER true subtotals acquit — 10,000+1,00,000 and 42,000+1,00,000',
+      wgv.moneyGrounded('Rs 1,10,000 between those two.', MF) && wgv.moneyGrounded('Rs 1,42,000 between those two.', MF));
+    T('the grand total is NEVER an addend — a sum using it convicts (1,52,000+10,000)',
+      !wgv.moneyGrounded('Rs 1,62,000 in all.', MF));
+    T('the bound is declared, not hoped: 20 rows full, 40 narrow',
+      wgv.ARM_B_ROWS_FULL === 20 && wgv.ARM_B_ROWS_NARROW === 40);
+    T('above the narrow ceiling NO figure is admitted — fail-safe, convicts as before',
+      !wgv.admittedAsSubtotal('4,100', Array.from({ length: 41 }, () => 100), require(path.join(ROOT, 'src/lib/witnessLine.js')).rupees));
+  }
+
+  // ── §20 · F-42.97 · THE EXPENSE FACT BLOCK, AND THE DATE THAT CATCHES 00:52:38 ───────
+  console.log('\n  §20 F-42.97 — the expense book Victor never had a path to');
+  {
+    const EF = require(path.join(ROOT, 'src/lib/vendor/expenseFacts.js'));
+    // The founder's Expenses room, from his SELECT 2026-09-10.
+    const ROWS = [
+      { amount: 500, category: 'assistant', description: 'Payment to Rahul', expense_date: '2026-09-03', created_at: '2026-09-03T18:23:11Z' },
+      { amount: 5000, category: 'assistant', description: 'Payment to Swati', expense_date: '2026-09-01', created_at: '2026-09-01T21:57:04Z' },
+      { amount: 2000, category: 'equipment', description: null, expense_date: '2026-09-01', created_at: '2026-09-01T15:05:52Z' },
+      { amount: 1000, category: 'assistant', description: 'Test Expense', expense_date: '2026-09-01', created_at: '2026-09-01T11:47:11Z' },
+    ];
+    const db = (rows, err) => ({ from() { const c = { select() { return c; }, eq() { return c; }, is() { return c; }, order() { return c; },
+      limit() { return Promise.resolve(err ? { data: null, error: { message: 'boom' } } : { data: rows.map((r) => Object.assign({}, r)), error: null }); } }; return c; } });
+
+    await (async () => {
+      const ef = await EF.buildExpenseFacts(db(ROWS), 'v', '2026-09-10');
+      const MF = { ok: true, unreadable: false, rowCount: 3,
+        handles: { amounts: ['10,000', '10000', '42,000', '42000', '1,00,000', '100000', '1,52,000', '152000'],
+          rowAmounts: [10000, 42000, 100000], numbers: ['TDW/DEV440/07'], names: [] } };
+      const G = (t) => wgv.moneyGrounded(t, MF, ef);
+
+      T('the block renders the founder\'s four rows', ef.rowCount === 4 && /Payment to Swati/.test(ef.block));
+      T('  …with NO bracket and NO label (F-40.15 / R-VS.10)', !/^\[/m.test(ef.block) && !/\[.*\]/.test(ef.block));
+      T('  …and no house vocabulary reaches the vendor', !/cabinet|handle|fence|block/i.test(ef.block));
+      T('  …raw category token, no second home for the label list (veto V-3)', /on assistant/.test(ef.block) && !/on Assistant/.test(ef.block));
+      T('THE 00:52:38 SPECIMEN CONVICTS — the amount was TRUE, the date was not',
+        !G('I have that on file already — Rs 5,000 out on 10 September for assistant payment, confirmed by you.'));
+      T('  …and it ACQUITTED on amounts alone, which is why dates are handles',
+        wgv.moneyGrounded('I have that on file already — Rs 5,000 out on 10 September for assistant payment.', MF,
+          Object.assign({}, ef, { handles: Object.assign({}, ef.handles, { dates: [] }) })));
+      T('the TRUE sentence acquits — 1 September', G('Yes — Rs 5,000 on 1 September, assistant, Payment to Swati.'));
+      T('  …and in the OTHER spelling, 1 Sep (F-42.119)', G('Yes — Rs 5,000 on 1 Sep.'));
+      T('a true EXPENSE subtotal acquits from its OWN pool — 500+5000+1000', G('Rs 6,500 on assistant across three entries.'));
+      T('a CROSS-PLANE sum CONVICTS (F-42.123) — 10,000+42,000+2,000+1,000', !G('That comes to Rs 55,000 in all.'));
+      T('FAIL-CLOSED: an unreadable book ships the vetoed byte and an EMPTY handle set',
+        await (async () => { const bad = await EF.buildExpenseFacts(db([], true), 'v', '2026-09-10');
+          return bad.unreadable && bad.handles.amounts.length === 0 && bad.handles.rowAmounts.length === 0
+            && bad.block.indexOf(lines.VICTOR_LINES.EXPENSE_UNREADABLE) !== -1; })());
+      T('  …and it does NOT silence a readable ledger',
+        wgv.moneyGrounded('Rs 42,000 owed on TDW/DEV440/07.', MF, await EF.buildExpenseFacts(db([], true), 'v', '2026-09-10')));
+      // THE ECHO CELL (R-VS.10(3)). The frame's own sentences are read FROM the
+      // module so the cell cannot go green after the bytes change underneath it.
+      // NO THRESHOLD: each byte is asserted against the block that actually
+      // renders it. The first cut of this cell counted ">= 3 of FRAME_BYTES
+      // appear in the readable block" — which can never be true of the UNREADABLE
+      // path's own bytes, and a count that tolerates its own misses is the shape
+      // F-06.111 files against.
+      const zeroBlock = (await EF.buildExpenseFacts(db([]), 'v', '2026-09-10')).block;
+      const badBlock = (await EF.buildExpenseFacts(db([], true), 'v', '2026-09-10')).block;
+      T('THE ECHO CELL reads the frame FROM the module, never a retyped copy (R-VS.10(3))',
+        EF.FRAME_BYTES.every((b) => typeof b === 'string' && b.length > 0)
+          && ef.block.indexOf(EF.HEADER) !== -1
+          && ef.block.indexOf(EF.FOOTER) !== -1
+          && zeroBlock.indexOf(EF.ZERO_LINE) !== -1
+          && badBlock.indexOf(EF.UNREADABLE_HEADER) !== -1);
+      T('  …and no frame byte is written down anywhere but its module',
+        (() => { const others = ['src/lib/wireGuardVictor.js', 'src/api/vendor-engine/chat.js', 'src/lib/vendorInbound.js']
+            .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+          return [EF.HEADER, EF.FOOTER, EF.ZERO_LINE, EF.UNREADABLE_HEADER, EF.TRUNCATION_LINE]
+            .every((b) => others.indexOf(b) === -1); })());
+      T('V-8: the cap does not lie silently — truncation is stated when rows are dropped',
+        await (async () => { const many = Array.from({ length: 45 }, (_, i) => ({ amount: 100 + i, category: 'other', description: null, expense_date: '2026-09-05', created_at: '2026-09-05T00:00:00Z' }));
+          const t = await EF.buildExpenseFacts(db(many), 'v', '2026-09-10');
+          return t.truncated && t.rowCount === 40 && t.block.indexOf(EF.TRUNCATION_LINE) !== -1; })());
+      T('  …and it is ABSENT when nothing was dropped', ef.block.indexOf(EF.TRUNCATION_LINE) === -1);
+      T('the honest ZERO is not the unreadable sentence',
+        await (async () => { const z = await EF.buildExpenseFacts(db([]), 'v', '2026-09-10');
+          return z.ok && !z.unreadable && z.block.indexOf(EF.ZERO_LINE) !== -1; })());
+
+      // ── §21 · F-42.118 · THE FENCE CAN SEE A THREE-FIGURE SUM NOW ────────────────
+      console.log('\n  §21 F-42.118 — Rs 500 is money; 2026 and 04:58 and an invoice tail are not');
+      T('Rs 500 is extracted', JSON.stringify(wgv.extractAmounts('Rs 500 on printing')) === '["500"]');
+      T('a bare 500 is NOT — the prefix is what makes three digits money', wgv.extractAmounts('500 rupees').length === 0);
+      T('a YEAR is not extracted', wgv.extractAmounts('due in 2026').length === 0);
+      // THE RESIDUAL, PINNED. The chair accepted the bare-year exclusion as
+      // disclosed and ruled the disclosure must be a CELL, not prose: a later
+      // reader who widens the exclusion, or narrows it, meets these two.
+      T('  …so a true sentence saying "due in 2026" ACQUITS — the false conviction is gone',
+        G('Priya Nair owes Rs 42,000, due in 2026.'));
+      T('  …and Rs 2,026 WITH the prefix is still read as money, prefix beats year-shape',
+        JSON.stringify(wgv.extractAmounts('Rs 2026')) === '["2026"]');
+      T('  …and THE COST: a year-shaped figure spoken BARE goes unfenced (2000, not Rs 2,000)',
+        wgv.extractAmounts('spent 2000 on the lens').length === 0);
+      T('  …while the SAME figure spoken as the block renders it still convicts when not held',
+        !G('You spent Rs 2,026 on the lens.'));
+      T('a CLOCK TIME is not extracted', wgv.extractAmounts('filed at 04:58').length === 0);
+      T('an INVOICE ADDRESS is not extracted by the amount reader', wgv.extractAmounts('TDW/DEV440/07').length === 0);
+      T('Rs 5,000 still reads as the grouped figure, not a bare 5', JSON.stringify(wgv.extractAmounts('Rs 5,000')) === '["5,000"]');
+      T('an invented sub-1000 expense CONVICTS — the hole F-42.118 named', !G('You spent Rs 700 on printing.'));
+      T('a TRUE sub-1000 expense acquits', G('Rs 500 on assistant, Payment to Rahul.'));
+
+      // ── §23 · F-42.131 · THE EXPENSE FENCE CAN FIRE AT ALL ──────────────────────
+      // The block shipped before this arm with a fence that could never run: the
+      // money family was entirely invoice vocabulary, so an expense-shaped reply
+      // never reached the limb and moneyGrounded was never called on the one class
+      // F-42.97 was filed for. All four cells below are the chair's, verbatim.
+      console.log('\n  §23 F-42.131 — an expense sentence reaches the money limb');
+      T('"You spent Rs 700 on printing" REACHES the limb', wgv.MONEY_STATE_RE.test('You spent Rs 700 on printing.'));
+      T('  …and convicts, because Rs 700 is on no row', !G('You spent Rs 700 on printing.'));
+      T('"Rs 5,000 went out on 10 September" reaches the limb', wgv.MONEY_STATE_RE.test('Rs 5,000 went out on 10 September for the assistant.'));
+      T('  …and convicts ON THE DATE — the amount is a real row of his',
+        !G('Rs 5,000 went out on 10 September for the assistant.')
+        && G('Rs 5,000 went out on 1 September for the assistant.'));
+      T('the 00:52:18 money reply classifies UNCHANGED — invoice terms untouched',
+        wgv.MONEY_STATE_RE.test('Three invoices outstanding, Rs 1,52,000 in all.'));
+      T('a sentence with NEITHER vocabulary still skips the limb',
+        !wgv.MONEY_STATE_RE.test('I have sent the message to Kunal.'));
+      // THE BOUND IS THE SAFETY, AND IT IS BENCHED IN THE DIRECTION THAT COSTS.
+      // An unbounded verb list drags ordinary English into the money limb; these
+      // two are the sentences that would have been dragged.
+      T('  …and an expense VERB with no Rs nearby does not drag a turn in',
+        !wgv.MONEY_STATE_RE.test('I spent a while on the edit.')
+        && !wgv.MONEY_STATE_RE.test('The shoot cost her a week of prep.'));
+      T('NO BARE "paid" — the invoice plane owns that word',
+        !wgv.MONEY_STATE_RE.test('She paid Rs 18,000 last week.') || /invoice/i.test('She paid Rs 18,000 last week.'));
+
+      // ── §22 · F-40.2 · THE 00:53:25 SPECIMEN, PINNED (cure deferred to Block 09) ──
+      // kind=corroborated_lookup, SEVEN donna_find, and: "The invoices I pulled from
+      // your book don't exist in the records yet." THE INVOICES EXIST. Donna reads
+      // engine.records, which carries its own money columns (recordsView.ts) and they
+      // are EMPTY — two planes disagreeing in one sentence to the man who owns both.
+      // NOT CURED HERE by ruling: the fix is either a populated second money model or
+      // a Victor taught the two planes are not the same question, and neither is one
+      // line. This cell pins the specimen so the cure has a red to clear.
+      console.log('\n  §22 F-40.2 — the 00:53:25 specimen, pinned for Block 09');
+      {
+        const rv = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/recordsView.ts'), 'utf8');
+        T('engine.records still carries its own money columns — the premise of the disagreement',
+          /amount_received/.test(rv) && /amount_pending/.test(rv) && /payment_status/.test(rv));
+        const db15 = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/db.ts'), 'utf8');
+        T('  …and the engine client is still bound to the engine schema — it CANNOT see public.invoices',
+          /schema:\s*'engine'/.test(db15));
+        T('  …so the specimen\'s sentence remains structurally producible (cure is Block 09\'s)', true);
+      }
+    })();
+  }
+
   // ── §11 · BOTH WAYS, BY PRODUCTION MUTATION ─────────────────────────────────────────
   console.log('\n  §11 both ways — mutations on the SHIPPED bytes, never test setup');
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'b40-'));
@@ -671,6 +873,62 @@ function classify(reply, message, facts, mode) {
   execFileSync('cp', ['-r', path.join(ROOT, 'node_modules'), path.join(scratch, 'node_modules')], { stdio: 'ignore' });
 
   const MUT = [
+    // ── CE-42 V-2 · THE THREE NEW ARMS, DRIVEN BOTH WAYS ────────────────────────
+    // Every one of these must be RED at the mutated tree AND the cured tree must
+    // be green on the same sentence — the section above is that second direction.
+    // Succession note §6's third pattern: a cure driven only on what was broken
+    // ships a mute button.
+    {
+      name: 'MB1 drop ARM B — the true subtotal convicts again (F-42.98 returns)',
+      file: 'src/lib/wireGuardVictor.js',
+      from: "    if (admittedAsSubtotal(a, handles.rowAmounts, rupees)) continue;",
+      to: "    if (false) continue;",
+      probe: `const REPLY='Three invoices outstanding, Rs 1,52,000 in all. Two of those are Priya Nair — Rs 52,000 across two invoices.';
+  const v = C(REPLY,'who owes me money'); OUT(!!v && v.kind !== 'fact_grounded');`,
+      expect: 'the 00:52:18 reply is a costume again — the addend pool is the whole cure',
+    },
+    {
+      name: 'MB2 let ARM B use the GRAND TOTAL as an addend',
+      file: 'src/lib/vendor/moneyFacts.js',
+      from: "    rowAmounts: outstanding.map((r) => Math.round(Number(r.amount_owed) || 0)),",
+      to: "    rowAmounts: outstanding.map((r) => Math.round(Number(r.amount_owed) || 0)).concat([outstanding.reduce((s, r) => s + r.amount_owed, 0)]),",
+      probe: `const v = C('Rs 1,70,000 owed in all across the book.','who owes me money'); OUT(!!v && v.kind === 'fact_grounded');`,
+      expect: 'the book counted twice — 1,52,000 + 10,000 acquits as if it were a subtotal',
+    },
+    {
+      name: 'MB3 MERGE the addend pools across planes (the ruling before c-42.23)',
+      file: 'src/lib/wireGuardVictor.js',
+      from: "    if (admittedAsSubtotal(a, handles.rowAmounts, rupees)) continue;\n    if (exp && admittedAsSubtotal(a, exp.rowAmounts, rupees)) continue;",
+      to: "    if (admittedAsSubtotal(a, (handles.rowAmounts || []).concat((exp && exp.rowAmounts) || []), rupees)) continue;",
+      probe: `const v = C('Rs 55,000 owed between those two.','who owes me money'); OUT(!!v && v.kind === 'fact_grounded');`,
+      expect: 'F-42.123 exactly — an INVENTED figure acquits, assembled from two planes',
+    },
+    // ── MB4 / MB5 · WHY THESE TWO PROBE moneyGrounded DIRECTLY ──────────────────
+    // The ORIGINAL reason retires here and is recorded rather than deleted: when
+    // these were written, MONEY_STATE_RE carried no expense vocabulary, so an
+    // expense-shaped reply never reached the money limb and a classifier-level
+    // probe was vacuous BY CONSTRUCTION. F-42.131 cured that; §23 benches it.
+    // The chair ruled the probes STAY DIRECT anyway — a mutation is best probed at
+    // the function it mutates, and routing these through the classifier would make
+    // them depend on a second arm in order to fall.
+    {
+      name: 'MB4 drop the DATE fence — 00:52:38 walks again (F-42.97)',
+      file: 'src/lib/wireGuardVictor.js',
+      from: "    for (const d of extractSpokenDates(text)) if (!dateSet.has(d)) return false;",
+      to: "    for (const d of extractSpokenDates(text)) if (false) return false;",
+      probe: `const W = require('${scratch}/src/lib/wireGuardVictor.js');
+  OUT(W.moneyGrounded('I have that on file already — Rs 5,000 out on 10 September for assistant payment.', facts, efacts) === true);`,
+      expect: 'the amount was TRUE, so only the date convicts it — the specimen returns verbatim',
+    },
+    {
+      name: 'MB5 drop F-42.118 — a sub-1000 invention goes unfenced again',
+      file: 'src/lib/wireGuardVictor.js',
+      from: "const AMOUNT_TOKEN_RE = /(?:Rs\\.?\\s*(\\d{1,3}(?:,\\d{2,3})+|\\d{4,}|\\d{3})|(\\d{1,3}(?:,\\d{2,3})+|\\d{4,}))/g;",
+      to: "const AMOUNT_TOKEN_RE = /(?:Rs\\.?\\s*)?(\\d{1,3}(?:,\\d{2,3})+|\\d{4,})/g;",
+      probe: `const W = require('${scratch}/src/lib/wireGuardVictor.js');
+  OUT(W.moneyGrounded('You spent Rs 700 on printing.', facts, efacts) === true);`,
+      expect: 'Rs 700 is invisible to the fence — the founder\'s own book opens with a Rs 500 row',
+    },
     // ── A DESIGN FACT THE MUTATION RUN EXPOSED, AND IT SPLIT THIS CELL IN TWO ─────
     // The first cut had ONE M1 mutating `&& !moneyClaim` and probed it with the
     // lead_send specimen — and the mutation stayed GREEN, correctly. The gate is
@@ -786,8 +1044,14 @@ function classify(reply, message, facts, mode) {
     {
       name: 'M3 drop the equality fence (ground on presence alone)',
       file: 'src/lib/wireGuardVictor.js',
-      from: "  for (const a of amounts) if (!amountSet.has(a)) return false;",
-      to: "  for (const a of amounts) if (false) return false;",
+      // ── LABELED AMENDMENT (CE-42, seat V-2). RE-AIMED, TEETH KEPT, COUNT
+      // PRESERVED. ARM B (F-42.98) replaced the one-line loop with a three-way
+      // test — equality, then each block's own subtotal pool — so the old anchor
+      // no longer exists. The MUTATION'S SUBJECT is unchanged: cut the fence and
+      // a wrong rupee must acquit. Re-aimed at the `return false` that ENDS the
+      // amount loop, which is the fence's actual tooth.
+      from: "    if (exp && admittedAsSubtotal(a, exp.rowAmounts, rupees)) continue;\n    return false;",
+      to: "    if (exp && admittedAsSubtotal(a, exp.rowAmounts, rupees)) continue;\n    continue;",
       probe: `const v = C('Priya Nair owes you Rs 75,000 — invoice /05, unpaid.','who owes me money'); OUT(!v.specimen);`,
       expect: 'a wrong rupee acquits — R-VS.6 fence 1 is the only thing stopping it',
     },
@@ -832,14 +1096,19 @@ process.env.SUPABASE_URL='http://localhost:54321'; process.env.SUPABASE_SERVICE_
 const chat = require('${scratch}/src/api/vendor-engine/chat.js');
 const L = require('${scratch}/src/lib/victorLines.js');
 const MF = require('${scratch}/src/lib/vendor/moneyFacts.js');
+const EF = require('${scratch}/src/lib/vendor/expenseFacts.js');
 const FIX = ${JSON.stringify(FIXTURE)};
+const EFIX = ${JSON.stringify(EXPENSE_FIXTURE)};
 const sb = { from(){ const c={select(){return c;},eq(){return c;},is(){return c;},order(){return Promise.resolve({data:FIX.map(r=>Object.assign({},r)),error:null});}}; return c; } };
+// The expense door reads with .limit() at the tail, so its stub ends there.
+const esb = { from(){ const c={select(){return c;},eq(){return c;},is(){return c;},order(){return c;},limit(){return Promise.resolve({data:EFIX.map(r=>Object.assign({},r)),error:null});}}; return c; } };
 (async () => {
   const facts = await MF.buildMoneyFacts(sb, '${V}');
+  const efacts = await EF.buildExpenseFacts(esb, '${V}', '2026-09-10');
   const C = (reply, message) => {
     const r = { reply, victor_mode:'business', tool_calls: [] };
-    let v = chat.wireGuardClassify('${V}', r, undefined, { message, moneyFacts: facts });
-    if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify('${V}', r, false, { message, moneyFacts: facts });
+    let v = chat.wireGuardClassify('${V}', r, undefined, { message, moneyFacts: facts, expenseFacts: efacts });
+    if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify('${V}', r, false, { message, moneyFacts: facts, expenseFacts: efacts });
     return v;
   };
   const OUT = (b) => console.log(b ? 'RED-AS-EXPECTED' : 'STILL-GREEN');

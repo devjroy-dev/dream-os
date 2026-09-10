@@ -1572,7 +1572,7 @@ const MUTATION_CLAIM_RE = new RegExp([
 // OPTIONAL: every existing caller and every existing bench that passes three
 // arguments behaves byte-identically, because `victorClaim(_, undefined)` cannot
 // match an ask and `moneyFacts` absent means "no block this turn", which is the
-// pre-cure world. `ctx = { message, moneyFacts }`:
+// pre-cure world. `ctx = { message, moneyFacts, expenseFacts }`:
 //   `message`    — the OWNER'S imperative. Required by B-ii, because a reply-only
 //                  vocabulary cannot classify 「Done.」 at all (no object) and a
 //                  reply-only expense vocabulary firing on "paid" would convict
@@ -1897,7 +1897,11 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // NO BLOCK AND NO HANDS IS THE CONFABULATION SIGNATURE and it keeps convicting
   // — that is F-40.9's shape and R-VS.6 fence 2 exists to keep it detectable.
   else if (moneyOnly) {   // F-42.22 — the same predicate the class ladder reads
-    kind = moneyGrounded(eligible, ctx && ctx.moneyFacts)
+    // F-42.97/.98: ONE fence call over BOTH blocks (chair ruling 5). Equality
+    // merges — a figure held on either plane is his, and the fence asks
+    // "invented?", not "which plane". ARM B's addend pools stay per-block inside
+    // moneyGrounded (c-42.23, F-42.123).
+    kind = moneyGrounded(eligible, ctx && ctx.moneyFacts, ctx && ctx.expenseFacts)
       ? 'fact_grounded'
       : (readHands.length > 0 ? 'read_backed_report' : 'costume');
   }
@@ -3210,6 +3214,25 @@ async function fetchMoneyFacts(req) {
   }
 }
 
+// F-42.97 (CE-42 V-2) — the EXPENSE half, called identically by both routes for
+// the same reason its sibling is: the SSE and JSON surfaces must not be able to
+// answer about spending differently. Never throws; a failure returns null and the
+// caller passes `undefined`, which the engine treats as the pre-cure world.
+//
+// SEPARATE FROM fetchMoneyFacts ON PURPOSE. The two books fail independently, and
+// an unreadable expense book must not take a readable invoice book down with it —
+// each block carries its own founder-vetoed unreadable line and its own empty
+// handle set, so the fail-closed clause runs per plane.
+async function fetchExpenseFacts(req) {
+  try {
+    const { buildExpenseFacts } = require('../../lib/vendor/expenseFacts');
+    return await buildExpenseFacts(req.app.locals.supabase, req.vendor.id);
+  } catch (e) {
+    console.warn('[expenses:pwa fact-block]', e && e.message);
+    return null;
+  }
+}
+
 const CAPPED_LINE = (meta) =>
   meta.window === 'day'
     ? "You've reached today's conversation limit on your tier. The desk reopens at midnight."
@@ -3320,6 +3343,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const scratchpad = await fetchScratchpad(req);
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
       const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
+      const expenseFacts = await fetchExpenseFacts(req); // F-42.97 — the expense book, door-read
       const result = await runTurn({
         roomAssert, // G2 (R-41.107): the Advisor page's own bar, this turn only, no write
         agentId: req.agentId,
@@ -3328,6 +3352,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         scratchpad,
         recentActivity,
         moneyFacts: moneyFacts ? moneyFacts.block : undefined,
+        expenseFacts: expenseFacts ? expenseFacts.block : undefined,
         // 04.5 P6 (Fork B): the door normalises, the engine compares — one home for the
         // predicate, so the planner VOICE and the planner GAP LINE cannot diverge.
         vendorCategory: normaliseCategoryForTurn(req.vendor.category),
@@ -3388,7 +3413,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
     await persistComposedReply(req, result,
         composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-      const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts }); // wire guard — PWA site 1 of 2 (SSE)
+      const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts, expenseFacts }); // wire guard — PWA site 1 of 2 (SSE)
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       // ── STAGE 2, SSE SEAT — REPLACE-AT-DONE (CE-ruled). The model's body has already
@@ -3440,7 +3465,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
     const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
-    const result    = await runTurn({ roomAssert, agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
+    const expenseFacts = await fetchExpenseFacts(req); // F-42.97 — the expense book, door-read
+    const result    = await runTurn({ roomAssert, agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, expenseFacts: expenseFacts ? expenseFacts.block : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
     if (result.provider_downgrade) {
       logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
     }
@@ -3469,7 +3495,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
     await persistComposedReply(req, result,
       composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-    const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts }); // wire guard — PWA site 2 of 2 (JSON)
+    const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts, expenseFacts }); // wire guard — PWA site 2 of 2 (JSON)
 
     // CE-18: the firewall covers the reply itself. TDW_06 M-4 / F-06.36: and now it
     // leaves a witness. Wired here as well as on the WhatsApp door because this file's

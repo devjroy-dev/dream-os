@@ -74,6 +74,30 @@ function shortDate(iso) {
 // Indian grouping: 80000 -> "80,000"; 400000 -> "4,00,000"; 4000000 -> "40,00,000".
 // Hand-rolled rather than Intl-dependent — the grouping IS the safety property here
 // and it must not vary with a runtime's locale data.
+// F-42.119 · THE SECOND SPELLING, AND WHY IT LIVES HERE RATHER THAN AT ITS CALLER.
+// `shortDate` renders "1 Sep". Victor writes "1 September" — the 00:52:38 specimen
+// did exactly that. Once a date becomes a GUARD HANDLE (R-42.x ruling 4, CE-42
+// V-2) the fence must hold both spellings or it convicts a TRUE sentence for a
+// month abbreviation, which is F-42.21's defect recurring one column over: the
+// fence built against one spelling of a thing the store holds in another.
+//
+// Both live in this file because month vocabulary already lives in this file.
+// Authoring `LONG_MONTHS` at the caller would be F-15.10's class — the same list
+// with two homes, free to drift — and the array below is derived from MONTHS'
+// own order rather than retyped against it.
+const LONG_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+// "2026-09-01" -> "1 September". Parsed by string, never by Date(), for the same
+// reason shortDate is: a server's timezone must not move a vendor's date.
+function longDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+  if (!m) return null;
+  const mon = LONG_MONTHS[Number(m[2]) - 1];
+  if (!mon) return null;
+  return `${Number(m[3])} ${mon}`;
+}
+
 function rupees(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) return null;
@@ -296,6 +320,6 @@ module.exports = {
   FILING_HANDS, PREFIX,
   UPDATED_PREFIX, REMOVED_PREFIX, UPDATED_BARE, REMOVED_BARE,
   UPDATE_HANDS, REMOVE_HANDS, describeChange,
-  shortDate, rupees, describeHand,
+  shortDate, longDate, rupees, describeHand,
   witnessFooter, hasWitnessFooter, appendWitness,
 };

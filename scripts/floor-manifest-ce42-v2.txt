@@ -1,0 +1,37 @@
+# CE-42 · SEAT V-2 · F-42.98 ARM B + F-42.97 EXPENSE BLOCK + F-42.131 — DECLARED MANIFEST (F-14.16)
+# base: 2fadf83
+#
+# ONE FENCE CROSSED, BLOB-CHECKED ACROSS THE WHOLE SPAN RATHER THAN INHERITED.
+#   7a18bf6 -> 2fadf83  (J1-IN): 0162_introductions_stopped_at.sql, its handover,
+#     b71, its manifest, src/lib/couple/assistance.js, src/lib/prospects.js,
+#     src/lib/vendor/introductions.js. The chair called vendorInbound.js "J1-IN's
+#     neighbour, not its file" — DERIVED and confirmed: the diff carries no
+#     vendorInbound.js. Every path this delivery reads or writes was
+#     `git rev-parse`d at BOTH ends of the span; all are IDENTICAL.
+#
+# NO MIGRATION. This delivery opens no column and writes no row; the expense
+# reader reads columns that have existed since public.expenses was created.
+#
+# src/lib/vendor/expenseFacts.js is NEW at this base
+#   (`git rev-parse 2fadf83:src/lib/vendor/expenseFacts.js` -> does not exist).
+#
+# FIVE BENCH CELLS REDDENED BECAUSE THE RULED CURE LANDED, all amended by label,
+# subjects re-aimed, counts preserved: b06_forkc §5.3 and §5.8b (the guard ctx),
+# b40's tail-position cell and M3's anchor, and b06_relay_hand §9.13 (the tail's
+# last term). The fifth was found by grepping EVERY bench for the surfaces this
+# delivery moves, not by running them one at a time until one fell.
+
+src/lib/wireGuardVictor.js
+src/lib/vendor/moneyFacts.js
+src/lib/vendor/expenseFacts.js
+src/lib/vendor/expenses.js
+src/lib/witnessLine.js
+src/lib/victorLines.js
+src/lib/vendorInbound.js
+src/api/vendor-engine/chat.js
+src/engine/src/core/loop.ts
+scripts/b40_victor_sitting_bench.js
+scripts/b06_forkc_wireguard_bench.js
+scripts/b06_relay_hand_bench.js
+scripts/floor-manifest-ce42-v2.txt
+docs/HANDOVER_CE42_V2.md

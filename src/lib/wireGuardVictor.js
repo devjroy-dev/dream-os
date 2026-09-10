@@ -96,6 +96,11 @@
 // catch-all's remainder is Block 09's by number.
 
 const { VICTOR_LINES } = require('./victorLines');
+// ARM B renders candidate sums FORWARD through the house formatter rather than
+// parsing the model's prose backward — F-42.114, and the reason is in the ARM B
+// header below. This is the same function moneyFacts.js built its handles with,
+// so a sum and a stored figure cannot disagree about grouping.
+const { rupees } = require('./witnessLine');
 
 // ── B-i · THE ASK VOCABULARIES ──────────────────────────────────────────────
 // What the OWNER asked for. Deliberately generous — a miss here is a turn the
@@ -204,6 +209,27 @@ const MONEY_STATE_RE = new RegExp([
   "\\bnothing\\s+(?:due|outstanding|owed|owing)\\b",
   "\\b(?:invoice|invoices)\\b[^.]{0,40}\\b(?:unpaid|outstanding|paid|due|pending|settled|cancelled)\\b",
   "\\b(?:no|zero)\\s+(?:unpaid|outstanding|open)\\s+invoices?\\b",
+  // ── F-42.131 · THE EXPENSE VOCABULARY (chair, CE-42 V-2; W-1 lift by arm) ──
+  // The family above is entirely INVOICE vocabulary. So the expense fact block
+  // shipped with a fence that could never fire: 「 You spent Rs 700 on printing 」
+  // matched nothing here, `moneyOnly` stayed false, and `moneyGrounded` was never
+  // called on the one class of sentence F-42.97 was filed for. The block still
+  // cured the disease directly — Victor is handed the answer — but the backstop
+  // was unreachable, which is a fence that reports itself as present.
+  //
+  // BOUNDED THE SAME WAY THE INVOICE CLAUSE IS, and the bound is the whole of its
+  // safety. `spent`, `cost` and `spend` are ordinary English — 「 it spent a week
+  // in edit 」, 「 that will cost you the slot 」 — and an unbounded verb list would
+  // drag non-money turns into the money limb, which is the false-conviction
+  // direction this file's arming doctrine calls the expensive one. So an expense
+  // term counts ONLY within 40 characters of an `Rs`, in either order, exactly as
+  // `invoice` counts only near a state word.
+  //
+  // NO BARE `paid`. The invoice plane owns that word (the clause above reads it
+  // beside `invoice`), and lifting it here would make every settled-invoice
+  // sentence an expense sentence too.
+  "\\b(?:spent|spends?|expenses?|went\\s+out|paid\\s+out|costs?)\\b[^.]{0,40}\\bRs\\b",
+  "\\bRs\\b[^.]{0,40}\\b(?:spent|spends?|expenses?|went\\s+out|paid\\s+out|costs?)\\b",
 ].join('|'), 'i');
 
 // ── R-VS.6 FENCE 1 · THE EQUALITY EXTRACTORS ────────────────────────────────
@@ -221,7 +247,27 @@ const MONEY_STATE_RE = new RegExp([
 // forbids. The failure mode that matters is a WRONG FIGURE (F-39.73 spoke a
 // wrong total; F-40.9 invented a date), and figures are mechanically exact.
 // Filed for the chair rather than decided by the seat.
-const AMOUNT_TOKEN_RE = /(?:Rs\.?\s*)?(\d{1,3}(?:,\d{2,3})+|\d{4,})/g;
+// ── F-42.118 · THE FENCE COULD NOT SEE A FIGURE UNDER Rs 1,000 ──────────────
+// Derived at 7a18bf6: `extractAmounts("Rs 500 on printing")` returned []. The
+// old pattern needed FOUR consecutive digits or a comma group, so every
+// three-digit figure passed unfenced. On the invoice plane that never mattered —
+// invoices are four figures. On the EXPENSE plane it is the common case: the
+// founder's own book opens with a Rs 500 row, and Victor could have invented
+// "Rs 700 on printing" and nothing would have convicted him.
+//
+// THE CURE IS SCOPED, and the scope is the whole of its safety. A bare `\d{3}`
+// would convict ordinary prose: `2026` is a year, `04:58` is a clock, and
+// `TDW/DEV440/07` is an invoice address the OTHER extractor owns. So a
+// three-digit figure is read ONLY where `Rs` precedes it, which is the one
+// context in which three digits are unambiguously money. Four-plus digits and
+// comma-grouped figures are read exactly as before, prefix or not — the money
+// arm's existing cells assert that and they are re-run and disclosed.
+//
+// The alternation is ORDERED LONGEST-FIRST. `Rs 5,000` must match the grouped
+// branch and yield `5,000`; if the bare three-digit branch came first the engine
+// would take `5` and then trip over the comma, turning a true figure into an
+// unheld one — a false conviction, the expensive direction.
+const AMOUNT_TOKEN_RE = /(?:Rs\.?\s*(\d{1,3}(?:,\d{2,3})+|\d{4,}|\d{3})|(\d{1,3}(?:,\d{2,3})+|\d{4,}))/g;
 // ── F-42.21 CURE 1 · THE FENCE WAS BUILT AGAINST THE RULING'S EXAMPLE, NOT THE
 // COLUMN. R-40.2's exemplar wrote 「 invoice /05 」 and this seat pinned `/NN`. The
 // COLUMN holds `TDW/DEV440/05`. So the extractor pulled `/05` out of Victor's
@@ -238,7 +284,60 @@ function extractAmounts(text) {
   const out = [];
   let m;
   AMOUNT_TOKEN_RE.lastIndex = 0;
-  while ((m = AMOUNT_TOKEN_RE.exec(String(text || '')))) out.push(m[1]);
+  // Two groups because the pattern has two branches (F-42.118): group 1 is the
+  // Rs-prefixed figure, group 2 the bare one. Exactly one is ever defined.
+  //
+  // THE YEAR EXCLUSION, AND IT IS A BARE-BRANCH RULE ONLY (chair ruling 7's cell).
+  // `2026` matched the old `\d{4,}` branch, so a true money sentence that
+  // mentioned the year — 「 due in 2026 」 — convicted unless the ledger happened
+  // to hold 2026 as a figure. That is a FALSE CONVICTION ON A TRUE SENTENCE,
+  // which this file's own arming doctrine calls the expensive direction.
+  // `Rs 2026` is still read: the prefix is what makes four digits money.
+  //
+  // DISCLOSED RESIDUAL, so a later reader does not discover it as a surprise: a
+  // genuine figure between 1900 and 2099 spoken BARE and WITHOUT the prefix —
+  // `2000` rather than `Rs 2,000` — is no longer fenced. The block renders every
+  // figure grouped and prefixed, so a Victor copying his own block cannot land
+  // there; an inventor could. Narrower than convicting every year, wider than
+  // convicting none. Filed rather than hidden.
+  const YEAR_SHAPED = /^(?:19|20)\d{2}$/;
+  while ((m = AMOUNT_TOKEN_RE.exec(String(text || '')))) {
+    if (m[1]) { out.push(m[1]); continue; }
+    if (m[2] && !YEAR_SHAPED.test(m[2])) out.push(m[2]);
+  }
+  return out;
+}
+
+// ── F-42.97 · THE DATE EXTRACTOR ────────────────────────────────────────────
+// Both orders, because Victor writes both: 「 10 September 」 and 「 Sep 1 」. An
+// ordinal suffix is tolerated and dropped. Output is NORMALISED to the store's
+// own order, `D Month`, with no leading zero — the shape `shortDate` and
+// `longDate` render — so the comparison stays string equality against handles
+// the block built forward, and no date is ever parsed into a Date().
+//
+// The month table is the union of both spellings and it is NOT a third home for
+// month vocabulary: it exists only to RECOGNISE a month word in prose. The
+// rendering side has one home, witnessLine.js, and this file renders nothing.
+const MONTH_WORD =
+  '(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
+const DATE_DM_RE = new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_WORD}\\b`, 'gi');
+const DATE_MD_RE = new RegExp(`\\b${MONTH_WORD}\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'gi');
+
+// "Sept" is a spelling neither formatter produces. Folded to "Sep" so a true
+// sentence is not convicted over an abbreviation — the F-42.21 direction.
+function normaliseMonth(word) {
+  const w = String(word);
+  return /^sept$/i.test(w) ? 'Sep' : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+}
+
+function extractSpokenDates(text) {
+  const s = String(text || '');
+  const out = [];
+  let m;
+  DATE_DM_RE.lastIndex = 0;
+  while ((m = DATE_DM_RE.exec(s))) out.push(`${Number(m[1])} ${normaliseMonth(m[2])}`);
+  DATE_MD_RE.lastIndex = 0;
+  while ((m = DATE_MD_RE.exec(s))) out.push(`${Number(m[2])} ${normaliseMonth(m[1])}`);
   return out;
 }
 
@@ -248,6 +347,87 @@ function extractInvoiceHandles(text) {
   INVOICE_HANDLE_RE.lastIndex = 0;
   while ((m = INVOICE_HANDLE_RE.exec(String(text || '')))) out.push(m[1]);
   return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARM B · THE SUBTOTAL A TRUE ANSWER IS ALLOWED TO SPEAK  (F-42.98, ruled B)
+// ═══════════════════════════════════════════════════════════════════════════
+// 2026-09-10 00:52:18, the founder's handset. Victor's answer was RIGHT — three
+// invoices, every row correct, the total correct — and it convicted, twice, on
+// its own last sentence: 「 Two of those are Priya Nair — Rs 52,000 across two
+// invoices. 」 10,000 + 42,000. Both addends held; the sum was not, because
+// moneyFacts' handles carry per-row figures and the grand total and NEVER a
+// subtotal. The retry was byte-identical: Fork D cannot cure this, there is no
+// hand to grow.
+//
+// RULED B: a spoken figure is admitted when it is an EXACT SUM of two or more
+// figures THE BLOCK HOLDS. Never a difference, never a product, never a sum that
+// uses a figure the block does not hold. R-40.2's 「 never the model's
+// arithmetic 」 is read as: arithmetic THE BLOCK CANNOT REPRODUCE. Arms A
+// (pre-computed subtotals in the block — pre-decides his cuts, loses to the next
+// phrasing) and C (a soul instruction — a law where a mechanism belongs, B4's
+// lesson) were both refused at the chair.
+//
+// ── THE PROSE IS NEVER PARSED, AND THAT IS THE DESIGN ──────────────────────
+// F-42.114: the kickoff named `witnessLine.js:rupees` as an "Indian grouping
+// parser". IT IS A FORMATTER — number to string — and no string-to-number rupee
+// parser exists anywhere in this tree. So none is written. Candidate sums are
+// built FORWARD from the rows and rendered through `rupees()`, the same house
+// formatter moneyFacts.js used to build the handles, and the spoken token is
+// compared BY STRING EQUALITY against both spellings. That keeps R-VS.6's
+// direction exactly as it was: THE STORE COMPUTES, THE PROSE IS CHECKED AGAINST
+// IT, never the reverse. A forged longer name cannot become a match, and no
+// grouping edge case can be introduced by a second implementation.
+//
+// ── THE POOL IS PER-BLOCK  (c-42.23, F-42.123) ─────────────────────────────
+// The chair first ruled one merged handle set. Driven against the founder's real
+// rows before a byte moved, a merged ADDEND pool admitted Rs 55,000 (the
+// invented-figure acceptance cell), Rs 45,000 (a CANCELLED invoice), Rs 18,000
+// and Rs 12,000 (PAID invoices) — four expense rows of 500/1000/2000/5000 are a
+// fine-grained adjustment kit that reaches almost any nearby number, and 76 of
+// 91 admitted sums existed on neither plane. The chair amended: EQUALITY merges
+// across blocks, ARITHMETIC does not. Equality reads figures that EXIST; ARM B
+// MANUFACTURES them, and manufacturing across two planes yields a number no row
+// anywhere supports.
+//
+// ── THE BOUND  (chair, ruled) ──────────────────────────────────────────────
+// Subset search is not free and `readOutstanding` carries no row cap. Sizes 2–4
+// up to 20 rows; sizes 2–3 above 20; NO ADMISSION above 40, which convicts
+// exactly as the fence did before ARM B — the fail-safe direction. Cost at the
+// ceilings: 20 rows sizes 2–4 = 6,175 subsets; 40 rows sizes 2–3 = 10,660.
+const ARM_B_ROWS_FULL = 20;
+const ARM_B_ROWS_NARROW = 40;
+
+/**
+ * admittedAsSubtotal(token, rowAmounts, rupeesFmt) — ARM B's whole mechanism.
+ *
+ * TRUE iff `token` is the rendered form of an exact sum of 2..k distinct row
+ * figures. Enumerates by size with the sum carried down, so a subset is never
+ * re-added; returns at the first match.
+ */
+function admittedAsSubtotal(token, rowAmounts, rupeesFmt) {
+  const rows = (rowAmounts || [])
+    .map((n) => Math.round(Number(n)))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (rows.length < 2) return false;
+  if (rows.length > ARM_B_ROWS_NARROW) return false;
+  const maxSize = rows.length > ARM_B_ROWS_FULL ? 3 : 4;
+
+  const want = String(token);
+  const matches = (sum) => {
+    const grouped = rupeesFmt(sum);
+    return (grouped && grouped.replace(/^Rs\s*/, '') === want) || String(sum) === want;
+  };
+
+  let found = false;
+  const walk = (start, size, sum) => {
+    if (found) return;
+    if (size >= 2 && matches(sum)) { found = true; return; }
+    if (size === maxSize) return;
+    for (let i = start; i < rows.length && !found; i++) walk(i + 1, size + 1, sum + rows[i]);
+  };
+  walk(0, 0, 0);
+  return found;
 }
 
 /**
@@ -262,14 +442,49 @@ function extractInvoiceHandles(text) {
  * the block's presence alone — there is nothing to compare, and the block is the
  * only place that answer could have come from once the fact seam exists.
  */
-function moneyGrounded(text, facts) {
+function moneyGrounded(text, facts, expenseFacts) {
   if (!facts || !facts.ok || facts.unreadable) return false;
   const handles = facts.handles || { amounts: [], numbers: [] };
+  // THE EXPENSE BLOCK CONTRIBUTES ONLY WHEN IT READ (F-42.97). Absent or
+  // unreadable, this function behaves EXACTLY as it did before this sitting —
+  // the regression law, and the reason the parameter is optional and last.
+  const exp = (expenseFacts && expenseFacts.ok && !expenseFacts.unreadable)
+    ? (expenseFacts.handles || {})
+    : null;
+
   const amounts = extractAmounts(text);
   const numbers = extractInvoiceHandles(text);
-  const amountSet = new Set((handles.amounts || []).map(String));
+  // EQUALITY MERGES ACROSS BLOCKS (chair ruling 5, as amended by c-42.23): a
+  // figure held on either plane is a figure of HIS, and the fence asks
+  // "invented?", not "which plane". The block text is what keeps the planes
+  // apart on the wire.
+  const amountSet = new Set([
+    ...(handles.amounts || []),
+    ...((exp && exp.amounts) || []),
+  ].map(String));
   const numberSet = new Set((handles.numbers || []).map(String));
-  for (const a of amounts) if (!amountSet.has(a)) return false;
+
+  for (const a of amounts) {
+    if (amountSet.has(a)) continue;
+    // ARM B — ARITHMETIC DOES NOT MERGE (F-42.123). Each block's rows are tried
+    // as their own pool, so a sum can only be one the block that holds those
+    // rows could itself reproduce.
+    if (admittedAsSubtotal(a, handles.rowAmounts, rupees)) continue;
+    if (exp && admittedAsSubtotal(a, exp.rowAmounts, rupees)) continue;
+    return false;
+  }
+
+  // F-42.97 · THE DATE FENCE. The 00:52:38 specimen spoke ONE figure, Rs 5,000,
+  // and that figure was TRUE — a real row of his. The whole lie was "10
+  // September" against a row dated 1 September, plus a filing time he invented.
+  // An amount-only handle set ADMITS that sentence; this is what catches it.
+  // Only runs where an expense block was built: with no block there is nothing
+  // to check a date against, and convicting every date on a turn without one
+  // would break every calendar answer Victor gives.
+  if (exp && (exp.dates || []).length) {
+    const dateSet = new Set(exp.dates.map(String));
+    for (const d of extractSpokenDates(text)) if (!dateSet.has(d)) return false;
+  }
   // A stored number GROUNDS an extracted handle when it equals it OR ENDS WITH it:
   // `/05` is the tail of `TDW/DEV440/05` and naming an invoice by its tail is the
   // register the founder's own ratified line uses. The direction is deliberate —
@@ -412,6 +627,10 @@ module.exports = {
   MONEY_STATE_RE,
   extractAmounts,
   extractInvoiceHandles,
+  extractSpokenDates,
+  admittedAsSubtotal,
+  ARM_B_ROWS_FULL,
+  ARM_B_ROWS_NARROW,
   moneyGrounded,
   victorClaim,
   leadSendClaim,

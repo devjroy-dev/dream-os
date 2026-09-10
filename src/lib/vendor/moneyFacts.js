@@ -121,7 +121,10 @@ function invoiceLine(row) {
  * cabinet again and that is the disease.
  */
 async function buildMoneyFacts(supabase, vendorId) {
-  const empty = { amounts: [], numbers: [], names: [] };
+  // Same SHAPE as the populated set, F-42.116 included — an unreadable or empty
+  // book must hand ARM B an empty addend pool rather than an absent one, so the
+  // fence's arithmetic degrades to "nothing is admissible" and never to a crash.
+  const empty = { amounts: [], rowAmounts: [], numbers: [], names: [] };
   let read;
   try {
     read = await readOutstanding(supabase, vendorId);
@@ -168,8 +171,17 @@ async function buildMoneyFacts(supabase, vendorId) {
   // The handle sets. Amounts carry BOTH the grouped register form and the raw
   // digits, because the guard reads the model's prose and the model may write
   // either — and the fence must not convict a true sentence for a comma.
+  // F-42.116 · `rowAmounts` — ARM B's ADDEND SET, AND IT IS A SEPARATE FIELD
+  // ON PURPOSE. `amounts` below is a flat interleaved list of grouped-and-raw
+  // pairs with the GRAND TOTAL PUSHED LAST, so the only way to recover the
+  // per-row figures from it is by position — in another file, across a push
+  // order this module is free to change. A gate reads a row, never a display
+  // string (CE-215), and this is that row. The total is excluded by
+  // construction: ARM B admits a spoken SUBTOTAL, and a "subtotal" that may use
+  // the total as an addend is just the book counted twice.
   const handles = {
     amounts: [],
+    rowAmounts: outstanding.map((r) => Math.round(Number(r.amount_owed) || 0)),
     numbers: outstanding.map((r) => r.invoice_number).filter(Boolean),
     names: outstanding.map((r) => r.client_name).filter(Boolean),
   };

@@ -428,7 +428,13 @@ t('§5.3 BOTH persistComposedReply CALL SITES CARRY THE GUARD — one site cover
   // the handles carry the equality fence. The old anchors ended on `)` and so no
   // longer match. The SUBJECT is untouched: one function, both doors, no second
   // implementation, and the count still decides.
-  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId, \{ message, moneyFacts \}\)/g) || []).length, 2, 'the guard is not on both PWA sites');
+  // ── LABELED AMENDMENT (CE-42, seat V-2). RE-AIMED, TEETH KEPT, COUNT PRESERVED,
+  // RATIFY-OR-REVERT. F-42.97 adds `expenseFacts` to the ctx at every guard seam —
+  // the expense plane had NO fact block at all, which is why 00:52:38 invented a
+  // date for a real row. The old anchors ended on `moneyFacts }` and so no longer
+  // match. The SUBJECT is untouched: one function, both doors, no second
+  // implementation, and the count still decides.
+  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId, \{ message, moneyFacts, expenseFacts \}\)/g) || []).length, 2, 'the guard is not on both PWA sites');
 });
 
 t('§5.4 THE GUARD DOES NOT RIDE INSIDE persistComposedReply — that function returns early on an empty tail, which is exactly the costume turn', () => {
@@ -583,14 +589,20 @@ t('§5.8b R-10 — THE WHATSAPP SEAT SHIPS, AND IT IS THE SAME FUNCTION (no new 
   // the handles carry the equality fence. The old anchors ended on `)` and so no
   // longer match. The SUBJECT is untouched: one function, both doors, no second
   // implementation, and the count still decides.
-  assert.ok(/await wireGuardSpecimen\(supabase, vendor\.id, result, agentId, \{ message: body, moneyFacts \}\)/.test(wa), 'the WA lane does not call the guard');
+  // ── LABELED AMENDMENT (CE-42, seat V-2). RE-AIMED, TEETH KEPT, COUNT PRESERVED,
+  // RATIFY-OR-REVERT. F-42.97 adds `expenseFacts` to the ctx at every guard seam —
+  // the expense plane had NO fact block at all, which is why 00:52:38 invented a
+  // date for a real row. The old anchors ended on `moneyFacts }` and so no longer
+  // match. The SUBJECT is untouched: one function, both doors, no second
+  // implementation, and the count still decides.
+  assert.ok(/await wireGuardSpecimen\(supabase, vendor\.id, result, agentId, \{ message: body, moneyFacts, expenseFacts \}\)/.test(wa), 'the WA lane does not call the guard');
   assert.ok(/const result = await runTurn\(\{/.test(wa), 'the WA lane no longer calls runTurn — R-10\'s derivation premise has changed; re-derive before trusting this seat');
   // the guard's signature is the ONE adaptation, and both doors pass the same two values
   const c = read(CHAT);
   // AMENDED (F-06.130, count preserved): the relocated signature GAINS its agent, additively.
   // R-10's subject — ONE function, both doors, no second implementation — is untouched.
   assert.ok(/async function wireGuardSpecimen\(supabase, vendorId, result, agentId, ctx\)/.test(c), 'the guard signature is not the relocated (supabase, vendorId, result, agentId, ctx) shape');
-  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId, \{ message, moneyFacts \}\)/g) || []).length, 2,
+  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId, \{ message, moneyFacts, expenseFacts \}\)/g) || []).length, 2,
     'the PWA door does not pass the relocated signature at both of its sites');
 });
 

@@ -68,6 +68,78 @@ const ALLOWED_CATEGORIES = [
 const CATEGORY_REFUSAL =
   'That is not a category we track. Pick one of: ' + ALLOWED_CATEGORIES.join(', ') + '.';
 
+// ── readRecentExpenses ────────────────────────────────────────────────────
+// F-42.97's ROOT. Until this function existed, `from('expenses')` resolved to
+// four files and NONE OF THEM WAS A READ VICTOR COULD REACH — this file held
+// three writes, `src/api/vendor/money.js` the room, `src/admin/router.js` the
+// admin plane, `src/agent/engine.js` the dead island (F-40.5). So Victor spoke
+// about expenses with zero hands, and on 2026-09-10 00:52:38 he invented a date
+// AND a filing time for a row that really exists. He fills silence; the cure is
+// to stop the silence, not to instruct him about it (arm C, refused).
+//
+// It lives HERE, beside the writes, for the reason `readOutstanding` lives in
+// invoices.js: one home per table. `expenseFacts.js` renders; this reads.
+//
+// CONTRACT, copied in substance from readOutstanding: NEVER THROWS, NEVER
+// GUESSES. `{ ok: true, rows, truncated }` or `{ ok: false, error }`. A read
+// failure is not an empty book, and the caller says so in the vetoed words.
+//
+// Columns witnessed against docs/db/PUBLIC_SCHEMA.md `public.expenses` (:675,
+// 12 columns): amount :680 · category :681 · description :682 · expense_date
+// :683 · client_name :684 · created_at :687 · deleted_at :689. None from memory.
+//
+// THE WINDOW AND THE CAP ARE FOLDED IN JS, NOT IN THE QUERY, and that is
+// deliberate. `expense_date` IS NULLABLE — createExpense above writes
+// `expense_date || null` — so the window must run on `expense_date` FALLING BACK
+// to the filed date, and a SQL-side window on the column alone would silently
+// drop every row a vendor logged without one. Same shape as 7a18bf6's pulse
+// reader: a bounded fetch, the fold in JS where the fallback can be expressed.
+const RECENT_SELECT = 'amount, category, description, expense_date, client_name, created_at';
+const RECENT_WINDOW_DAYS = 30;
+const RECENT_ROW_CAP = 40;
+const RECENT_FETCH = 200; // bound on the fetch itself; the cap below is the block's
+
+// The effective date of a row: what the vendor said, else the day it was filed.
+// String-sliced, never Date()-parsed — witnessLine.js's own reason, kept here.
+function effectiveDate(row) {
+  const d = String(row.expense_date || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  return String(row.created_at || '').slice(0, 10) || null;
+}
+
+async function readRecentExpenses(supabase, vendorId, today) {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select(RECENT_SELECT)
+    .eq('vendor_id', vendorId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(RECENT_FETCH);
+
+  if (error) return { ok: false, error: error.message };
+
+  // The window's floor, by string. `today` is injectable so a cell can pin a day
+  // without pinning the clock — the bench's own requirement, not a convenience.
+  const end = /^\d{4}-\d{2}-\d{2}$/.test(String(today || ''))
+    ? new Date(`${today}T00:00:00Z`)
+    : new Date();
+  const floor = new Date(end.getTime() - RECENT_WINDOW_DAYS * 86400000)
+    .toISOString().slice(0, 10);
+
+  const inWindow = (data || [])
+    .map((r) => ({ ...r, effective_date: effectiveDate(r) }))
+    .filter((r) => r.effective_date && r.effective_date >= floor)
+    .sort((a, b) => (a.effective_date < b.effective_date ? 1 : a.effective_date > b.effective_date ? -1 : 0));
+
+  return {
+    ok: true,
+    // V-8's trigger. The cap must not lie silently: a Victor who cannot see that
+    // rows were dropped will say "that's everything" and be wrong.
+    truncated: inWindow.length > RECENT_ROW_CAP,
+    rows: inWindow.slice(0, RECENT_ROW_CAP),
+  };
+}
+
 // ── createExpense ─────────────────────────────────────────────────────────
 
 async function createExpense(supabase, vendorId, params) {
@@ -154,4 +226,9 @@ async function deleteExpense(supabase, vendorId, expenseId) {
   return { ok: true, deleted: true };
 }
 
-module.exports = { createExpense, updateExpense, deleteExpense, ALLOWED_CATEGORIES, CATEGORY_REFUSAL };
+module.exports = {
+  createExpense, updateExpense, deleteExpense,
+  ALLOWED_CATEGORIES, CATEGORY_REFUSAL,
+  readRecentExpenses, effectiveDate,
+  RECENT_WINDOW_DAYS, RECENT_ROW_CAP,
+};

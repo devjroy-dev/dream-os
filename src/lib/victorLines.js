@@ -57,6 +57,19 @@ const VICTOR_LINES = {
   LEDGER_UNREADABLE:
     "I can't read your ledger this minute, so I won't guess at what's outstanding. Ask again in a moment.",
 
+  // ── EXPENSE_UNREADABLE · NAMED, NOT NUMBERED (chair, CE-42 V-2, veto V-7) ──
+  // The expense plane's half of the same fail-closed clause, founder-vetoed
+  // 2026-09-10. IT IS DELIBERATELY NOT AN R-40.2 LINE NUMBER: line 2 stays
+  // VACATED (R-VS.13) and no new number is minted, so a later reader still sees
+  // the gap at 2 rather than a renumbering that papers over it.
+  //
+  // LEDGER_UNREADABLE COULD NOT BE REUSED and that is the whole reason this byte
+  // exists: it says "what's outstanding", which is the INVOICE plane. Speaking it
+  // when the expense book failed to read would answer the wrong question with a
+  // confident sentence — the exact shape F-42.97 was filed for.
+  EXPENSE_UNREADABLE:
+    "I can't read your expense book this minute, so I won't guess at what you have spent. Ask again in a moment.",
+
   // 5 · the advisor word on WhatsApp. R-VS.4 = D1, enforcing R-39.22: advisory
   //     lives in the Advisor room alone; the lane is business, always.
   ADVISOR_ON_WHATSAPP:
@@ -167,6 +180,8 @@ const STATE_WORDS = {
 const LINE_HASHES = {
   EXPENSE_NO_HAND: 'c400bc688434a6bfa9fc2414bd3590f2f1fcb4739975b096eab0a380d2e42291',
   LEDGER_UNREADABLE: '70af765dfab2ef49bf14b41c717fd3e00c437893083689b288000db2e635570f',
+  // CE-42 seat V-2, F-42.97 — the expense plane's fail-closed line, vetoed 2026-09-10.
+  EXPENSE_UNREADABLE: 'c53465a418384fc878b6b440e39c9e146671fb20e7c16f67fcafb4a99e508b93',
   ADVISOR_ON_WHATSAPP: 'eedc31106b740fb72b827807031f7f57d9bb532565c642ce0b22518bbdc21851',
   // CE-42 seat E2, packet 4a — the four introduction bytes, vetoed 2026-09-10.
   INTRO_ASK_NUMBER:    '66995d580664ba33182811f99c0ac42cabcd69a2ce4d6c0c49d57379b49f42a7',
