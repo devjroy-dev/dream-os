@@ -542,7 +542,11 @@ section('§12 · F-07.24 — THE HANDLE THE SUBMISSION PROMISED IS VISIBLE');
 {
   const rtr = codeOf('src/api/vendor/ig.js');
   const a = rtr.indexOf("router.get('/callback'");
-  const b = rtr.indexOf('async function tokenForCall');
+  // AMENDED BY LABEL (R-41.121, CE-42 4b-3b, F-42.177): the slice ended at
+  // `async function tokenForCall`, which left the router for igConnection.js.
+  // The cell's meaning — the callback's body reads the profile before it
+  // persists — is unchanged; the body now ends where the next door begins.
+  const b = rtr.indexOf("router.get('/media'");
   const cb = a >= 0 && b > a ? rtr.slice(a, b) : '';
   ok('§12.3 the callback reads the profile BEFORE persisting, so the handle lands '
      + 'with the token', cb.indexOf('fetchProfile') > 0 && cb.indexOf('fetchProfile') < cb.indexOf('saveToken'));

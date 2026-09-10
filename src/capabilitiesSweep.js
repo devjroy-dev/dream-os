@@ -213,10 +213,49 @@ async function probeScope(key, { supabase, fetch: f = globalThis.fetch } = {}) {
 //   ...
 // }
 
-/** Route one key to its probe; `flag.*` and `perm.*` are not probed. */
+// ── THE INSIGHTS PROBE — CE-42 4b-3b, ruling 15(a), F-42.164's cure ─────────
+// The withheld shape above named graph.facebook.com with META_WABA_TOKEN: the
+// Facebook-Login path. The estate's tokens are Instagram-Login (igOAuth.js
+// GRAPH_HOST, graph.instagram.com) and a WABA token cannot read an Instagram
+// user's insights. So the probe reads THE PROBE VENDOR'S OWN TOKEN — the routing
+// handle in admin_config.ig_probe_vendor (0163, seeded DEV440) — through
+// igConnection.tokenForCall (refresh-on-use, the one home) and one account read
+// in igOAuth.probeInsightsScope, on graph.instagram.com and nowhere else.
+//   200                    → approved   (recordSweep (d): pending → approved; the founder flips)
+//   4xx permission refusal → pending    (the scope is not on that token)
+//   anything else          → ok:false   (touch: checked_at/evidence move, status never)
+// F-42.175 — WHAT THIS CANNOT TELL: a tester-role token in Development mode
+// reads 200 with no App Review grant behind it. The evidence byte therefore
+// names the token's owner and says "app mode unread", and the Switchboard flip
+// is the R-41.8 tap on a WALK, never a reading of Meta's verdict. Only the
+// insights row is probed; the other seven perm.* rows keep the withheld line.
+async function probeInsights({ supabase } = {}) {
+  const igConn  = require('./lib/vendor/igConnection');
+  const igOAuth = require('./lib/vendor/igOAuth');
+  const { data: cfg, error: cfgErr } = await supabase.from('admin_config').select('key, value').eq('key', 'ig_probe_vendor').maybeSingle();
+  if (cfgErr) return { ok: false, evidence: `admin_config read failed: ${cfgErr.message}` };
+  const handle = cfg && String(cfg.value || '').trim();
+  if (!handle) return { ok: false, evidence: 'admin_config.ig_probe_vendor is not set (0163)' };
+  const { data: vendor, error: vErr } = await supabase.from('vendors').select('id, routing_handle').eq('routing_handle', handle).maybeSingle();
+  if (vErr) return { ok: false, evidence: `vendors read failed: ${vErr.message}` };
+  if (!vendor) return { ok: false, evidence: `no vendor carries routing_handle ${handle}` };
+  const t = await igConn.tokenForCall(supabase, vendor.id);
+  if (!t.ok) return { ok: false, evidence: `${handle}'s Instagram token: ${t.error}` };
+  const p = await igOAuth.probeInsightsScope(t.accessToken, t.igUserId);
+  const when = new Date().toISOString().slice(0, 16) + 'Z';
+  if (!p.ok) return { ok: false, evidence: `insights read on ${handle}'s token failed: ${p.error}` };
+  return {
+    ok: true,
+    status: p.granted ? 'approved' : 'pending',
+    evidence: `${p.granted ? 'approved' : 'absent'} on ig_probe_vendor ${handle}'s token · app mode unread · ${p.evidence} · ${when}`,
+  };
+}
+
+/** Route one key to its probe; `flag.*` and every `perm.*` but insights are not probed. */
 async function probeOne(row, deps) {
   if (row.kind === 'template')   return probeTemplate(row.key.replace(/^template\./, ''), deps);
   if (row.kind === 'scope')      return probeScope(row.key, deps);
+  if (row.kind === 'permission' && row.key === cap.CAPABILITY_KEYS.PERM_INSIGHTS) return probeInsights(deps);
   if (row.kind === 'permission') return { ok: false, evidence: (row.evidence || 'not filed') + ' · probe withheld until the IG user id (R-41.39)' , skipped: true };
   return { ok: false, evidence: row.evidence, skipped: true };
 }
@@ -356,6 +395,7 @@ function startCapabilitiesSweep({ supabase }) {
 }
 
 module.exports = {
+  probeInsights,
   runSweep, probeTemplate, probeScope, applyReading, applyTemplateStatusEvent, listWabaTemplates,
   startCapabilitiesSweep, mapMetaTemplateStatus, scopeUrlFor, notifyFounder,
   TEMPLATE_GUARDS, SWEEP_CRON, IST,

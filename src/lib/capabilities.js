@@ -308,6 +308,14 @@ const CAPABILITY_KEYS = Object.freeze({
   // entry). Seeded by 0164 statement 6; the sweep moves them.
   COUPLE_BROADCAST:        'template.tdw_couple_broadcast',
   REFERRAL_BROADCAST:      'template.tdw_referral_broadcast',
+  // ── CE-42 seat R6, packet 4b-3b · G4.1 (ruling 14(b): insights only) ────
+  // The first `perm.*` constant, landing WITH its readers (the roster's law
+  // above): the Sunday door reads it before any row (S1, no network) and the
+  // Sunday job reads it before any vendor. The other seven perm.* rows stay
+  // unrostered until each has a reader. Seeded pending by 0149:87; moved by the
+  // sweep's insights probe (capabilitiesSweep.js, 15a) on the probe vendor's
+  // token; the founder's Switchboard tap is the R-41.8 walk tap.
+  PERM_INSIGHTS:           'perm.instagram_business_manage_insights',
 });
 
 module.exports = {

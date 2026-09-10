@@ -345,8 +345,35 @@ const capDouble = (status) => ({
       !/['"]template\.tdw_introduction['"]/.test(
         fs.readFileSync(path.join(ROOT, 'src/lib/vendor/introductions.js'), 'utf8')
           .split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')));
-    T('§7 4a adds NO perm.* constant — 4b owns those with their readers',
-      !Object.values(K).some(v => String(v).startsWith('perm.')));
+    // ── AMENDED BY LABEL (R-41.121, CE-42 4b-3b seat R6) ────────────────────
+    // This cell read `no perm.* constant on the roster at all`. Its own LABEL
+    // says why that was only ever the 4a spelling: 4b owns those keys, WITH
+    // their readers. Ruling 14(b) landed exactly one — PERM_INSIGHTS, read by
+    // sundayBrief.js and capabilitiesSweep.js — so the clock spelling now
+    // convicts the delivery it was written to permit. The MEANING is the roster
+    // law at capabilities.js:266-268: a constant lands with its first reader.
+    // Asserted as that: every perm.* key on the roster is named by at least one
+    // file under src/ besides the roster itself. Both ways — a perm constant
+    // added with no reader reddens this, which is the thing 4a was guarding.
+    const perms = Object.entries(K).filter(([, v]) => String(v).startsWith('perm.'));
+    const readersOf = (name) => {
+      const out = [];
+      (function walk(dir) {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, e.name);
+          if (e.isDirectory()) { walk(full); continue; }
+          if (!e.name.endsWith('.js')) continue;
+          if (full.endsWith(path.join('lib', 'capabilities.js'))) continue;   // the roster is not a reader
+          const body = fs.readFileSync(full, 'utf8').split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+          if (body.includes(`CAPABILITY_KEYS.${name}`)) out.push(full);
+        }
+      })(path.join(ROOT, 'src'));
+      return out;
+    };
+    T('§7 every perm.* constant on the roster has a READER in src/ — 4a added none, 4b lands each with its own (R-41.121 label amendment)',
+      perms.every(([name]) => readersOf(name).length > 0));
+    T('§7 4a\'s own arm names no perm.* key — introductions.js is untouched by 4b\'s keys',
+      !/CAPABILITY_KEYS\.PERM_/.test(fs.readFileSync(path.join(ROOT, 'src/lib/vendor/introductions.js'), 'utf8')));
     T('§7 on() is true for \'on\' alone', capMod.on('template.tdw_introduction') === false);
   }
 

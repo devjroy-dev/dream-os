@@ -68,6 +68,12 @@ const VENDOR_PATHS = Object.freeze({
   // reader of ?google= (app/vendor/(shell)/your-website/screen.tsx). F-42.192,
   // ruled §3 at CE-42: the literal '/vendor/storefront' left google.js for here.
   yourWebsite: '/vendor/your-website',
+
+  // Posts & ads — the Sunday brief's Instagram return (src/api/vendor/ig.js
+  // POSTS_RETURN_PATH, ruling 13(b) at CE-42 4b-3b; F-42.192's precedent: the
+  // address lives here, never as a literal in a router). The pwa spells it at
+  // lib/solutions/routes.ts POSTS_HREF.
+  posts: '/vendor/posts',
 });
 
 function vendorPath(key) {

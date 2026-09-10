@@ -46,10 +46,14 @@ const PWA_BASE = process.env.PWA_BASE_URL || 'https://thedreamwedding.in';
 // F-38.p12 (CE-39 step 2a): the path reads the ONE HOME, src/lib/pwaPaths.js —
 // `/vendor/portfolio` today, `/w/portfolio` when Phase 7 flips that file.
 const RETURN_PATH = require('../../lib/pwaPaths').vendorPath('portfolio');
+// 4b-3b (ruling 13(b), F-42.192's precedent): the INSIGHTS flavour returns to the
+// Posts & ads room, where its "Connect Instagram" was tapped — the same one home.
+const POSTS_RETURN_PATH = require('../../lib/pwaPaths').vendorPath('posts');
 
-function backToPortfolio(res, params) {
+function backToPortfolio(res, params, flavour) {
   const q = new URLSearchParams(params);
-  return res.redirect(`${PWA_BASE}${RETURN_PATH}?${q.toString()}`);
+  const home = flavour === igOAuth.FLAVOURS.insights ? POSTS_RETURN_PATH : RETURN_PATH;
+  return res.redirect(`${PWA_BASE}${home}?${q.toString()}`);
 }
 
 // ── GET /status ──────────────────────────────────────────────────────────────
@@ -94,14 +98,17 @@ router.get('/authorize', requireAuth, resolveVendor(), asyncHandler(async (req, 
     // The gate speaks the same refusal the surface's darkness already implies.
     return errRes(res, 503, 'Instagram import is not switched on yet.', 'IG_NOT_CONFIGURED');
   }
-  const { state, nonce } = igOAuth.mintState(req.vendor.id);
+  // ?scope=insights — the brief's incremental authorize (4b-3b, ruling 13(b)).
+  // Anything else is the portfolio's one-scope connect, byte for byte as before.
+  const flavour = String(req.query.scope || '') === igOAuth.FLAVOURS.insights ? igOAuth.FLAVOURS.insights : igOAuth.FLAVOURS.basic;
+  const { state, nonce } = igOAuth.mintState(req.vendor.id, { flavour });
   const armed = await igConn.armState(supabase, req.vendor.id, nonce);
   if (!armed.ok) return errRes(res, 500, armed.error);
 
   // The URL is returned rather than redirected: the pwa owns the navigation, so
   // it can show its own "taking you to Instagram" state and so this door stays
   // callable from a fetch with a Bearer header.
-  return okRes(res, { authorize_url: igOAuth.authorizeUrl(state) });
+  return okRes(res, { authorize_url: igOAuth.authorizeUrl(state, { flavour }), flavour });
 }));
 
 // ── GET /callback — Meta's redirect. NO JWT. The state authenticates. ───────
@@ -122,6 +129,7 @@ router.get('/callback', asyncHandler(async (req, res) => {
     console.warn('[ig:callback] state rejected:', v.error);
     return backToPortfolio(res, { ig: 'failed', reason: 'expired' });
   }
+  const flavour = v.flavour;
 
   // SINGLE-USE, SPENT BEFORE ANY TOKEN IS REQUESTED. If the exchange below then
   // fails, the state is already dead — so a failed attempt cannot be replayed,
@@ -129,19 +137,19 @@ router.get('/callback', asyncHandler(async (req, res) => {
   const spent = await igConn.spendState(supabase, v.vendorId, v.nonce);
   if (!spent.ok) {
     console.warn('[ig:callback] state not spendable for vendor', v.vendorId);
-    return backToPortfolio(res, { ig: 'failed', reason: 'replay' });
+    return backToPortfolio(res, { ig: 'failed', reason: 'replay' }, flavour);
   }
 
   const short = await igOAuth.exchangeCode(String(code));
   if (!short.ok) {
     console.warn('[ig:callback] code exchange refused:', short.error);
-    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' });
+    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' }, flavour);
   }
 
   const long = await igOAuth.exchangeForLongLived(short.shortLivedToken);
   if (!long.ok) {
     console.warn('[ig:callback] long-lived exchange refused:', long.error);
-    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' });
+    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' }, flavour);
   }
 
   // F-07.24 — read the handle so the surface can show WHICH account is linked.
@@ -159,38 +167,35 @@ router.get('/callback', asyncHandler(async (req, res) => {
   });
   if (!saved.ok) {
     console.error('[ig:callback] could not persist connection for vendor', v.vendorId, saved.error);
-    return backToPortfolio(res, { ig: 'failed', reason: 'store' });
+    return backToPortfolio(res, { ig: 'failed', reason: 'store' }, flavour);
+  }
+
+  // THE INSIGHTS FLAVOUR PROVES ITS GRANT BEFORE STORING IT (4b-3b, 15b). One
+  // account read on the new token: granted → insights_granted_at lands and the
+  // brief's door answers her; refused → the connect still stands for photos and
+  // the door keeps saying "connect", which is the truth. The basic flavour never
+  // reaches this block and leaves the column as it finds it.
+  let ig = 'connected';
+  if (flavour === igOAuth.FLAVOURS.insights) {
+    const probe = await igOAuth.probeInsightsScope(long.accessToken, short.igUserId);
+    if (probe.ok && probe.granted) {
+      const g = await igConn.markInsightsGranted(supabase, v.vendorId);
+      if (!g.ok) console.error('[ig:callback] insights grant not stored for vendor', v.vendorId, g.error);
+    } else {
+      ig = 'no_scope';
+      console.warn('[ig:callback] insights scope not on the token for vendor', v.vendorId, probe.ok ? probe.evidence : probe.error);
+    }
   }
 
   // Not one token byte in this line. The vendor id and the fact of success.
   console.log('[ig:callback] connected vendor', v.vendorId, 'ig_user', short.igUserId);
-  return backToPortfolio(res, { ig: 'connected' });
+  return backToPortfolio(res, { ig }, flavour);
 }));
 
-/**
- * REFRESH-ON-USE (F2, CE-ruled). Every door that needs a token comes through
- * here, so the refresh has ONE home and no cron exists this block.
- */
-async function tokenForCall(supabase, vendorId) {
-  const t = await igConn.readToken(supabase, vendorId);
-  if (!t.ok) return t;
-
-  const decision = igOAuth.refreshDecision({ expiresAt: t.expiresAt, connectedAt: t.connectedAt });
-  if (decision === 'expired') return { ok: false, error: 'expired' };
-  if (decision === 'ok')      return { ok: true, accessToken: t.accessToken };
-
-  const r = await igOAuth.refreshLongLived(t.accessToken);
-  if (!r.ok) {
-    // A REFUSED REFRESH IS NOT A DEAD CONNECTION. The old token has days left by
-    // construction — that is what the 7-day window bought. Proceed on it and let
-    // the next call try again, rather than converting a transient Meta blip into
-    // a vendor-visible disconnection.
-    console.warn('[ig:refresh] refresh refused, proceeding on the current token:', r.error);
-    return { ok: true, accessToken: t.accessToken, refresh_deferred: true };
-  }
-  await igConn.updateToken(supabase, vendorId, { accessToken: r.accessToken, expiresAt: r.expiresAt });
-  return { ok: true, accessToken: r.accessToken, refreshed: true };
-}
+// REFRESH-ON-USE lives in igConnection.tokenForCall since 4b-3b (F-42.177, zero
+// behaviour change): the Sunday job and the insights probe are callers with no
+// request in hand, so the one home could no longer be a router file.
+const tokenForCall = igConn.tokenForCall;
 
 // ── GET /media ───────────────────────────────────────────────────────────────
 router.get('/media', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {

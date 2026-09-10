@@ -264,8 +264,11 @@ const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((
     const code = strip(fs.readFileSync(path.join(ROOT, 'src/api/vendor/posts.js'), 'utf8'));
     const routes = code.match(/router\.(get|post|put|patch|delete)\(/g) || [];
     const guarded = code.match(/requireAuth, resolveVendor\(\)/g) || [];
-    // 4b-2 adds GET/POST /broadcast to this file: three doors, three guards — the count is the guarantee.
-    assert.ok(routes.length === 3 && guarded.length === 3, `${routes.length} routes, ${guarded.length} guarded`);
+    // 4b-2 added GET/POST /broadcast: three doors, three guards. 4b-3b adds the two
+    // Sunday doors (five). AMENDED BY LABEL (R-41.121, seat R6 4b-3b): the cell
+    // pinned the clock spelling `=== 3`; its meaning is EVERY door guarded, and a
+    // door with no guard still reddens it — the count pair must match and grow.
+    assert.ok(routes.length >= 3 && routes.length === guarded.length, `${routes.length} routes, ${guarded.length} guarded`);
     const core = strip(fs.readFileSync(path.join(ROOT, 'src/api/vendor/core.js'), 'utf8'));
     assert.ok(/router\.use\('\/posts',\s*require\('\.\/posts'\)\)/.test(core), 'not mounted at /posts');
   });

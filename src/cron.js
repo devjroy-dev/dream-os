@@ -200,6 +200,26 @@ function startCronJobs({ supabase }) {
     timezone: 'UTC',
   });
 
+  // ── G4.1 · THE SUNDAY BRIEF — Sunday 07:00 IST (CE-42 4b-3b, ruling iii) ────
+  // One hour before the morning briefing so a vendor who opens Posts & ads on
+  // Sunday morning finds her week already written. THE PLANE IS READ FIRST inside
+  // runSundayJob (cap.on(PERM_INSIGHTS)): with the row off, nothing is read from
+  // Meta for anyone. Per vendor with a finished connect AND the insights grant
+  // stored (0165), one row per vendor-week; a Meta refusal lands as that vendor's
+  // error row, never as this job's exception. Asia/Kolkata declared (B3(a)).
+  cron.schedule('0 7 * * 0', async () => {
+    try {
+      const { runSundayJob } = require('./lib/vendor/sundayBrief');
+      const r = await runSundayJob(supabase);
+      if (r.skipped) console.log('[cron:sunday] skipped — ' + r.reason);
+      else console.log(`[cron:sunday] vendors=${r.vendors} written=${r.written} errors=${r.errors} refused=${r.refused}`);
+    } catch (err) {
+      console.error('[cron:sunday] fatal error in Sunday brief run:', err);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── Collab post expiry — 3:15am IST ───────────────────────────────
   // Was '45 21 * * *' with no timezone (21:45 UTC). 03:15 Asia/Kolkata IS 21:45 UTC.
   // CE-42 4c-1 (ruling 1(a)): the sweep's body moved to its one home,

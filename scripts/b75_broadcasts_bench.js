@@ -277,10 +277,12 @@ const capOn = (onKeys) => ({ on: (k) => onKeys.includes(k), reason: (k) => `${k}
     const r = await call(app, 'GET', '/posts/broadcast'); app.__restore();
     assert.deepStrictEqual([r.status, r.body.ok, r.body.count, r.body.fee_paise], [200, true, 5, 510]);
   });
-  await cell('7.3 three doors, three guards — asserted on the shipped file (the harness stubs auth)', async () => {
+  await cell('7.3 every door guarded — asserted on the shipped file (the harness stubs auth); AMENDED BY LABEL at 4b-3b (R-41.121): the count pair must match and never shrink below 4b-2\'s three', async () => {
     const code = strip(fs.readFileSync(path.join(ROOT, 'src/api/vendor/posts.js'), 'utf8'));
-    assert.strictEqual((code.match(/router\.(get|post)\(/g) || []).length, 3);
-    assert.strictEqual((code.match(/requireAuth, resolveVendor\(\)/g) || []).length, 3);
+    const routes = (code.match(/router\.(get|post)\(/g) || []).length;
+    const guards = (code.match(/requireAuth, resolveVendor\(\)/g) || []).length;
+    assert.ok(routes >= 3, `${routes} doors`);
+    assert.strictEqual(routes, guards, `${routes} doors, ${guards} guards`);
   });
 
   console.log('§8 · THE PLANE AND THE REGISTRY');

@@ -131,6 +131,18 @@ const GRAPH_HOST      = 'https://graph.instagram.com';
 // names are mandatory and this is the current name.
 const IG_SCOPE = 'instagram_business_basic';
 
+// ── THE INSIGHTS SCOPE — INCREMENTAL, NEVER GLOBAL (CE-42 4b-3b, ruling 13(b)) ──
+// The Sunday brief (G4.1) needs `instagram_business_manage_insights`. It is NOT
+// added to IG_SCOPE: that would move every vendor's consent screen and every
+// App Review paragraph for a feature most vendors have not asked for. Instead the
+// brief's own "Connect Instagram" mints a SECOND authorize carrying both scopes,
+// tagged `insights` in the state (below), and the callback records the grant on
+// the connection (vendor_ig_connections.insights_granted_at, 0165) only after
+// one account read proves the token carries it. Meta's reference for the
+// Instagram-Login path names exactly this pair on graph.instagram.com.
+const INSIGHTS_SCOPE = 'instagram_business_manage_insights';
+const FLAVOURS = Object.freeze({ basic: 'basic', insights: 'insights' });
+
 // ── TOKEN LIFECYCLE, DERIVED AND WRITTEN DOWN ───────────────────────────────
 // short-lived  ≈ 1 hour, issued by the code exchange
 // long-lived   = 60 days, issued by ig_exchange_token
@@ -194,11 +206,18 @@ function sign(payloadB64) {
  * Mint a state. Returns { state, nonce, issuedAt } — the CALLER persists the
  * nonce against the vendor, which is what makes the state single-use.
  */
-function mintState(vendorId) {
+function mintState(vendorId, opts = {}) {
   const nonce    = crypto.randomBytes(16).toString('hex');
   const issuedAt = Date.now();
-  const payload  = b64url(JSON.stringify({ v: vendorId, n: nonce, t: issuedAt }));
-  return { state: `${payload}.${sign(payload)}`, nonce, issuedAt };
+  // `s` — the FLAVOUR (4b-3b). Absent for the portfolio's connect, 'insights' for
+  // the brief's, so the callback knows which room to return to and whether the
+  // grant is to be proven and stored. Signed with the rest: a flavour cannot be
+  // edited in flight any more than the vendor id can.
+  const flavour  = opts.flavour === FLAVOURS.insights ? FLAVOURS.insights : null;
+  const body     = { v: vendorId, n: nonce, t: issuedAt };
+  if (flavour) body.s = flavour;
+  const payload  = b64url(JSON.stringify(body));
+  return { state: `${payload}.${sign(payload)}`, nonce, issuedAt, flavour: flavour || FLAVOURS.basic };
 }
 
 /**
@@ -228,17 +247,20 @@ function verifyState(state) {
   if (Date.now() - Number(parsed.t) > STATE_TTL_MS) {
     return { ok: false, error: 'This connection link expired. Please start again.' };
   }
-  return { ok: true, vendorId: parsed.v, nonce: parsed.n };
+  return { ok: true, vendorId: parsed.v, nonce: parsed.n, flavour: parsed.s === FLAVOURS.insights ? FLAVOURS.insights : FLAVOURS.basic };
 }
 
 /**
  * The authorize URL the vendor's browser is sent to (U-1, settled).
  */
-function authorizeUrl(state) {
+function authorizeUrl(state, opts = {}) {
+  // The insights flavour asks for BOTH scopes: Meta's incremental consent shows
+  // the vendor only what is new, and a token minted here carries the union.
+  const scope = opts.flavour === FLAVOURS.insights ? `${IG_SCOPE},${INSIGHTS_SCOPE}` : IG_SCOPE;
   const q = new URLSearchParams({
     client_id:     process.env.IG_APP_ID || '',
     redirect_uri:  process.env.IG_REDIRECT_URI || '',
-    scope:         IG_SCOPE,
+    scope,
     response_type: 'code',
     state,
   });
@@ -357,6 +379,194 @@ async function fetchProfile(accessToken) {
   return { ok: true, username, igUserId: body && body.user_id ? String(body.user_id) : null };
 }
 
+// ═══ THE MEDIA LIST — MOVED HERE FROM igImport.js (F-42.174, ruled: move now) ═══
+// It carried the access token in a query on GRAPH_HOST from igImport.js:126 —
+// a second home for a token-bearing call, which this header calls the disease.
+// The Sunday job is its second caller. BEHAVIOUR UNCHANGED, byte for byte in
+// what it returns; igImport.js re-exports it so every existing caller and
+// b07_p4a's cells read the same function through the same name.
+//
+// U-3 (settled at P4a): `fields` as below; `paging.next` is followed up to a
+// ceiling. `thumbnail_url` is requested because VIDEO items carry no usable
+// `media_url` for a still; `media_type` is what tells the two apart.
+// `permalink` joined the list at 4b-3b — the brief's best-post row opens it.
+const IG_MEDIA_FIELDS = 'id,caption,media_type,media_url,thumbnail_url,timestamp,permalink';
+const IG_PAGE_SIZE = 25;
+// A ceiling on how many pages we will walk. The portfolio cap is 20, so a vendor
+// never NEEDS more than one page — this exists so a malformed `paging.next`
+// cannot spin the request forever, which is a liveness bug wearing a loop's
+// clothes. Named, not magic.
+const IG_MAX_PAGES = 8;
+
+/**
+ * List the vendor's own Instagram media, cursor-paged.
+ *
+ * FAIL-LOUD IS PRESERVED FROM P3, and the reason has not changed: an import that
+ * silently finds nothing is indistinguishable from a vendor with no posts, and
+ * the estate has paid for that class of silence before (F-04.113). A network
+ * failure REFUSES; only a genuinely empty account returns an empty list, and the
+ * caller can tell the two apart because a refusal carries ok:false.
+ */
+async function listInstagramMedia(accessToken, opts = {}) {
+  if (!accessToken) return { ok: false, error: 'No Instagram connection.' };
+
+  const limit = Number(opts.limit) > 0 ? Number(opts.limit) : IG_PAGE_SIZE;
+  const q = new URLSearchParams({
+    fields:       IG_MEDIA_FIELDS,
+    limit:        String(limit),
+    access_token: accessToken,
+  });
+  let url = `${GRAPH_HOST}/me/media?${q.toString()}`;
+
+  const items = [];
+  for (let page = 0; page < IG_MAX_PAGES; page++) {
+    const res = await fetch(url);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const code = body && body.error && (body.error.code || body.error.type);
+      // THE SECRETS LAW: the URL carries the access token, so the URL never
+      // travels into the error. Status and Meta's own code, nothing more.
+      return {
+        ok: false,
+        error: `Instagram refused the photo list (${res.status}${code ? `, ${code}` : ''}).`,
+        http_status: res.status,
+      };
+    }
+    for (const m of (body && Array.isArray(body.data) ? body.data : [])) {
+      // VIDEO and CAROUSEL_ALBUM entries can carry a null media_url for our
+      // purposes; the still is the thumbnail. An item with neither is skipped
+      // rather than mirrored as a broken row.
+      const src = m.media_type === 'VIDEO' ? (m.thumbnail_url || null) : (m.media_url || m.thumbnail_url || null);
+      if (!src) continue;
+      items.push({
+        id:         m.id,
+        caption:    typeof m.caption === 'string' ? m.caption : null,
+        media_type: m.media_type || null,
+        source_url: src,
+        timestamp:  m.timestamp || null,
+        permalink:  typeof m.permalink === 'string' ? m.permalink : null,
+      });
+    }
+    const next = body && body.paging && body.paging.next;
+    if (!next) return { ok: true, items, pages: page + 1, truncated: false };
+    url = next;
+  }
+  // Ceiling hit. TRUNCATION IS ANNOUNCED, never silent — the same law the batch
+  // import applies to its own cap (P3 §7).
+  return { ok: true, items, pages: IG_MAX_PAGES, truncated: true };
+}
+
+// ═══ INSIGHTS (G4.1, CE-42 4b-3b) — the Instagram-Login path, cited ═══════════
+// Meta's account-insights reference (Instagram API with Instagram Login): host
+// graph.instagram.com · Instagram User access token · permissions
+// instagram_business_basic + instagram_business_manage_insights. Metric names as
+// the reference spells them:
+//   account  reach · follows_and_unfollows · saves · shares   (period=day,
+//            metric_type=total_value, since/until as Unix seconds — "the API
+//            will only include data created within this range (inclusive)")
+//   media    saved · shares   (period is lifetime; note the wire name is
+//            `saved`, the stored shape keeps `saves` — the map is in the brief arm)
+// Two behaviours the reference states, read as CODES by the arm rather than
+// re-derived: `follows_and_unfollows` is "not returned if the IG User has less
+// than 100 followers", and "if insights data you are requesting does not exist
+// or is currently unavailable, the API will return an empty data set instead of
+// 0". So an ABSENT metric is `null`, never zero. `online_followers` is not in the
+// Instagram-Login table at all — HELD (F-42.164's second half). Data may lag up
+// to 48 hours (reference) — declared on the row, not cured.
+const ACCOUNT_METRICS = 'reach,follows_and_unfollows,saves,shares';
+const MEDIA_METRICS   = 'saved,shares';
+
+function totalOf(entry) {
+  // total_value shape first (metric_type=total_value); the values[] shape as the
+  // fallback the media endpoint uses. Absent → null (the reference's empty set).
+  if (!entry) return null;
+  if (entry.total_value && Number.isFinite(Number(entry.total_value.value))) return Number(entry.total_value.value);
+  if (Array.isArray(entry.values) && entry.values.length) {
+    const v = entry.values[entry.values.length - 1];
+    if (v && Number.isFinite(Number(v.value))) return Number(v.value);
+  }
+  return null;
+}
+
+function byName(body) {
+  const out = {};
+  for (const d of (body && Array.isArray(body.data) ? body.data : [])) if (d && d.name) out[d.name] = totalOf(d);
+  return out;
+}
+
+/**
+ * The account totals for one window. `since`/`until` are Unix SECONDS.
+ * Returns { ok, metrics: { reach, follows_and_unfollows, saves, shares } } with
+ * null for any metric Meta withheld. A refusal carries the status and Meta's
+ * code — never the URL, which carries the token.
+ */
+async function fetchAccountInsights(accessToken, igUserId, { since, until } = {}) {
+  if (!accessToken) return { ok: false, error: 'No Instagram connection.' };
+  if (!igUserId)    return { ok: false, error: 'No Instagram user id on the connection.' };
+  const q = new URLSearchParams({
+    metric: ACCOUNT_METRICS, period: 'day', metric_type: 'total_value', access_token: accessToken,
+  });
+  if (Number.isFinite(Number(since))) q.set('since', String(Math.floor(Number(since))));
+  if (Number.isFinite(Number(until))) q.set('until', String(Math.floor(Number(until))));
+  const res  = await fetch(`${GRAPH_HOST}/${encodeURIComponent(String(igUserId))}/insights?${q.toString()}`);
+  const body = await res.json().catch(() => null);
+  if (!res.ok) return metaRefusal('account insights read', res, body);
+  // Every requested metric is present in the answer — as null when Meta's data
+  // set was empty for it — so a reader never confuses "withheld" with "not asked".
+  const got = byName(body);
+  const metrics = {};
+  for (const name of ACCOUNT_METRICS.split(',')) metrics[name] = got[name] == null ? null : got[name];
+  return { ok: true, metrics };
+}
+
+/** One media object's saved/shares. Album children carry no insights (reference) — the arm never asks for them. */
+async function fetchMediaInsights(accessToken, mediaId) {
+  if (!accessToken) return { ok: false, error: 'No Instagram connection.' };
+  if (!mediaId)     return { ok: false, error: 'No media id.' };
+  const q = new URLSearchParams({ metric: MEDIA_METRICS, access_token: accessToken });
+  const res  = await fetch(`${GRAPH_HOST}/${encodeURIComponent(String(mediaId))}/insights?${q.toString()}`);
+  const body = await res.json().catch(() => null);
+  if (!res.ok) return metaRefusal('media insights read', res, body);
+  const m = byName(body);
+  return { ok: true, saves: m.saved == null ? null : m.saved, shares: m.shares == null ? null : m.shares };
+}
+
+/**
+ * Her follower count. NOT an insights metric on the Instagram-Login table (the
+ * reference names `follower_count` only inside the under-100 limitation), so it
+ * is read as a User field. `followers_count` on /me is the chair's "witness at
+ * the cut" (F-42.176 if absent): a missing field lands as null and the brief
+ * still renders — the count is a caption, not a gate.
+ */
+async function fetchFollowersCount(accessToken) {
+  if (!accessToken) return { ok: false, error: 'No Instagram connection.' };
+  const q = new URLSearchParams({ fields: 'followers_count', access_token: accessToken });
+  const res  = await fetch(`${GRAPH_HOST}/me?${q.toString()}`);
+  const body = await res.json().catch(() => null);
+  if (!res.ok) return metaRefusal('follower count read', res, body);
+  // `Number(null)` is 0 — the bench caught it (b77 1.7); a missing field is null.
+  const raw = body ? body.followers_count : undefined;
+  const n = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+  return { ok: true, followers_count: Number.isFinite(n) ? n : null };
+}
+
+/**
+ * THE INSIGHTS PROBE — one account read, no window, used twice: by the callback
+ * of the insights flavour (to prove the grant before storing it) and by the
+ * sweep (15a) on the probe vendor's token. `granted:false` is Meta's own refusal
+ * with a permission-class code; a network failure is `ok:false` and says nothing
+ * about the scope.
+ */
+async function probeInsightsScope(accessToken, igUserId) {
+  const r = await fetchAccountInsights(accessToken, igUserId, {});
+  if (r.ok) return { ok: true, granted: true, evidence: `reach total_value ${r.metrics.reach == null ? 'absent (empty set)' : 'present'}` };
+  // Meta's permission refusals ride 400/403 with codes 10 (permission denied),
+  // 200-class (permissions), 190 (token). Any 4xx from the insights edge on a
+  // token that lists media is read as "the scope is not on this token".
+  if (r.http_status && r.http_status >= 400 && r.http_status < 500) return { ok: true, granted: false, evidence: r.error };
+  return { ok: false, error: r.error };
+}
+
 /**
  * REFRESH-ON-USE (F2, CE-ruled). Pure decision, no I/O — so the bench can prove
  * every branch by execution rather than by reading the caller.
@@ -384,6 +594,15 @@ function refreshDecision({ expiresAt, connectedAt, now = Date.now() }) {
 module.exports = {
   IG_CALLBACK_PATH,
   IG_SCOPE,
+  INSIGHTS_SCOPE,
+  FLAVOURS,
+  IG_MEDIA_FIELDS, IG_PAGE_SIZE, IG_MAX_PAGES,
+  ACCOUNT_METRICS, MEDIA_METRICS,
+  listInstagramMedia,
+  fetchAccountInsights,
+  fetchMediaInsights,
+  fetchFollowersCount,
+  probeInsightsScope,
   AUTHORIZE_URL,
   TOKEN_URL,
   GRAPH_HOST,

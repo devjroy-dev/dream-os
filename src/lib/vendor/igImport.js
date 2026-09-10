@@ -86,81 +86,14 @@ const ESTATE_IMAGE_HOST = 'res.cloudinary.com';
 // Everything downstream of the seam — the mirror, the cap, the ordering, the
 // approval state, the never-hotlink property — is real, wired and benched now.
 // ─────────────────────────────────────────────────────────────────────────────
-// U-3, SETTLED. The fields are a named constant: the `fields` parameter is not
-// cosmetic — omit `media_url` and the mirror has nothing to copy, and Meta
-// returns a 200 with the field simply absent rather than an error.
-//
-// `thumbnail_url` is requested because VIDEO items carry no usable `media_url`
-// for a still portfolio; the still lives in the thumbnail. `media_type` is what
-// lets us choose between them without guessing from the URL's shape.
-const IG_MEDIA_FIELDS = 'id,caption,media_type,media_url,thumbnail_url,timestamp';
-
-// Meta's page size. Named because a silent default is a number nobody can find
-// when the paging behaviour surprises someone.
-const IG_PAGE_SIZE = 25;
-
-// A ceiling on how many pages we will walk. The portfolio cap is 20, so a vendor
-// never NEEDS more than one page — this exists so a malformed `paging.next`
-// cannot spin the request forever, which is a liveness bug wearing a loop's
-// clothes. Named, not magic.
-const IG_MAX_PAGES = 8;
-
-/**
- * List the vendor's own Instagram media, cursor-paged.
- *
- * FAIL-LOUD IS PRESERVED FROM P3, and the reason has not changed: an import that
- * silently finds nothing is indistinguishable from a vendor with no posts, and
- * the estate has paid for that class of silence before (F-04.113). A network
- * failure REFUSES; only a genuinely empty account returns an empty list, and the
- * caller can tell the two apart because a refusal carries ok:false.
- */
-async function listInstagramMedia(accessToken, opts = {}) {
-  if (!accessToken) return { ok: false, error: 'No Instagram connection.' };
-
-  const limit = Number(opts.limit) > 0 ? Number(opts.limit) : IG_PAGE_SIZE;
-  const q = new URLSearchParams({
-    fields:       IG_MEDIA_FIELDS,
-    limit:        String(limit),
-    access_token: accessToken,
-  });
-  let url = `${GRAPH_HOST}/me/media?${q.toString()}`;
-
-  const items = [];
-  for (let page = 0; page < IG_MAX_PAGES; page++) {
-    const res = await fetch(url);
-    const body = await res.json().catch(() => null);
-    if (!res.ok) {
-      const code = body && body.error && (body.error.code || body.error.type);
-      // THE SECRETS LAW: the URL carries the access token, so the URL never
-      // travels into the error. Status and Meta's own code, nothing more.
-      return {
-        ok: false,
-        error: `Instagram refused the photo list (${res.status}${code ? `, ${code}` : ''}).`,
-        http_status: res.status,
-      };
-    }
-    for (const m of (body && Array.isArray(body.data) ? body.data : [])) {
-      // VIDEO and CAROUSEL_ALBUM entries can carry a null media_url for our
-      // purposes; the still is the thumbnail. An item with neither is skipped
-      // rather than mirrored as a broken row.
-      const src = m.media_type === 'VIDEO' ? (m.thumbnail_url || null) : (m.media_url || m.thumbnail_url || null);
-      if (!src) continue;
-      items.push({
-        id:         m.id,
-        caption:    typeof m.caption === 'string' ? m.caption : null,
-        media_type: m.media_type || null,
-        source_url: src,
-        timestamp:  m.timestamp || null,
-      });
-    }
-    const next = body && body.paging && body.paging.next;
-    if (!next) return { ok: true, items, pages: page + 1, truncated: false };
-    url = next;
-  }
-  // Ceiling hit. TRUNCATION IS ANNOUNCED, never silent — the same law the batch
-  // upload learned at P3 (F2-3): take what fits and SAY SO.
-  return { ok: true, items, pages: IG_MAX_PAGES, truncated: true };
-}
+// U-3, SETTLED — AND RE-HOMED (CE-42 4b-3b, F-42.174, chair-ruled "move now").
+// `listInstagramMedia` and its three constants lived here from P4a with the
+// access token in a query on GRAPH_HOST — a second home for a token-bearing
+// call, against igOAuth.js:11's law. The Sunday brief's job is a second caller,
+// and two homes for one secret-bearing call is the disease. They now live in
+// igOAuth.js and are read back here so every caller (ig.js, b07_p4a, b07_p3)
+// keeps its name and its behaviour byte for byte.
+const { listInstagramMedia, IG_MEDIA_FIELDS, IG_PAGE_SIZE, IG_MAX_PAGES } = require('./igOAuth');
 
 // ── THE CONFIG GATE (CE §B) ──────────────────────────────────────────────────
 // A connect button that throws is a dead control shown to vendors — F-07.13's

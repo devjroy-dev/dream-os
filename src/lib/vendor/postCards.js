@@ -57,6 +57,9 @@ const KINDS = Object.freeze({
   post:   { w: 1080, h: 1080 },
   status: { w: 1080, h: 1920 },
   story:  { w: 1080, h: 1920 },
+  // 4b-3b (share card ruled (a)): the Sunday brief as a status-geometry card.
+  // NOT in KIND_ORDER — buildCards never mints it; briefCardUrl does, from a brief.
+  brief:  { w: 1080, h: 1920 },
 });
 const KIND_ORDER = Object.freeze(['post', 'status', 'story']);
 
@@ -219,6 +222,84 @@ function transformationFor(kind, { page, vendor }) {
   return t;
 }
 
+// ═══ THE BRIEF CARD (G4.1 S7, CE-42 4b-3b — share card ruled (a)) ═══════════
+// The frames' S7: Graphite, "My week on Instagram", the four numbers in gold,
+// the page link. No photo — and Cloudinary draws text only ON an asset, so the
+// base is one of her own photos filled to the status geometry and then
+// COLORIZED at 100% to Graphite (`e_colorize:100,co_rgb:overlay-bg`): the result
+// is a solid plate whatever the photo was. (The read-first said "faded over a
+// pad"; `o_0` fades the pad with the pixels and a JPEG flattens that to white —
+// colorize is the documented way to a solid, c-42.47 mine, named in the handover.) FIVE text layers, south-west anchored as
+// transformationFor's: title · reach · new followers · saves+shares · the page
+// address. CONJECTURE until the founder's device: the transformation STRING is
+// what b77 pins; the pixels are his witness (the same law as every card here).
+// The best-post photo as base was refused (its CDN address expires; a signed
+// URL over a dead source is a broken card with a signature on it).
+const BRIEF_COPY = Object.freeze({
+  TITLE:         'My week on Instagram',   // vetoed 4b-3a (SU.shareTitle)
+  REACH:         'Reach',
+  NEW_FOLLOWERS: 'New followers',
+  SAVES:         'Saves',
+  SHARES:        'Shares',
+  DASH:          '\u2014',
+});
+const enIn = (n) => Number(n).toLocaleString('en-IN');
+
+function briefTransformation(brief, vendor) {
+  const { w, h } = KINDS.brief;
+  const margin = 86;
+  const measure = w - margin * 2;
+  const nf = brief.new_followers && brief.new_followers.value != null ? enIn(brief.new_followers.value) : BRIEF_COPY.DASH;
+  const lines = [
+    { layer: textLayer(CARD_FONTS.body,    30, pageAddress(vendor.routing_handle), CARD_INK['ink-soft'], measure), y: 180 - 52 },
+    { layer: textLayer(CARD_FONTS.body,    44, `${BRIEF_COPY.SAVES} ${enIn(brief.saves.value)} \u00b7 ${BRIEF_COPY.SHARES} ${enIn(brief.shares.value)}`, CARD_INK.metal, measure), y: 180 + 20 },
+    { layer: textLayer(CARD_FONTS.body,    44, `${BRIEF_COPY.NEW_FOLLOWERS} ${nf}`, CARD_INK.metal, measure), y: 180 + 20 + 70 },
+    { layer: textLayer(CARD_FONTS.body,    44, `${BRIEF_COPY.REACH} ${enIn(brief.reach.value)}`, CARD_INK.metal, measure), y: 180 + 20 + 140 },
+    { layer: textLayer(CARD_FONTS.display, 96, BRIEF_COPY.TITLE, CARD_INK.ink, measure), y: 180 + 20 + 140 + 96 },
+  ];
+  const t = [
+    { width: w, height: h, crop: 'fill', gravity: 'auto' },
+    { effect: 'colorize:100', color: `#${CARD_INK['overlay-bg']}` },
+  ];
+  for (const l of lines) {
+    t.push(l.layer);
+    t.push({ flags: 'layer_apply', gravity: 'south_west', x: margin, y: l.y });
+  }
+  return t;
+}
+
+/**
+ * The brief's share card — one signed delivery URL, or null when she has no
+ * photo to plate on (no gallery, no portfolio) or Cloudinary is unsigned. The
+ * base is her last gallery's first photo, else her first portfolio image; the
+ * base's pixels never show.
+ */
+async function briefCardUrl(supabase, vendor, brief, deps = {}) {
+  const env = deps.env || process.env;
+  if (!isConfigured(env)) return null;
+  if (!String(vendor.routing_handle || '').trim()) return null;
+  let photo = null;
+  const found = await findLastGallery(supabase, vendor.id, deps);
+  if (found) photo = found.photo;
+  if (!photo) {
+    const { data } = await supabase.from('vendor_portfolio').select('image_url').eq('vendor_id', vendor.id).order('created_at', { ascending: true }).limit(1).maybeSingle();
+    if (data && data.image_url) photo = { url: data.image_url };
+  }
+  if (!photo || !publicIdOf(photo)) return null;
+  const cloudinary = deps.cloudinary || require('cloudinary').v2;
+  return cloudinary.url(publicIdOf(photo), {
+    cloud_name: env.CLOUDINARY_CLOUD_NAME,
+    api_key:    env.CLOUDINARY_API_KEY,
+    api_secret: env.CLOUDINARY_API_SECRET,
+    secure: true,
+    sign_url: true,
+    urlAnalytics: false,
+    type: 'upload',
+    format: 'jpg',
+    transformation: briefTransformation(brief, vendor),
+  });
+}
+
 /**
  * THE PHOTO'S CLOUDINARY ID — READ FROM ITS URL, THE COLUMN ONLY AS A FALLBACK.
  * `wedding_photos.public_id` is whatever the browser posted back
@@ -298,4 +379,5 @@ module.exports = {
   ROLE_LINE, ROLE_FALLBACK, roleOf,
   siteHost, pageAddress, titleLine, creditSentence, captionFor,
   findLastGallery, transformationFor, publicIdOf, cardUrl, isConfigured, buildCards,
+  BRIEF_COPY, briefTransformation, briefCardUrl,
 };

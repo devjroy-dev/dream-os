@@ -27,7 +27,9 @@ const TABLE = 'vendor_ig_connections';
 // ig_username is a DISPLAY string, not a secret — it is the vendor's own public
 // handle and the whole point is that they can read it. It joins the safe list;
 // access_token still does not.
-const SAFE_COLUMNS = 'vendor_id, ig_user_id, ig_username, connected_at, token_expires_at, last_refreshed_at';
+// insights_granted_at (0165) joins the safe list at 4b-3b: a timestamp saying the
+// brief's scope was proven on this token. A display fact, not a secret.
+const SAFE_COLUMNS = 'vendor_id, ig_user_id, ig_username, connected_at, token_expires_at, last_refreshed_at, insights_granted_at';
 
 /** The vendor-facing connection state. Never carries the token. */
 async function getConnection(supabase, vendorId) {
@@ -44,7 +46,7 @@ async function getConnection(supabase, vendorId) {
  */
 async function readToken(supabase, vendorId) {
   const { data, error } = await supabase
-    .from(TABLE).select('access_token, token_expires_at, connected_at').eq('vendor_id', vendorId).maybeSingle();
+    .from(TABLE).select('access_token, token_expires_at, connected_at, ig_user_id, insights_granted_at').eq('vendor_id', vendorId).maybeSingle();
   if (error) return { ok: false, error: error.message };
   if (!data || !data.access_token) return { ok: false, error: 'not_connected' };
   return {
@@ -52,7 +54,66 @@ async function readToken(supabase, vendorId) {
     accessToken: data.access_token,
     expiresAt:   data.token_expires_at,
     connectedAt: data.connected_at,
+    igUserId:    data.ig_user_id || null,
+    insightsGrantedAt: data.insights_granted_at || null,
   };
+}
+
+/**
+ * REFRESH-ON-USE (F2, CE-ruled) — LIFTED FROM src/api/vendor/ig.js AT 4b-3b
+ * (F-42.177, zero behaviour change). Every door that needs a token comes through
+ * here, so the refresh has ONE home; it left the router because the Sunday job
+ * and the insights probe are callers with no request in hand. Returns
+ * { ok, accessToken, igUserId, insightsGrantedAt, refreshed?, refresh_deferred? }
+ * or { ok:false, error:'not_connected'|'expired'|<db error> }.
+ */
+async function tokenForCall(supabase, vendorId) {
+  const igOAuth = require('./igOAuth');
+  const t = await readToken(supabase, vendorId);
+  if (!t.ok) return t;
+
+  const decision = igOAuth.refreshDecision({ expiresAt: t.expiresAt, connectedAt: t.connectedAt });
+  const carried = { igUserId: t.igUserId, insightsGrantedAt: t.insightsGrantedAt };
+  if (decision === 'expired') return { ok: false, error: 'expired' };
+  if (decision === 'ok')      return { ok: true, accessToken: t.accessToken, ...carried };
+
+  const r = await igOAuth.refreshLongLived(t.accessToken);
+  if (!r.ok) {
+    // A REFUSED REFRESH IS NOT A DEAD CONNECTION. The old token has days left by
+    // construction — that is what the 7-day window bought. Proceed on it and let
+    // the next call try again, rather than converting a transient Meta blip into
+    // a vendor-visible disconnection.
+    console.warn('[ig:refresh] refresh refused, proceeding on the current token:', r.error);
+    return { ok: true, accessToken: t.accessToken, refresh_deferred: true, ...carried };
+  }
+  await updateToken(supabase, vendorId, { accessToken: r.accessToken, expiresAt: r.expiresAt });
+  return { ok: true, accessToken: r.accessToken, refreshed: true, ...carried };
+}
+
+/**
+ * The insights grant (0165, 4b-3b). Written by the insights-flavour callback
+ * AFTER one account read proved the scope; never by the basic flavour, which
+ * leaves the column as it finds it (Meta's consent is cumulative per app user,
+ * so a photos re-consent does not revoke a brief grant). Cleared with the row
+ * by disconnect().
+ */
+async function markInsightsGranted(supabase, vendorId, at = new Date().toISOString()) {
+  const { error } = await supabase.from(TABLE)
+    .update({ insights_granted_at: at, updated_at: at }).eq('vendor_id', vendorId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Every connection the Sunday job may read: a finished connect (ig_user_id and
+ * an expiry) with the grant stored. SAFE columns only — the job reads each token
+ * through tokenForCall, one at a time, never as a column of secrets.
+ */
+async function listInsightsConnections(supabase) {
+  const { data, error } = await supabase.from(TABLE).select(SAFE_COLUMNS)
+    .not('ig_user_id', 'is', null).not('token_expires_at', 'is', null).not('insights_granted_at', 'is', null);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, connections: data || [] };
 }
 
 /**
@@ -162,6 +223,9 @@ module.exports = {
   getConnection,
   findByIgUserId,
   readToken,
+  tokenForCall,
+  markInsightsGranted,
+  listInsightsConnections,
   armState,
   spendState,
   saveToken,

@@ -28,6 +28,7 @@ const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const postCards = require('../../lib/vendor/postCards');
 const bc = require('../../lib/vendor/broadcasts');
+const sunday = require('../../lib/vendor/sundayBrief');   // CE-42 4b-3b · G4.1
 
 const STATUS_FOR = Object.freeze({
   no_gallery: 404,
@@ -69,6 +70,26 @@ router.post('/broadcast', requireAuth, resolveVendor(), asyncHandler(async (req,
     return errRes(res, SEND_STATUS[out.code] || 500, msg, out.code);
   }
   return okRes(res, { broadcast_id: out.broadcast_id, sent: out.sent, not_delivered: out.not_delivered, refused_stopped: out.refused_stopped });
+}));
+
+// ── 4b-3b · THE SUNDAY DOORS (G4.1) ────────────────────────────────────────────
+// The door decides nothing: sundayBrief.readForDoor answers one of the shell's
+// codes (lib/worklist/sunday.ts SundayState) with the accepted Brief and the
+// share card's signed URL. The plane is read FIRST inside the arm — `pending`
+// comes back before any row is touched. Nothing on the glass carries a key or a
+// reason: `error` is COPY.surfaceUnavailable's state, the reason stays on the row.
+//   GET  /sunday          the stored brief (a first read with no row generates it)
+//   POST /sunday/refresh  "Check again" — generate now, throttled 10 min (ruled (b))
+const shareCard = (supabase, vendor, brief) => postCards.briefCardUrl(supabase, vendor, brief);
+
+router.get('/sunday', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const out = await sunday.readForDoor(req.app.locals.supabase, req.vendor, {}, { shareCard });
+  return okRes(res, out);
+}));
+
+router.post('/sunday/refresh', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const out = await sunday.readForDoor(req.app.locals.supabase, req.vendor, { generate: true }, { shareCard });
+  return okRes(res, out);
 }));
 
 module.exports = router;
