@@ -1,0 +1,25 @@
+# CE-42 · SEAT R7 · 4c-1 (dream-os) · G5.2 THE SHOOT BOARD · FLOOR MANIFEST
+# base: aa1f5ec0b142b20f41b09667555b97b54cfa5340   (re-pinned from d27144f after R6 4b-1; zero shared paths)
+#
+# THE FILE TABLE BELOW IS MACHINE-READ by run-floor.sh --delivery [F-14.16]:
+# bare paths only; anything after '#' is stripped. Derived by
+# `git status --porcelain` on the seat's tree at the cut — this file is among
+# them because an untracked file is dirt like any other.
+#
+# THE NAMED BASE MOVES 24 -> 25 (c-42.44, the chair's line):
+#   - b45_precutover_seat_bench LEAVES: its only red cell was E (F-38.p12), whose
+#     only hit was solutions/google.js:43's literal; F-42.192's cure moves it into
+#     pwaPaths.js. Measured in-container by SET, tip -> cured: exactly that line.
+#   + b64_template_slots_bench and b64_mutations ENTER: red at 548944a and d27144f,
+#     NOT this delivery's (F-42.201 — TEMPLATES.md §2 rows with no templates.js
+#     entry; owner R6 4b-2, where the pair leaves the base again).
+docs/TDW_CE42_4c1_HANDOVER.md
+scripts/b4c1_shoot_board_bench.js
+scripts/floor-base.txt
+scripts/floor-manifest-ce42-4c1.txt
+src/api/vendor/collab.js
+src/api/vendor/solutions/google.js
+src/cron.js
+src/lib/pwaPaths.js
+src/lib/vendor/cityMatch.js
+src/lib/vendor/collabKinds.js

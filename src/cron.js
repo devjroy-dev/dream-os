@@ -45,6 +45,7 @@ const { isNudgeOptedOut } = require('./lib/nudgeOptout');
 const { getNudgeCopy } = require('./lib/nudgeCopy');
 
 const { cleanupDraftContracts } = require('./lib/vendor/contracts');
+const { expireCollabPosts } = require('./lib/vendor/collabKinds');           // CE-42 4c-1 · ruling 1(a)
 
 // Out-of-window template summary var — FOUNDER-RATIFIED (CE-63 relay (1)). Single line, so
 // it is a valid Meta template parameter. Lives in nudgeCopy.js under the founder's veto;
@@ -201,17 +202,16 @@ function startCronJobs({ supabase }) {
 
   // ── Collab post expiry — 3:15am IST ───────────────────────────────
   // Was '45 21 * * *' with no timezone (21:45 UTC). 03:15 Asia/Kolkata IS 21:45 UTC.
+  // CE-42 4c-1 (ruling 1(a)): the sweep's body moved to its one home,
+  // src/lib/vendor/collabKinds.js `expireCollabPosts`, and gained the event-date
+  // close (any open post whose day has passed, every kind). Moved so a bench can
+  // drive the production function rather than a copy of this callback.
   cron.schedule('15 3 * * *', async () => {
     try {
-      const { data: expired } = await supabase
-        .from('collab_posts')
-        .update({ state: 'expired' })
-        .eq('state', 'open')
-        .lt('expires_at', new Date().toISOString())
-        .select('id');
-
-      if (expired && expired.length > 0) {
-        console.log(`[cron:collab] expired ${expired.length} collab post(s)`);
+      const swept = await expireCollabPosts(supabase);
+      if (swept.error) console.error('[cron:collab] expiry error:', swept.error.message);
+      if (swept.byWindow.length > 0 || swept.byDate.length > 0) {
+        console.log(`[cron:collab] expired ${swept.byWindow.length} by window, ${swept.byDate.length} by event date`);
       }
     } catch (err) {
       console.error('[cron:collab] expiry error:', err.message);

@@ -3,8 +3,9 @@
 // Mounted at /api/v2/vendor/collab via core.js
 //
 // Routes:
-//   GET    /feed                          — posts this vendor is eligible for
-//   GET    /my-posts                      — this vendor's own posted requirements
+//   GET    /requirement-types             — the eleven + the shoot kind's event types (4c-1)
+//   GET    /feed                          — posts this vendor is eligible for (?kind=collab|shoot)
+//   GET    /my-posts                      — this vendor's own posted requirements (?kind=collab|shoot)
 //   GET    /:post_id/responses            — responses to a post (poster only)
 //   POST   /                              — create a new requirement post
 //   POST   /:post_id/respond              — express interest or pass
@@ -32,6 +33,14 @@ const {
   normaliseItemsInput,
 } = require('../../lib/vendor/collabItems');
 const { addEdgesOnAccept } = require('../../lib/vendor/roster');
+
+// CE-42 · SEAT R7 · 4c-1 (G5.2). Three homes this file now reads and never restates:
+//   REQUIREMENT_TYPES — collabItems.js, the eleven (served, F-42.184's cure);
+//   the shoot kind    — collabKinds.js (ruling 2(a): event_type editorial|brand_shoot);
+//   the city leg      — cityMatch.js, the declared twin of the pwa's (F-42.187, ruling §4(a)).
+const { REQUIREMENT_TYPES } = require('../../lib/vendor/collabItems');
+const { SHOOT_EVENT_TYPES, kindOfPost, parseKind, isShootEventType, shootExpiresAt } = require('../../lib/vendor/collabKinds');
+const { sameCity } = require('../../lib/vendor/cityMatch');
 
 // ── THE DORMANCY SEAM (CE-59, ruling (ii)A/(ii)B) ────────────────────────────
 // 0096_collab_planner.sql is WITHHELD and founder-run. This code deploys BEFORE
@@ -136,8 +145,26 @@ async function firstLookFilter(supabase, postIds, viewerVendorId) {
   };
 }
 
+// ── GET /requirement-types ───────────────────────────────────────────────────
+// CE-42 4c-1 · ruling 4(b). F-42.184: the composer offered the pre-0123 sixteen
+// while this server validated the eleven, so ten chips answered 400 and five
+// crafts could never be asked for. The composer now READS the list here — both
+// rooms' form and the roster sheet's chips — and never types it again. Labels
+// stay the pwa's (lib/frost/categoryLabels.ts, founder-signed); a label map is
+// not a taxonomy. `shoot_event_types` travels beside it for the same reason: the
+// form's kind prop must not restate the discriminator.
+router.get('/requirement-types', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  return okRes(res, {
+    requirement_types: [...REQUIREMENT_TYPES],
+    shoot_event_types: [...SHOOT_EVENT_TYPES],
+  });
+}));
+
+
 // ── GET /feed ────────────────────────────────────────────────────────────────
 // Returns collab posts this vendor is eligible to see.
+// ?kind=shoot answers the shoot board (Referrals & partners); absent or
+// ?kind=collab answers the Collab room. One kind per call — ruling 3(ii).
 // Eligibility: requirement_type matches vendor.category AND
 //   (post.city matches vendor.city OR vendor.open_to_travel OR post.open_to_other_cities)
 //   AND vendor is not the poster
@@ -147,6 +174,8 @@ async function firstLookFilter(supabase, postIds, viewerVendorId) {
 router.get('/feed', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const vendorId  = req.vendor.id;
+  const kind      = parseKind(req.query.kind);
+  if (!kind) return errRes(res, 400, 'kind must be collab or shoot');
 
   // Fetch this vendor's profile for matching
   const { data: me, error: meErr } = await supabase
@@ -199,16 +228,20 @@ router.get('/feed', requireAuth, resolveVendor(), asyncHandler(async (req, res) 
   // column — byte-identical to the `.eq` it replaces. That identity is also what
   // closes the pre-0096 leak: a missing items table cannot widen the feed,
   // because absence degrades to the old predicate rather than to "no predicate".
-  const openWindow = posts || [];
+  // THE KIND LEG (ruling 3(ii)) runs first and in the same place as the
+  // category leg below, over the same bounded open window: one glass per act.
+  const openWindow = (posts || []).filter(p => kindOfPost(p) === kind);
   const itemsMap   = await itemsByPost(supabase, openWindow.map(p => p.id));
 
   const matched = openWindow.filter(p =>
     postMatchesCategory(p, itemsMap.get(p.id) || [], me.category)
   );
 
-  // Filter by city match OR open_to_travel OR open_to_other_cities
+  // Filter by city match OR open_to_travel OR open_to_other_cities.
+  // F-42.187: the city match resolves BOTH sides through the twin — the post
+  // carries the composer's 'Delhi NCR', the profile carries 'Delhi'.
   const cityEligible = matched.filter(p =>
-    p.city === me.city ||
+    sameCity(p.city, me.city) ||
     me.open_to_travel ||
     p.open_to_other_cities
   );
@@ -266,6 +299,8 @@ router.get('/feed', requireAuth, resolveVendor(), asyncHandler(async (req, res) 
 router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendorId = req.vendor.id;
+  const kind     = parseKind(req.query.kind);
+  if (!kind) return errRes(res, 400, 'kind must be collab or shoot');
 
   const { data: posts, error } = await supabase
     .from('collab_posts')
@@ -275,15 +310,18 @@ router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, r
 
   if (error) return errRes(res, 500, error.message);
 
+  // Ruling 3(ii): her shoots are read by the shoot board, her collabs by Collab.
+  const mine = (posts || []).filter(p => kindOfPost(p) === kind);
+
   // Items for the whole page in ONE tolerated read, not one per post.
-  const myPostIds = (posts || []).map(p => p.id);
+  const myPostIds = mine.map(p => p.id);
   const myItems   = await itemsByPost(supabase, myPostIds);
   // F-04.111: and the first-look value, so the poster can be TOLD their post is
   // roster-only rather than left to infer it from an empty response count.
   const myWindows = await firstLookMeta(supabase, myPostIds);
 
   // Enrich with response counts
-  const enriched = await Promise.all((posts || []).map(async (p) => {
+  const enriched = await Promise.all(mine.map(async (p) => {
     const { data: responses } = await supabase
       .from('collab_responses')
       .select('id, state')
@@ -451,6 +489,10 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
       event_type:           event_type   || null,
       details:              details      || null,
       state:                'open',
+      // Ruling 1(a): a SHOOT expires at the end of its own day (IST), not 30
+      // days after posting — F-42.181's early death. Every other kind keeps
+      // 0048's DEFAULT by not naming the column at all.
+      ...(isShootEventType(event_type) ? { expires_at: shootExpiresAt(event_date) } : {}),
     })
     .select('id, requirement_type, event_date, city, state, created_at')
     .single();

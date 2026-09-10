@@ -40,7 +40,7 @@ const sc     = require('../../../lib/vendor/searchConsole');
 
 // The room's own address. PWA_BASE_URL is ig.js:45's variable — one name.
 const PWA_BASE    = process.env.PWA_BASE_URL || 'https://thedreamwedding.in';
-const RETURN_PATH = '/vendor/storefront';
+const RETURN_PATH = require('../../../lib/pwaPaths').vendorPath('yourWebsite'); // F-42.192 · R-40.132's room; b45 E
 function backToRoom(res, params) { return res.redirect(`${PWA_BASE}${RETURN_PATH}?${new URLSearchParams(params).toString()}`); }
 
 const NOT_ON = (res) => errRes(res, 503, 'Google connection is not switched on yet.', 'GOOGLE_NOT_CONFIGURED');

@@ -62,6 +62,12 @@ const VENDOR_PATHS = Object.freeze({
   // call sites still ask by two names; the NAMES are a caller's business, the ADDRESS is
   // this file's, and there is now one address.
   leadsList: '/vendor/leads',
+
+  // Your website & SEO — the Google OAuth return (src/api/vendor/solutions/google.js
+  // RETURN_PATH). R-40.132 moved Google into this room; its screen is the only
+  // reader of ?google= (app/vendor/(shell)/your-website/screen.tsx). F-42.192,
+  // ruled §3 at CE-42: the literal '/vendor/storefront' left google.js for here.
+  yourWebsite: '/vendor/your-website',
 });
 
 function vendorPath(key) {
