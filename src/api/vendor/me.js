@@ -253,6 +253,15 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // for a vendor the search can already see, which is the worst of both: she
       // is listed and her own settings screen tells her she is not.
       peer_discoverable:       vendor.peer_discoverable       !== false,
+      // CE-42 4c-3b · G5.3 THE INFLUENCER EXCHANGE, ruling (i). `=== true`, on
+      // `date_check_enabled`'s side of the coercion and NOT `peer_discoverable`'s
+      // one line above: 0166 §1 defaults this column FALSE, because the opt-in
+      // exposes a NEW fact about her — her audience, and her openness to being
+      // approached — to every vendor on the platform. Silence never means yes, so
+      // a null reads NO. Present on every vendor's shape; the settings row DRAWS
+      // it only for category `content_creator` (the pwa half), because the door
+      // does not hide a fact that the row is the right place to decide about.
+      exchange_discoverable:   vendor.exchange_discoverable   === true,
     },
   });
 });
@@ -357,7 +366,14 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // CONSENT to a new fact about her calendar. Opposite
                         // defaults, one law — do not "fix" one to match the
                         // other without reading that paragraph.
-                        'peer_discoverable'];
+                        'peer_discoverable',
+                        // CE-42 4c-3b · ruling (i): the exchange opt-in joins the
+                        // same one writer and the same `.eq('id', vendor.id)`
+                        // guard. Accepted for ANY category — this door does not
+                        // police craft, and it does not need to: the browse
+                        // predicate reads `category` too, so a photographer who
+                        // set it is listed by nothing.
+                        'exchange_discoverable'];
 
 // The three booleans the vendor may now set. Guarded on the slot_capacity pattern
 // (:147 below): a 400 here, never a silent coercion. Without this, {"discover_paused":
@@ -374,7 +390,13 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
 // "maybe"}` reaching Postgres raw would answer "may other vendors find me?" with
 // whatever that day's coercion decided, and the failure mode of a wrong guess is
 // a vendor listed who asked not to be. A 400 is the only honest answer.
-const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused', 'date_check_enabled', 'peer_discoverable'];
+// ⚠ `exchange_discoverable` MUST BE IN THIS ARRAY TOO, for the MIRROR of the
+// reason the paragraph above gives for its neighbour. `peer_discoverable`
+// defaults TRUE, so a guessed value fails OPEN — a vendor listed who asked not to
+// be. This one defaults FALSE, so a guessed value fails CLOSED — she is listed on
+// the exchange only by her own tap, and `{"exchange_discoverable": "maybe"}` gets
+// a 400 rather than whatever that day's coercion decided.
+const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused', 'date_check_enabled', 'peer_discoverable', 'exchange_discoverable'];
 
 // ── ARC OB · SERVICE-AREA VALIDATION (CE-31 ruling ①) ──────────────────────
 // A 400, never a silent coercion — the BOOLEAN_FIELDS doctrine directly above,
@@ -552,6 +574,10 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       // from this shape would make every successful write look like a refusal
       // and flip the control back under the vendor's thumb.
       peer_discoverable: updated.peer_discoverable !== false,
+      // CE-42 4c-3b · the echo the exchange opt-in row settles on. Same coercion
+      // as the GET shape above — the row must read the DOOR'S answer, never the
+      // value the tap hoped for.
+      exchange_discoverable: updated.exchange_discoverable === true,
     },
   });
 }));

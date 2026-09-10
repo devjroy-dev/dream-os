@@ -1,0 +1,13 @@
+# scripts/floor-manifest-ce42-4c3b1s-dreamos.txt — CE-42 4c-3b-1s (dream-os), seat R7 [F-19.16].
+# base: 0b7dfc9 (4b-3b cut 2, verified by `git fetch -q origin && git rev-parse` at the cut)
+# Every path this ZIP writes, and nothing else. Derived by `git status --porcelain` at the cut.
+# scripts/b77_sunday_brief_bench.js: ONE LINE amended by label (cell 9.2's ladder-tail assert).
+src/lib/vendor/exchange.js
+src/api/vendor/exchange.js
+src/api/vendor/core.js
+src/api/vendor/me.js
+scripts/b78_exchange_bench.js
+scripts/b77_sunday_brief_bench.js
+scripts/floor-manifest-ce42-4c3b1s-dreamos.txt
+db/migrations/0166_influencer_exchange.sql
+docs/handovers/CE42_4C3B1S_EXCHANGE_DOORS_HANDOVER.md

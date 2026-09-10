@@ -75,6 +75,7 @@ router.use('/ig',          require('./ig'));
 router.use('/collab',      require('./collab'));
 router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
 router.use('/referrals',   require('./referrals')); // Block 19 G5.1 — the overflow exchange's READ doors (the forward is on /leads)
+router.use('/exchange',    require('./exchange'));  // CE-42 4c-3b-1s — G5.3 the influencer exchange: role, browse, card, requests, inbox (one writer: lib/vendor/exchange.js)
 // R9-J1 · CE-42 seat E2, 4a packet 3a (F-42.82). The three introduction doors:
 // the arm and its WhatsApp seat existed and NOTHING had an address, so R-42.8's
 // screen had nothing to call. Every refusal these doors return is the ARM's,

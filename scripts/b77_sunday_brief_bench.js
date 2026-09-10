@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
-// scripts/b77_sunday_brief_bench.js — G4.1 · THE SUNDAY BRIEF (CE-42 4b-3b), seat R6.
+// scripts/b77_sunday_brief_bench.js
+// ⚠ ONE LINE AMENDED BY LABEL at CE-42 4c-3b-1s (seat R7, base 0b7dfc9): cell 9.2's
+// ladder-tail assertion. Reason at the line itself. Nothing else in this file moved. — G4.1 · THE SUNDAY BRIEF (CE-42 4b-3b), seat R6.
 //
 // NUMBERED b77, DERIVED ACROSS BOTH REPOS (b69's rule): dream-os holds b75 (4b-2);
 // dreamos-pwa holds TWO b76 files at a9b5e0cd (R6's Sunday shell AND R7's exchange
@@ -415,7 +417,17 @@ function wire(spec = {}) {
     assert.ok(/unique \(vendor_id, week_start\)\s*\n\);/.test(m), 'the UNIQUE is not plain');
     assert.ok(/status\s+text not null check \(status in \('live', 'error'\)\)/.test(m));
     assert.ok(/alter table public\.vendor_ig_connections\s+add column if not exists insights_granted_at timestamptz;/.test(m));
-    assert.ok(!fs.existsSync(path.join(ROOT, 'db/migrations')) || !fs.readdirSync(path.join(ROOT, 'db/migrations')).some((f) => /^0166/.test(f)), '0166 exists');
+    // ⚠ AMENDED BY LABEL at CE-42 4c-3b-1s (seat R7), and the ONLY line of this bench
+    // that moved. It read: «no 0166 exists» — a LADDER-TAIL assertion, which was true
+    // and useful at R6's cut (nobody had taken the next rung) but goes RED for the next
+    // migration anyone lands, whoever lands it. 4c-3b-1s is simply the first: the chair
+    // allocated 0166 to the influencer exchange at the 4c-3b read-first. The cell now
+    // asserts what it MEANT — that this file is 0165 and that any 0166 present is the
+    // ALLOCATED one, not a second seat quietly reusing the rung.
+    const migs = fs.existsSync(path.join(ROOT, 'db/migrations')) ? fs.readdirSync(path.join(ROOT, 'db/migrations')) : [];
+    const at0166 = migs.filter((f) => /^0166/.test(f));
+    assert.ok(at0166.length <= 1, `0166 is claimed twice: ${at0166.join(', ')}`);
+    if (at0166.length) assert.strictEqual(at0166[0], '0166_influencer_exchange.sql', `0166 is not the allocated file: ${at0166[0]}`);
   });
   await cell('9.3 igConnection: tokenForCall carries igUserId + insightsGrantedAt; listInsightsConnections lists only granted, finished connects; SAFE_COLUMNS carries the grant, never the token', async () => {
     assert.ok(igConn.SAFE_COLUMNS.includes('insights_granted_at') && !igConn.SAFE_COLUMNS.includes('access_token'));
