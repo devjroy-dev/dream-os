@@ -36,6 +36,7 @@ const { missingCells } = require('../../lib/recordCompleteness'); // TDW_02 P3 (
 const {
   MONEY_STATE_RE, victorClaim, leadSendClaim, moneyGrounded, victorCostumeLine,
   structurallyImpossible, containsVetoedLine,
+  extractAmounts, // F-42.132 arm (1) — the trigger is the figure, not the verb
 } = require('../../lib/wireGuardVictor');
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
@@ -1705,7 +1706,26 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // fence false, so the cure's own refusal would have convicted as a money
   // costume and been replaced by a glitch line. Found by the seat's probe, cured
   // by identity at the source, disclosed in the handover.
-  const moneyClaim = MONEY_STATE_RE.test(eligible) && !containsVetoedLine(eligible);
+  // ── F-42.132 ARM (1) · THE TRIGGER IS THE FIGURE, NOT THE VERB ────────────
+  // 2026-09-10 03:31:35, the founder's handset. Victor answered TRUTHFULLY from
+  // the expense block — 「 Yes. Rs 5,000 on 1 September — logged as assistant
+  // payment to Swati. 」, every figure and every date held — and the guard
+  // destroyed it and shipped 「 That didn't land 」. `MONEY_STATE_RE` never
+  // matched, because it keys on `owes/unpaid/outstanding/invoice` and on the
+  // expense verbs F-42.131 added, and NONE of them is the word a man reaches for
+  // when he reads his own book back: he says LOGGED.
+  //
+  // So the verb list stops being the only door. A reply that SPEAKS A RUPEE
+  // FIGURE is a reply about money whatever verb carries it, and the fence exists
+  // precisely to ask whether that figure is real. The verb list stays as a second
+  // door — it still catches 「 nothing outstanding 」, which speaks no figure at all.
+  //
+  // `extractAmounts` is the one reader (F-42.118's Rs-prefixed three-digit rule,
+  // F-42.134's shorthand), so the trigger and the fence cannot disagree about
+  // what a figure is.
+  const spokenFigures = extractAmounts(eligible);
+  const moneyClaim = (MONEY_STATE_RE.test(eligible) || spokenFigures.length > 0)
+    && !containsVetoedLine(eligible);
   if (victorClass) claimsAct = true;
   if (!claimsAct && !jotClaim && !narrated && !presenceClaim && !moneyClaim) return null;
   // The witness line is the SAME derivation the persisted tail uses — never a second
@@ -1831,7 +1851,53 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // NO BEHAVIOURAL CHANGE BEYOND THE FILING, derived not hoped: `moneyOnly` entails
   // `!claimsAct`, so the money limb returns before `classWitnessHands` is consulted
   // and `deed_class` reaches nothing else on that path. Only the label moves.
-  const moneyOnly = moneyClaim && !claimsAct;
+  // ── F-42.132 ARM (2) · THE FACT-GROUNDED ESCAPE REACHES THE EXPENSE PLANE ──
+  // The invoice plane has had this escape since F-39.73: an injected fact block
+  // evidences a money sentence the way a read hand evidences a lookup. The
+  // expense plane got a block on 2026-09-10 and NO escape, so the first true
+  // sentence it ever produced was convicted as a zero-hand costume.
+  //
+  // A STATIVE REPORT IS NOT AN ACT CLAIM. 「 logged as assistant payment 」 says a
+  // ROW EXISTS; 「 I've logged it 」 says VICTOR DID SOMETHING THIS TURN. The
+  // second is still false by construction (R-39.18 homes the hand in Block 09)
+  // and still convicts. This exemption is deliberately narrow and every clause
+  // is load-bearing:
+  //   · stativeDone and NOT participleDone — a participle is the doing form
+  //   · NOT victorClass — a named capability claim keeps LIMB 0's verdict
+  //   · at least one spoken figure — a bare 「 Done. 」 has nothing to ground and
+  //     stays a costume, which is the chair's own clause and the whole reason
+  //     this cannot become a general amnesty
+  //   · and the fence must actually PASS: every figure AND every date held
+  // So the 00:52:38 specimen — a true Rs 5,000 on an INVENTED 10 September —
+  // still convicts, on the date, exactly as it did before this arm.
+  // Split in two so the LIMB can tell "this is a stative report and it failed the
+  // fence" (convict) from "this is not a stative report at all" (unfenced). One
+  // predicate could not express that difference and the 00:52:38 specimen is
+  // exactly where it shows: a stative report with a TRUE figure and an INVENTED
+  // date must stay red, not fall through the third door.
+  const stativeReportWithFigure =
+    stativeDone && !participleDone && !victorClass && spokenFigures.length > 0;
+  const groundedStativeReport = stativeReportWithFigure
+    && moneyGrounded(eligible, ctx && ctx.moneyFacts, ctx && ctx.expenseFacts);
+  // ── THE THIRD DOOR IS FOR FIGURE-ONLY TURNS, NOT FOR TURNS THE LADDER ALREADY
+  //    JUDGES ─────────────────────────────────────────────────────────────────
+  // Derived at the base before this line was written: the 00:52:38 specimen
+  // classifies `costume` on `presence_claim` — 「 I have that on file already 」 is
+  // a PRESENCE claim, not a money-state sentence and not a stative report. The
+  // first cut of shape 1 let the figure pull it into this limb and the third door
+  // then declared it `unfenced`, which would have RETIRED a conviction the estate
+  // already had. A new class must never quietly absorb an old verdict.
+  //
+  // So `unfenced` is reachable only when the FIGURE IS THE ONLY REASON the turn
+  // arrived: no presence claim, no narration, no jot, no relay claim, no act
+  // claim. Every one of those families keeps its own limb and its own verdict.
+  const moneyStateSentence = MONEY_STATE_RE.test(eligible);
+  const figureOnlyTurn =
+    !moneyStateSentence && !claimsAct && !jotClaim && !narrated && !presenceClaim
+    && !relayClaim && spokenFigures.length > 0;
+  const moneyOnly = moneyClaim
+    && (!claimsAct || groundedStativeReport)
+    && (moneyStateSentence || stativeReportWithFigure || figureOnlyTurn);
   const deedClass = victorClass ? victorClass
     : (mutationClaim ? 'date'
       : (relayClaim ? 'relay'
@@ -1897,13 +1963,52 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   // NO BLOCK AND NO HANDS IS THE CONFABULATION SIGNATURE and it keeps convicting
   // — that is F-40.9's shape and R-VS.6 fence 2 exists to keep it detectable.
   else if (moneyOnly) {   // F-42.22 — the same predicate the class ladder reads
-    // F-42.97/.98: ONE fence call over BOTH blocks (chair ruling 5). Equality
-    // merges — a figure held on either plane is his, and the fence asks
-    // "invented?", not "which plane". ARM B's addend pools stay per-block inside
-    // moneyGrounded (c-42.23, F-42.123).
-    kind = moneyGrounded(eligible, ctx && ctx.moneyFacts, ctx && ctx.expenseFacts)
-      ? 'fact_grounded'
-      : (readHands.length > 0 ? 'read_backed_report' : 'costume');
+    // ── F-42.132 SHAPE 1 (c-42.27) · THE FENCE RULES ONLY ON THE PLANES IT HAS
+    //    BOOKS FOR ────────────────────────────────────────────────────────────
+    // Arm (1) opens this limb on a SPOKEN FIGURE, which is what the walk needed:
+    // 「 Yes. Rs 5,000 on 1 September — logged as assistant payment to Swati 」
+    // carries no invoice word and no expense verb, and was destroyed for it.
+    //
+    // BUT REACHING THE FENCE AND BEING JUDGED BY IT ARE DIFFERENT THINGS, and the
+    // first cut conflated them. Counted off `engine.messages`: of 51 assistant
+    // replies carrying a rupee figure in thirty days, 33 carry NO invoice word —
+    // and reading them, they are relay drafts quoting the vendor's own fee
+    // (「 Rs 80k by 13th August 」, a dozen rows on 11 August), lead BUDGETS
+    // (「 Priya — new lead (Rs 4,50,000 budget) 」) and RECORDS figures
+    // (「 Meera — full record. Rs 2,00,000 in 」). Every one is TRUE and none is an
+    // invoice or an expense, so a fence holding only those two books would have
+    // convicted all of them — the 03:31 disease at scale, in the direction this
+    // file's own arming doctrine calls the expensive one.
+    //
+    // So the limb is three-way and the third door is the point:
+    //   (a) a MONEY-STATE sentence — fenced exactly as before;
+    //   (b) a STATIVE REPORT carrying a figure — grounded acquits (arm 2), and an
+    //       UNGROUNDED one still convicts, which is what keeps the 00:52:38
+    //       specimen red on its invented date;
+    //   (c) NEITHER — `unfenced`. Recorded with the figures spoken, never
+    //       convicted, never an F3 line. The estate does not hold books for
+    //       quotes, budgets or records, and a fence that ruled on them would be
+    //       claiming an authority it cannot exercise.
+    //
+    // F-42.146: the class exists so the weekly read can see how often Victor
+    // speaks figures the estate cannot ground, and whether those planes want
+    // books of their own. That is a later charter; this limb only makes it
+    // countable.
+    if (moneyStateSentence) {
+      // F-42.97/.98: ONE fence call over BOTH blocks (chair ruling 5). Equality
+      // merges — a figure held on either plane is his, and the fence asks
+      // "invented?", not "which plane". ARM B's addend pools stay per-block
+      // inside moneyGrounded (c-42.23, F-42.123).
+      kind = moneyGrounded(eligible, ctx && ctx.moneyFacts, ctx && ctx.expenseFacts)
+        ? 'fact_grounded'
+        : (readHands.length > 0 ? 'read_backed_report' : 'costume');
+    } else if (stativeReportWithFigure) {
+      kind = groundedStativeReport
+        ? 'fact_grounded'
+        : (readHands.length > 0 ? 'read_backed_report' : 'costume');
+    } else {
+      kind = 'unfenced';
+    }
   }
   else if (classWitnessHands.length > 0) kind = 'witnessed_hand';
   else if (witnessed) kind = 'witnessed';
@@ -1971,6 +2076,15 @@ function wireGuardClassify(vendorId, result, priorDeed, ctx) {
     kind,
     deed_class: deedClass,
     mode,
+    // F-42.146 — the figures the estate could not ground ride the verdict so the
+    // weekly read can count them. Only ever populated on `unfenced`: on every
+    // other kind the fence either grounded them or convicted, and carrying them
+    // there would invite a reader to treat a fenced figure as an open question.
+    spoken_figures: kind === 'unfenced' ? spokenFigures.slice(0, 12) : [],
+    // STANDING LAW (b40 §9.4): only `costume` is ever a specimen, so `unfenced`
+    // is un-interceptable BY CONSTRUCTION — no stage-2 seat, no F3 line, no
+    // vendor-visible byte. That is the whole guarantee shape 1 rests on, and it
+    // needs no new clause because this line already says it.
     specimen: kind === 'costume',
     claims: [
       ACTION_CLAIM_RE.test(eligible) ? 'action_claim' : null,
@@ -2279,6 +2393,27 @@ async function wireGuardSpecimen(supabase, vendorId, result, agentId, ctx) {
               rows: ctx.moneyFacts.rowCount || 0,
             }
           : { present: false, readable: null, rows: 0 },
+        // F-42.135 (e-5, mine). The expense block shipped with NO witness on the
+        // record: `jsonb_object_keys` over the 03:31 rows returned fifteen keys
+        // and this was not among them, so nobody reading those two rows could
+        // tell whether Victor said 「 1 September 」 because the block reached him
+        // or because he guessed and was lucky. R-VS.6 fence 2's whole point is
+        // that a block's PRESENCE rides the row so a true answer and a
+        // confabulation stop being one shape. Additive into the same jsonb,
+        // ZERO DDL, the same shape its sibling carries — plus `truncated`,
+        // because a capped book that dropped rows is a different fact from a
+        // whole one and V-8's line is the vendor-facing half of the same truth.
+        expense_facts: (ctx && ctx.expenseFacts)
+          ? {
+              present: true,
+              readable: !ctx.expenseFacts.unreadable,
+              rows: ctx.expenseFacts.rowCount || 0,
+              truncated: !!ctx.expenseFacts.truncated,
+            }
+          : { present: false, readable: null, rows: 0, truncated: false },
+        // F-42.146: an `unfenced` turn is only useful if the record says WHICH
+        // figures the estate could not ground. Additive, same jsonb, zero DDL.
+        spoken_figures: verdict.spoken_figures || [],
         kind: verdict.kind,
         deed_class: verdict.deed_class,
         mode: verdict.mode,

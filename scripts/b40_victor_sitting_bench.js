@@ -845,6 +845,110 @@ function classify(reply, message, facts, mode) {
       T('NO BARE "paid" — the invoice plane owns that word',
         !wgv.MONEY_STATE_RE.test('She paid Rs 18,000 last week.') || /invoice/i.test('She paid Rs 18,000 last week.'));
 
+      // ── §24 · F-42.132/.134/.135 · THE WALK'S OWN RED, CURED ────────────────────
+      // THE PRODUCTION BYTES, from engine.evals_runs at 2026-09-10 03:31:35 and
+      // 03:31:38 — two rows, byte-identical, `kind=costume · deed_class=records ·
+      // claims=["stative_completion"] · hand_census total 0`. Victor answered
+      // TRUTHFULLY from the block he had just been given and the guard destroyed
+      // the answer and shipped 「 That didn't land — nothing was changed. 」
+      //
+      // NOT a phrasing this seat composed. The seat's own e-4 was writing §23's
+      // cells on the chair's verbs and never on the word Victor actually reaches
+      // for when he reads his own book back — LOGGED — which is why the walk
+      // found in ninety seconds what the bench had said was green.
+      console.log('\n  §24 F-42.132 — the true stative report the guard was destroying');
+      const P4 = 'Yes. **Rs 5,000 on 1 September** — logged as assistant payment to Swati.';
+      const ASK = 'did I log Rs 5,000 for the assistant?';
+      const K = (reply, message) => {
+        const r = { reply, victor_mode: 'business', tool_calls: [] };
+        let v = chat.wireGuardClassify(V, r, undefined, { message, moneyFacts: MF, expenseFacts: ef });
+        if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify(V, r, false, { message, moneyFacts: MF, expenseFacts: ef });
+        return v ? v.kind : 'NULL';
+      };
+      T('ARM 1 — the production reply REACHES the money limb on its FIGURE',
+        !wgv.MONEY_STATE_RE.test(P4) && wgv.extractAmounts(P4).length > 0);
+      T('ARM 2 — and it is fact_grounded, not costume (the walk\'s red, cured)', K(P4, ASK) === 'fact_grounded');
+      T('  …the 00:52:38 specimen STILL convicts — true figure, invented date',
+        K('I have that on file already — Rs 5,000 out on 10 September for assistant payment.', ASK) === 'costume');
+      T('  …a figure on NO row still convicts (Rs 7,200 is no sum of his rows)',
+        K('Yes. **Rs 7,200 on 1 September** — logged as assistant payment to Swati.', ASK) === 'costume');
+      T('  …an ACT claim still convicts — "I have logged" is the doing form',
+        K('I have logged Rs 5,000 for the assistant just now.', ASK) === 'costume');
+      T('  …a bare "Done." with NO figure is unchanged — still a costume',
+        K('Done.', 'paid the assistant 5000 today') === 'costume');
+      T('  …and a reply with no figure and no claim of any kind reaches no limb',
+        K('Happy to help with that.', 'what can you do') === 'NULL');
+
+      // ── §24b · SHAPE 1 (c-42.27) · THE THIRD DOOR ───────────────────────────
+      // Arm (1)'s first cut let the FIGURE both open the limb and expose the turn
+      // to a fence holding two books. Counted off engine.messages: 33 of 51
+      // assistant replies carrying a rupee figure in thirty days carry NO invoice
+      // word, and reading them they are RELAY DRAFTS quoting the vendor's own fee,
+      // LEAD BUDGETS and RECORDS figures. All true, none groundable. So the limb
+      // is three-way and the third door records instead of convicting.
+      console.log('\n  §24b shape 1 — unfenced: the fence rules only on the planes it has books for');
+      const relayDraft = 'Draft ready for approval:\n\n"Please confirm the shoot for Rs 80k by 13th August, else I will have to take other bookings."\n\nSend this to Priya?';
+      T('a RELAY DRAFT quoting the vendor\'s own fee is unfenced, never convicted',
+        K(relayDraft, 'message priya') === 'unfenced');
+      T('a LEAD BUDGET is unfenced', K('Priya — new lead (Rs 4,50,000 budget), filed August 5th. No action since.', 'what leads do I have') === 'unfenced');
+      T('a RECORDS figure is unfenced', K('Meera — full record. Amount: Rs 2,00,000 in. Received: Rs 2,00,000. Pending: Rs 0.', 'show me meera') === 'unfenced');
+      T('UNFENCED IS NEVER A SPECIMEN — no interception, no F3, no vendor byte',
+        (() => { const r = { reply: relayDraft, victor_mode: 'business', tool_calls: [] };
+          let v = chat.wireGuardClassify(V, r, undefined, { message: 'message priya', moneyFacts: MF, expenseFacts: ef });
+          if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify(V, r, false, { message: 'message priya', moneyFacts: MF, expenseFacts: ef });
+          return v.kind === 'unfenced' && v.specimen === false; })());
+      T('  …and it carries the figures it could not ground (F-42.146)',
+        (() => { const r = { reply: relayDraft, victor_mode: 'business', tool_calls: [] };
+          let v = chat.wireGuardClassify(V, r, undefined, { message: 'message priya', moneyFacts: MF, expenseFacts: ef });
+          if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify(V, r, false, { message: 'message priya', moneyFacts: MF, expenseFacts: ef });
+          return JSON.stringify(v.spoken_figures) === '["80000"]'; })());
+      T('  …and a FENCED kind carries none — a grounded figure is not an open question',
+        (() => { const r = { reply: 'Three invoices outstanding, Rs 1,52,000 in all.', victor_mode: 'business', tool_calls: [] };
+          let v = chat.wireGuardClassify(V, r, undefined, { message: 'who owes me', moneyFacts: MF, expenseFacts: ef });
+          if (v && v.kind === 'prior_deed_pending') v = chat.wireGuardClassify(V, r, false, { message: 'who owes me', moneyFacts: MF, expenseFacts: ef });
+          return v.kind === 'fact_grounded' && v.spoken_figures.length === 0; })());
+      // THE THIRD DOOR MUST NOT ABSORB A VERDICT THE ESTATE ALREADY HAD, and this
+      // is the cell that proves it: 00:52:38 convicts on `presence_claim`, and the
+      // first cut of shape 1 let the figure pull it into the limb and declare it
+      // unfenced — retiring a live conviction by accident.
+      T('a PRESENCE claim keeps its own conviction — the third door does not swallow it',
+        K('I have that on file already — Rs 5,000 out on 10 September for assistant payment, confirmed by you.', 'did I log 5000') === 'costume');
+      T('a MONEY-STATE sentence with an unheld figure still convicts',
+        K('Priya Nair owes you Rs 75,000 — invoice /05, unpaid.', 'who owes me') === 'costume');
+
+      console.log('\n  §25 F-42.134 — the fence can see shorthand');
+      // 03:31:12 SHIPPED and PASSED: 「 Chase the 10k first … The 42k invoice 」.
+      // Both were TRUE and both were invisible, so a WRONG shorthand would have
+      // passed identically. The register breach itself is F-42.133's, and the
+      // soul sitting owns it — this arm grounds the number, never the style.
+      T('the shipped 03:31:12 shorthand now yields figures',
+        JSON.stringify(wgv.extractAmounts('Chase the 10k first; it\'s clean. The 42k invoice carries context')) === '["10000","42000"]');
+      // THE SHIPPED REPLY, not a fragment of it. The first cut of these two cells
+      // used 「 Chase the 10k first. 」 alone, which carries no invoice word and is
+      // therefore a figure-only turn — unfenced by shape 1, and the cell was
+      // asserting the wrong door. The production bytes carry 「 outstanding 」.
+      const SHIP0331 = 'Priya Nair has two invoices outstanding totalling **Rs 52,000**.\n\nChase the 10k first; it\'s clean. The 42k invoice carries context.';
+      T('  …and they GROUND on the shipped reply, because the block holds raw digits',
+        K(SHIP0331, 'who owes me money') === 'fact_grounded');
+      T('  …a WRONG shorthand convicts — 11k is on no row',
+        K(SHIP0331.replace('10k', '11k'), 'who owes me money') === 'costume');
+      T('  …lakh and crore scale correctly',
+        JSON.stringify(wgv.extractAmounts('1.5L')) === '["150000"]' && JSON.stringify(wgv.extractAmounts('2Cr')) === '["20000000"]');
+      T('  …and a unit that is not money is not read — "10 kg of rice"', wgv.extractAmounts('10 kg of rice').length === 0);
+
+      console.log('\n  §26 F-42.135 — the expense block\'s arrival rides the record');
+      {
+        const c = fs.readFileSync(path.join(ROOT, 'src/api/vendor-engine/chat.js'), 'utf8');
+        const body = c.slice(c.indexOf('money_facts: (ctx && ctx.moneyFacts)'), c.indexOf('kind: verdict.kind,'));
+        T('expense_facts is persisted BESIDE money_facts, in the same jsonb',
+          /expense_facts: \(ctx && ctx\.expenseFacts\)/.test(body));
+        T('  …carrying present, readable, rows AND truncated', /truncated: !!ctx\.expenseFacts\.truncated/.test(body));
+        T('  …and its ABSENT shape is present:false, never a missing key',
+          /\{ present: false, readable: null, rows: 0, truncated: false \}/.test(body));
+        T('  …ZERO DDL — no migration is added by this rider',
+          fs.readdirSync(path.join(ROOT, 'db/migrations')).filter((f) => /^016[3-9]/.test(f)).length === 0);
+      }
+
       // ── §22 · F-40.2 · THE 00:53:25 SPECIMEN, PINNED (cure deferred to Block 09) ──
       // kind=corroborated_lookup, SEVEN donna_find, and: "The invoices I pulled from
       // your book don't exist in the records yet." THE INVOICES EXIST. Donna reads
@@ -873,6 +977,83 @@ function classify(reply, message, facts, mode) {
   execFileSync('cp', ['-r', path.join(ROOT, 'node_modules'), path.join(scratch, 'node_modules')], { stdio: 'ignore' });
 
   const MUT = [
+    {
+      name: 'MC6 remove the third door — the fence rules on planes it has no books for',
+      file: 'src/api/vendor-engine/chat.js',
+      from: "    } else {\n      kind = 'unfenced';\n    }",
+      to: "    } else {\n      kind = moneyGrounded(eligible, ctx && ctx.moneyFacts, ctx && ctx.expenseFacts) ? 'fact_grounded' : 'costume';\n    }",
+      probe: `const D = 'Draft ready for approval:\\n\\n"Please confirm the shoot for Rs 80k by 13th August, else I will have to take other bookings."\\n\\nSend this to Priya?';
+  const v = C(D,'message priya'); OUT(!!v && v.specimen === true);`,
+      expect: 'a relay draft quoting the vendor\'s OWN fee becomes a specimen — the 33 rows, convicted',
+    },
+    {
+      name: 'MC7 open the third door to turns the ladder already judges',
+      file: 'src/api/vendor-engine/chat.js',
+      // RE-AIMED IN THE RUN: the first cut dropped `!relayClaim`, but the specimen
+      // this mutation is about is guarded by `!presenceClaim` — so the probe could
+      // not fall for the reason the mutation named. Aimed at the clause that
+      // actually holds the line.
+      from: "    !moneyStateSentence && !claimsAct && !jotClaim && !narrated && !presenceClaim",
+      to: "    !moneyStateSentence && !claimsAct && !jotClaim && !narrated",
+      probe: `const v = C('I have that on file already — Rs 5,000 out on 10 September for assistant payment, confirmed by you.','did I log 5000'); OUT(!!v && v.kind === 'unfenced');`,
+      expect: 'a live conviction is RETIRED by a new class absorbing it — presence_claim goes quiet',
+    },
+    // ── RIDER r2 · THE WALK'S RED, DRIVEN BOTH WAYS ─────────────────────────────
+    {
+      name: 'MC1 close arm (1) — the figure stops opening the money limb',
+      file: 'src/api/vendor-engine/chat.js',
+      from: "  const moneyClaim = (MONEY_STATE_RE.test(eligible) || spokenFigures.length > 0)",
+      to: "  const moneyClaim = (MONEY_STATE_RE.test(eligible))",
+      probe: `const v = C('Yes. **Rs 5,000 on 1 September** — logged as assistant payment to Swati.','did I log Rs 5,000 for the assistant?'); OUT(!!v && v.kind !== 'fact_grounded');`,
+      expect: 'the walk\'s 03:31:35 red returns — a true report never reaches the fence',
+    },
+    {
+      name: 'MC2 close arm (2) — a stative report cannot be fact-grounded',
+      file: 'src/api/vendor-engine/chat.js',
+      // RE-AIMED (shape 1, c-42.27): the moneyOnly expression gained the
+      // three-way gate, so the old one-line anchor no longer exists. SUBJECT
+      // UNCHANGED — close arm (2) and the true stative report loses its escape.
+      from: "    && (!claimsAct || groundedStativeReport)",
+      to: "    && (!claimsAct)",
+      probe: `const v = C('Yes. **Rs 5,000 on 1 September** — logged as assistant payment to Swati.','did I log Rs 5,000 for the assistant?'); OUT(!!v && v.kind !== 'fact_grounded');`,
+      expect: 'the same red by the other half — the escape is what the invoice plane already had',
+    },
+    // ── A DESIGN FACT THE MUTATION RUN EXPOSED, RECORDED RATHER THAN SMOOTHED ────
+    // MC3's first cut probed a bare 「 Done. 」 and stayed GREEN, correctly. The
+    // figure clause is NOT what protects that sentence — `moneyClaim` is, because
+    // 「 Done. 」 carries neither a money verb nor a figure and never reaches the
+    // limb at all. A mutation that cannot fall for the reason it names is a hollow
+    // green (F-06.111's class), so the probe was re-aimed at the sentence where
+    // the clause IS the only guard: money VOCABULARY, a stative completion, and NO
+    // FIGURE — which grounds on block presence alone and would hand a completion
+    // claim the fact-grounded acquittal for free.
+    {
+      name: 'MC3 widen arm (2) past the figure clause — a figureless completion inherits the amnesty',
+      file: 'src/api/vendor-engine/chat.js',
+      from: "    stativeDone && !participleDone && !victorClass && spokenFigures.length > 0",
+      to: "    stativeDone && !participleDone && !victorClass",
+      probe: `const v = C('Nothing outstanding — logged and settled.','did I clear the invoices'); OUT(!!v && v.kind === 'fact_grounded');`,
+      expect: 'the chair\'s own clause: with nothing to ground, the escape becomes a general amnesty',
+    },
+    {
+      name: 'MC4 drop F-42.134 — shorthand goes invisible again',
+      file: 'src/lib/wireGuardVictor.js',
+      from: "  for (const v of extractShorthandAmounts(text)) out.push(v);",
+      to: "  ",
+      probe: `const W = require('${scratch}/src/lib/wireGuardVictor.js');
+  OUT(W.extractAmounts('Chase the 11k first').length === 0);`,
+      expect: 'a WRONG 11k passes unseen — exactly how the true 10k shipped unfenced at 03:31:12',
+    },
+    {
+      name: 'MC5 drop F-42.135 — the expense block stops riding the record',
+      file: 'src/api/vendor-engine/chat.js',
+      from: "        expense_facts: (ctx && ctx.expenseFacts)",
+      to: "        expense_facts_removed: (ctx && ctx.expenseFacts)",
+      probe: `const fs2 = require('fs');
+  const c = fs2.readFileSync('${scratch}/src/api/vendor-engine/chat.js','utf8');
+  OUT(!/\\n        expense_facts: /.test(c));`,
+      expect: 'the row goes back to fifteen keys and the block\'s arrival is unwitnessed again',
+    },
     // ── CE-42 V-2 · THE THREE NEW ARMS, DRIVEN BOTH WAYS ────────────────────────
     // Every one of these must be RED at the mutated tree AND the cured tree must
     // be green on the same sentence — the section above is that second direction.
@@ -1066,8 +1247,14 @@ function classify(reply, message, facts, mode) {
     {
       name: 'M4a delete the money-family vetoed exemption (chat.js)',
       file: 'src/api/vendor-engine/chat.js',
-      from: "  const moneyClaim = MONEY_STATE_RE.test(eligible) && !containsVetoedLine(eligible);",
-      to: "  const moneyClaim = MONEY_STATE_RE.test(eligible);",
+      // ── LABELED AMENDMENT (CE-42, seat V-2, rider r2). RE-AIMED, TEETH KEPT,
+      // COUNT PRESERVED, RATIFY-OR-REVERT. F-42.132 arm (1) rewrote this line: the
+      // limb now opens on a SPOKEN FIGURE as well as on the verb list, so the old
+      // one-line anchor no longer exists. The mutation's SUBJECT is untouched —
+      // delete the vetoed-line exemption and the cure's own refusal convicts as a
+      // money costume.
+      from: "  const moneyClaim = (MONEY_STATE_RE.test(eligible) || spokenFigures.length > 0)\n    && !containsVetoedLine(eligible);",
+      to: "  const moneyClaim = (MONEY_STATE_RE.test(eligible) || spokenFigures.length > 0);",
       probe: `const bad = { ok:false, unreadable:true, rowCount:0, handles:{amounts:[],numbers:[],names:[]} };
   const r = { reply: L.VICTOR_LINES.LEDGER_UNREADABLE, victor_mode:'business', tool_calls: [] };
   let v = chat.wireGuardClassify('${V}', r, undefined, { message:'who owes me money', moneyFacts: bad });

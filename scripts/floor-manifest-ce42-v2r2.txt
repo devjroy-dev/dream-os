@@ -1,0 +1,28 @@
+# CE-42 · SEAT V-2 · RIDER r2 — DECLARED MANIFEST (F-14.16)
+# base: 567ab21
+#
+# F-42.132 (arms 1 and 2) · F-42.134 (shorthand) · F-42.135 (expense_facts on the row).
+# F-42.133 (the register breach, "10k" on the wire) is NOT here — soul/copy, W-1,
+# the soul sitting's with F-42.120.
+#
+# NO MIGRATION. F-42.135 is additive into the EXISTING evals_runs.transcript jsonb
+# (docs/db/ENGINE_SCHEMA.md:215), exactly as money_facts was; zero DDL.
+#
+# THIS RIDER EXISTS BECAUSE THE WALK FOUND WHAT THE BENCH SAID WAS GREEN.
+# r1 shipped an expense fact block and a fence that could not be reached by the
+# words Victor actually uses reading his own book. At 03:31:35 he answered
+# TRUTHFULLY from that block and the guard destroyed the answer. The bench was
+# green because every cell used phrasings this seat chose (e-4).
+#
+# TWO CELLS REDDENED BECAUSE THE RULED CURE LANDED, both amended by label,
+# subjects re-aimed, counts preserved: b40's M4a anchor (arm 1 rewrote the
+# moneyClaim line) and one cell of this seat's own that asserted the wrong thing.
+# Every bench reading moneyClaim / moneyOnly / AMOUNT_TOKEN_RE / money_facts /
+# extractAmounts was greped for and run: b05_arc_m2 27/27 is the only other one
+# and it is untouched.
+
+src/lib/wireGuardVictor.js
+src/api/vendor-engine/chat.js
+scripts/b40_victor_sitting_bench.js
+scripts/floor-manifest-ce42-v2r2.txt
+docs/HANDOVER_CE42_V2R2.md

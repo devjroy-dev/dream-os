@@ -268,6 +268,46 @@ const MONEY_STATE_RE = new RegExp([
 // would take `5` and then trip over the comma, turning a true figure into an
 // unheld one — a false conviction, the expensive direction.
 const AMOUNT_TOKEN_RE = /(?:Rs\.?\s*(\d{1,3}(?:,\d{2,3})+|\d{4,}|\d{3})|(\d{1,3}(?:,\d{2,3})+|\d{4,}))/g;
+
+// ── F-42.134 · THE EXTRACTOR WAS BLIND TO SHORTHAND ─────────────────────────
+// 2026-09-10 03:31:12, SHIPPED to the founder's handset and PASSED by the fence:
+// 「 Chase the 10k first; it's clean. The 42k invoice carries context 」.
+// `extractAmounts` returned only the three grouped figures — `10k` and `42k` are
+// two digits and a letter, so neither branch above can see them. A WRONG
+// shorthand would have passed the same way, and under the figure-trigger arm a
+// reply carrying ONLY shorthand would skip the money limb entirely.
+//
+// THIS ARM GROUNDS THE NUMBER; IT DOES NOT POLICE THE STYLE. The register law
+// (R-41.114 — `Rs X,XX,XXX`, never k/L/Cr) is F-42.133's and belongs to the soul
+// sitting under W-1. A fence that convicted on spelling would be doing the soul's
+// job badly and would destroy true answers to do it.
+//
+// Normalised to plain rupees and compared against the SAME handle set: the block
+// already pushes raw digits beside the grouped form (`moneyFacts.pushAmount`
+// writes both `10,000` and `10000`), so `10k -> 10000` grounds by equality with
+// no new handle form anywhere. Decimals are read because `1.5L` is how a lakh is
+// written; the multiplication is exact in integers after rounding.
+const SHORTHAND_RE = /(?:Rs\.?\s*)?(\d+(?:\.\d+)?)\s*(k|L|lakhs?|cr|crores?)\b/gi;
+const SHORTHAND_SCALE = { k: 1000, l: 100000, lakh: 100000, lakhs: 100000, cr: 10000000, crore: 10000000, crores: 10000000 };
+
+function shorthandToRupees(numText, unitText) {
+  const n = Number(numText);
+  const scale = SHORTHAND_SCALE[String(unitText).toLowerCase()];
+  if (!Number.isFinite(n) || !scale) return null;
+  const v = Math.round(n * scale);
+  return v > 0 ? String(v) : null;
+}
+
+function extractShorthandAmounts(text) {
+  const out = [];
+  let m;
+  SHORTHAND_RE.lastIndex = 0;
+  while ((m = SHORTHAND_RE.exec(String(text || '')))) {
+    const v = shorthandToRupees(m[1], m[2]);
+    if (v) out.push(v);
+  }
+  return out;
+}
 // ── F-42.21 CURE 1 · THE FENCE WAS BUILT AGAINST THE RULING'S EXAMPLE, NOT THE
 // COLUMN. R-40.2's exemplar wrote 「 invoice /05 」 and this seat pinned `/NN`. The
 // COLUMN holds `TDW/DEV440/05`. So the extractor pulled `/05` out of Victor's
@@ -305,6 +345,10 @@ function extractAmounts(text) {
     if (m[1]) { out.push(m[1]); continue; }
     if (m[2] && !YEAR_SHAPED.test(m[2])) out.push(m[2]);
   }
+  // F-42.134: shorthand joins the SAME list, already normalised to rupees, so
+  // every consumer — the equality set, ARM B's admission, the figure trigger —
+  // reads one list and none of them learns a second spelling.
+  for (const v of extractShorthandAmounts(text)) out.push(v);
   return out;
 }
 
@@ -628,6 +672,8 @@ module.exports = {
   extractAmounts,
   extractInvoiceHandles,
   extractSpokenDates,
+  extractShorthandAmounts,
+  shorthandToRupees,
   admittedAsSubtotal,
   ARM_B_ROWS_FULL,
   ARM_B_ROWS_NARROW,
