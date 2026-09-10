@@ -155,10 +155,17 @@ deliberate act removes anything.
 The path is derived by mount arithmetic and is unchanged:
 `/api/v2/vendor/solutions/google/callback` (§2's four-line derivation).
 
-1. Google Cloud Console — **every URL carries `authuser=2`**. Two personal Google accounts are
-   signed in beside `dev@thedreamwedding.in` and a console action taken as the wrong one lands
-   in an org-less project and fails only at the first real grant (§6).
-2. Project **`tdw-business-solutions`** — never the AI-Studio project also named `dream-os`.
+1. Google Cloud Console — signed in as **`dev@thedreamwedding.in`**. **The `authuser` index
+   varies by browser profile** and is not a constant: it was `authuser=2` when this packet was
+   written and `authuser=1` in the Chrome profile that actually ran it (2026-09-10). Read the
+   account chip on the page; do not trust the number in a URL copied from anywhere, including
+   from here. A console action taken as the wrong account lands in an org-less project and
+   fails only at the first real grant (§6).
+2. Project **`tdw-business-solutions`**, project number **`214847546988`**. **Check the number,
+   not the name.** Two decoys exist: the AI-Studio project also called `dream-os`, and a project
+   called **`thedreamwedding`**, number **`823156231613`**, which carries a free-trial banner —
+   the founder landed in it first on 2026-09-10. Nothing was changed there. A near-identical
+   name is the trap; the project number is the only thing that distinguishes them at a glance.
 3. **Credentials → OAuth 2.0 Client IDs → `TDW Backend (dream-os production)`**.
 4. **Add** this Authorised redirect URI, keeping the existing one:
    ```
@@ -169,16 +176,24 @@ The path is derived by mount arithmetic and is unchanged:
    `https://www.googleapis.com/auth/business.manage` from the declared scopes, leaving
    `https://www.googleapis.com/auth/webmasters.readonly` and
    `https://www.googleapis.com/auth/siteverification`. Save.
-   **Before removing it, photograph or note which table each of the three scopes sits in** —
-   *non-sensitive*, *sensitive* or *restricted*. That reading is what closes F-41.8 and it is
-   the only place the estate can get it. Then check the **Verification Centre**
-   (`console.developers.google.com/auth/verification`) and note what it says about data-access
-   status; the Centre is the arbiter where the Data access table and Google's own docs
-   disagree.
+   **The F-41.8 reading was taken on 2026-09-10, before the removal, and it is CLOSED.** The
+   Data access table listed **five** declared scopes, **all five non-sensitive**, with the
+   *sensitive* and *restricted* tables empty: `business.manage`, `webmasters.readonly`,
+   `siteverification`, `userinfo.email`, `openid`. **`business.manage` was non-sensitive.**
+   The instruction that produced it is kept below because the reading is unrepeatable once a
+   scope is gone — *photograph which table each declared scope sits in before removing any of
+   them* — but this particular reading does not need taking again. Then check the
+   **Verification Centre** (`console.developers.google.com/auth/verification`) and note what it
+   says about data-access status; the Centre is the arbiter where the Data access table and
+   Google's own docs disagree.
    **Nothing breaks by removing it.** No shipped code calls `business.manage` today — the
    Business Profile APIs are quota-blocked until ≈2026-10-27 regardless, and `GBP_QUOTA_APPROVED`
    is unset. G2 s2 re-declares it in its own packet when it can actually use it.
-6. Save. Confirm **both redirect URIs** are listed and the scope list now reads two, not three.
+6. Save. Confirm **both redirect URIs** are listed. **The scope list now reads FOUR, not two** —
+   `webmasters.readonly`, `siteverification`, `userinfo.email`, `openid`. The earlier text here
+   said "two, not three" and was wrong in both halves: the declared set was never three, and
+   R-41.47 removes **only `business.manage`**. `userinfo.email` and `openid` are the sign-in
+   scopes and are not part of the split. Five before, four after, one removed.
 7. Under **Branding → Authorised domains**, confirm `thedreamwedding.in` is present.
 
 **The env variable is a separate act and is NOT part of this packet.** `GOOGLE_OAUTH_REDIRECT_URI`
@@ -192,7 +207,10 @@ it.
 
 ## 4 · SEARCH CONSOLE VERIFICATION — the method, chosen with a reason
 
-**Chosen: DNS TXT record, on the domain property `thedreamwedding.in`.**
+**Chosen: a domain property on `thedreamwedding.in`, verified through DNS.** The method was
+written as *DNS TXT record*; it resolved as **auto-verification off an existing Google CNAME**
+(see the taps). The property shape — domain, not URL-prefix — is what the reasoning below
+actually argues for, and that part held.
 
 Google offers HTML file upload, HTML meta tag, Google Analytics, Google Tag Manager, and DNS.
 
@@ -209,14 +227,24 @@ Google offers HTML file upload, HTML meta tag, Google Analytics, Google Tag Mana
 4. **The founder already holds the DNS pane** — he is adding a CNAME there in §2 of this packet.
    One sitting, two records.
 
-**SECOND LIST — the taps. This is what the founder's card means by "§4, the second list,
-taps 1–6".**
+**SECOND LIST — the taps. This is what the founder's card means by "§4, the second list".**
+
+**⚠ WHAT ACTUALLY HAPPENED, 2026-09-10: no TXT was ever shown, and taps 3–6 below did not
+run.** Google **auto-verified** the property off a Google verification CNAME already sitting in
+the Vercel DNS pane since May — `yr2kzeyuikgy → gv-fofn2czma64t66.dv.googlehosted.com` — and
+reported the method as **Domain name provider**, ownership **auto verified**. The taps are kept
+below because they are the path for any domain that has no such record, and because a re-verify
+after that CNAME is lost would need them. Read tap 2's outcome first and only continue into
+tap 3 if Google actually asks for a record.
 
 1. `search.google.com/search-console` — signed in as **`dev@thedreamwedding.in`**, the same
    identity that owns the Cloud project. A property verified under a personal account is a
    property the Cloud project cannot use.
 2. **Add property → Domain** → enter `thedreamwedding.in` (no `https://`, no `www`).
-3. Google displays a **TXT record** beginning `google-site-verification=`. Copy it exactly.
+   **If Google says *Ownership auto verified*, §4 is finished here.** Record the method it
+   names and stop; taps 3–6 do not apply.
+3. Otherwise Google displays a **TXT record** beginning `google-site-verification=`. Copy it
+   exactly.
 4. **In Vercel → Domains → `thedreamwedding.in` → DNS Records** (F-42.19 — the same pane as §2
    tap 4, not the registrar), add:
 
@@ -224,16 +252,16 @@ taps 1–6".**
    |---|---|---|---|
    | `TXT` | `@` *(or blank — the apex)* | `google-site-verification=…` verbatim | 60 |
 
-   A CNAME from May reading `yr2kzeyuikgy → gv-fofn2czma64t66.dv.googlehosted.com` already sits
-   in this pane. It is an older Google verification record, it is **not** this one, and it is not
-   to be edited or removed.
-
 5. Return to Search Console → **Verify**. If it fails, wait and retry — DNS propagation, not a
    wrong record, is the usual cause. Do not add a second record on a failure.
-6. **Do not remove the TXT record afterwards.** Google re-checks periodically and verification
-   lapses if it disappears.
+6. **NEVER REMOVE THE RECORD THAT CARRIES THE VERIFICATION.** Google re-checks periodically and
+   verification lapses if it disappears. **On this estate that record is the CNAME
+   `yr2kzeyuikgy → gv-fofn2czma64t66.dv.googlehosted.com`, not a TXT.** It predates this packet,
+   it looks like debris in the DNS pane, and deleting it silently unverifies the domain — which
+   is the failure nobody notices until a Google review cites an unverified domain. If a TXT is
+   ever added by tap 4, that one is never removed either.
 
-**Do this in the same sitting as §2, at the same registrar pane.** Two records, one visit.
+**Do this in the same sitting as §2, in the same Vercel DNS pane.**
 
 ---
 
@@ -428,14 +456,38 @@ STEP 1 CLOSED 2026-09-10 (CE-42 · G2 · card step 1 · F-42.18 CLOSED)
     an impossible label still falls to the Vercel wildcard, so the explicit record is the
     one answering.
 
+STEP 2 CLOSED 2026-09-10 ~01:35 IST (CE-42 · G2 · card step 2)
+  project: tdw-business-solutions, number 214847546988, as dev@thedreamwedding.in
+    (authuser=1 in that Chrome profile — the index is profile-specific, §3 tap 1)
+    trap: first attempt landed in project "thedreamwedding", 823156231613, free-trial
+    banner. Nothing was changed there.
+  redirect URI added beside the existing one: YES, both listed. "OAuth client saved".
+    https://api.thedreamwedding.in/api/v2/vendor/solutions/google/callback
+  F-41.8 READING, from Data access BEFORE removal — CLOSED:
+    five declared scopes, ALL FIVE NON-SENSITIVE. sensitive: none. restricted: none.
+      business.manage      → non-sensitive   ← the reading F-41.8 was opened for
+      webmasters.readonly  → non-sensitive
+      siteverification     → non-sensitive
+      userinfo.email       → non-sensitive
+      openid               → non-sensitive
+  scope split (R-41.47): business.manage removed YES · FOUR scopes remain (not two —
+    userinfo.email and openid are sign-in scopes and were never part of the split).
+    "Data access changes saved".
+  branding at this point: app name The Dream Wedding · support dev@ · logo present ·
+    home/privacy/terms set · authorised domains thedreamwedding.in and
+    dream-os-production.up.railway.app · Publishing status: Testing.
+
+STEP 3 CLOSED 2026-09-10 ~01:43 IST (CE-42 · G2 · card step 3)
+  property sc-domain:thedreamwedding.in under dev@thedreamwedding.in
+  ownership AUTO VERIFIED — method "Domain name provider". NO TXT was shown or added;
+    §4 taps 3–6 did not run. Google recognised the May CNAME
+    yr2kzeyuikgy → gv-fofn2czma64t66.dv.googlehosted.com. THAT record now carries the
+    verification and is the one that must never be removed.
+  sitemap https://thedreamwedding.in/sitemap.xml submitted: Success · discovered pages 1 ·
+    last read 10 Nov 2025 (Google's cached read, not a fresh crawl).
+  a 2022 sitemap.website.xml row reads "Couldn't fetch" — old site, left alone.
+
 STILL OPEN
-redirect URI added (both listed):        <yes/no>
-Search Console domain property thedreamwedding.in, TXT, verified <DATE>, as dev@thedreamwedding.in
 consent screen after the move reads: <"The Dream Wedding" | a host — if a host, this is a finding>
-scope split (R-41.47): business.manage removed <yes/no> · two scopes remain <yes/no>
-F-41.8 reading, from Data access BEFORE removal:
-  webmasters.readonly  → <non-sensitive | sensitive | restricted>
-  siteverification     → <non-sensitive | sensitive | restricted>
-  business.manage      → <non-sensitive | sensitive | restricted>
 Verification Centre data-access status reads: <verbatim>
 ```

@@ -121,12 +121,17 @@ infra seat and is now the single thing standing between the estate and a durable
 
 ## 3 · BRAND VERIFICATION AND PUBLISH — the taps, in order, for a phone
 
-Runs on every branch. Every console URL carries **`authuser=2`** — two personal Google accounts
-are signed in beside `dev@thedreamwedding.in`, and an action taken as the wrong one lands in an
-org-less project and fails only at the first real grant (`TDW_INFRA_GOOGLE_OAUTH.md` §6).
+Runs on every branch. Every console URL must be opened as **`dev@thedreamwedding.in`** — but
+**the `authuser` index is profile-specific and is not a constant.** This packet was written
+saying `authuser=2`; the Chrome profile that ran B3·1 §3 on 2026-09-10 needed `authuser=1`
+(B3·1 §3 tap 1). Read the account chip on the page rather than trusting an index. An action
+taken as the wrong account lands in an org-less project and fails only at the first real grant
+(`TDW_INFRA_GOOGLE_OAUTH.md` §6). Check the **project number `214847546988`** too, not the name:
+a second project called `thedreamwedding` (`823156231613`) exists and the founder landed in it
+first.
 
-1. `console.developers.google.com/auth/branding?project=tdw-business-solutions` (with
-   `&authuser=2`).
+1. `console.developers.google.com/auth/branding?project=tdw-business-solutions`, with whatever
+   `&authuser=` index selects `dev@thedreamwedding.in` in the browser profile in hand.
 2. Confirm every branding field: **app name** `The Dream Wedding`, logo, developer contact,
    **Application home page** `https://thedreamwedding.in`, **Privacy policy**
    `https://thedreamwedding.in/privacy`, **Terms** `https://thedreamwedding.in/terms`.
@@ -285,13 +290,20 @@ Chair-issued, CE-42 seat G2. **This card replaces the one at kickoff 3 §6.** It
 thing the founder reads; every step ends with a paste. Steps 1–3 are B3·1's taps, 4a–4b are
 this packet's.
 
-1. **CNAME** — B3·1 §2, taps 1–6. Paste what `https://api.thedreamwedding.in/` shows.
-2. **Redirect URI + scope list** — B3·1 §3, taps 1–7. Paste both redirect URIs and the scope
-   list reading **two**.
-3. **Search Console** — B3·1 §4, **the second list**, taps 1–6. Domain property, TXT record,
-   never removed. Paste the Verified screen.
+1. **CNAME** — ✅ **CLOSED 2026-09-10.** B3·1 §2, taps 1–6. `https://api.thedreamwedding.in/`
+   answers `{"status":"alive","service":"dream-os","version":"0.11.1-alpha"}` over TLS,
+   padlock present, Railway tick. Two records, not one — F-42.19.
+2. **Redirect URI + scope list** — ✅ **CLOSED 2026-09-10 ~01:35 IST.** B3·1 §3, taps 1–7. Both
+   URIs listed; the scope list reads **four**, not two — the card said two and was wrong, see
+   B3·1 §3 tap 6. F-41.8 closed off the pre-removal reading: all five declared scopes were
+   non-sensitive.
+3. **Search Console** — ✅ **CLOSED 2026-09-10 ~01:43 IST.** B3·1 §4. Ownership **auto verified**
+   off the existing Google CNAME; no TXT was shown or added. `sc-domain:thedreamwedding.in`
+   under `dev@`.
 4. **4a · Pre-flight — no publish yet.** §2 items 7 and 8, which have no home in §3:
-   - **Clients** in `tdw-business-solutions` (`authuser=2`): exactly one OAuth client,
+   - **Clients** in `tdw-business-solutions` (project number `214847546988`, signed in as
+     `dev@thedreamwedding.in` — the `authuser` index varies by profile): exactly one OAuth
+     client,
      `TDW Backend (dream-os production)`. Delete any other.
    - Owner/editor roles current, and both the support and developer contact emails current —
      Google mails these and a missed mail pauses the review.
@@ -313,11 +325,15 @@ this packet's.
 
 ```
 B3·2 · publish the OAuth app on the split scopes
-F-41.8 READING (from B3·1, Data access, before the removal):
-  webmasters.readonly  → <non-sensitive | sensitive | restricted>
-  siteverification     → <non-sensitive | sensitive | restricted>
-  business.manage      → <non-sensitive | sensitive | restricted>
-BRANCH LIVE: A — all five scopes non-sensitive, founder's screen 2026-09-08. F-41.8 CLOSED.
+F-41.8 READING (from B3·1 §3 tap 5, Data access, BEFORE the removal, 2026-09-10):
+  business.manage      → non-sensitive
+  webmasters.readonly  → non-sensitive
+  siteverification     → non-sensitive
+  userinfo.email       → non-sensitive
+  openid               → non-sensitive
+BRANCH LIVE: A — all five scopes non-sensitive, founder's screen 2026-09-08, re-read
+  2026-09-10 before the removal. F-41.8 CLOSED.
+after the removal: four scopes remain. Only business.manage was removed (R-41.47).
 
 brand verification: <Ready to publish | failed: reason>   verified <DATE>
 branding published <DATE>  (within the 7-day validity window: yes/no)
