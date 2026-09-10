@@ -1,0 +1,15 @@
+# scripts/floor-manifest-ce42-4b1-os.txt — CE-42 4b-1 (dream-os), seat R6 [F-14.16].
+# Every path this ZIP writes, and nothing else. `tools/card_fonts/` appears both as the
+# directory `git status --porcelain` prints for a new untracked folder and as its files.
+src/api/vendor/core.js
+src/api/vendor/posts.js
+src/lib/vendor/postCards.js
+scripts/b73_post_cards_bench.js
+scripts/floor-manifest-ce42-4b1-os.txt
+tools/upload_card_fonts.js
+tools/card_fonts/
+tools/card_fonts/CormorantGaramond-Medium.woff2
+tools/card_fonts/DMSans-Medium.woff2
+tools/card_fonts/OFL-CormorantGaramond.txt
+tools/card_fonts/OFL-DMSans.txt
+docs/handovers/CE42_4B1_CARDS_HANDOVER.md

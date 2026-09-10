@@ -80,6 +80,9 @@ router.use('/referrals',   require('./referrals')); // Block 19 G5.1 — the ove
 // screen had nothing to call. Every refusal these doors return is the ARM's,
 // forwarded with a code; they decide nothing themselves.
 router.use('/introductions', require('./introductions'));
+// R6 rung 1 · CE-42 seat R6, 4b-1. The "Posts & ads" room's doors — cards now,
+// broadcast (4b-2) and the Sunday brief (4b-3) join the same file.
+router.use('/posts',       require('./posts'));
 router.use('/couture',     require('./couture'));
 router.use('/featured',    require('./featured'));
 // TDW_10 BILLING v2 — the vendor's own money door (subscribe/cancel/upgrade).
