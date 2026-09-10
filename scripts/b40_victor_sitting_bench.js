@@ -575,6 +575,95 @@ function classify(reply, message, facts, mode) {
       classify('Nothing is booked on 7 March.', 'is 7 March free', built).deed_class === 'booking');
   }
 
+  // ── §16 · F-42.87 · THE LIFTER (arms a + b) ─────────────────────────────────────────
+  // 2026-09-09 23:42:52, Stage 2 ALREADY DISARMED. Victor drafted the quote and showed
+  // the words; the vendor read 「 I don't have a number on file for Priya Mehta 」 because
+  // a lifted 「 the 」 resolved to no phone and relaySeat:782 replaced the whole reply.
+  // Thirty seconds later the identical shape survived, for no reason but that
+  // RELAY_VERB_RE had not matched. Same correctness, opposite outcome.
+  console.log('\n  §16 F-42.87 — a bad lift is silence, a named recipient still speaks');
+  {
+    const seat = fs.readFileSync(path.join(ROOT, 'src/lib/vendor/relaySeat.js'), 'utf8');
+    const lift = (t) => {
+      const V = 'to|tell|ask|message|msg|text|whatsapp|inform';
+      const NOT = new RegExp(`^(?:${V}|the|a|an|and|or|for|from|with|here|there|this|that|those|these|it|him|her|them|his|their|our|your|my|send|sent|sending|saying|said|draft|drafted|owner|client|lead|couple|number|approve|approval|confirm|now|then|when|once|about|regarding|re)$`, 'i');
+      const x = String(t || '');
+      const p = x.match(/\+?\d[\d\s\-()]{8,}/);
+      if (p) return p[0].trim();
+      const re = new RegExp(`\\b(?:${V})\\b`, 'gi');
+      let v;
+      while ((v = re.exec(x)) !== null) {
+        const a = x.slice(v.index + v[0].length).match(/^\s+([A-Za-z]+)\b/);
+        const c = a && a[1];
+        if (c && /^[A-Z][a-z]+$/.test(c) && !NOT.test(c)) return c;
+      }
+      return null;
+    };
+    // ARM (a) — every stopword the founder's live line produced, by name.
+    const LIVE_STOPWORDS = [
+      ['Draft a message for Priya Mehta confirming the proposal', 'for'],
+      ['show it to the owner so he can approve', 'the'],
+      ['Draft a quote for Priya Mehta. Owner will message her with it once ready', 'dor/here'],
+      ['tell her we are free', 'her'],
+    ];
+    for (const [instr, was] of LIVE_STOPWORDS) {
+      T(`no stopword lifted (was "${was}"): ${JSON.stringify(instr.slice(0, 40))}`, lift(instr) === null);
+    }
+    // AND THE OTHER DIRECTION — real names must still lift, or the cure is a mute button.
+    T('a named recipient still lifts — "Tell Priya we are free"', lift('Tell Priya we are free') === 'Priya');
+    T('  …two verbs in a row still reach the name (probe-found regression, pinned)',
+      lift('Send a message to Kunal about Nov 22') === 'Kunal');
+    T('  …a phone lifts, and WITHOUT the trailing space the class eats',
+      lift('message +919625759924 that we are available') === '+919625759924');
+    T('  …whatsapp / ask / message all still carry a name',
+      lift('whatsapp Sarah the dates') === 'Sarah' && lift('ask Rohan about the balance') === 'Rohan');
+    // ARM (b) — the structural fence, asserted on the shipped bytes.
+    T('an UNRESOLVED lift returns null from handleStage — silence, not a refusal line',
+      /if \(!named && who\.reason !== 'ambiguous_recipient'\) return null;/.test(seat));
+    T('  …a NAMED recipient with no phone STILL gets the refusal line',
+      /return \{ line: noNumberLine\(who\.name \|\| recipient\), kind: `no_recipient:\$\{who\.reason\}` \};/.test(seat));
+    T('  …and ambiguous_recipient stays on the speaking side (the wrong-bride outer wall)',
+      /who\.reason !== 'ambiguous_recipient'/.test(seat));
+    T('doorStage declines a null lift with its own reason (F-06.171 observability)',
+      /return no\('no_recipient_lifted'\);/.test(seat));
+    T('the lifter returns null, never the empty string (arm (b) reads the distinction)',
+      /return null;   \/\/ NOTHING WAS LIFTED/.test(seat));
+    T('the `i` flag no longer sits on the NAME capture (F-42.87\'s cause)',
+      !/\(\[A-Z\]\[a-z\]\+\)\\\\b`, 'i'\)/.test(seat) && /\/\^\[A-Z\]\[a-z\]\+\$\/\.test\(cand\)/.test(seat));
+  }
+
+  // ── §17 · F-42.21 CURE 1 · THE FENCE READS THE COLUMN, NOT THE RULING'S EXAMPLE ──────
+  console.log('\n  §17 F-42.21 cure 1 — the invoice-number equality fence');
+  {
+    const F = { ok: true, unreadable: false, rowCount: 3,
+      handles: { amounts: ['10,000', '10000', '42,000', '42000', '1,00,000', '100000', '1,52,000', '152000'],
+        numbers: ['TDW/DEV440/07', 'TDW/DEV440/05', 'TDW/DEV440/04'], names: [] } };
+    T('the 23:27 live answer grounds — the column form is read',
+      wgv.moneyGrounded('Three clients owe you money, Rs 1,52,000 in total: Priya Nair Rs 10,000 unpaid (TDW/DEV440/07)', F));
+    T('the 23:36 live answer grounds — "owes Rs 42,000 on TDW/DEV440/05"',
+      wgv.moneyGrounded('Priya Nair owes Rs 42,000 on TDW/DEV440/05', F));
+    T('R-40.2 line 4\'s own TAIL form still grounds — "invoice /05"',
+      wgv.moneyGrounded('Priya Nair owes you Rs 42,000 — invoice /05, unpaid.', F));
+    T('a WRONG RUPEE still convicts (the fence did not go slack)',
+      !wgv.moneyGrounded('Priya Nair owes you Rs 75,000 — invoice /05, unpaid.', F));
+    T('a WRONG INVOICE still convicts — /99 is on no row',
+      !wgv.moneyGrounded('Priya Nair owes Rs 42,000 on TDW/DEV440/99', F));
+  }
+
+  // ── §18 · F-42.21 CURE 2 · FORK D SKIPS A CLASS WITH NO HAND ────────────────────────
+  console.log('\n  §18 F-42.21 cure 2 — no retry for a capability the lane cannot hold');
+  {
+    const wa = fs.readFileSync(path.join(ROOT, 'src/lib/vendorInbound.js'), 'utf8');
+    T('the retry gate carries the handless term',
+      /if \(\(s2line \|\| impMiss\) && !_noRetry && !handless\) \{/.test(wa));
+    T('  …and `handless` is the guard\'s own predicate, imported, not a second list',
+      /const handless = verdict && structurallyImpossible\(verdict\.deed_class\);/.test(wa)
+      && /require\('\.\/wireGuardVictor'\)/.test(wa));
+    T('`expense` skips the retry; every other class retries as before',
+      wgv.structurallyImpossible('expense')
+      && !['relay', 'records', 'date', 'booking', 'money'].some((c) => wgv.structurallyImpossible(c)));
+  }
+
   // ── §11 · BOTH WAYS, BY PRODUCTION MUTATION ─────────────────────────────────────────
   console.log('\n  §11 both ways — mutations on the SHIPPED bytes, never test setup');
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'b40-'));
@@ -647,6 +736,36 @@ function classify(reply, message, facts, mode) {
   if (vv && vv.kind === 'prior_deed_pending') vv = chat.wireGuardClassify('${V}', rr, false, { message: 'who owes me money', moneyFacts: facts });
   OUT(!!vv && vv.kind === 'fact_grounded' && vv.deed_class !== 'money');`,
       expect: 'the kind and the class disagree again — F-42.22 returns',
+    },
+    {
+      name: 'M9 drop arm (b) — an unresolved lift speaks again',
+      file: 'src/lib/vendor/relaySeat.js',
+      from: "    if (!named && who.reason !== 'ambiguous_recipient') return null;   // no standing: say nothing",
+      to: "    if (false) return null;",
+      probe: `const fs2 = require('fs');
+  const seat = fs2.readFileSync('${scratch}/src/lib/vendor/relaySeat.js', 'utf8');
+  OUT(!/if \\(!named && who\\.reason/.test(seat));`,
+      expect: "the 23:42:52 draft is destroyed again — a bad lift speaks over the model",
+    },
+    {
+      name: 'M10 drop cure 1 — the fence reads only the ruling\'s example again',
+      file: 'src/lib/wireGuardVictor.js',
+      from: "    if (numberList.some((stored) => stored.endsWith(n) || n.endsWith(stored))) continue;",
+      to: "    if (false) continue;",
+      probe: `const W = require('${scratch}/src/lib/wireGuardVictor.js');
+  const F = { ok:true, unreadable:false, rowCount:3, handles:{ amounts:['42,000','42000'], numbers:['TDW/DEV440/05'], names:[] } };
+  OUT(!W.moneyGrounded('Priya Nair owes you Rs 42,000 — invoice /05, unpaid.', F));`,
+      expect: 'every money answer citing an invoice tail convicts again — the live 23:27 disease',
+    },
+    {
+      name: 'M11 drop cure 2 — Fork D retries a hand-less class again',
+      file: 'src/lib/vendorInbound.js',
+      from: "      if ((s2line || impMiss) && !_noRetry && !handless) {",
+      to: "      if ((s2line || impMiss) && !_noRetry) {",
+      probe: `const fs2 = require('fs');
+  const wa = fs2.readFileSync('${scratch}/src/lib/vendorInbound.js', 'utf8');
+  OUT(!/&& !handless\\) \\{/.test(wa));`,
+      expect: 'an expense costume is retried, and F3 lands over R-40.2 line 1',
     },
     {
       name: 'M1b drop the money family from the gate',

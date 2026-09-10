@@ -222,7 +222,17 @@ const MONEY_STATE_RE = new RegExp([
 // wrong total; F-40.9 invented a date), and figures are mechanically exact.
 // Filed for the chair rather than decided by the seat.
 const AMOUNT_TOKEN_RE = /(?:Rs\.?\s*)?(\d{1,3}(?:,\d{2,3})+|\d{4,})/g;
-const INVOICE_HANDLE_RE = /(\/\d{1,6})\b/g;
+// ── F-42.21 CURE 1 · THE FENCE WAS BUILT AGAINST THE RULING'S EXAMPLE, NOT THE
+// COLUMN. R-40.2's exemplar wrote 「 invoice /05 」 and this seat pinned `/NN`. The
+// COLUMN holds `TDW/DEV440/05`. So the extractor pulled `/05` out of Victor's
+// prose, looked for `/05` in a handle set holding `TDW/DEV440/05`, missed, and
+// called a TRUE figure ungrounded — every money answer citing an invoice number
+// convicted, live, on 2026-09-09 at 23:27 and 23:28. Reproduced first try.
+//
+// Both forms are read now: the full `PREFIX/NNN/NN` the column stores AND the
+// bare `/NN` tail R-40.2's own shape uses, so neither spelling is the one the
+// fence happens to know.
+const INVOICE_HANDLE_RE = /((?:[A-Za-z][A-Za-z0-9]*\/)+\d{1,6}|\/\d{1,6})\b/g;
 
 function extractAmounts(text) {
   const out = [];
@@ -260,7 +270,17 @@ function moneyGrounded(text, facts) {
   const amountSet = new Set((handles.amounts || []).map(String));
   const numberSet = new Set((handles.numbers || []).map(String));
   for (const a of amounts) if (!amountSet.has(a)) return false;
-  for (const n of numbers) if (!numberSet.has(n)) return false;
+  // A stored number GROUNDS an extracted handle when it equals it OR ENDS WITH it:
+  // `/05` is the tail of `TDW/DEV440/05` and naming an invoice by its tail is the
+  // register the founder's own ratified line uses. The direction is deliberate —
+  // the STORE is the authority and the prose is checked against it, never the
+  // reverse, so a suffix cannot be forged into a match by inventing a longer name.
+  const numberList = [...numberSet];
+  for (const n of numbers) {
+    if (numberSet.has(n)) continue;
+    if (numberList.some((stored) => stored.endsWith(n) || n.endsWith(stored))) continue;
+    return false;
+  }
   return true;
 }
 

@@ -1889,6 +1889,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     let s2arm = null;   // which of Fork D's three outcomes actually resolved
     let impMiss = false; // F-06.136: the second arm, live only when the first did not fire
     try {
+      const { structurallyImpossible } = require('./wireGuardVictor');   // F-42.21 cure 2
       const { wireGuardSpecimen, stage2Intercept, stage2RecordDelivery, STAGE2_WA_REPORT,
               stage2Armed, imperativeMiss, recordImperativeRetry } = require('../api/vendor-engine/chat');
       // R-VS.7 (B-ii) + R-VS.6 (fence 1/2): the guard reads the OWNER'S imperative
@@ -1902,7 +1903,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       // governed by the costume path, byte-for-byte as it was before this movement. The
       // second arm is live ONLY where the first did not fire — existing behaviour sacred.
       impMiss = !s2line && stage2Armed() && imperativeMiss(body, result);
-      if ((s2line || impMiss) && !_noRetry) {
+      // ── F-42.21 CURE 2 · FORK D DOES NOT RETRY A CLASS THAT HAS NO HAND ──────
+      // `expense` and `lead_send` carry EMPTY acquittal sets by construction: there
+      // is no tool that could ever witness them (R-39.18 homes log_expense in Block
+      // 09; F-40.5 keeps the island's copy dead). So retrying the actor can only
+      // produce the same lie a second time, and its failure ships F3 — 「 That didn't
+      // land — nothing was changed 」 — OVER R-40.2's own founder-vetoed sentence.
+      // That is what the founder read on 2026-09-09 23:28:15 after 「 Done. Logged
+      // and confirmed 」: the conviction was RIGHT and the sentence was wrong.
+      //
+      // Retrying a capability the lane does not hold is F-04.27's shape — a line
+      // that invites a retry of something that cannot succeed. These classes go
+      // straight to the door's own line, which `stage2Line` already authors.
+      const handless = verdict && structurallyImpossible(verdict.deed_class);
+      if ((s2line || impMiss) && !_noRetry && !handless) {
         try {
           const retry = await runTurn({
             // R-41.104: the SECOND site, and it is not decoration. A stage-2 retry

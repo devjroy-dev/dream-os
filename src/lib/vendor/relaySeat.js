@@ -473,6 +473,9 @@ async function doorStage(supabase, vendor, text, deps) {
   if (!chat.RELAY_VERB_RE.test(raw)) return no('no_relay_verb');
 
   const lifted = extractRecipient(raw);
+  // F-42.87 (a): a null lift is NOT a recipient. Declined here, with its reason,
+  // so the decline stays observable (F-06.171) and never reaches a refusal line.
+  if (!lifted) return no('no_recipient_lifted');
   const who = await resolveRecipient(supabase, vendor.id, lifted);
   if (who.reason === 'ambiguous_recipient') return { line: askWhoLine(who.name || 'that name'), kind: 'ask_who' };
   if (!who.phone) return no(`recipient_unresolved lifted="${lifted}" reason=${who.reason}`);
@@ -497,18 +500,61 @@ async function doorStage(supabase, vendor, text, deps) {
 // lifts is handed to `resolveRecipient`, which answers against the store and
 // refuses to guess among several. A bad lift resolves to nothing and the door
 // stays silent, which is the status quo, not a new harm.
+// ── F-42.87 ARM (a) · CE-42 · THE `i` FLAG DEFEATED THE COMMENT ABOVE IT ────
+// The comment promised 「 case-SENSITIVE on the name, so the verb itself can never
+// be lifted 」 — and the pattern carried `/i`, which makes `[A-Z][a-z]+` match ANY
+// word. On the founder's live line, 2026-09-09, that lifted:
+//
+//   "Draft a message FOR Priya Mehta confirming…"  -> "for"
+//   "show it TO the owner so he can approve"       -> "the"
+//   plus "here", "dor", "saying", "as", "Send" across seven turns.
+//
+// A promise in a comment is not a guarantee in a regex. The verb list keeps its
+// case-insensitivity — a sentence really does open 「 Tell Priya… 」 — but the NAME
+// capture is now genuinely case-sensitive, which is what the comment always said.
+//
+// AND THE FALLBACK GOES TOO. `/\b([A-Z][a-z]{2,})\b/` took the first capitalised
+// token anywhere in the instruction, which on a sentence-initial 「 The 」 or
+// 「 Send 」 is a stopword wearing a capital. It bought nothing a named recipient
+// does not already give, and it cost the founder five turns in one night.
+//
+// RETURNS null WHEN NOTHING WAS LIFTED, not ''. Arm (b) reads that distinction to
+// decide whether the door has standing to speak at all, and '' cannot carry it —
+// the empty string and a lifted name were the same value to every caller.
+const RECIPIENT_VERBS = 'to|tell|ask|message|msg|text|whatsapp|inform';
+// Closed-class tokens that can never be a person. Capitalised at a sentence start
+// they are indistinguishable from a name by shape alone, so shape is not enough
+// and this list is the second fence. It is deliberately SHORT: it names the words
+// that actually appeared on the wire plus their nearest neighbours, and it is not
+// a general stopword corpus — a long list here would start eating real names
+// ("Mark", "Bill", "Grace") which is the harm running the other way.
+const NOT_A_NAME_RE = new RegExp(`^(?:${RECIPIENT_VERBS}|the|a|an|and|or|for|from|with|here|there|this|that|those|these|it|him|her|them|his|their|our|your|my|send|sent|sending|saying|said|draft|drafted|owner|client|lead|couple|number|approve|approval|confirm|now|then|when|once|about|regarding|re)$`, 'i');
+
 function extractRecipient(text) {
   const t = String(text || '');
   const phone = t.match(/\+?\d[\d\s\-()]{8,}/);
-  if (phone) return phone[0];
-  // Case-insensitive on the VERB (a sentence opens with "Tell Priya…", capital T)
-  // and case-SENSITIVE on the name, so the verb itself can never be lifted as the
-  // recipient — which is exactly what an all-case-sensitive pattern did.
-  const m = t.match(/\b(?:to|tell|ask|message|msg|text|whatsapp|inform)\s+([A-Z][a-z]+)\b/i)
-         && t.match(/\b(?:to|tell|ask|message|msg|text|whatsapp|inform)\s+([A-Z][a-z]+)\b/i);
-  if (m && m[1] && !/^(?:to|tell|ask|message|msg|text|whatsapp|inform)$/i.test(m[1])) return m[1];
-  const cap = t.match(/\b([A-Z][a-z]{2,})\b/);
-  return cap ? cap[1] : '';
+  if (phone) return phone[0].trim();   // the class eats a trailing space; the store must not see one
+  // Verb: case-insensitive. Name: case-SENSITIVE, as the law always read.
+  //
+  // ⚠ EVERY MATCH, NOT THE FIRST. The seat's own first cut took `.match()`'s single
+  // hit and gave up if it failed the name test — and 「 Send a message TO Kunal 」
+  // lifted null, because the earliest verb hit is `message to` and `to` fails the
+  // case test. A real name two tokens later was never reached. Found by driving the
+  // lifter on a sentence that must work, not on the ones that were broken.
+  // ⚠ AND VERB POSITIONS, NOT CONSUMED MATCHES. The second cut used
+  // `matchAll(verb + name)`, and 「 Send a message TO Kunal 」 STILL lifted null:
+  // the first match consumed 「 message to 」 whole, so the next search began after
+  // 「 to 」 and the verb that actually precedes the name was already eaten. Two
+  // verbs in a row is the commonest phrasing there is. This scans each verb
+  // OCCURRENCE and reads the token after it, so overlapping verbs are all reached.
+  const verbRe = new RegExp(`\\b(?:${RECIPIENT_VERBS})\\b`, 'gi');
+  let v;
+  while ((v = verbRe.exec(t)) !== null) {
+    const after = t.slice(v.index + v[0].length).match(/^\s+([A-Za-z]+)\b/);
+    const cand = after && after[1];
+    if (cand && /^[A-Z][a-z]+$/.test(cand) && !NOT_A_NAME_RE.test(cand)) return cand;
+  }
+  return null;   // NOTHING WAS LIFTED. Arm (b) turns this into silence, not a refusal.
 }
 
 // ── E3-PRIME (R-29.33) — THREE LANES ───────────────────────────────────────
@@ -774,8 +820,29 @@ async function handleStage(supabase, vendor, input, deps) {
   const body = typeof input.message === 'string' ? input.message.trim() : '';
   if (!body) return null;   // a hand with no bytes stages nothing and says nothing
 
+  // ── F-42.87 ARM (b) · THE STRUCTURAL FENCE. THE DOOR NEEDS STANDING TO SPEAK.
+  // 2026-09-09 23:42:52, guard already DISARMED. Victor did exactly the right
+  // thing — drafted the quote and showed the words — and the vendor read
+  // 「 I don't have a number on file for Priya Mehta 」 instead, because a lifted
+  // 「 the 」 resolved to no phone and this branch replaced the whole reply. Thirty
+  // seconds earlier the identical shape survived, for no reason but that
+  // RELAY_VERB_RE had not matched. Same correctness, opposite outcome.
+  //
+  // `extractRecipient`'s own comment claimed 「 a bad lift resolves to nothing and
+  // the door stays silent, which is the status quo, not a new harm 」. IT WAS NOT
+  // SILENT. It reached here and spoke over him. So the distinction the comment
+  // always assumed is now a value the code carries: a recipient that was NAMED
+  // and merely lacks a phone still gets the refusal — that sentence is true and
+  // useful — while an UNRESOLVED LIFT IS SILENCE, and silence returns the turn to
+  // the model whose answer was already right.
+  //
+  // `ambiguous_recipient` stays on the speaking side deliberately: several
+  // candidates means a name WAS given, and the wrong-bride guard's outer wall is
+  // exactly the refusal to choose among them.
+  const named = typeof recipient === 'string' && recipient.trim().length > 0;
   const who = await resolveRecipient(supabase, vendor.id, recipient);
   if (!who.phone) {
+    if (!named && who.reason !== 'ambiguous_recipient') return null;   // no standing: say nothing
     // NO DRAFT IS STAGED when there is nobody to stage it for. `ambiguous_recipient`
     // lands here too: the corpse's own refusal to guess among several threads,
     // which under E3 is the wrong-bride guard's OUTER wall.

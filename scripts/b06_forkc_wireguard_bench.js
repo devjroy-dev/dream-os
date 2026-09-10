@@ -1422,7 +1422,14 @@ t('§11.6 FORK D — the retry-the-actor leg: structural bound, and three outcom
   // protects — THE RETRY IS GATED ON THE STRUCTURAL BOUND — was untouched. Re-authored
   // STRICTER: the bound must gate the widened predicate AND the old narrow form must be
   // gone, so a future revert cannot silently re-narrow the arm and still pass this cell.
-  assert.ok(/if \(\(s2line \|\| impMiss\) && !_noRetry\)/.test(wa),
+  // LABELED AMENDMENT (CE-42, F-42.21 cure 2). RE-AIMED, TEETH KEPT, COUNT
+  // PRESERVED, RATIFY-OR-REVERT. The gate gained `&& !handless`: a class with an
+  // EMPTY acquittal set can never produce a hand, so retrying it produces the same
+  // lie twice and its failure ships F3 over R-40.2 line 1 — the founder read exactly
+  // that on 2026-09-09 23:28:15. This cell's SUBJECT (the structural bound / the
+  // spend bound) is untouched; the guard clause grew one term and the cell follows
+  // it, so neither the bound nor the new term can be removed unseen.
+  assert.ok(/if \(\(s2line \|\| impMiss\) && !_noRetry && !handless\)/.test(wa),
     'the retry is not gated on the bound, or the arming predicate did not widen — it has a second edge');
   assert.ok(!/if \(s2line && !_noRetry\)/.test(wa),
     'the narrow arming predicate survives beside the widened one — two authorities on when the actor re-runs');
@@ -1909,7 +1916,14 @@ t('\u00a714.10 THE SPEND BOUND \u2014 exactly ONE extra actor run, structural, n
   assert.strictEqual(runs.length, 1, 'the leg calls runTurn more than once \u2014 the spend bound is not one duplicated turn');
   assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(stripComments(forkD)),
     'the bound became a counter \u2014 it was ratified as a shape with no second edge');
-  assert.ok(/if \(\(s2line \|\| impMiss\) && !_noRetry\)/.test(wa), 'the widened predicate is not under the structural bound');
+  // LABELED AMENDMENT (CE-42, F-42.21 cure 2). RE-AIMED, TEETH KEPT, COUNT
+  // PRESERVED, RATIFY-OR-REVERT. The gate gained `&& !handless`: a class with an
+  // EMPTY acquittal set can never produce a hand, so retrying it produces the same
+  // lie twice and its failure ships F3 over R-40.2 line 1 — the founder read exactly
+  // that on 2026-09-09 23:28:15. This cell's SUBJECT (the structural bound / the
+  // spend bound) is untouched; the guard clause grew one term and the cell follows
+  // it, so neither the bound nor the new term can be removed unseen.
+  assert.ok(/if \(\(s2line \|\| impMiss\) && !_noRetry && !handless\)/.test(wa), 'the widened predicate is not under the structural bound');
 });
 
 t('\u00a714.11 THE LANDING TEST IS THE PREDICATE RE-ASKED \u2014 not retryHands, which counts reads', () => {

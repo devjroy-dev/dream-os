@@ -1,0 +1,46 @@
+# CE-42 · SEAT VICTOR · F-42.87 + F-42.21 CURES 1–2 — DECLARED MANIFEST (F-14.16)
+# base: e23ab4d   (re-pinned from 7615cf3. ALL FIVE source paths + the two new
+#                 files verified blob-identical across the WHOLE span 7615cf3..e23ab4d
+#                 by `git rev-parse` — the kickoff named the range 876cef2..e23ab4d,
+#                 which leaves 7615cf3..876cef2 unstated; the seat derived that half
+#                 too rather than inherit it. D5c (876cef2) touched the assistance
+#                 doors and b20_a2; G2 (e23ab4d) is docs only. Nothing in this radius.
+#
+# ── THE FILE TABLE ──────────────────────────────────────────────────────────
+# MACHINE-READ by run-floor.sh --delivery: everything after '#' is stripped,
+# blanks dropped, and any dirty path NOT listed below refuses the run.
+#
+#   src/lib/vendor/relaySeat.js  — W-1 LIFT GRANTED FOR THESE TWO ARMS AND
+#                                  NOTHING ELSE. (a) the `i` flag came off the
+#                                  NAME capture and a closed-class list fences
+#                                  what shape alone cannot; the fallback
+#                                  "first capitalised token anywhere" is gone;
+#                                  the lifter returns null, never ''. (b) the
+#                                  refusal at handleStage fires only when a
+#                                  recipient was NAMED — an unresolved lift is
+#                                  silence. `ambiguous_recipient` deliberately
+#                                  stays on the speaking side: several candidates
+#                                  means a name WAS given, and refusing to choose
+#                                  among them is the wrong-bride guard's outer wall.
+#   src/lib/wireGuardVictor.js   — F-42.21 cure 1: the equality fence reads the
+#                                  COLUMN's `TDW/DEV440/05` and R-40.2's own `/05`
+#                                  tail. Suffix match, store-authoritative.
+#   src/lib/vendorInbound.js     — F-42.21 cure 2: Fork D skips a class whose
+#                                  acquittal set is empty by construction.
+#   scripts/b40_victor_sitting_bench.js — §16/§17/§18 + M9/M10/M11. 129 -> 154.
+#   scripts/b06_forkc_wireguard_bench.js — TWO labeled amendments (§11.6, §14.10):
+#                                  both pinned the retry gate's exact text and the
+#                                  gate grew one term. Subjects untouched, count
+#                                  preserved, ratify-or-revert.
+#   docs/TDW_MICRO_F4287_HANDOVER.md — new.
+#
+# src/engine/dist/ is NOT here and never will be: gitignored, and Railway's
+# `npm run build` produces it at deploy. `npm run build` runs in the verify block
+# BEFORE the floor so a tsc failure is a red in the terminal, not a boot crash.
+src/lib/vendor/relaySeat.js
+src/lib/wireGuardVictor.js
+src/lib/vendorInbound.js
+scripts/b40_victor_sitting_bench.js
+scripts/b06_forkc_wireguard_bench.js
+docs/TDW_MICRO_F4287_HANDOVER.md
+scripts/floor-manifest-ce42-victor-f4287.txt
