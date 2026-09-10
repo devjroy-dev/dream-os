@@ -554,29 +554,68 @@ async function leadFromIntroduction(supabase, row, { text } = {}) {
  * answers her, inside the window her reply just opened. ZERO NEW BYTES here, and
  * the vendor's push notice is F-42.96's template, not this packet's.
  */
-async function handleIntroductionInbound(supabase, { from, text, isStop }) {
-  const row = await matchInboundIntroduction(supabase, from);
-  if (!row) return null;
+/**
+ * THE VERDICT · r2 (F-42.126, ruled (ii)).
+ *
+ * ⚠ THE MATCH IS NO LONGER DONE HERE. The lane calls `matchInboundIntroduction`
+ * first and only reads its own `prospects` row when that comes back non-null —
+ * "one prospect read ON THE MATCHED PATH", which is the ruling's own wording and
+ * is not achievable if this function owns both reads.
+ *
+ * ⚠ AND THIS MODULE STILL NEVER TOUCHES `prospects`. The row is HANDED IN.
+ * `prospects.js` lazily requires this file, so a require in the other direction
+ * would close the cycle; more importantly, the marketing lane is the reader of
+ * its own register and a second reader here would be a second opinion on state.
+ *
+ * ── WHAT F-42.126 WAS ────────────────────────────────────────────────────────
+ * r1 returned on EVERY match. So a number that was BOTH an introduction
+ * recipient AND mid-conversation with the Closer stopped being answered — not
+ * ended, just silent, until the expiry job marked the row `expired` and nobody
+ * ever learnt why. Ordinary in production: a vendor's contacts and TDW's
+ * prospect list overlap by construction. Found on the founder's walk of
+ * 2026-09-10, from a `prospects` row dated the previous evening.
+ *
+ * ── `fallThrough` IS THE WHOLE CURE ──────────────────────────────────────────
+ * The lead is written on EVERY match — it is the vendor's fact and does not
+ * depend on who else is talking to her. What `fallThrough` decides is only
+ * whether the marketing lane carries on afterwards.
+ *
+ *   LIVE CONVERSATION = `replied` | `in_session`, AND NOTHING ELSE (ruled).
+ *   `cold` and `templated` are non-terminal too, and they are DELIBERATELY not
+ *   here: neither has a conversation in flight — `cold` is a name on a list,
+ *   `templated` is an opener she never answered. Letting Maya open a
+ *   conversation off the back of a vendor's introduction would be TDW taking
+ *   over a message Mira sent.
+ *
+ * ── STOP · "MINT NO PROSPECT" WAS NEVER "IGNORE AN EXISTING ONE" ─────────────
+ * Fork A forbids MINTING her. It says nothing about a row that already exists,
+ * and a woman who is already in TDW's register and types STOP has opted out of
+ * TDW — she is owed `opted_out` and the courtesy confirmation exactly as before.
+ * So STOP falls through WHENEVER a prospect row exists, live or not. With no row
+ * there is nothing to fall through to, and `:184` would mint her, so it returns.
+ */
+async function applyIntroductionInbound(supabase, { row, text, isStop, prospect }) {
+  const state = prospect && prospect.state;
+  const live = state === 'replied' || state === 'in_session';
 
-  // THE MATCH IS OUTSIDE THIS TRY AND THE WRITES ARE INSIDE IT, ON PURPOSE.
-  // The match already fails to null and falling through is correct for an
-  // unmatched number. Once she IS matched, falling through is the ONE thing that
-  // must not happen — :184 would mint her as a prospect, which is Fork A broken —
-  // so a failure past this point returns a verdict naming itself and stops here.
-  // She gets silence either way; what changes is whether the estate lies about
-  // her afterwards.
   try {
     if (isStop) {
       const out = await markIntroductionStopped(supabase, row.id);
-      return { action: 'introduction_stopped', introductionId: row.id, vendorId: row.vendor_id, ok: out.ok };
+      return {
+        action: 'introduction_stopped', introductionId: row.id, vendorId: row.vendor_id,
+        ok: out.ok,
+        // An EXISTING row keeps today's STOP arm in full. Absent one, nothing.
+        fallThrough: !!prospect,
+      };
     }
 
     if (row.stopped_at) {
-      // She said stop and has written again. The row is not re-opened and no lead
-      // is made, but she still does NOT fall through — falling through is what
-      // would mint the prospect her STOP refused.
+      // She said stop and has written again. No lead, no re-open, and no fall
+      // through — falling through is what would mint the prospect her STOP
+      // refused. (A live prospect cannot co-exist with this state: if she had a
+      // row at STOP time she fell through and it is `opted_out` now.)
       console.log(`[introduction:in] id=${row.id} inbound after STOP — no lead, no prospect`);
-      return { action: 'noop_introduction_stopped', introductionId: row.id, vendorId: row.vendor_id };
+      return { action: 'noop_introduction_stopped', introductionId: row.id, vendorId: row.vendor_id, fallThrough: false };
     }
 
     const lead = await leadFromIntroduction(supabase, row, { text });
@@ -587,11 +626,15 @@ async function handleIntroductionInbound(supabase, { from, text, isStop }) {
       leadId: lead.leadId || null,
       created: !!lead.created,
       updated: !!lead.updated,
+      prospectState: state || null,
+      fallThrough: live,
     };
   } catch (e) {
+    // NEVER falls through on a failure: the lane below would mint the prospect
+    // that Fork A forbids, and it would do it on the back of a defect.
     console.error(`[introduction:in] id=${row.id} THREW after match: ${(e && e.message) || e} — ` +
       'her reply is NOT filed as a lead and must be recovered by hand; no prospect was created');
-    return { action: 'introduction_failed', introductionId: row.id, vendorId: row.vendor_id, error: String((e && e.message) || e) };
+    return { action: 'introduction_failed', introductionId: row.id, vendorId: row.vendor_id, error: String((e && e.message) || e), fallThrough: false };
   }
 }
 
@@ -599,7 +642,7 @@ module.exports = {
   TABLE, TEMPLATE_KEY, REFUSE, SLOT_ASKS, SLOT_ORDER,
   // J1-IN · the inbound arm
   reachedHer, matchInboundIntroduction, markIntroductionStopped,
-  leadFromIntroduction, handleIntroductionInbound,
+  leadFromIntroduction, applyIntroductionInbound,
   nextSlot, filledBody, showIntroduction, approvalNames, chipState,
   alreadyIntroduced, stageIntroduction, sendIntroduction,
   // relaySeat's bytes are re-exported so a reader of THIS module sees which four

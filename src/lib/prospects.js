@@ -180,29 +180,44 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
   const phone   = normalizeTo(from);
   const now     = new Date().toISOString();
 
-  // ── J1-IN · IS SHE SOMEONE A VENDOR INTRODUCED? (F-42.69, ruling B) ────────
-  // ONE READ, ABOVE EVERYTHING, AND IT WRITES NOTHING HERE. The arm lives in
-  // `src/lib/vendor/introductions.js` — that module is the one writer for its own
-  // table and this one is the marketing lane's; the branch is a call, never a
-  // second writer.
+  // ── J1-IN · IS SHE SOMEONE A VENDOR INTRODUCED? (F-42.69, r2 F-42.126) ─────
+  // ONE READ, ABOVE EVERYTHING. The arm lives in `src/lib/vendor/introductions.js`
+  // — that module is the one writer for its own table and this one is the
+  // marketing lane's; the branch is a call, never a second writer.
   //
   // ⚠ IT SITS ABOVE THE STOP ARM AND THAT IS THE WHOLE POINT. The line below
   // opens with `findOrCreateProspectByPhone`, so "STOP first" is "MINT A PROSPECT
   // first" — a stranger who said no to a vendor's introduction would have become
   // one of TDW's own marketing rows by saying it, and `opted_out` is terminal and
-  // CROSS-LINE (:4). The chair's Fork A ruling is that she is never a prospect,
-  // and this placement is that ruling made structural instead of hoped for.
+  // CROSS-LINE (:4). Fork A is that she is never minted, and this placement is
+  // that ruling made structural instead of hoped for.
   //
-  // AN UNMATCHED NUMBER FALLS THROUGH AND EVERYTHING BELOW RUNS BYTE-UNCHANGED.
-  // That is the acceptance cell, and it is why this is a branch and not an edit.
+  // ── r2 · F-42.126 · SHE MAY ALREADY BE TALKING TO MAYA ─────────────────────
+  // r1 RETURNED ON EVERY MATCH, and that silently ended live Closer
+  // conversations: a number that is both an introduction recipient and a
+  // prospect mid-session simply stopped being answered, and nothing said so
+  // until the expiry job marked the row `expired`. Found on the founder's walk,
+  // by a `prospects` row dated the previous evening.
   //
-  // LAZY REQUIRE, the discipline this file already keeps at :199/:250/:361.
+  // THE PROSPECT READ IS INSIDE THE MATCH, not before it — the ruling's "one
+  // prospect read on the matched path". An un-introduced number costs nothing
+  // extra and reaches :184 with today's file byte-unchanged.
+  //
+  // `findProspectByPhone` and NOT `findOrCreate…`: reading may not mint.
+  let introMatched = false;
   {
-    const { handleIntroductionInbound } = require('./vendor/introductions');
-    const introOut = await handleIntroductionInbound(supabase, {
-      from: phone, text, isStop: isStopWord(text),
-    });
-    if (introOut) return introOut;
+    const introMod = require('./vendor/introductions');
+    const introRow = await introMod.matchInboundIntroduction(supabase, phone);
+    if (introRow) {
+      introMatched = true;
+      const prospect = await findProspectByPhone(supabase, phone);
+      const verdict = await introMod.applyIntroductionInbound(supabase, {
+        row: introRow, text, isStop: isStopWord(text), prospect,
+      });
+      // `fallThrough` is the arm's, never re-derived here: two opinions on
+      // "should the lane carry on" is how the two halves drift apart.
+      if (!verdict.fallThrough) return verdict;
+    }
   }
 
   // ── STOP → opt out (cross-line), then send the ONE courtesy confirmation ──────────────────
@@ -339,7 +354,26 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
   // read it exactly as it reads any other — if her text happens not to contain the
   // digits, the queue shows no record and the founder still has the DM path. This
   // arm makes evidence CHEAPER TO GET, never weaker to hold.
-  if (!prospect.consent_text && text && text.trim()) {
+  // ── F-42.127 · AN INTRODUCTION-MATCHED REPLY IS NOT CONSENT ────────────────
+  // `introMatched` is the whole of the added condition, and it is the difference
+  // between evidence and a claim. Everything above this line was written for
+  // someone who wrote TO TDW: her message is her own words on this thread, and
+  // Meta is the witness. On the r2 fall-through she did not write to TDW — SHE
+  // REPLIED TO A VENDOR'S INTRODUCTION, and Mira's message is the only reason
+  // she has this number at all. Recording that as `consent_source: 'whatsapp'`
+  // would put a record in the assistance queue saying she consented to TDW's
+  // marketing, and the founder would act on it. She consented to nothing of the
+  // sort.
+  //
+  // R-41.132 made consent evidence rather than a formality; a record harvested
+  // from a reply meant for someone else is a formality wearing evidence's
+  // clothes, and the wrong direction to fail in.
+  //
+  // A DIRECT MESSAGE TO TDW STILL WRITES IT. `introMatched` is false on every
+  // path that is not an introduction fall-through, so the R-41.131 door is
+  // untouched for everyone it was built for — including this same woman, on the
+  // day she writes to TDW herself.
+  if (!introMatched && !prospect.consent_text && text && text.trim()) {
     try {
       await updateProspect(supabase, prospect.id, {
         consent_text: text,               // verbatim: not trimmed, not summarised

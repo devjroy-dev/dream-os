@@ -162,8 +162,8 @@ const INTRO_BASE = {
                 deleted_at: null, created_at: '2026-09-01T00:00:00Z' }],
       clients: [],
     });
-    const out = await intro.handleIntroductionInbound(db, {
-      from: '918757788550', text: 'Hi, saw your work', isStop: false,
+    const out = await intro.applyIntroductionInbound(db, {
+      row: db.__db.introductions[0], text: 'Hi, saw your work', isStop: false, prospect: null,
     });
     assert.strictEqual(out.action, 'introduction_lead');
     assert.strictEqual(out.leadId, 'lead-old', 'must land on the legacy row');
@@ -181,8 +181,8 @@ const INTRO_BASE = {
       introductions: [Object.assign({}, INTRO_BASE, { recipient_phone: '+918757788550' })],
       leads: [], clients: [],
     });
-    const out = await intro.handleIntroductionInbound(db, {
-      from: '918757788550', text: 'Hi, saw your work', isStop: false,
+    const out = await intro.applyIntroductionInbound(db, {
+      row: db.__db.introductions[0], text: 'Hi, saw your work', isStop: false, prospect: null,
     });
     assert.strictEqual(out.created, true);
     assert.strictEqual(db.__db.leads.length, 1);
@@ -193,8 +193,8 @@ const INTRO_BASE = {
     assert.strictEqual(L.raw_message, 'Hi, saw your work');
 
     // and a SECOND reply updates, never duplicates
-    const again = await intro.handleIntroductionInbound(db, {
-      from: '918757788550', text: 'still interested', isStop: false,
+    const again = await intro.applyIntroductionInbound(db, {
+      row: db.__db.introductions[0], text: 'still interested', isStop: false, prospect: null,
     });
     assert.strictEqual(again.created, false, 'the second reply minted a second lead');
     assert.strictEqual(db.__db.leads.length, 1, 'second reply duplicated the lead');
@@ -211,8 +211,8 @@ const INTRO_BASE = {
       ],
       leads: [], clients: [],
     });
-    const out = await intro.handleIntroductionInbound(db, {
-      from: '918757788550', text: 'hello', isStop: false,
+    const out = await intro.applyIntroductionInbound(db, {
+      row: await intro.matchInboundIntroduction(db, '918757788550'), text: 'hello', isStop: false, prospect: null,
     });
     assert.strictEqual(out.introductionId, 'intro-new', 'the older row won');
     assert.strictEqual(out.vendorId, 'V2');
@@ -270,6 +270,121 @@ const INTRO_BASE = {
     assert.strictEqual(db.__db.prospects.length, 1, 'the prospect arm no longer runs');
     assert.strictEqual(db.__db.prospects[0].state, 'opted_out');
     assert.strictEqual(sentTo, '919999000011', 'the courtesy confirmation stopped going out');
+  });
+
+  // ═══ r2 · F-42.126 / F-42.127 ═══════════════════════════════════════════════
+
+  // ── 11 · SHE IS MID-CONVERSATION WITH MAYA · lead written AND Maya answers ─
+  // The F-42.126 cell. RED at r1: the arm returned on every match and the Closer
+  // never spoke to her again — not ended, just silent, until the expiry job.
+  await cell('11 · matched + in_session → lead written AND the Closer still answers', async () => {
+    const db = makeDb({
+      introductions: [Object.assign({}, INTRO_BASE, { recipient_phone: '+918757788550' })],
+      prospects: [{ id: 'P1', phone: '918757788550', state: 'in_session', consent_text: null,
+                    session_opened_at: '2026-09-09T18:56:37Z', created_at: '2026-09-09T18:56:37Z' }],
+      leads: [], clients: [], conversations: [], messages: [],
+    });
+    let closerRan = false; let sentText = null;
+    const out = await prospects.handleMarketingInbound({
+      supabase: db, from: '918757788550', text: 'yes please send details', messageId: 'm11',
+      sendWa: async ({ text: t }) => { sentText = t; return { sent: true }; },
+      closerTurn: async () => { closerRan = true; return { text: 'Maya answers', source: 'closer' }; },
+    });
+    assert.strictEqual(out.action, 'in_session', `returned ${out.action} — she was cut off again`);
+    assert.strictEqual(closerRan, true, 'the Closer never ran');
+    assert.strictEqual(sentText, 'Maya answers', 'Maya composed but nothing reached her');
+    assert.strictEqual(db.__db.leads.length, 1, 'the vendor lost the lead');
+    assert.strictEqual(db.__db.leads[0].source, 'introduction');
+    assert.strictEqual(db.__db.prospects.length, 1, 'a second prospect row was minted');
+  });
+
+  // ── 12 · cold / templated are NOT live · silence ──────────────────────────
+  await cell('12 · matched + cold/templated → silence, Maya opens nothing', async () => {
+    for (const state of ['cold', 'templated', 'expired', 'converted']) {
+      const db = makeDb({
+        introductions: [Object.assign({}, INTRO_BASE, { recipient_phone: '+918757788550' })],
+        prospects: [{ id: 'P1', phone: '918757788550', state, consent_text: null, created_at: '2026-09-01T00:00:00Z' }],
+        leads: [], clients: [], conversations: [], messages: [],
+      });
+      let closerRan = false;
+      const out = await prospects.handleMarketingInbound({
+        supabase: db, from: '918757788550', text: 'hi', messageId: 'm12',
+        sendWa: async () => { throw new Error('nothing may be sent to her'); },
+        closerTurn: async () => { closerRan = true; return { text: 'x', source: 'closer' }; },
+      });
+      assert.strictEqual(out.action, 'introduction_lead', `state=${state} fell through`);
+      assert.strictEqual(closerRan, false, `state=${state}: Maya opened a conversation off an introduction`);
+      assert.strictEqual(db.__db.leads.length, 1, `state=${state}: no lead`);
+    }
+  });
+
+  // ── 13 · an opted_out prospect · silence, and NEVER re-minted ─────────────
+  await cell('13 · matched + opted_out prospect → silence, no re-mint', async () => {
+    const db = makeDb({
+      introductions: [Object.assign({}, INTRO_BASE, { recipient_phone: '+918757788550' })],
+      prospects: [{ id: 'P1', phone: '918757788550', state: 'opted_out', consent_text: null, created_at: '2026-09-01T00:00:00Z' }],
+      leads: [], clients: [], conversations: [], messages: [],
+    });
+    const out = await prospects.handleMarketingInbound({
+      supabase: db, from: '918757788550', text: 'hello again', messageId: 'm13',
+      sendWa: async () => { throw new Error('nothing may be sent to her'); },
+    });
+    assert.strictEqual(out.action, 'introduction_lead');
+    assert.strictEqual(db.__db.prospects.length, 1, 'she was re-minted');
+    assert.strictEqual(db.__db.prospects[0].state, 'opted_out', 'her opt-out was moved');
+  });
+
+  // ── 14 · STOP from a live prospect · BOTH facts, not one ─────────────────
+  // "Mint no prospect" was never "ignore an existing one": a woman already in
+  // TDW's register who types STOP has opted out of TDW and is owed the arm.
+  await cell('14 · matched + in_session + STOP → stopped_at AND opted_out AND the confirmation', async () => {
+    const db = makeDb({
+      introductions: [Object.assign({}, INTRO_BASE, { recipient_phone: '+918757788550' })],
+      prospects: [{ id: 'P1', phone: '918757788550', state: 'in_session', consent_text: null, created_at: '2026-09-09T18:56:37Z' }],
+      leads: [], clients: [], conversations: [], messages: [],
+    });
+    let confirmed = null;
+    const out = await prospects.handleMarketingInbound({
+      supabase: db, from: '918757788550', text: 'STOP', messageId: 'm14',
+      sendWa: async ({ text: t }) => { confirmed = t; return { sent: true }; },
+      copy: () => 'the vetoed opt-out confirmation',
+    });
+    assert.strictEqual(out.action, 'opted_out', `returned ${out.action} — the STOP arm never ran`);
+    assert.ok(db.__db.introductions[0].stopped_at, 'stopped_at was not stamped');
+    assert.strictEqual(db.__db.prospects[0].state, 'opted_out', 'she was not opted out of TDW');
+    assert.strictEqual(db.__db.prospects.length, 1, 'a second prospect row was minted');
+    assert.strictEqual(confirmed, 'the vetoed opt-out confirmation', 'the courtesy confirmation did not go');
+    assert.strictEqual(db.__db.leads.length, 0, 'STOP must not make a lead');
+  });
+
+  // ── 15 · F-42.127 · her reply to a VENDOR is not consent to TDW ──────────
+  await cell('15 · an introduction-matched reply writes no consent record', async () => {
+    const db = makeDb({
+      introductions: [Object.assign({}, INTRO_BASE, { recipient_phone: '+918757788550' })],
+      prospects: [{ id: 'P1', phone: '918757788550', state: 'in_session', consent_text: null, created_at: '2026-09-09T18:56:37Z' }],
+      leads: [], clients: [], conversations: [], messages: [],
+    });
+    await prospects.handleMarketingInbound({
+      supabase: db, from: '918757788550', text: 'yes I am interested', messageId: 'm15',
+      sendWa: async () => ({ sent: true }),
+      closerTurn: async () => ({ text: 'Maya answers', source: 'closer' }),
+    });
+    assert.strictEqual(db.__db.prospects[0].consent_text, null,
+      `consent was harvested from a reply meant for the vendor: ${db.__db.prospects[0].consent_text}`);
+    assert.strictEqual(db.__db.prospects[0].consent_source, undefined);
+
+    // …and the R-41.131 door is UNTOUCHED for a direct message to TDW.
+    const db2 = makeDb({
+      introductions: [], prospects: [], leads: [], clients: [], conversations: [], messages: [],
+    });
+    await prospects.handleMarketingInbound({
+      supabase: db2, from: '919999000012', text: 'yes you may contact me', messageId: 'm15b',
+      sendWa: async () => ({ sent: true }),
+      closerTurn: async () => ({ text: 'Maya answers', source: 'closer' }),
+    });
+    assert.strictEqual(db2.__db.prospects[0].consent_text, 'yes you may contact me',
+      'R-41.131 stopped recording for the people it was built for');
+    assert.strictEqual(db2.__db.prospects[0].consent_source, 'whatsapp');
   });
 
   console.log(`\nb71: ${PASS}/${PASS + FAILS.length} green`);

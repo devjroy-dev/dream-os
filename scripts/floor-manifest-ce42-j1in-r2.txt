@@ -1,0 +1,41 @@
+# CE-42 · SEAT E · J1-IN r2 · F-42.126 + F-42.127 — DECLARED MANIFEST (F-14.16)
+# base: 6164472
+#
+# V-2 FENCE, BLOB-CHECKED ACROSS THE WHOLE SPAN 2fadf83 → 6164472 (14 files).
+# Eleven paths in this radius verified by `git rev-parse <rev>:<path>`:
+# prospects.js, introductions.js, leads.js, assistance.js, metaCloud.js, sendWa.js,
+# relayStatus.js, relaySeat.js, b71, 0162 — all SAME.
+# victorLines.js MOVED, and introductions.js requires it, so the blob check alone was
+# NOT enough. Derived further: no INTRO_ line appears in the diff, all five INTRO_ bytes
+# hash true at 6164472, assertLineHashes() returns true at load.
+#
+# ── THE FILE TABLE ──────────────────────────────────────────────────────────
+#   src/lib/vendor/introductions.js — handleIntroductionInbound →
+#                                     applyIntroductionInbound({row,text,isStop,prospect})
+#                                     returning fallThrough. Still never touches prospects.
+#   src/lib/prospects.js            — GUARDED. Two scoped lifts: the r2 branch (match,
+#                                     then ONE prospect read on the matched path, then
+#                                     fall through only for a live conversation) and
+#                                     F-42.127's `!introMatched` on the consent arm.
+#   scripts/b71_j1in_inbound_bench.js — 15 cells. 11/14 red at r1; 15 red against the
+#                                     tree that carries its defect; 10/12/13 no-change.
+#   scripts/b66_inbound_consent.js  — ANOTHER SEAT'S BENCH, touched openly. Its 2.1
+#                                     pinned the consent guard's LITERAL text including
+#                                     `if (`, so F-42.127's added condition reddened it
+#                                     over a spelling while the behaviour it protects was
+#                                     untouched. The anchor is dropped, the three original
+#                                     conditions stay pinned in order, and a NEW cell 2.3
+#                                     pins F-42.127 itself — 77 cells to 78. Proven both
+#                                     ways: 2.3 goes RED with the guard removed.
+#   scripts/floor-manifest-ce42-j1in-r2.txt — this file.
+#   docs/HANDOVER_CE42_J1IN_R2.md   — five lines + the both-ways table.
+#
+# NO MIGRATION. 0162 landed with r1 and is untouched; ladder tail re-derived at this tip.
+# victorLines.js is NOT in this delivery.
+
+src/lib/vendor/introductions.js
+src/lib/prospects.js
+scripts/b71_j1in_inbound_bench.js
+scripts/b66_inbound_consent.js
+scripts/floor-manifest-ce42-j1in-r2.txt
+docs/HANDOVER_CE42_J1IN_R2.md

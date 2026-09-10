@@ -39,8 +39,17 @@ ok('1.4 `whatsapp` is admitted by 0156\'s CHECK — no migration is owed',
    /'whatsapp'/.test(read('db/migrations/0156_prospect_consent_record.sql')));
 
 section('2. it NEVER overwrites — evidence is not editable after the fact');
+// ── F-42.127 (CE-42 seat E, J1-IN r2) ───────────────────────────────────────
+// THIS REGEX CARRIED `if \(` AND PINNED THE GUARD'S FIRST CHARACTER. r2 added a
+// leading `!introMatched &&`, and the cell went red over a SPELLING while the
+// thing it protects — never overwrite an existing record — was untouched.
+// The anchor is dropped and the three original conditions are still pinned IN
+// ORDER, so 2.1 means what it always meant. 2.3 below pins the new condition, so
+// this bench ends with MORE coverage of this arm than it had, not less.
 ok('2.1 guarded on the absence of an existing record',
-   /if \(!prospect\.consent_text && text && text\.trim\(\)\)/.test(arm));
+   /!prospect\.consent_text && text && text\.trim\(\)/.test(arm));
+ok('2.3 F-42.127 — an introduction-matched reply is never consent evidence',
+   /!introMatched && !prospect\.consent_text/.test(arm));
 ok('2.2 an empty or whitespace reply is not a record',
    /text && text\.trim\(\)/.test(arm));
 
