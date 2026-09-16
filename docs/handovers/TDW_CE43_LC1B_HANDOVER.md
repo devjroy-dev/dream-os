@@ -1,7 +1,7 @@
-# repo: dream-os @ f277b6e4a16d4675be81f3f2a5f70753efe36109
+# repo: dream-os @ 2164d759ba3e3b255853d72410cc049284f1a8a1
 # TDW · CE-43 · MICRO SEAT LC-1b · HANDOVER (the dream-os packet) · 2026-09-17
 
-Cut on dream-os `f277b6e4a16d4675be81f3f2a5f70753efe36109`, re-derived at origin with `git fetch` at the moment of cutting.
+(Line 1 names the tip this docs amendment was cut on, `2164d759`, which is the LC-1b code commit. The LC-1b code packet itself was:) Cut on dream-os `f277b6e4a16d4675be81f3f2a5f70753efe36109`, re-derived at origin with `git fetch` at the moment of cutting.
 
 - **Charter tip and drift.** The charter named `d4d3f92f`. The move to `f277b6e4` is docs only (the LC-1 walk record), and the chair accepted it.
 - **No pwa packet, no migration, no SQL.** No plane is written.
@@ -176,5 +176,74 @@ The founder pastes four blocks from the chat relay:
 2. The apply chain, exactly `unzip -o FILE.zip && cp -r deploy/. . && rm -rf deploy FILE.zip`, with the real name.
 3. One verify line, ending with the STOP sentence.
 4. The git line alone.
+
+## §9 · The walk record (2026-09-17, founder-run; CE-43 ruled LC-1b CLOSED)
+
+§8 already names the delivery, so the walk record sits here as §9. The chair's close ruling called it §8.
+
+**Tips walked.** dream-os `2164d759ba3e3b255853d72410cc049284f1a8a1`; dreamos-pwa `409a130e` (unchanged by this sitting).
+
+**Deploy witness.** Railway's vendor service showed deployment `32014bd7` as Active, created 2026-09-17 01:05 IST (founder screenshot). Railway shows a deployment id, not a commit, so the witness is the V1 sentence itself: only `2164d759` can say it on the vendor lane. Every Railway line below carries deployment `32014bd7`.
+
+**Apply evidence (founder terminal).**
+- b80: 31/31.
+- Floor: `FLOOR = NAMED BASE, no delta  (refusals, not in base: 3)`.
+  - The RED/ERROR set equals `scripts/floor-base.txt` name for name (23 lines).
+  - The refusals are `b06_gauntlet`, `bf1_bride_tool_fidelity_bench` and `test-shape`, all environment refusals.
+- Delivery mode read `0 dirty path(s)`, because the verify ran after the commit (F-43.45, below).
+- The origin commit `2164d759` has parent `f277b6e4`. Its seven files are byte-identical to the ZIP, checked by sha256 in the seat container.
+
+**Card a · pass.** The founder sent this on the vendor WhatsApp lane from 9888294440 at 01:18 IST:
+
+> Khanna wedding is confirmed for 5th December. Fee 60000. Follow up on 30 November. Raise the invoice
+
+The founder's words differed from the card's (5th December, follow-up 30 November), and the mint qualified on them.
+
+The handset reply (founder screenshot) ends with the V1 line:
+
+> Khanna's logged and confirmed — wedding 5 December, the fee's down, follow-up's on the calendar for 30 November. Invoice is being prepared now; you'll have the number when it comes through.
+>
+> Invoice TDW/DEV440/11 for Khanna is ready. Find it in the invoices list.
+
+Railway (deployment `32014bd7`; the log export's UTC 19:48 is 01:18 IST):
+
+```
+01:18:16 [H->D #1] Log Khanna wedding confirmed booking: 5 December 2026, fee Rs 60,000. Raise invoice against this. Follow-up reminder 30 November 2026. Once the invoice is in, tell me the number.
+01:18:24 [D->H #1] Listen Harvey — Khanna logged, no prior record: confirmed booking, 5 December 2026, Rs 60,000 in. Invoice raised, follow-up set for 30 November. The invoice number isn't back yet — the document's still being prepared, so I can't give it to you this turn. I'll have it the moment it lands.
+01:18:26 [agent:engine] reply: "Khanna's logged and confirmed — wedding 5 December, the fee's down, follow-up's ..."  (2 tool calls)
+01:18:29 [whatsapp:out->meta] 919888294440 <- Khanna's logged and confirmed — wedding 5 December, the fee' (wamid.HBgMOTE5ODg4Mjk0NDQwFQIAERgSQzE2RjQ3RDY4N0MxQTMwNzZFAA==) [line=vendor]
+01:18:29 [whatsapp:out->meta] media send unsupported on Meta lane 'vendor' (M1 text-only); refusing to=919888294440
+01:18:30 [wa:receipt] webhook:meta wamid=wamid.HBgMOTE5ODg4Mjk0NDQwFQIAERgSQzE2RjQ3RDY4N0MxQTMwNzZFAA== status=sent home=messages matched=1 sent_by=agent
+01:18:31 [wa:receipt] webhook:meta wamid=wamid.HBgMOTE5ODg4Mjk0NDQwFQIAERgSQzE2RjQ3RDY4N0MxQTMwNzZFAA== status=read home=messages matched=1 sent_by=agent
+```
+
+- The media refusal is expected at this tip (§4, F-43.32): the sentence no longer promises what the lane refuses.
+- On the PWA (founder screenshots):
+  - **Invoices:** `TDW/DEV440/11`, Khanna, total Rs 60,000, paid Rs 0, Unpaid, due 30 Nov 2026.
+  - **Clients:** Khanna, Rs 60,000, confirmed booking.
+  - **Events:** `Khanna · wedding`, Ceremony, 5 Dec 2026, Upcoming, "In your books · Khanna". LC-1's seam is still working on the vendor lane.
+
+**Card b · pass.**
+- **Before.** Events read `Dholakia · wedding`, Ceremony, 22 Sep 2026.
+- **The move.** On the web thread (Ask TDW) the founder sent "Move Dholakia to 21 September 2026." The reply (founder screenshot) carries the V2 line:
+
+  > Updated: Dholakia · wedding — 21 September 2026. The calendar's set.
+
+  It was followed by the "Binder edited" chip.
+- **After.** Events and the detail sheet read 21 Sep 2026, Ceremony, Upcoming.
+- **Railway.** The web door does not log the door line, so the screenshot is the evidence (§7).
+
+**Findings filed at the walk (CE-43 dispositions, numbers allocated by the chair; F-43.35 stays held).**
+
+- **F-43.42 → Victor guard sitting**, with F-43.6 and F-43.27; that makes three specimens. In the same message, Victor's prose ("you'll have the number when it comes through") contradicts the door line that gives the number. Donna's `[D->H #1]` told him "The invoice number isn't back yet".
+- **F-43.43 → LC-4. UNDERIVED.** The web thread (Ask TDW) shows the WhatsApp Khanna turn with only Victor's prose, and without the `Invoice TDW/DEV440/11 …` line. Two things follow:
+  - The candidate reading is that the WhatsApp door does not patch its door lines onto the saved thread row, as the web door does (F-04.41's cure).
+  - LC-4 derives this by command before anyone rules.
+- **F-43.44 → Victor guard sitting, cosmetic.** Missing space in Victor's web prose: "21 September 2026.All set."
+- **F-43.45 · disclosed.** The floor verify ran after the git line at `2164d759`, against F-40.214's order. It was green, and there was no revert.
+  - *Whose order.* The seat's relay delivered the blocks in the lawful order (guard, apply, verify, git), with the D-10 STOP sentence inside the verify line.
+  - The founder pasted the git line before the verify line.
+  - The seat's relay contributed: it gave a written stop-and-read instruction only after block 1. Nothing in words said "run block 4 only after block 3 prints green". The STOP sentence prints only on red, so it could not catch a reversed paste order.
+  - From the LC-1b close packet on, the seat's relay states that instruction between the verify and git blocks.
 
 Sequencing beyond this sitting is the founder's.

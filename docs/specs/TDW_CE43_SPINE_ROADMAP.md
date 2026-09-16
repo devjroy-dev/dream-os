@@ -1,6 +1,6 @@
 # TDW · CE-43 SPINE ROADMAP — the client lifecycle (2026-09-16)
 
-**Written by CE-43 (the chair) at** dream-os `fe35a480425f06087a438d92a086723ef1c7cf33` / dreamos-pwa `89f18af742b59662fa32085f203e471a05058082`, both derived by command at the moment of cutting. **Status:** RATIFIED IN CHAT by the founder 2026-09-16 unless a line is marked *open*. Amendment 1, 2026-09-17, LC-1 walked. This file is the sequencing authority for CE-43. It stands on `docs/handovers/TDW_CE43_AUDIT1_HANDOVER.md` (F-43.1 to F-43.12, every file:line derived at `17ea09b1` / `89f18af7` from the founder's own rows on account 9888294440) and does not restate its evidence. It supersedes the CE-43 kickoff's item order and `CE_SUCCESSION_CE42_TO_CE43.md` §0 for as long as it is open. It does not amend the master; rulings that touch the master land as an amendment when the first affected packet cuts.
+**Written by CE-43 (the chair) at** dream-os `fe35a480425f06087a438d92a086723ef1c7cf33` / dreamos-pwa `89f18af742b59662fa32085f203e471a05058082`, both derived by command at the moment of cutting. **Status:** RATIFIED IN CHAT by the founder 2026-09-16 unless a line is marked *open*. Amendment 1, 2026-09-17, LC-1 walked. Amendment 2, 2026-09-17, LC-1b walked; R-43.7 to R-43.10 landed. This file is the sequencing authority for CE-43. It stands on `docs/handovers/TDW_CE43_AUDIT1_HANDOVER.md` (F-43.1 to F-43.12, every file:line derived at `17ea09b1` / `89f18af7` from the founder's own rows on account 9888294440) and does not restate its evidence. It supersedes the CE-43 kickoff's item order and `CE_SUCCESSION_CE42_TO_CE43.md` §0 for as long as it is open. It does not amend the master; rulings that touch the master land as an amendment when the first affected packet cuts.
 
 **Why this file exists.** The audit found that the estate runs two client lifecycles side by side with the same words on them: a typed lead plane (`public.leads`, `public.events`, `public.invoices`, `public.clients`) and Victor's binder plane (`engine.records`). Nothing carries a fact from one to the other at the moments a vendor cares about. Three of the four vendor pages read one plane and the fourth reads the other. Every defect the founder saw on glass on 15 September is a symptom of that. This roadmap replaces the two lifecycles with one spine. It changes the shape of the product, so it is committed, not chatted.
 
@@ -20,6 +20,10 @@ Victor and Donna write a prospect's name, date, stage and money into `engine.rec
 - **R-43.4** The seed payment policy on every default package: **30% at booking · 30% one month before the event (optional) · the remainder on delivery.** Per package, vendor-editable. Mechanics ruled by the chair in §4.
 - **R-43.5** **No path in the estate creates a client without a lead.** Every client has exactly one lead behind it and one package on it. The Clients Add sheet and Victor's booked-stage hands are promotions of a lead born booked, not a second door.
 - **R-43.6** Meta has approved `whatsapp_business_management` and `whatsapp_business_messaging` (founder, 2026-09-16). **Every enquiry that lands on a vendor's WhatsApp line follows the same spine**: it becomes a lead first, never a binder first. The vendor lane inherits the promotion act, the package quote and the invoice discipline unchanged.
+- **R-43.7** The delivery date on a package defaults from the trade's delivery_basis in contractAnnex.js TRADE_DEFAULTS, the event date as fallback; the vendor free to move it (as amended by C-43.12).
+- **R-43.8** The receipt line per payment lands in LC-3.
+- **R-43.9** LC-1b opened as a micro seat for F-43.28(c) and F-43.29.
+- **R-43.10** The founder delegates the package seed veto to the chair, on the chat record 2026-09-17; the sheets ship on the chair's YES under that delegation.
 - **The founder's standing rules, still binding:** plain, short, direct; ship. A walk is "does it work": if it works on the glass it is closed. Derive the tip by command before every instruction, both repos, every time.
 
 ---
@@ -52,12 +56,17 @@ Victor and Donna write a prospect's name, date, stage and money into `engine.rec
 - **C-43.8 · Migration numbers, allocated by the chair:** `0167` the lead ↔ binder link · `0168` `vendor_packages` and the package links on leads, invoices and contracts. No seat claims a number.
 - **C-43.9 · F-43.12 stays as ruled** (R-B6-25: past and blocked dates are hidden from the Events list; the "done" chip already exists). Filed so it is not mistaken for loss.
 - **C-43.10** · The backfill's tip guard: clean tree, HEAD == origin/main after fetch, 8806acc1 an ancestor of HEAD, bookingEvent.js committed at HEAD. Replaces the 'packet's tip' wording (c-43.10).
+- **C-43.11** The kickoff's full-month formatter premise was false; the year-bearing sibling of longDate in witnessLine.js is the one renderer (c-43.11).
+- **C-43.12** Delivery basis per trade, see R-43.7.
+- **C-43.13** People counts in Make up Artist and Hairstylist seeds are accepted as capacity starting values; no other quantity of persons or goods is seeded.
 
 ---
 
 ## §5 · THE FOUR SITTINGS, IN SEQUENCE (LC-1 → LC-2 → LC-3 → LC-4; none opens before the one ahead is walked)
 
 **LC-1 · The seam.** dream-os only, no migration. Three cures, one packet. F-43.1(a): when a binder gains a booking stage and a date, the door writes a `public.events` row with `linked_binder_id` set; a later date change updates that row (closes F-43.11 for the chat path without a new column). F-43.5(a): the invoice mint copies the binder's `followup_on` into `due_date` and sets `binder_id`; superseded by the schedule once LC-2 lands, but it makes today's rows honest. F-43.4(a): the pwa sends a limit and pages; the server default stays 20 for other callers. **Walk:** Dholakia's date shows on Events; `TDW/DEV440/09` shows its due date; the Leads list shows all 26. **WALKED 2026-09-17** at dream-os d4d3f92f / dreamos-pwa 409a130e; seam at src/lib/vendor/bookingEvent.js, three call sites; pager in the API client; backfill tools/lc1_backfill.js. Handover docs/handovers/TDW_CE43_LC1_HANDOVER.md.
+
+**LC-1b WALKED** 2026-09-17 at dream-os 2164d759: V1 and V2 shipped on the founder's YES; twins cured on both lanes. Handover docs/handovers/TDW_CE43_LC1B_HANDOVER.md.
 
 **LC-2 · The package and the promotion.** Both repos; `0167` and `0168`. The `vendor_packages` table (vendor, name, description, line items with detail, total, advance share, schedule, `is_default`, `seeded_from`); seeds per category as data, copied at sign-up and backfilled; the Packages room under the vendor shell (list, add, edit, delete, rename, one default); **Attach package** on the lead detail; the quote send on the vendor line; the **Booking confirmed / Advance paid** act as one write per §3 Moment 2; the Clients Add sheet re-shaped per R-43.5; Victor's three hands plus mark-paid, soul copy to the veto slot; `donna_client`/`donna_stage` at booked stages routed through the promotion act; F-43.3(a) so two Priya Mehtas cannot exist; the backfill of C-43.7. Shell first, whole (R-42.14): the Packages room and the lead's Attach control ship as navigable surfaces before the backend behind them. Seed copy ships **founder-vetoed or not at all**. **Walk:** a fresh lead on a clean number → attach → quote lands on the handset → Booking confirmed → the client, the event and the invoice with three milestones appear without a second tap.
 
@@ -78,6 +87,7 @@ Victor and Donna write a prospect's name, date, stage and money into `engine.rec
 - **F-43.16** `docs/FINDINGS_LOG.md` carries no CE-41 or CE-42 band → G2 owes the bands when it wakes.
 - **Mirrors** (AUDIT-1 §9): Frost never sees a Victor booking: a vendor event row cannot carry couple_id (events_owner_xor, F-43.19), so this is cured in LC-2 through the lead's couple link, not by LC-1 (c-43.8). Admin search never finds a binder: cured by LC-2's link.
 - **F-43.26** merge/split date changes not dragged by the lockstep → LC-2. **F-43.27** → Victor guard sitting. **F-43.28** the WhatsApp invoice line promises a PDF the Meta lane cannot send → arm (a) LC-4, arm (c) LC-1b if opened. **F-43.29** raw ISO date in the web calendar line → LC-1b if opened.
+- **Amendment 2 dispositions.** F-43.30 c-43.11 · F-43.31 cured LC-1b · F-43.32, F-43.33, F-43.34, F-43.43 → LC-4 · F-43.37 (a) to (g) → LC-3 · F-43.38 landed by this amendment · F-43.39 mehendi as a category, founder's taxonomy call · F-43.40 contract seeds carry rupee figures, founder's · F-43.41 cured in the seed (14 days) · F-43.42, F-43.44 → Victor guard sitting · F-43.45 disclosed.
 
 ---
 
@@ -89,8 +99,8 @@ c-43.1 the first AUDIT-1 charter was not to §10 form · c-43.2 the plane list o
 
 ## §8 · OPEN AT COMMIT (founder's, before LC-2 charters)
 
-1. **Delivery default** (C-43.5): event date, or event date plus a category gap?
-2. **Seed drafts**: the seat that drafts the eleven categories' default packages hands them to the founder verbatim; nothing ships unvetoed.
-3. **Receipt line** copy per payment (Moment 3): wanted at LC-2 or later? Chair's lean: LC-3, once the invoice fills correctly.
+1. ~~**Delivery default** (C-43.5): event date, or event date plus a category gap?~~ Answered by R-43.7 (Amendment 2).
+2. **Seed drafts**: delivered by PKG-COPY, chair-vetoed under R-43.10.
+3. ~~**Receipt line** copy per payment (Moment 3): wanted at LC-2 or later? Chair's lean: LC-3, once the invoice fills correctly.~~ Answered by R-43.8 (Amendment 2).
 
 Trust evidence over narrative, including this file. Sequencing beyond any sitting is the founder's.

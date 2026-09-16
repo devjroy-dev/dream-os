@@ -1,0 +1,7 @@
+# docs/handovers/TDW_CE43_LC1B_CLOSE_floor-manifest.txt
+# TDW CE-43 · LC-1b close (dream-os, docs only) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. Kept under docs/ so the packet
+# stays docs-only; run-floor.sh reads the manifest from any path.
+docs/handovers/TDW_CE43_LC1B_HANDOVER.md
+docs/specs/TDW_CE43_SPINE_ROADMAP.md
+docs/handovers/TDW_CE43_LC1B_CLOSE_floor-manifest.txt
