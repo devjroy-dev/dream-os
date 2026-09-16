@@ -1,0 +1,1237 @@
+{
+  "generated_by": "tools/lc2_seed_json.js",
+  "source": "db/seeds/package_seeds.source.txt",
+  "categories": [
+    {
+      "category": "planning",
+      "section": 1,
+      "title": "EVENT PLANNER",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "the event date",
+      "delivery_basis": "on_the_day",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "planning:1",
+          "name": "Wedding day coordination",
+          "source_name": "WEDDING DAY COORDINATION",
+          "description": "You plan the wedding with your own suppliers. A few weeks before, we meet you, learn the plan, write the run-sheet and run your wedding day to it, so you and your families are free on the day.",
+          "line_items": [
+            {
+              "label": "Planning meetings",
+              "detail": "2 meetings before the wedding"
+            },
+            {
+              "label": "Run-sheet",
+              "detail": "one run-sheet for the wedding day, sent for your approval before the wedding"
+            },
+            {
+              "label": "Supplier check",
+              "detail": "timings confirmed with each of your suppliers in the final week"
+            },
+            {
+              "label": "Coordinators on the day",
+              "detail": "2 coordinators"
+            },
+            {
+              "label": "Hours on the day",
+              "detail": "up to 12 hours on the wedding day"
+            },
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "planning:2",
+          "name": "Partial planning",
+          "source_name": "PARTIAL PLANNING",
+          "description": "You have some suppliers booked and need help with the rest. We shortlist and book the suppliers you still need, in your name, keep everyone on one plan, and run the functions on the day.",
+          "line_items": [
+            {
+              "label": "Planning meetings",
+              "detail": "one meeting a month from booking to the wedding"
+            },
+            {
+              "label": "Suppliers",
+              "detail": "shortlisting and booking the suppliers still needed, in your name"
+            },
+            {
+              "label": "Plan",
+              "detail": "one shared budget and timeline, kept up to date"
+            },
+            {
+              "label": "Run-sheet",
+              "detail": "one run-sheet for each function, sent for your approval before the wedding"
+            },
+            {
+              "label": "Coordinators on the day",
+              "detail": "3 coordinators"
+            },
+            {
+              "label": "Functions covered",
+              "detail": "2 functions"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "planning:3",
+          "name": "Full planning",
+          "source_name": "FULL PLANNING",
+          "description": "We plan the whole wedding with you from the first conversation. We shortlist, book and manage every supplier in your name, keep the budget and timeline, handle guest logistics, and run every function.",
+          "line_items": [
+            {
+              "label": "Planning meetings",
+              "detail": "one meeting every two weeks from booking to the wedding"
+            },
+            {
+              "label": "Suppliers",
+              "detail": "shortlisting, booking and managing every supplier, in your name"
+            },
+            {
+              "label": "Plan",
+              "detail": "one shared budget and timeline, kept up to date"
+            },
+            {
+              "label": "Guest logistics",
+              "detail": "guest list, rooming list and travel schedule"
+            },
+            {
+              "label": "Run-sheet",
+              "detail": "one run-sheet for each function, sent for your approval before the wedding"
+            },
+            {
+              "label": "Coordinators on the day",
+              "detail": "4 coordinators"
+            },
+            {
+              "label": "Functions covered",
+              "detail": "every function"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "designer",
+      "section": 2,
+      "title": "DESIGNER",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over. For this work, delivery is the handover date, which falls before the wedding.",
+      "delivery_line": "the handover date, before the wedding",
+      "delivery_basis": "handover",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "designer:1",
+          "name": "One ready outfit with alterations",
+          "source_name": "ONE READY OUTFIT WITH ALTERATIONS",
+          "description": "You choose an outfit from our collection and we alter it to fit you. Fittings are at our studio, and the finished outfit is handed to you before the wedding.",
+          "line_items": [
+            {
+              "label": "Outfit",
+              "detail": "chosen from our collection"
+            },
+            {
+              "label": "Fittings",
+              "detail": "2 fittings at our studio"
+            },
+            {
+              "label": "Alterations",
+              "detail": "included until the final fitting"
+            },
+            {
+              "label": "Handover",
+              "detail": "in person, before the wedding"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "designer:2",
+          "name": "One outfit made to order",
+          "source_name": "ONE OUTFIT MADE TO ORDER",
+          "description": "We design your outfit from the first sketch. You approve the design and the fabric before we begin, and we fit it to you over three fittings.",
+          "line_items": [
+            {
+              "label": "Design",
+              "detail": "sketches and fabric options, for your approval before work begins"
+            },
+            {
+              "label": "Making",
+              "detail": "made to your measurements and the approved design"
+            },
+            {
+              "label": "Fittings",
+              "detail": "3 fittings at our studio"
+            },
+            {
+              "label": "Alterations",
+              "detail": "included until the final fitting"
+            },
+            {
+              "label": "Handover",
+              "detail": "in person, before the wedding"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "designer:3",
+          "name": "Bridal set made to order",
+          "source_name": "BRIDAL SET MADE TO ORDER",
+          "description": "We design and make your outfits for the wedding functions as one set, so they are planned together. Each outfit is approved before we begin and fitted to you before the wedding.",
+          "line_items": [
+            {
+              "label": "Design",
+              "detail": "sketches and fabric options for each outfit, for your approval before work begins"
+            },
+            {
+              "label": "Making",
+              "detail": "each outfit made to your measurements and the approved design"
+            },
+            {
+              "label": "Functions covered",
+              "detail": "outfits for up to 3 functions"
+            },
+            {
+              "label": "Fittings",
+              "detail": "3 fittings for each outfit, at our studio"
+            },
+            {
+              "label": "Alterations",
+              "detail": "included until the final fitting"
+            },
+            {
+              "label": "Handover",
+              "detail": "in person, before the wedding"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "photography",
+      "section": 3,
+      "title": "PHOTOGRAPHY & VIDEOGRAPHY",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "45 days after the last function",
+      "delivery_basis": "days",
+      "delivery_days": 45,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "photography:1",
+          "name": "Photographs",
+          "source_name": "PHOTOGRAPHS",
+          "description": "We photograph your function, the candid moments and the family portraits, and edit and colour-correct every photograph we deliver.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Team",
+              "detail": "2 photographers"
+            },
+            {
+              "label": "Coverage",
+              "detail": "up to 8 hours"
+            },
+            {
+              "label": "Edited photographs",
+              "detail": "edited and colour-corrected photographs from the function"
+            },
+            {
+              "label": "Teaser",
+              "detail": "a short set of edited photographs within 7 days of the function"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "photography:2",
+          "name": "Photographs and film",
+          "source_name": "PHOTOGRAPHS AND FILM",
+          "description": "We photograph and film your functions together, so the photographs and the film tell the same story. You receive the edited photographs, a highlight film and a full-length film.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "3 functions"
+            },
+            {
+              "label": "Team",
+              "detail": "2 photographers and 2 videographers"
+            },
+            {
+              "label": "Coverage",
+              "detail": "up to 8 hours at each function"
+            },
+            {
+              "label": "Edited photographs",
+              "detail": "edited and colour-corrected photographs from every function covered"
+            },
+            {
+              "label": "Film",
+              "detail": "a highlight film and a full-length film of the functions covered"
+            },
+            {
+              "label": "Teaser",
+              "detail": "a short set of edited photographs within 7 days of the wedding"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "photography:3",
+          "name": "Photographs, film and album",
+          "source_name": "PHOTOGRAPHS, FILM AND ALBUM",
+          "description": "We photograph and film every function, and finish with a printed album designed from the photographs you choose.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "every function"
+            },
+            {
+              "label": "Team",
+              "detail": "3 photographers and 2 videographers"
+            },
+            {
+              "label": "Coverage",
+              "detail": "up to 10 hours at each function"
+            },
+            {
+              "label": "Edited photographs",
+              "detail": "edited and colour-corrected photographs from every function"
+            },
+            {
+              "label": "Film",
+              "detail": "a highlight film and a full-length film of every function"
+            },
+            {
+              "label": "Teaser",
+              "detail": "a short set of edited photographs within 7 days of the wedding"
+            },
+            {
+              "label": "Album",
+              "detail": "a printed album designed from the photographs you select"
+            },
+            {
+              "label": "Album selection",
+              "detail": "you select the photographs within 30 days of receiving the edited photographs"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "makeup",
+      "section": 4,
+      "title": "MAKE UP ARTIST",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "the event date",
+      "delivery_basis": "on_the_day",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "makeup:1",
+          "name": "Bride, one function",
+          "source_name": "BRIDE, ONE FUNCTION",
+          "description": "We do your bridal makeup for one function, at your venue or at home.",
+          "line_items": [
+            {
+              "label": "People",
+              "detail": "the bride"
+            },
+            {
+              "label": "Looks",
+              "detail": "1 look for 1 function"
+            },
+            {
+              "label": "Team",
+              "detail": "the lead artist and 1 assistant"
+            },
+            {
+              "label": "Time",
+              "detail": "about 2 hours"
+            },
+            {
+              "label": "Arrival",
+              "detail": "3 hours before the bride must be ready"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "makeup:2",
+          "name": "Bride, every function with a trial",
+          "source_name": "BRIDE, EVERY FUNCTION WITH A TRIAL",
+          "description": "We do your makeup for each of your functions, starting with a trial before the wedding so we agree every look in advance.",
+          "line_items": [
+            {
+              "label": "People",
+              "detail": "the bride"
+            },
+            {
+              "label": "Looks",
+              "detail": "one look for each function, up to 3 functions"
+            },
+            {
+              "label": "Trial",
+              "detail": "1 trial before the wedding"
+            },
+            {
+              "label": "Team",
+              "detail": "the lead artist and 1 assistant"
+            },
+            {
+              "label": "Time",
+              "detail": "about 2 hours for each look"
+            },
+            {
+              "label": "Arrival",
+              "detail": "3 hours before the bride must be ready"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "makeup:3",
+          "name": "Bride and family",
+          "source_name": "BRIDE AND FAMILY",
+          "description": "We do your bridal makeup and the makeup for your family on the wedding day, with a trial for you beforehand.",
+          "line_items": [
+            {
+              "label": "People",
+              "detail": "the bride and up to 4 family members"
+            },
+            {
+              "label": "Looks",
+              "detail": "one look each, for the wedding day"
+            },
+            {
+              "label": "Trial",
+              "detail": "1 trial for the bride before the wedding"
+            },
+            {
+              "label": "Team",
+              "detail": "the lead artist and 2 assistants"
+            },
+            {
+              "label": "Time",
+              "detail": "about 2 hours for the bride and 45 minutes for each family member"
+            },
+            {
+              "label": "Arrival",
+              "detail": "4 hours before the bride must be ready"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "hairstylist",
+      "section": 5,
+      "title": "HAIRSTYLIST",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "the event date",
+      "delivery_basis": "on_the_day",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "hairstylist:1",
+          "name": "Bride, one function",
+          "source_name": "BRIDE, ONE FUNCTION",
+          "description": "We style your hair for one function, at your venue or at home, and fix the hair accessories you provide.",
+          "line_items": [
+            {
+              "label": "People",
+              "detail": "the bride"
+            },
+            {
+              "label": "Looks",
+              "detail": "1 look for 1 function"
+            },
+            {
+              "label": "Included",
+              "detail": "styling, and fixing the hair accessories you provide"
+            },
+            {
+              "label": "Team",
+              "detail": "the lead stylist"
+            },
+            {
+              "label": "Time",
+              "detail": "about 1 hour 30 minutes"
+            },
+            {
+              "label": "Arrival",
+              "detail": "2 hours before the bride must be ready"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "hairstylist:2",
+          "name": "Bride, every function with a trial",
+          "source_name": "BRIDE, EVERY FUNCTION WITH A TRIAL",
+          "description": "We style your hair for each of your functions, starting with a trial before the wedding so we agree every look in advance.",
+          "line_items": [
+            {
+              "label": "People",
+              "detail": "the bride"
+            },
+            {
+              "label": "Looks",
+              "detail": "one look for each function, up to 3 functions"
+            },
+            {
+              "label": "Trial",
+              "detail": "1 trial before the wedding"
+            },
+            {
+              "label": "Included",
+              "detail": "styling, and fixing the hair accessories you provide"
+            },
+            {
+              "label": "Team",
+              "detail": "the lead stylist"
+            },
+            {
+              "label": "Time",
+              "detail": "about 1 hour 30 minutes for each look"
+            },
+            {
+              "label": "Arrival",
+              "detail": "2 hours before the bride must be ready"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "hairstylist:3",
+          "name": "Bride and family",
+          "source_name": "BRIDE AND FAMILY",
+          "description": "We style your hair and your family's hair on the wedding day, with a trial for you beforehand.",
+          "line_items": [
+            {
+              "label": "People",
+              "detail": "the bride and up to 4 family members"
+            },
+            {
+              "label": "Looks",
+              "detail": "one look each, for the wedding day"
+            },
+            {
+              "label": "Trial",
+              "detail": "1 trial for the bride before the wedding"
+            },
+            {
+              "label": "Included",
+              "detail": "styling, and fixing the hair accessories you provide"
+            },
+            {
+              "label": "Team",
+              "detail": "the lead stylist and 1 assistant"
+            },
+            {
+              "label": "Time",
+              "detail": "about 1 hour 30 minutes for the bride and 30 minutes for each family member"
+            },
+            {
+              "label": "Arrival",
+              "detail": "3 hours before the bride must be ready"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "jewellery",
+      "section": 6,
+      "title": "JEWELLERY",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over. For this work, delivery is the handover date, which falls before the wedding.",
+      "delivery_line": "the handover date, before the wedding",
+      "delivery_basis": "handover",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "jewellery:1",
+          "name": "Rental set, one function",
+          "source_name": "RENTAL SET, ONE FUNCTION",
+          "description": "You choose a bridal set from our rental collection for one function. We fit it to you before the day, hand it over in person, and take it back after the function.",
+          "line_items": [
+            {
+              "label": "Set",
+              "detail": "chosen from our rental collection, hired and not sold"
+            },
+            {
+              "label": "Fitting",
+              "detail": "1 fitting before the function"
+            },
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Handover",
+              "detail": "in person, before the function"
+            },
+            {
+              "label": "Return",
+              "detail": "returned to us within 2 days after the function"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "jewellery:2",
+          "name": "Rental sets, every function",
+          "source_name": "RENTAL SETS, EVERY FUNCTION",
+          "description": "You choose a set from our rental collection for each of your functions. We fit them to you before the wedding, hand them over in person, and take them back after the last function.",
+          "line_items": [
+            {
+              "label": "Sets",
+              "detail": "chosen from our rental collection, hired and not sold"
+            },
+            {
+              "label": "Fitting",
+              "detail": "1 fitting before the wedding"
+            },
+            {
+              "label": "Functions covered",
+              "detail": "up to 3 functions"
+            },
+            {
+              "label": "Handover",
+              "detail": "in person, before the first function"
+            },
+            {
+              "label": "Return",
+              "detail": "returned to us within 2 days after the last function"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "jewellery:3",
+          "name": "Bridal set made to order",
+          "source_name": "BRIDAL SET MADE TO ORDER",
+          "description": "We design and make your bridal set. You approve the design before we begin, and the finished set is yours to keep.",
+          "line_items": [
+            {
+              "label": "Design",
+              "detail": "drawings for your approval before work begins"
+            },
+            {
+              "label": "Making",
+              "detail": "made to the approved design, in the metal and stones agreed in it"
+            },
+            {
+              "label": "Fittings",
+              "detail": "2 fittings before the wedding"
+            },
+            {
+              "label": "Handover",
+              "detail": "in person, before the wedding"
+            },
+            {
+              "label": "Ownership",
+              "detail": "the set is yours once the fee is paid in full"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "decor",
+      "section": 7,
+      "title": "DECOR",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "the event date",
+      "delivery_basis": "on_the_day",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "decor:1",
+          "name": "One function",
+          "source_name": "ONE FUNCTION",
+          "description": "We design and set up the decor for one function. We visit the venue, send you drawings to approve, set up before the function and clear everything after.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Areas",
+              "detail": "the stage and the entrance"
+            },
+            {
+              "label": "Site visit",
+              "detail": "1 visit to the venue before the drawings"
+            },
+            {
+              "label": "Drawings",
+              "detail": "sent for your approval before work begins"
+            },
+            {
+              "label": "Flowers",
+              "detail": "fresh flowers as shown in the approved drawings"
+            },
+            {
+              "label": "Setup",
+              "detail": "up to 8 hours before the function"
+            },
+            {
+              "label": "Clearing",
+              "detail": "within 4 hours after the function"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "decor:2",
+          "name": "Main functions",
+          "source_name": "MAIN FUNCTIONS",
+          "description": "We design the decor for your main functions as one look, and set up and clear each one.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "3 functions"
+            },
+            {
+              "label": "Areas",
+              "detail": "the stage, the entrance and the seating at each function"
+            },
+            {
+              "label": "Site visit",
+              "detail": "1 visit to each venue before the drawings"
+            },
+            {
+              "label": "Drawings",
+              "detail": "sent for your approval before work begins"
+            },
+            {
+              "label": "Flowers",
+              "detail": "fresh flowers as shown in the approved drawings"
+            },
+            {
+              "label": "Setup",
+              "detail": "up to 8 hours before each function"
+            },
+            {
+              "label": "Clearing",
+              "detail": "within 4 hours after each function"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "decor:3",
+          "name": "Every function",
+          "source_name": "EVERY FUNCTION",
+          "description": "We design and run the decor for every function, from the first function to the wedding ceremony, with a decor lead on site each time.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "every function"
+            },
+            {
+              "label": "Areas",
+              "detail": "the stage, the entrance and the seating at each function, and the ceremony stage or mandap"
+            },
+            {
+              "label": "Site visit",
+              "detail": "1 visit to each venue before the drawings"
+            },
+            {
+              "label": "Drawings",
+              "detail": "sent for your approval before work begins"
+            },
+            {
+              "label": "Flowers",
+              "detail": "fresh flowers as shown in the approved drawings"
+            },
+            {
+              "label": "Decor lead",
+              "detail": "1 decor lead on site at every function"
+            },
+            {
+              "label": "Setup",
+              "detail": "up to 10 hours before each function"
+            },
+            {
+              "label": "Clearing",
+              "detail": "within 4 hours after each function"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "venue_catering",
+      "section": 8,
+      "title": "VENUE & CATERING",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "the event date",
+      "delivery_basis": "on_the_day",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "venue_catering:1",
+          "name": "Venue only",
+          "source_name": "VENUE ONLY",
+          "description": "Our venue for your function, with the spaces, hours and services below. You bring your own caterer and decorator under our policy for outside suppliers.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Spaces",
+              "detail": "the main event space and a bridal room"
+            },
+            {
+              "label": "Hours",
+              "detail": "up to 12 hours"
+            },
+            {
+              "label": "Included",
+              "detail": "power backup, house lighting, housekeeping and security"
+            },
+            {
+              "label": "Parking",
+              "detail": "on-site parking for your guests"
+            },
+            {
+              "label": "Outside suppliers",
+              "detail": "allowed under our policy for outside suppliers"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "venue_catering:2",
+          "name": "Catering only",
+          "source_name": "CATERING ONLY",
+          "description": "We cook and serve at your venue. We agree the menu with you in advance, bring our own kitchen and service team, and clear up after the meal.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Menu",
+              "detail": "agreed with you before the function"
+            },
+            {
+              "label": "Tasting",
+              "detail": "1 tasting before the menu is final"
+            },
+            {
+              "label": "Service",
+              "detail": "kitchen and service staff for the length of the meal"
+            },
+            {
+              "label": "Included",
+              "detail": "crockery, cutlery and serving equipment"
+            },
+            {
+              "label": "Clearing",
+              "detail": "after the meal is served"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "venue_catering:3",
+          "name": "Venue and catering, one function",
+          "source_name": "VENUE AND CATERING, ONE FUNCTION",
+          "description": "Our venue and our kitchen for your function, so the space, the food and the service are handled by one team.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Spaces",
+              "detail": "the main event space and a bridal room"
+            },
+            {
+              "label": "Hours",
+              "detail": "up to 12 hours"
+            },
+            {
+              "label": "Menu",
+              "detail": "agreed with you before the function"
+            },
+            {
+              "label": "Tasting",
+              "detail": "1 tasting before the menu is final"
+            },
+            {
+              "label": "Included",
+              "detail": "power backup, house lighting, housekeeping, security, and kitchen and service staff"
+            },
+            {
+              "label": "Parking",
+              "detail": "on-site parking for your guests"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "venue_catering:4",
+          "name": "Venue and catering, every function",
+          "source_name": "VENUE AND CATERING, EVERY FUNCTION",
+          "description": "Our venue and our kitchen for every function you hold with us, planned together so each function is ready when the last one ends.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "every function held at the venue"
+            },
+            {
+              "label": "Spaces",
+              "detail": "the main event space and a bridal room for each function"
+            },
+            {
+              "label": "Hours",
+              "detail": "up to 12 hours for each function"
+            },
+            {
+              "label": "Menu",
+              "detail": "a menu for each function, agreed with you before the first function"
+            },
+            {
+              "label": "Tasting",
+              "detail": "1 tasting before the menus are final"
+            },
+            {
+              "label": "Included",
+              "detail": "power backup, house lighting, housekeeping, security, and kitchen and service staff"
+            },
+            {
+              "label": "Parking",
+              "detail": "on-site parking for your guests"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "performer",
+      "section": 9,
+      "title": "PERFORMER (ANCHOR, DJ, CHOREOGRAPHY)",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "the event date",
+      "delivery_basis": "on_the_day",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "performer:1",
+          "name": "Anchor, one function",
+          "source_name": "ANCHOR, ONE FUNCTION",
+          "description": "I host your function from start to finish. I plan the running order with you, introduce every performance and keep the evening moving.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Hosting",
+              "detail": "up to 4 hours"
+            },
+            {
+              "label": "Planning call",
+              "detail": "1 call to agree the running order"
+            },
+            {
+              "label": "Segments",
+              "detail": "games and segments agreed with you before the function"
+            },
+            {
+              "label": "Arrival",
+              "detail": "1 hour before the start"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "performer:2",
+          "name": "DJ, one function",
+          "source_name": "DJ, ONE FUNCTION",
+          "description": "We play your function, from the first song to the last. We agree the music with you beforehand and take requests on the night.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Playing",
+              "detail": "up to 5 hours"
+            },
+            {
+              "label": "Team",
+              "detail": "the DJ and 1 assistant"
+            },
+            {
+              "label": "Music",
+              "detail": "a playlist agreed with you before the function, with requests on the night"
+            },
+            {
+              "label": "Equipment",
+              "detail": "the DJ console"
+            },
+            {
+              "label": "Setup",
+              "detail": "2 hours before the start"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "performer:3",
+          "name": "Choreography for the sangeet",
+          "source_name": "CHOREOGRAPHY FOR THE SANGEET",
+          "description": "We choreograph your sangeet performances and rehearse them with you and your family until everyone is ready for the night.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "the sangeet"
+            },
+            {
+              "label": "Performances",
+              "detail": "choreography for up to 4 performances"
+            },
+            {
+              "label": "Rehearsals",
+              "detail": "6 rehearsals of 2 hours each"
+            },
+            {
+              "label": "Music",
+              "detail": "the tracks cut and mixed for each performance"
+            },
+            {
+              "label": "On the night",
+              "detail": "the choreographer present at the sangeet to cue each performance"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "content_creator",
+      "section": 10,
+      "title": "CONTENT CREATOR",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "14 days after the last function",
+      "delivery_basis": "days",
+      "delivery_days": 14,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "content_creator:1",
+          "name": "One function",
+          "source_name": "ONE FUNCTION",
+          "description": "We follow your function on phone and camera and turn it into short reels for your social media, in a style we agree with you beforehand.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Team",
+              "detail": "1 content creator"
+            },
+            {
+              "label": "Coverage",
+              "detail": "up to 5 hours"
+            },
+            {
+              "label": "Style",
+              "detail": "agreed with you before the function"
+            },
+            {
+              "label": "Reels",
+              "detail": "edited short reels from the function"
+            }
+          ],
+          "is_default": false
+        },
+        {
+          "seed_key": "content_creator:2",
+          "name": "Wedding day with same-day reels",
+          "source_name": "WEDDING DAY WITH SAME-DAY REELS",
+          "description": "We cover your wedding day and send you a finished reel before the day is out, then the full set of reels afterwards.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "the wedding day"
+            },
+            {
+              "label": "Team",
+              "detail": "2 content creators"
+            },
+            {
+              "label": "Coverage",
+              "detail": "up to 10 hours"
+            },
+            {
+              "label": "Style",
+              "detail": "agreed with you before the wedding"
+            },
+            {
+              "label": "Same-day reel",
+              "detail": "a reel edited and sent to you on the wedding day"
+            },
+            {
+              "label": "Reels",
+              "detail": "edited short reels from the wedding day"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "content_creator:3",
+          "name": "Every function",
+          "source_name": "EVERY FUNCTION",
+          "description": "We cover every function, send a reel on each day, and send you behind-the-scenes clips while the function is on.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "every function"
+            },
+            {
+              "label": "Team",
+              "detail": "2 content creators"
+            },
+            {
+              "label": "Coverage",
+              "detail": "up to 8 hours at each function"
+            },
+            {
+              "label": "Style",
+              "detail": "agreed with you before the first function"
+            },
+            {
+              "label": "Same-day reel",
+              "detail": "a reel edited and sent to you on the day of each function"
+            },
+            {
+              "label": "Behind the scenes",
+              "detail": "clips sent to you during each function"
+            },
+            {
+              "label": "Reels",
+              "detail": "edited short reels from every function"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    },
+    {
+      "category": "other",
+      "section": 11,
+      "title": "SOMETHING ELSE",
+      "schedule_line": "Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over",
+      "delivery_line": "the event date",
+      "delivery_basis": "on_the_day",
+      "delivery_days": null,
+      "deposit_pct": 30,
+      "middle_pct": 30,
+      "middle_enabled": true,
+      "options": [
+        {
+          "seed_key": "other:1",
+          "name": "One function",
+          "source_name": "ONE FUNCTION",
+          "description": "We provide our service at your function as set out below. Anything not listed here is agreed and priced with you before the day.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "1 function"
+            },
+            {
+              "label": "Team",
+              "detail": "2 people"
+            },
+            {
+              "label": "Hours",
+              "detail": "up to 4 hours"
+            },
+            {
+              "label": "Arrival",
+              "detail": "1 hour before the start"
+            }
+          ],
+          "is_default": true
+        },
+        {
+          "seed_key": "other:2",
+          "name": "Every function",
+          "source_name": "EVERY FUNCTION",
+          "description": "We provide our service at each of your functions as set out below. Anything not listed here is agreed and priced with you before the day.",
+          "line_items": [
+            {
+              "label": "Functions covered",
+              "detail": "every function"
+            },
+            {
+              "label": "Team",
+              "detail": "2 people"
+            },
+            {
+              "label": "Hours",
+              "detail": "up to 4 hours at each function"
+            },
+            {
+              "label": "Arrival",
+              "detail": "1 hour before the start of each function"
+            }
+          ],
+          "is_default": false
+        }
+      ]
+    }
+  ]
+}

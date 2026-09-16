@@ -349,6 +349,14 @@ const LEADS_COLUMN_CENSUS = [
   'vendor_summary', 'intent_summary', 'intent_summary_at',
   'wedding_date_precision', 'function_count', 'wedding_days', 'functions',
   'draft_meta', 'wedding_id',
+  // ── CE-43 LC-2 · `binder_id` CLASSIFIED (F-43.73, chair-ruled YES at the packet 1 r3 cut, 2026-09-17) ──
+  // 0167 added `leads.binder_id` (the lead ↔ binder link) and the ladder-0168 regen
+  // made it visible to leg A. DISPOSITIONED **PRESENT IN THE SCHEMA, ON NO WIRE**, the
+  // `wedding_id` disposition above: an engine.records uuid, written only by the LC-2
+  // promotion act and the LC-2 backfill (packets 3 and 5), asked for by no door, put
+  // on no wire. It is not contact, so WITHHELD_FIELDS is unchanged. If a door ever
+  // selects it, legs B and C red and THAT is the ruling; this line is not permission.
+  'binder_id',
 ];
 
 // The columns the LIST door asks the database for (src/api/vendor/leads.js,

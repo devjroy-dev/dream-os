@@ -1,0 +1,27 @@
+# scripts/floor-manifest-lc2-p1.txt
+# TDW CE-43 · LC-2 packet 1 (dream-os) · the delivery's own file table [F-14.16].
+#
+# Every path this ZIP writes, and nothing else. `db/seeds/` appears both as the
+# directory `git status --porcelain` prints for a new untracked folder and as its
+# files (the CE-42 4b-1 precedent, scripts/floor-manifest-ce42-4b1-os.txt; F-43.71:
+# the r1 cut omitted the directory line and the floor refused it). Dirt outside this list and
+# `run-floor.sh --delivery` refuses as it does on a clean tree; these files are
+# SHA-256d before and after the run.
+#
+# NOT LISTED, DELIBERATELY: docs/FINDINGS_LOG.md and the roadmap. F-43.46 to
+# F-43.73 and C-43.15 are the chair's to land (clobber law); the handover carries them.
+db/migrations/0167_leads_binder_link.sql
+db/migrations/0168_vendor_packages.sql
+db/seeds/
+db/seeds/package_seeds.source.txt
+db/seeds/package_seeds.json
+tools/lc2_seed_json.js
+src/lib/vendor/packageSeedParse.js
+src/lib/vendor/packageSeeds.js
+src/api/vendor/packages.js
+src/api/vendor/core.js
+src/lib/vendor/leadSerializer.js
+docs/db/PUBLIC_SCHEMA.md
+scripts/b81_lc2_p1_seed_bench.js
+scripts/floor-manifest-lc2-p1.txt
+docs/handovers/TDW_CE43_LC2_P1_HANDOVER.md

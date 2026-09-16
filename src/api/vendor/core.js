@@ -36,6 +36,7 @@ router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip 
 router.use('/worklist', require('./worklistToday'));
 router.use('/leads',    require('./leads'));
 router.use('/clients',  require('./clients'));
+router.use('/packages', require('./packages'));   // CE-43 LC-2: the Packages room's read (seeds on first read)
 // ── F-40.181 · THE SCHEDULE ROUTES MOUNT HERE, ABOVE THE INVOICES ROUTER ───
 // `invoiceSchedule.js` declares `/:invoiceId/schedule` and must be reached before
 // `invoices.js`'s `GET /:vendorId`, which would otherwise match the same request
