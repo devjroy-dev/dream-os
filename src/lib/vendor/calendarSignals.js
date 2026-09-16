@@ -51,6 +51,7 @@ const { executeAndPatch } = require('../executeAndPatch');
 const { scrubText } = require('./scrub'); // TDW_04 B2 — F-04.38 (line scrub only; storage scrub is eventWrite's)
 const { blockDates, unblockDates, blockLines, unblockLines } = require('./blockHands'); // TDW_04 B2 §1.5
 const { ensureBookingEvents } = require('./bookingEvent'); // CE-43 LC-1 F-43.1(a): the booking event seam, one home
+const { longDateYear } = require('../witnessLine'); // CE-43 LC-1b F-43.29/F-43.31: the full-month Updated: line
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -413,9 +414,15 @@ function mutationLines(done) {
     }
     const e = m.event || {};
     const when = e.event_time ? `${e.event_date} at ${e.event_time}` : e.event_date;
+    // CE-43 LC-1b · F-43.29 / F-43.31, ruled D2 site (a), lane (y): the Updated: line
+    // alone renders the full month (R-42.13, founder veto V2 YES). `when` above stays raw
+    // for Cancelled: and the crew line (byte-pinned; F-43.33 is LC-4's). event_time rides
+    // raw, outside the veto. The twin in src/api/vendor-engine/chat.js carries the same two lines.
+    const updDate = longDateYear(e.event_date);
+    const updWhen = e.event_time ? `${updDate} at ${e.event_time}` : updDate;
     return m.action === 'cancel'
       ? `Cancelled: ${e.title}${e.event_date ? ` — ${when}` : ''}. It's off your calendar.`
-      : `Updated: ${e.title} — ${when}. The calendar's set.`;
+      : `Updated: ${e.title} — ${updWhen}. The calendar's set.`;
   }).join('\n'));
 }
 

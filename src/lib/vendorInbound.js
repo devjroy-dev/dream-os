@@ -1805,7 +1805,10 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     let replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(result.reply ?? ''), scrubText(result.reply), 'vendorInbound:reply');
     if (invoiceDocs.length) {
       replyText += '\n\n' + invoiceDocs.map((d) =>
-        `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} — sending the PDF now.`
+        // CE-43 LC-1b · F-43.28(c), ruled D1 (a), founder veto V1 YES: the Meta lane sends
+        // no document (whatsapp.js refuses media, M1 text-only), so the line promises none.
+        // The real send is LC-4's (F-43.28 arm a); the loop below is untouched (F-43.32).
+        `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready. Find it in the invoices list.`
       ).join('\n');
     }
     // Calendar signals (book / edit / cancel / retro-link / lockstep) — same handler the

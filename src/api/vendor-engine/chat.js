@@ -48,6 +48,7 @@ const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 const { scrubText, witnessWireScrub } = require('../../lib/vendor/scrub'); // TDW_04 B2 — F-04.38 · witnessWireScrub: TDW_06 M-4 / F-06.36
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
 const { ensureBookingEvents } = require('../../lib/vendor/bookingEvent'); // CE-43 LC-1 F-43.1(a): the booking event seam, one home
+const { longDateYear } = require('../../lib/witnessLine'); // CE-43 LC-1b F-43.29: the full-month Updated: line
 const { blockDates, unblockDates, blockLines, unblockLines } = require('../../lib/vendor/blockHands'); // TDW_04 B2 §1.5
 
 // ── THE PERSONA FIREWALL now lives at src/lib/vendor/scrub.js ─────────────────
@@ -1059,9 +1060,15 @@ function mutationLines(done) {
     }
     const e = m.event || {};
     const when = e.event_time ? `${e.event_date} at ${e.event_time}` : e.event_date;
+    // CE-43 LC-1b · F-43.29 / F-43.31, ruled D2 site (a), lane (y): the Updated: line
+    // alone renders the full month (R-42.13, founder veto V2 YES). `when` above stays raw
+    // for Cancelled: and the crew line (byte-pinned; F-43.33 is LC-4's). event_time rides
+    // raw, outside the veto. The twin in src/lib/vendor/calendarSignals.js carries the same two lines.
+    const updDate = longDateYear(e.event_date);
+    const updWhen = e.event_time ? `${updDate} at ${e.event_time}` : updDate;
     return m.action === 'cancel'
       ? `Cancelled: ${e.title}${e.event_date ? ` — ${when}` : ''}. It's off your calendar.`
-      : `Updated: ${e.title} — ${when}. The calendar's set.`;
+      : `Updated: ${e.title} — ${updWhen}. The calendar's set.`;
   }).join('\n'));
 }
 // THE ANCHOR RULE lives in lib/vendor/occupancy.js beside the set it consumes

@@ -98,6 +98,19 @@ function longDate(iso) {
   return `${Number(m[3])} ${mon}`;
 }
 
+// CE-43 LC-1b · F-43.29, ruled formatter (ii): "2026-09-22" -> "22 September 2026".
+// The year-bearing sibling of longDate, built ON longDate so the month vocabulary keeps
+// one home (LONG_MONTHS above). R-42.13: full month on vendor glass. Anything that is
+// not a plain ISO date comes back UNCHANGED, so a caller's line keeps the shape it had
+// before this existed rather than printing "null". Callers: the Updated: door line in
+// src/api/vendor-engine/chat.js (mutationLines) and its twin in
+// src/lib/vendor/calendarSignals.js (mutationLines). LC-4's F-43.33 cure reuses it.
+function longDateYear(iso) {
+  const l = longDate(iso);
+  if (!l) return iso;
+  return `${l} ${String(iso).trim().slice(0, 4)}`;
+}
+
 function rupees(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) return null;
@@ -320,6 +333,6 @@ module.exports = {
   FILING_HANDS, PREFIX,
   UPDATED_PREFIX, REMOVED_PREFIX, UPDATED_BARE, REMOVED_BARE,
   UPDATE_HANDS, REMOVE_HANDS, describeChange,
-  shortDate, longDate, rupees, describeHand,
+  shortDate, longDate, longDateYear, rupees, describeHand,
   witnessFooter, hasWitnessFooter, appendWitness,
 };
