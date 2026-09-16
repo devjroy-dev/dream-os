@@ -351,6 +351,26 @@ router.post('/:invoiceId/payments', requireAuth, resolveVendor(), resolveAgent()
 // already exists for this binder, returns it WITHOUT assigning a new number.
 // The binder (engine.records, direction in) is the money record; this stamps the
 // formal numbered document onto it via the proven base-vendor flow + invoices bucket.
+// ── CE-43 LC-1 · F-43.5(a), ruled F2(a): the binder's follow-up date IS the due date ──
+// A chat-minted invoice was born with due_date NULL while its binder carried
+// followup_on (TDW/DEV440/09 vs binder e6aacb34, 19 September 2026). The three callers'
+// binder SELECTs (chat.js buildInvoices, vendorInbound.js's WA mint, and the /pdf door
+// below) do not carry followup_on, so the mint reads it here, from the one row it is
+// minting for, rather than widening three SELECTs. A caller that already carries the key
+// is taken at its word. A failed read mints with NULL, exactly as before: the invoice
+// is never held hostage to a date. LC-2's package schedule supersedes this.
+async function binderDueDate(supabase, binder) {
+  if (!binder) return null;
+  if (Object.prototype.hasOwnProperty.call(binder, 'followup_on')) return binder.followup_on || null;
+  if (!binder.id) return null;
+  try {
+    const { data, error } = await supabase.schema('engine')
+      .from('records').select('followup_on').eq('id', binder.id).maybeSingle();
+    if (error) { console.warn('[invoices:binderDueDate]', error.message); return null; }
+    return (data && data.followup_on) || null;
+  } catch (e) { console.warn('[invoices:binderDueDate]', e.message); return null; }
+}
+
 async function generateInvoiceForBinder(supabase, vendor, binder) {
   // 1 — idempotent ONLY while the figures are unchanged. A binder accrues several
   // invoices across its life (advance, then balance updates) — vendors run ~3-4
@@ -381,7 +401,7 @@ async function generateInvoiceForBinder(supabase, vendor, binder) {
       description:    binder.note    || null,
       amount_total:   Number(binder.amount) || 0,
       amount_advance: Number(binder.amount_received) || null,
-      due_date:       null,
+      due_date:       await binderDueDate(supabase, binder),   // CE-43 LC-1 F-43.5(a), ruled F2(a)
     });
     if (!created.ok) return created;
     invoice = created.invoice;
@@ -433,3 +453,4 @@ router.get('/:invoiceId/pdf', requireAuth, resolveVendor(), resolveAgent(), asyn
 
 module.exports = router;
 module.exports.generateInvoiceForBinder = generateInvoiceForBinder;
+module.exports.binderDueDate = binderDueDate;

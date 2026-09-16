@@ -1,0 +1,12 @@
+# scripts/floor-manifest-lc1-dreamos.txt
+# CE-43 · LC-1 · the dream-os packet. F-14.16: a dirty file outside this list is a STOP.
+# Every path below was authored by the LC-1 seat on a clean clone at
+# 8806acc1fa3b308f666388478f276fde9bc847fe; nothing inherited.
+src/lib/vendor/bookingEvent.js
+src/api/vendor-engine/chat.js
+src/lib/vendor/calendarSignals.js
+src/api/vendor/invoices.js
+tools/lc1_backfill.js
+scripts/b79_lc1_seam_bench.js
+scripts/floor-manifest-lc1-dreamos.txt
+docs/handovers/TDW_CE43_LC1_HANDOVER.md

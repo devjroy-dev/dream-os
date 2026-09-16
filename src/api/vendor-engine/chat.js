@@ -47,6 +47,7 @@ const { OCCUPYING_KINDS, isWeddingAnchor } = require('../../lib/vendor/occupancy
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 const { scrubText, witnessWireScrub } = require('../../lib/vendor/scrub'); // TDW_04 B2 — F-04.38 · witnessWireScrub: TDW_06 M-4 / F-06.36
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
+const { ensureBookingEvents } = require('../../lib/vendor/bookingEvent'); // CE-43 LC-1 F-43.1(a): the booking event seam, one home
 const { blockDates, unblockDates, blockLines, unblockLines } = require('../../lib/vendor/blockHands'); // TDW_04 B2 §1.5
 
 // ── THE PERSONA FIREWALL now lives at src/lib/vendor/scrub.js ─────────────────
@@ -3590,6 +3591,14 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
 
       await retroLinkOnFile(req, result);
       await lockstepBinderToEvent(req, result);
+      // CE-43 LC-1 (F-43.1(a), ruled F1(c)): a booking-stage binder with a date and no
+      // live linked event gets its calendar row. A conflict refusal speaks through the
+      // existing conflictLines (F8(a)) and joins `refused` so the stored tail carries it.
+      const seamSse = await ensureBookingEvents(req.app.locals.supabase, req.vendor, req.agentId, result, { surface: 'pwa' });
+      if (seamSse.refused.length) {
+        send({ type: 'text_delta', text: '\n\n' + conflictLines(seamSse.refused) });
+        refused.push(...seamSse.refused);
+      }
       await logChatActivity(req, result); // TDW_04 B0 item 3
       // TDW_04 B6 sitting 2 — Q-B4-6(b): the door lines join the thread's row.
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
@@ -3663,6 +3672,10 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const unblocked = await unblockDates(req.app.locals.supabase, req.vendor.id, result); // §1.5
     await retroLinkOnFile(req, result);
     await lockstepBinderToEvent(req, result);
+    // CE-43 LC-1 (F-43.1(a)): the JSON route's twin of the SSE call above. `refused`
+    // feeds this route's reply and the stored tail below, as bookEvents' refusals do.
+    const seamJson = await ensureBookingEvents(req.app.locals.supabase, req.vendor, req.agentId, result, { surface: 'pwa' });
+    if (seamJson.refused.length) refused.push(...seamJson.refused);
     await logChatActivity(req, result); // TDW_04 B0 item 3
     // TDW_04 B6 sitting 2 — Q-B4-6(b): same call, same order, the JSON route's copy
     // of the SSE line above (the tail builder is the ONE ordered list for both).

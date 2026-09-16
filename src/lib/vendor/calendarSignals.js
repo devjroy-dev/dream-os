@@ -50,6 +50,7 @@ const { logActivity } = require('./snapshot');             // TDW_05 S1 — lock
 const { executeAndPatch } = require('../executeAndPatch');
 const { scrubText } = require('./scrub'); // TDW_04 B2 — F-04.38 (line scrub only; storage scrub is eventWrite's)
 const { blockDates, unblockDates, blockLines, unblockLines } = require('./blockHands'); // TDW_04 B2 §1.5
+const { ensureBookingEvents } = require('./bookingEvent'); // CE-43 LC-1 F-43.1(a): the booking event seam, one home
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -567,6 +568,10 @@ async function applyCalendarSignals(supabase, vendor, agentId, result) {
   const unblocked = await unblockDates(supabase, vendor.id, result);
   await retroLinkOnFile(supabase, vendor, agentId, result);
   await lockstepBinderToEvent(supabase, vendor, result);
+  // CE-43 LC-1 (F-43.1(a)): the same seam chat.js calls, from its one home. A conflict
+  // refusal joins `refused`, so the WA reply speaks it through conflictLines (F8(a)).
+  const seam = await ensureBookingEvents(supabase, vendor, agentId, result, { surface: S });
+  if (seam.refused.length) refused.push(...seam.refused);
   // Advisories ride out beside the successes (Q-B4-5(b)): edits whose write landed WITH
   // a heads-up (appointment_overlap / cluster).
   const advised = mutated.filter((m) => m.ok && m.conflict);
