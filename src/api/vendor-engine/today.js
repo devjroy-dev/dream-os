@@ -38,6 +38,8 @@ const resolveAgent  = require('../middleware/resolveAgent');
 // istClock takes an optional `now` defaulting to Date.now(), and every call
 // here passes nothing.
 const { istTodayISO, istPlusDaysISO } = require('../../lib/vendor/istClock');
+// CE-43 · LC-2 · packet 3 · F13(a): the booked-lead set, one home (arm (iii), no .not()).
+const { readBookedBinderIds } = require('../../lib/vendor/bookedLeads');
 
 const RECORD_SELECT =
   'id, client, amount, amount_received, amount_pending, payment_status, ' +
@@ -57,6 +59,7 @@ router.get('/:vendorId',
       { data: user,    error: userErr },
       { data: binders, error: bindersErr },
       { data: events,  error: eventsErr },
+      bookedLeads,
     ] = await Promise.all([
       pub.from('users').select('name').eq('id', vendor.user_id).maybeSingle(),
       eng.from('records')
@@ -84,10 +87,12 @@ router.get('/:vendorId',
         .order('event_date', { ascending: true })
         .order('event_time', { ascending: true, nullsFirst: true })
         .limit(50),
+      readBookedBinderIds(pub, vendor.id),
     ]);
 
-    if (userErr || bindersErr || eventsErr) {
-      const msg = (userErr || bindersErr || eventsErr).message;
+    const bookedErr = bookedLeads && bookedLeads.ok ? null : { message: (bookedLeads && bookedLeads.error) || 'booked leads unread' };
+    if (userErr || bindersErr || eventsErr || bookedErr) {
+      const msg = (userErr || bindersErr || eventsErr || bookedErr).message;
       console.error('[GET /vendor-e/today] read failed:', msg);
       return res.status(500).json({ ok: false, error: 'Lookup failed.' });
     }
@@ -115,7 +120,10 @@ router.get('/:vendorId',
       const s = (b.stage || '').toLowerCase();
       return CLIENT_STAGE_WORDS.some(w => s.includes(w));
     };
-    const leadBinders = allBinders.filter(b => !isOut(b) && !isClientStage(b));
+    // CE-43 · LC-2 · F13(a): a binder with a booked lead behind it is a client, not a lead,
+    // PLUS the legacy six-word set above.
+    const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);
+    const leadBinders = allBinders.filter(b => !isOut(b) && !isClientBinder(b));
 
     // overdue_invoices — pending money with a past due date.
     const overdue = allBinders

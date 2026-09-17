@@ -40,6 +40,7 @@
 // FAIL-CLOSED: a read that errors writes nothing for that pass.
 
 const { writeEvent } = require('./eventWrite');
+const { readBookedBinderIds } = require('./bookedLeads');
 
 const BOOKING_STAGE_RE     = /(book|confirm)/i;
 const NOT_BOOKING_STAGE_RE = /(unbook|cancel|lost)/i;
@@ -56,12 +57,15 @@ function bookingEventTitle(client) {
   return `${String(client).trim()} · wedding`;
 }
 
-function qualifies(row) {
+// CE-43 · LC-2 · packet 3 · F13(a): the predicate is "has a booked lead" PLUS the legacy
+// stage test. `bookedIds` is the set src/lib/vendor/bookedLeads.js reads; absent, only the
+// legacy test applies (the shape every caller had before packet 3).
+function qualifies(row, bookedIds) {
   return !!row
     && row.hidden !== true
     && typeof row.date === 'string' && row.date.trim() !== ''
     && typeof row.client === 'string' && row.client.trim().length >= 2
-    && isBookingStage(row.stage);
+    && ((bookedIds && bookedIds.has(row.id)) || isBookingStage(row.stage));
 }
 
 // Binder ids a turn's successful hands touched. Inputs name existing binders;
@@ -104,7 +108,9 @@ async function ensureForBinders(supabase, vendor, agentId, binderIds, { surface 
   const { data: rows, error: rowsErr } = await q;
   if (rowsErr) { out.errors.push({ binder_id: null, error: `binder read failed: ${rowsErr.message}` }); return out; }
 
-  const eligible = (rows || []).filter(qualifies);
+  const booked = await readBookedBinderIds(supabase, vendor.id);
+  if (!booked.ok) { out.errors.push({ binder_id: null, error: `booked lead read failed: ${booked.error}` }); return out; }
+  const eligible = (rows || []).filter((r) => qualifies(r, booked.ids));
   if (!eligible.length) return out;
 
   const { data: linked, error: linkErr } = await supabase.from('events')
@@ -164,6 +170,7 @@ module.exports = {
   ensureForBinders,
   touchedBinderIds,
   isBookingStage,
+  qualifies,
   bookingEventTitle,
   BOOKING_EVENT_KIND,
 };

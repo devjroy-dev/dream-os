@@ -19,6 +19,8 @@ const { withRecordCompleteness } = require('../../lib/recordCompleteness'); // T
 // R-P3.5.2 · ONE HOME (F-P3.8). Local declaration deleted; arithmetic
 // byte-equivalent, and the call below passes no clock.
 const { istTodayISO } = require('../../lib/vendor/istClock');
+// CE-43 · LC-2 · packet 3 · F13(a): the booked-lead set, one home (arm (iii), no .not()).
+const { readBookedBinderIds } = require('../../lib/vendor/bookedLeads');
 
 // engine.records — same cells as the public.binders BINDER_SELECT.
 const RECORD_SELECT =
@@ -40,6 +42,7 @@ router.get('/:vendorId',
       { data: user,    error: userErr },
       { data: binders, error: bindersErr },
       { data: events,  error: eventsErr },
+      bookedLeads,
     ] = await Promise.all([
       pub.from('users').select('name').eq('id', vendor.user_id).maybeSingle(),
       eng.from('records')
@@ -58,11 +61,13 @@ router.get('/:vendorId',
         // every vendor events read. (SCHEMA.md:293 already claimed this was true.)
         .is('deleted_at', null)
         .order('event_date', { ascending: true }),
+      readBookedBinderIds(pub, vendor.id),
     ]);
 
-    if (userErr || bindersErr || eventsErr) {
-      const which = userErr ? 'users' : bindersErr ? 'records' : 'events';
-      const msg = (userErr || bindersErr || eventsErr).message;
+    const bookedErr = bookedLeads && bookedLeads.ok ? null : { message: (bookedLeads && bookedLeads.error) || 'booked leads unread' };
+    if (userErr || bindersErr || eventsErr || bookedErr) {
+      const which = userErr ? 'users' : bindersErr ? 'records' : eventsErr ? 'events' : 'leads';
+      const msg = (userErr || bindersErr || eventsErr || bookedErr).message;
       console.error(`[GET /vendor-e/cabinet] ${which} read failed:`, msg);
       return res.status(500).json({ ok: false, error: 'Lookup failed.', which, detail: msg });
     }
@@ -77,8 +82,11 @@ router.get('/:vendorId',
       const s = (b.stage || '').toLowerCase();
       return CLIENT_STAGE_WORDS.some(w => s.includes(w));
     };
-    const clients = allBinders.filter(isClientStage);
-    const leads   = allBinders.filter(b => !isClientStage(b) && (b.direction || '').toLowerCase() !== 'out');
+    // CE-43 · LC-2 · F13(a): a binder with a booked lead behind it is a client, PLUS the
+    // legacy six-word set above (LC-1's F-43.18 two homes stay until LC-3 retires them).
+    const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);
+    const clients = allBinders.filter(isClientBinder);
+    const leads   = allBinders.filter(b => !isClientBinder(b) && (b.direction || '').toLowerCase() !== 'out');
     // ── `paid` RETIRED at P7.2 Arm E (CE-39, 2026-09-04) ──────────────────────────
     // F-2b2.3 listed this slice for retirement on the ground that its readers were the old
     // /vendor tree's pages. THE PREMISE WAS WRONG, and the correction is on the record as

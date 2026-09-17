@@ -372,6 +372,28 @@ async function binderDueDate(supabase, binder) {
 }
 
 async function generateInvoiceForBinder(supabase, vendor, binder) {
+  // 0 — CE-43 · LC-2 · F4: A BOOKED PACKAGE'S INVOICE IS THE ONLY ONE. A binder that was
+  // promoted from a lead carries the invoice the promotion minted (lead_package_id set,
+  // uq_invoices_lead_package). Its money moves milestone by milestone and the binder's
+  // figures may lag it (the R-43.11 mirror is switched off until packet 5), so the
+  // "still current" test below would call it stale and mint a second invoice beside it.
+  // It is served as it stands instead: one booking, one document that fills up.
+  // The read filters live rows by the vendor and binder and picks the package row in
+  // code; a failed read falls through to the path below, as before.
+  const { data: pkgRows, error: pkgErr } = await supabase
+    .from('invoices')
+    .select('id, invoice_number, pdf_url, client_name, amount_total, amount_advance, amount_paid, due_date, lead_package_id')
+    .eq('binder_id', binder.id).eq('vendor_id', vendor.id)
+    .is('deleted_at', null);
+  if (pkgErr) console.warn('[invoices:package-read]', pkgErr.message);
+  const pkgInvoice = (pkgRows || []).find((r) => r && r.lead_package_id) || null;
+  if (pkgInvoice) {
+    if (pkgInvoice.pdf_url) return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgInvoice.pdf_url };
+    const pkgPdf = await generateAndStoreInvoicePdf(supabase, vendor, pkgInvoice);
+    if (!pkgPdf) return { ok: false, error: 'PDF generation failed.' };
+    return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgPdf };
+  }
+
   // 1 — idempotent ONLY while the figures are unchanged. A binder accrues several
   // invoices across its life (advance, then balance updates) — vendors run ~3-4
   // payments per booking. Fetch the LATEST invoice for this binder and reuse it

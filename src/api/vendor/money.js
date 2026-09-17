@@ -109,6 +109,8 @@ const {
   readOutstanding, OUTSTANDING_STATES,
 } = require('../../lib/vendor/invoices');
 const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
+const { payNextMilestone, doorAgentResolver } = require('../../lib/vendor/schedules'); // CE-43 LC-2 F17
+const { istTodayStr } = require('../../lib/istDay');
 const { generateInvoicePdf } = require('../../lib/invoicePdf');
 
 // ── THE PARTICULAR · D-1 B13, AND ONLY THE PARTICULAR  [F-39.21] ───────────
@@ -540,6 +542,21 @@ router.patch('/invoices/:vendorId/:invoiceId/cancel', ...vendorGate, asyncHandle
 // nor the home guesses a figure on a money surface.
 router.post('/invoices/:vendorId/:invoiceId/payments', ...vendorGate, asyncHandler(async (req, res) => {
   const { amount, payment_type } = req.body || {};
+  // ── CE-43 · LC-2 · F17 · A PACKAGE INVOICE FILLS ITS OWN SCHEDULE ─────────────
+  // The row, the swipe and the bulk action all arrive here with the row's owed figure.
+  // On a package invoice (lead_package_id set) that figure is not what arrived: the
+  // NEXT unpaid milestone is paid, its own amount, on today's IST date, and the
+  // invoice's due date moves to the milestone after it (F6). Any other invoice takes
+  // the path below, unchanged.
+  const pkg = await payNextMilestone(
+    req.app.locals.supabase, req.vendor.id, req.params.invoiceId, istTodayStr(new Date()),
+    { resolveAgentId: doorAgentResolver(req) },
+  );
+  if (pkg.handled) {
+    if (!pkg.ok) return errRes(res, 400, pkg.error);
+    return okRes(res, { invoice: pkg.invoice, milestone: pkg.milestone, transitioned: pkg.prior_state !== pkg.invoice.state,
+      balance: (Number(pkg.invoice.amount_total) || 0) - (Number(pkg.invoice.amount_paid) || 0) });
+  }
   const r = await recordPayment(
     req.app.locals.supabase, req.vendor.id, req.params.invoiceId, { amount, payment_type },
   );

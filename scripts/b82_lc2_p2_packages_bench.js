@@ -435,7 +435,10 @@ async function main() {
     ['src/api/vendor/packages.js', "if (error.code === '23505') {", 'if (false) {', async (m) => !(await writeCells(m)).race, 'M10 the race branch removed → §3.11 RED'],
     ['src/api/vendor/packages.js', '    merged = { ...merged, middle_pct: fallbackMiddle };', "    return { ok: false, field: 'middle_pct' };", async (m) => !validateCells(m.validatePackage).middleOff || !(await writeCells(m)).patchMiddleOff, 'M15 the middle-off fallback removed → §2.9/§3.6b RED (F-43.78)'],
     ['src/api/vendor/leadPackages.js', ".update({ deleted_at: now, updated_at: now })\n    .eq('lead_id', leadId)", ".update({ updated_at: now })\n    .eq('lead_id', leadId)", async (m) => !(await attachCells(m)).reattach, 'M11 re-attach does not clear the live row → §4.4 RED'],
-    ['src/api/vendor/leadPackages.js', "if (unknown.length) return res.status(422).json({ ok: false, error: 'invalid', field: unknown[0] });", '', async (m) => !(await attachCells(m)).onlyEdits, 'M12 any body key accepted → §4.9 RED'],
+    // AMENDED BY LABEL (CE-43 LC-2r, packet 3): the attach act moved into attachPackage() so
+    // POST /clients/direct shares it; the refusal line now returns { status, body }. Same
+    // refusal, same bite, new anchor (the P2b M9 precedent).
+    ['src/api/vendor/leadPackages.js', "if (unknown.length) return { status: 422, body: { ok: false, error: 'invalid', field: unknown[0] } };", '', async (m) => !(await attachCells(m)).onlyEdits, 'M12 any body key accepted → §4.9 RED'],
     ['src/api/vendor/leadPackages.js', "  const now = new Date().toISOString();\n  const { error: delErr } = await supabase", "  const now = new Date().toISOString();\n  await supabase.from('vendor_packages').update({ name: v.row.name }).eq('id', pkg.id);\n  const { error: delErr } = await supabase", async (m) => { const c = await attachCells(m); return !c.packageUntouched; }, "M13 the vendor's package mutated by an edited attach → §4.3 RED"],
   ];
   for (const [rel, from, to, bites, label] of muts) {

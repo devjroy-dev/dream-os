@@ -27,6 +27,10 @@ const resolveVendor  = require('../middleware/resolveVendor');
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createClient, updateClient, deleteClient } = require('../../lib/vendor/clients');
+const resolveAgent   = require('../middleware/resolveAgent');
+const { createLead } = require('../../lib/vendor/leads');
+const { promoteLead } = require('../../lib/vendor/promotion');
+const { isDateKey }   = require('../../lib/vendor/packageSchedule');
 
 // ─── GET /api/v2/vendor/clients/:vendorId ──────────────────────────────
 //
@@ -164,6 +168,66 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
 
   if (!result.ok) return errRes(res, 400, result.error);
   return okRes(res, { client: result.client, deduped: result.deduped, restored: result.restored || false });
+}));
+
+// ─── POST /api/v2/vendor/clients/direct · A WALK-IN (R-43.5, CE-43 · LC-2 · packet 3) ───
+//
+// body { name, phone?, wedding_date, package_id, fee?, advance_received, received_on? }
+// No client without a lead: the lead is created (source 'direct'), the chosen package is
+// attached (fee only when the package has none, F8(a)), then the promotion act runs
+// (advance_paid when the advance is in, else booking_confirmed), and promotion sets the
+// lead to booked (choice 3, ruled). Any failure after the lead exists answers
+// `saved_as_lead` with the lead id, and the sheet shows C5. A failure before it exists
+// answers `promotion_failed`, and the sheet shows F29. F28(b): the advance is yes or no;
+// its amount is always the package's deposit; received_on is required only on yes.
+router.post('/direct', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const b        = req.body || {};
+  const name = typeof b.name === 'string' ? b.name.trim() : '';
+  if (name.length < 2) return res.status(422).json({ ok: false, error: 'invalid', field: 'name' });
+  if (!isDateKey(b.wedding_date)) return res.status(422).json({ ok: false, error: 'invalid', field: 'wedding_date' });
+  if (typeof b.package_id !== 'string' || !b.package_id) return res.status(422).json({ ok: false, error: 'invalid', field: 'package_id' });
+  const advance = b.advance_received === true;
+  if (advance && !isDateKey(b.received_on)) return res.status(422).json({ ok: false, error: 'invalid', field: 'received_on' });
+  let fee;
+  if (b.fee !== undefined && b.fee !== null && b.fee !== '') {
+    fee = Number(b.fee);
+    if (!Number.isInteger(fee) || fee <= 0) return res.status(422).json({ ok: false, error: 'invalid', field: 'fee' });
+  }
+
+  const made = await createLead(supabase, vendor.id, {
+    name,
+    phone: typeof b.phone === 'string' && b.phone.trim() ? b.phone.trim() : null,
+    wedding_date: b.wedding_date,
+    source: 'direct',
+  });
+  if (!made.ok || !made.lead) {
+    console.error(`[clients:direct] vendor=${vendor.id} lead not created: ${made.error}`);
+    return res.status(500).json({ ok: false, error: 'promotion_failed', step: 'lead' });
+  }
+  const leadId = made.lead.id;
+  const saved = (status, step, extra) => res.status(status).json({ ok: false, error: 'saved_as_lead', lead_id: leadId, step, ...extra });
+
+  const { attachPackage } = require('./leadPackages');
+  const attachBody = { package_id: b.package_id };
+  if (fee !== undefined) attachBody.total = fee;
+  const att = await attachPackage(supabase, vendor, leadId, attachBody);
+  if (att.status !== 200) {
+    console.warn(`[clients:direct] vendor=${vendor.id} lead=${leadId} saved as a lead; attach answered ${att.status} ${JSON.stringify(att.body)}`);
+    return saved(att.status >= 500 ? 500 : 422, 'attach', { code: att.body.code || null, field: att.body.field || null });
+  }
+
+  const pr = await promoteLead(supabase, {
+    vendor, agentId: req.agentId, leadId,
+    kind: advance ? 'advance_paid' : 'booking_confirmed',
+    advanceReceivedOn: advance ? b.received_on : undefined,
+  });
+  if (pr.status !== 200) {
+    console.warn(`[clients:direct] vendor=${vendor.id} lead=${leadId} saved as a lead; promotion answered ${pr.status} ${JSON.stringify(pr.body)}`);
+    return saved(pr.status >= 500 ? 500 : 422, 'promote', { code: pr.body.code || null, field: pr.body.field || null });
+  }
+  return okRes(res, { lead_id: leadId, deduped: !!made.deduped, promoted: pr.body.promoted });
 }));
 
 // ─── PATCH /api/v2/vendor/clients/:clientId ────────────────────────────

@@ -56,6 +56,11 @@ async function createInvoice(supabase, vendorId, params) {
     client_name, client_phone, client_id, lead_id,
     description, amount_total, amount_advance,
     due_date, notes,
+    // CE-43 · LC-2 · packet 3: the promotion act's two links. Both default to null, so
+    // every other caller inserts exactly what it did before. uq_invoices_lead_package
+    // (0168) refuses a second live invoice for one lead package; that refusal comes back
+    // with its code so the caller can read the winner instead of minting beside it.
+    binder_id, lead_package_id,
   } = params;
 
   if (!client_name || !client_name.trim()) return { ok: false, error: 'client_name is required.' };
@@ -119,11 +124,13 @@ async function createInvoice(supabase, vendorId, params) {
       due_date:       due_date       || null,
       state:          'unpaid',
       notes:          notes          || null,
+      binder_id:       binder_id       || null,
+      lead_package_id: lead_package_id || null,
     })
     .select('id, invoice_number, client_name, client_phone, amount_total, amount_advance, amount_paid, state, due_date, created_at')
     .single();
 
-  if (invErr) return { ok: false, error: 'Could not create invoice: ' + invErr.message };
+  if (invErr) return { ok: false, error: 'Could not create invoice: ' + invErr.message, code: invErr.code || null };
   return { ok: true, invoice, vendor: v };
 }
 

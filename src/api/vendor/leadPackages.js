@@ -37,6 +37,8 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const { computeSchedule, isDateKey } = require('../../lib/vendor/packageSchedule');
 const { istTodayStr } = require('../../lib/istDay');
 const { validatePackage } = require('./packages');
+const resolveAgent  = require('../middleware/resolveAgent');
+const { promoteLead } = require('../../lib/vendor/promotion');
 
 const LEAD_PACKAGE_SELECT =
   'id, lead_id, package_id, snapshot, total, schedule, delivery_on, quoted_at, created_at, updated_at';
@@ -61,15 +63,15 @@ router.get('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId',
   return okRes(res, { lead_package: data || null });
 }));
 
-router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const vendor   = req.vendor;
-  const leadId   = req.params.leadId;
-  const body     = req.body || {};
-
+// ── attachPackage · the attach act, one home ────────────────────────────────────────
+// CE-43 · LC-2 · packet 3: lifted out of the route unchanged so POST /clients/direct
+// (src/api/vendor/clients.js) attaches through the same code. Returns
+// { status, body } for the caller to send; nothing here writes a response.
+async function attachPackage(supabase, vendor, leadId, rawBody) {
+  const body = rawBody || {};
   const unknown = Object.keys(body).filter((k) => k !== 'package_id' && !EDITABLE.includes(k));
-  if (unknown.length) return res.status(422).json({ ok: false, error: 'invalid', field: unknown[0] });
-  if (typeof body.package_id !== 'string' || !body.package_id) return res.status(422).json({ ok: false, error: 'invalid', field: 'package_id' });
+  if (unknown.length) return { status: 422, body: { ok: false, error: 'invalid', field: unknown[0] } };
+  if (typeof body.package_id !== 'string' || !body.package_id) return { status: 422, body: { ok: false, error: 'invalid', field: 'package_id' } };
 
   const { data: lead, error: leadErr } = await supabase
     .from('leads')
@@ -77,8 +79,8 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
     .eq('id', leadId)
     .eq('vendor_id', vendor.id)
     .maybeSingle();
-  if (leadErr) return errRes(res, 500, leadErr.message);
-  if (!lead || lead.deleted_at) return errRes(res, 404, 'Not found.');
+  if (leadErr) return { status: 500, body: { ok: false, error: leadErr.message } };
+  if (!lead || lead.deleted_at) return { status: 404, body: { ok: false, error: 'Not found.' } };
 
   const { data: pkg, error: pkgErr } = await supabase
     .from('vendor_packages')
@@ -87,8 +89,8 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
     .eq('vendor_id', vendor.id)
     .is('deleted_at', null)
     .maybeSingle();
-  if (pkgErr) return errRes(res, 500, pkgErr.message);
-  if (!pkg) return res.status(422).json({ ok: false, error: 'invalid', field: 'package_id' });
+  if (pkgErr) return { status: 500, body: { ok: false, error: pkgErr.message } };
+  if (!pkg) return { status: 422, body: { ok: false, error: 'invalid', field: 'package_id' } };
 
   // The snapshot: the package, with the couple's edits laid over it (F23), validated as a
   // package so the same CHECKs hold on the copy.
@@ -97,8 +99,8 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
     if (Object.prototype.hasOwnProperty.call(body, k)) merged[k] = body[k];
   }
   const v = validatePackage(merged);
-  if (!v.ok) return res.status(422).json({ ok: false, error: 'invalid', field: v.field });
-  if (body.delivery_on != null && !isDateKey(body.delivery_on)) return res.status(422).json({ ok: false, error: 'invalid', field: 'delivery_on' });
+  if (!v.ok) return { status: 422, body: { ok: false, error: 'invalid', field: v.field } };
+  if (body.delivery_on != null && !isDateKey(body.delivery_on)) return { status: 422, body: { ok: false, error: 'invalid', field: 'delivery_on' } };
 
   const today = istTodayStr(new Date());
   const sched = computeSchedule({
@@ -108,7 +110,7 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
     delivery_on: body.delivery_on == null ? null : body.delivery_on,
     today,
   });
-  if (!sched.ok) return res.status(422).json({ ok: false, error: 'refused', code: sched.code });
+  if (!sched.ok) return { status: 422, body: { ok: false, error: 'refused', code: sched.code } };
 
   const snapshot = { source_package_id: pkg.id, source_seeded_from: pkg.seeded_from || null, tells: sched.tells };
   for (const k of SNAPSHOT_KEYS) snapshot[k] = v.row[k];
@@ -120,7 +122,7 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
     .eq('lead_id', leadId)
     .eq('vendor_id', vendor.id)
     .is('deleted_at', null);
-  if (delErr) return errRes(res, 500, delErr.message);
+  if (delErr) return { status: 500, body: { ok: false, error: delErr.message } };
 
   const { data, error } = await supabase
     .from('lead_packages')
@@ -137,10 +139,34 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
     .single();
   if (error) {
     console.error(`[lead-package] vendor=${vendor.id} lead=${leadId} insert failed after the live row was cleared: ${error.message}`);
-    return errRes(res, 500, error.message);
+    return { status: 500, body: { ok: false, error: error.message } };
   }
-  return okRes(res, { lead_package: data });
+  return { status: 200, body: { ok: true, lead_package: data } };
+}
+
+router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), asyncHandler(async (req, res) => {
+  const r = await attachPackage(req.app.locals.supabase, req.vendor, req.params.leadId, req.body);
+  return res.status(r.status).json(r.body);
+}));
+
+// ── POST /:leadId/promote · THE BOOKING ACT (CE-43 · LC-2 · packet 3) ────────────────
+//   body { kind: 'advance_paid' | 'booking_confirmed', advance_received_on?: YYYY-MM-DD }
+//   → 200 { ok, promoted } | 422 { ok:false, error:'refused', code } | 422 invalid field
+//   | 500 { ok:false, error:'promotion_failed', step }
+// One home: src/lib/vendor/promotion.js promoteLead. This door carries no words (F26); the
+// PWA maps A9's codes and reads F29 for anything else.
+router.post('/:leadId/promote', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), resolveAgent(), asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const r = await promoteLead(req.app.locals.supabase, {
+    vendor: req.vendor,
+    agentId: req.agentId,
+    leadId: req.params.leadId,
+    kind: body.kind,
+    advanceReceivedOn: body.advance_received_on,
+  });
+  return res.status(r.status).json(r.body);
 }));
 
 module.exports = router;
+module.exports.attachPackage = attachPackage;
 module.exports.LEAD_PACKAGE_SELECT = LEAD_PACKAGE_SELECT;

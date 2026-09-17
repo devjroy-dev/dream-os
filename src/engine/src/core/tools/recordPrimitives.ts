@@ -515,6 +515,27 @@ export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_BLOCK_DATE_TOOL, DONNA_UNBLOCK_DATE_TOOL,   // TDW_04 B2 §1.5 — a block is not a booking
 ];
 
+// ── CE-43 · LC-2 · F3 · A DOOR-ONLY OPEN UNDER A RESERVED ID ─────────────────
+// The promotion act (src/lib/vendor/promotion.js) writes public.leads.binder_id FIRST
+// and only then opens the binder, so a crash between the two leaves a lead pointing at
+// an id nobody has used yet, never a binder nobody points at (reserve-then-create).
+// This opens the row under that id through writeFields' own insert leg, so the audit
+// line, the SELECT and the fail-closed floor are the same as every other open.
+// DOOR-ONLY: no tool schema names it, RECORD_TOOLS does not list it, and no model can
+// reach it. A second call with the same id is refused by the primary key; the caller
+// reads before it writes, so that refusal is a race report, not a normal path.
+export async function openRecordWithId(
+  agentId: string,
+  id: string,
+  fields: Record<string, unknown>,
+  label: string,
+): Promise<ToolOutcome> {
+  if (typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return { display: 'ERROR creating record: a reserved id must be a uuid.' };
+  }
+  return writeFields(agentId, undefined, { ...fields, id }, label);
+}
+
 // ── Executors ────────────────────────────────────────────────────────────────
 type Id = { binder_id?: string };
 

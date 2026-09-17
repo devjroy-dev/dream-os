@@ -1,0 +1,24 @@
+# scripts/floor-manifest-lc2-p3.txt
+# TDW CE-43 · LC-2 packet 3 (dream-os) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory in this packet
+# (F-43.71's lesson checked: every new file lands in an existing folder).
+# NOT LISTED, DELIBERATELY: src/engine/dist (build output, ignored), docs/FINDINGS_LOG.md
+# and the roadmap (the chair's to land).
+src/lib/vendor/promotion.js
+src/lib/vendor/bookedLeads.js
+src/lib/vendor/schedules.js
+src/lib/vendor/invoices.js
+src/lib/vendor/bookingEvent.js
+src/engine/src/core/tools/recordPrimitives.ts
+src/api/vendor/leadPackages.js
+src/api/vendor/clients.js
+src/api/vendor/schedules.js
+src/api/vendor/money.js
+src/api/vendor/invoices.js
+src/api/vendor-engine/cabinet.js
+src/api/vendor-engine/today.js
+scripts/b83_lc2_p3_promotion_bench.js
+scripts/b82_lc2_p2_packages_bench.js
+scripts/verify-lc2-p3.sh
+scripts/floor-manifest-lc2-p3.txt
+docs/handovers/TDW_CE43_LC2_P3_HANDOVER.md
