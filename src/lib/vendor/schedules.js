@@ -222,8 +222,12 @@ async function deleteSchedule(supabase, vendorId, invoiceId) {
   const { data: inv, error: invErr } = await supabase.from('invoices')
     .select('id, lead_package_id').eq('id', invoiceId).eq('vendor_id', vendorId).maybeSingle();
   if (invErr) return { ok: false, error: invErr.message };
-  if (inv && inv.lead_package_id)
-    return { ok: false, error: 'A package schedule cannot be removed.', code: 'PACKAGE_SCHEDULE' };
+  if (inv && inv.lead_package_id) {
+    // F-43.86 (b1): the reason is a LOG LINE only. The wire carries a token and the code, and
+    // the PWA maps PACKAGE_SCHEDULE to its existing COPY.studioScheduleRemoveFailed.
+    console.warn(`[schedules:delete] refused for invoice ${invoiceId}: a package schedule is the booking's own (F16)`);
+    return { ok: false, error: 'package_schedule', code: 'PACKAGE_SCHEDULE' };
+  }
 
   const { data: paid } = await supabase.from('payment_schedules')
     .select('id').eq('invoice_id', invoiceId).eq('vendor_id', vendorId).eq('state', 'paid');

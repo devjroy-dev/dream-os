@@ -1,0 +1,10 @@
+# scripts/floor-manifest-lc2-p3b.txt
+# TDW CE-43 · LC-2 packet 3b (dream-os) · F-43.86 · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+src/lib/vendor/invoices.js
+src/lib/vendor/schedules.js
+src/api/vendor/invoiceSchedule.js
+scripts/b83_lc2_p3_promotion_bench.js
+scripts/verify-lc2-p3b.sh
+scripts/floor-manifest-lc2-p3b.txt
+docs/handovers/TDW_CE43_LC2_P3B_HANDOVER.md

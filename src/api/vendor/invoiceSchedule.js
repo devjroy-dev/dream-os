@@ -137,7 +137,9 @@ router.get('/:invoiceId/schedule', ...authMw, asyncHandler(async (req, res) => {
 router.delete('/:invoiceId/schedule', ...authMw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const result = await deleteSchedule(supabase, req.vendor.id, req.params.invoiceId);
-  if (!result.ok) return errRes(res, 409, result.error);
+  // CE-43 · LC-2 · packet 3b · F-43.86 (b1): the code rides the wire (PACKAGE_SCHEDULE on a
+  // booking's invoice, F16) so the PWA can speak its own vetted byte instead of this text.
+  if (!result.ok) return errRes(res, 409, result.error, result.code);
   return okRes(res, { deleted: true });
 }));
 

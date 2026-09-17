@@ -18,6 +18,11 @@
 //   §10 column existence against docs/db/PUBLIC_SCHEMA.md and ENGINE_SCHEMA.md (R-40.80).
 //   §11 mutations of production code, compiled in memory under their real paths.
 //
+// AMENDED BY LABEL (CE-43 LC-2r, packet 3b, F-43.86, chair-ruled (a1) and (b1)):
+//   §4.19 the F16 refusal carries a token, never prose; §4b.4 the DELETE door passes the code;
+//   §5.6 and §5.7 readOutstanding exposes lead_package_id; M24 to M26 bite them.
+//   No existing cell changed.
+//
 // NOT PROVEN HERE (declared): the real database and the real engine client. The double models
 // the unique indexes this act relies on (uq_leads_binder_id, uq_invoices_lead_package,
 // payment_schedules (invoice_id, ordinal), the records primary key); the founder's walk and
@@ -286,6 +291,7 @@ function fakeWriteEvent(db, mode = 'ok') {
     const del2 = await S.deleteSchedule(plain, V.id, 'inv2');
     r.f16 = !del1.ok && del1.code === 'PACKAGE_SCHEDULE' && db.tables.payment_schedules.length === 3;
     r.plainDelete = del2.ok && plain.tables.payment_schedules.length === 0;
+    r.noProse = !del1.ok && del1.error === 'package_schedule' && !/cannot|removed/i.test(String(del1.error));
 
     const mdb = makeDb({ invoices: [{ id: 'inv3', vendor_id: V.id, binder_id: 'b1', lead_package_id: 'lp3', amount_total: 1000, amount_paid: 300 }] });
     const seen = [];
@@ -391,6 +397,7 @@ function fakeWriteEvent(db, mode = 'ok') {
     ok(r.notPackage, '§4.14 F17: an invoice with no lead package is not handled here');
     ok(r.f16, '§4.15 F16: a package invoice\'s schedule cannot be removed');
     ok(r.plainDelete, '§4.16 F16 bites only package invoices: a plain schedule still deletes');
+    ok(r.noProse, '§4.19 F-43.86 (b1): the F16 refusal carries a token and no sentence');
     ok(r.mirrorGate, '§4.17 R-43.11: the flag gates the write (off: no engine call)');
     ok(r.mirrorAbsolute, '§4.18 R-43.11: on, the binder gets ABSOLUTE received and pending off the invoice');
   }
@@ -419,12 +426,32 @@ function fakeWriteEvent(db, mode = 'ok') {
     r.scope = foreign.status === 404 && !leaked && db2.tables.payment_schedules[2].amount_due === 9999;
     return r;
   }
+  async function deleteDoorCells(router) {
+    const r = {};
+    if (!router) return r;
+    const db = makeDb({
+      invoices: [{ id: 'inv-p', vendor_id: V.id, lead_package_id: 'lp1' }, { id: 'inv-l', vendor_id: V.id, lead_package_id: null }],
+      payment_schedules: [
+        { id: 'a', invoice_id: 'inv-p', vendor_id: V.id, ordinal: 1, state: 'pending' },
+        { id: 'b', invoice_id: 'inv-l', vendor_id: V.id, ordinal: 1, state: 'pending' },
+      ],
+    });
+    const p = await quiet(() => call(router, 'delete', '/:invoiceId/schedule', { db, vendor: V, params: { invoiceId: 'inv-p' } }));
+    const l = await call(router, 'delete', '/:invoiceId/schedule', { db, vendor: V, params: { invoiceId: 'inv-l' } });
+    r.code = p.status === 409 && p.body && p.body.code === 'PACKAGE_SCHEDULE' && !/cannot be removed/i.test(JSON.stringify(p.body));
+    r.plain = l.status === 200 && db.tables.payment_schedules.length === 1;
+    return r;
+  }
+
   sec('§4b the milestone PATCH door · F7 and F-43.81');
   {
     const r = await safe(() => patchDoorCells(tryRequire('src/api/vendor/schedules.js')));
     ok(r.sumRefused, '§4b.1 a pct change that breaks 100 is refused');
     ok(r.f7, '§4b.2 F7: the changed milestone is rounded and the last absorbs the difference');
     ok(r.scope, '§4b.3 F-43.81: another vendor\'s milestone is 404 and no foreign row is ever read back');
+    const dd = await safe(() => deleteDoorCells(tryRequire('src/api/vendor/invoiceSchedule.js')));
+    ok(dd.code, '§4b.4 F-43.86 (b1): the DELETE door answers 409 with code PACKAGE_SCHEDULE and no sentence');
+    ok(dd.plain, '§4b.5 the DELETE door still removes a plain schedule');
   }
 
   async function invoiceLibCells(L) {
@@ -437,6 +464,12 @@ function fakeWriteEvent(db, mode = 'ok') {
     r.nulls = c2.ok && db.tables.invoices[1].binder_id === null && db.tables.invoices[1].lead_package_id === null;
     const c3 = await L.createInvoice(db, V.id, { client_name: 'Sarah again', amount_total: 100, lead_package_id: 'lp1' });
     r.code = !c3.ok && c3.code === '23505';
+    db.tables.invoices.forEach((x) => { x.deleted_at = null; });
+    const ro = await L.readOutstanding(db, V.id);
+    const byId = new Map((ro.rows || []).map((x) => [x.invoice_number, x]));
+    r.exposed = ro.ok && [...byId.values()].some((x) => x.lead_package_id === 'lp1') && [...byId.values()].some((x) => x.lead_package_id === null)
+      && [...byId.values()].every((x) => Object.prototype.hasOwnProperty.call(x, 'lead_package_id'));
+    r.selected = typeof L.readOutstanding === 'function' && /lead_package_id/.test(readIf('src/lib/vendor/invoices.js').match(/const OUTSTANDING_SELECT =[^;]*;/)?.[0] || '');
     return r;
   }
   async function f4Cells(api) {
@@ -460,6 +493,8 @@ function fakeWriteEvent(db, mode = 'ok') {
     ok(r.links, '§5.1 createInvoice writes binder_id and lead_package_id');
     ok(r.nulls, '§5.2 every other caller still inserts null for both');
     ok(r.code, '§5.3 a uq_invoices_lead_package refusal comes back with its code');
+    ok(r.exposed, '§5.6 F-43.86 (a1): every readOutstanding row carries lead_package_id (the value, or null)');
+    ok(r.selected, '§5.7 F-43.86 (a1): OUTSTANDING_SELECT names lead_package_id');
     const f = await safe(() => f4Cells(tryRequire('src/api/vendor/invoices.js')));
     ok(f.served, '§5.4 F4: a binder with a package invoice is served that invoice; nothing new is minted though the binder money lags');
     ok(f.legacy, '§5.5 F4 bites only package invoices: a current legacy invoice is served as before');
@@ -764,6 +799,10 @@ function fakeWriteEvent(db, mode = 'ok') {
     ['src/api/vendor-engine/cabinet.js', 'const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);', 'const isClientBinder = (b) => isClientStage(b);', async (m) => !(await slicerCells(m, null)).cabClient, 'M19 Clients ignores the booked lead → §2.1 RED'],
     ['src/api/vendor-engine/today.js', 'const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);', 'const isClientBinder = (b) => isClientStage(b);', async (m) => !(await slicerCells(null, m)).todayOut, 'M20 Today ignores the booked lead → §2.5 RED'],
     ['src/lib/vendor/bookingEvent.js', '&& ((bookedIds && bookedIds.has(row.id)) || isBookingStage(row.stage));', '&& isBookingStage(row.stage);', async (m) => !(await seamCells(m)).withSet, 'M21 the seam ignores the booked lead → §3.1 RED'],
+    // packet 3b (F-43.86), amended by label
+    ['src/lib/vendor/invoices.js', 'lead_package_id: i.lead_package_id || null,', '', async (m) => !(await invoiceLibCells(m)).exposed, 'M24 the row drops lead_package_id → §5.6 RED'],
+    ['src/api/vendor/invoiceSchedule.js', 'return errRes(res, 409, result.error, result.code);', 'return errRes(res, 409, result.error);', async (m) => !(await deleteDoorCells(m)).code, 'M25 the DELETE door drops the code → §4b.4 RED'],
+    ['src/lib/vendor/schedules.js', "return { ok: false, error: 'package_schedule', code: 'PACKAGE_SCHEDULE' };", "return { ok: false, error: 'A package schedule cannot be removed.', code: 'PACKAGE_SCHEDULE' };", async (m) => !(await scheduleCells(m)).noProse, 'M26 the refusal carries prose again → §4.19 RED'],
   ];
   for (const [rel, from, to, bites, name] of M) {
     const lm = loadMutated(rel, from, to);

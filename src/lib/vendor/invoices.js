@@ -513,8 +513,13 @@ const OUTSTANDING_STATES = ['unpaid', 'advance_paid'];
 // id :638 · invoice_number :641 · client_name :642 · client_phone :643 ·
 // amount_total :645 · amount_paid :647 · due_date :648 · state :649 ·
 // created_at :652 · deleted_at :657. No column here is authored from memory.
+//
+// CE-43 · LC-2 · packet 3b · F-43.86 (a1): `lead_package_id` (public.invoices ordinal 23,
+// docs/db/PUBLIC_SCHEMA.md at ladder 0168) rides every row, so the Invoices room can tell a
+// package invoice from any other without reading words: F16 hides Remove on it, and F17's
+// mark-paid toast speaks D3/D4 for it. Null on every invoice that is not a booking's.
 const OUTSTANDING_SELECT =
-  'id, invoice_number, client_name, client_phone, amount_total, amount_paid, due_date, state, created_at';
+  'id, invoice_number, client_name, client_phone, amount_total, amount_paid, due_date, state, created_at, lead_package_id';
 
 /**
  * readOutstanding — the ONE derivation of what a vendor is owed.
@@ -556,6 +561,7 @@ async function readOutstanding(supabase, vendorId) {
       state: i.state,
       due_date: i.due_date,
       created_at: i.created_at,
+      lead_package_id: i.lead_package_id || null,
     };
   });
 
