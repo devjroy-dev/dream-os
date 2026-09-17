@@ -1,0 +1,8 @@
+# scripts/floor-manifest-lc2-p3c.txt
+# TDW CE-43 · LC-2 packet 3c (dream-os) · F-43.87 · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+src/lib/vendor/promotion.js
+scripts/b83_lc2_p3_promotion_bench.js
+scripts/verify-lc2-p3c.sh
+scripts/floor-manifest-lc2-p3c.txt
+docs/handovers/TDW_CE43_LC2_P3C_HANDOVER.md

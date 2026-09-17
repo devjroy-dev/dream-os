@@ -23,7 +23,8 @@
 //   3  the lead moves to `booked`, only after the binder exists.
 //   4  the event: writeEvent, kind `ceremony`, title `<client> · wedding` (LC-1's vetoed
 //      bytes), linked_lead_id and linked_binder_id set. Skipped when a live linked event
-//      exists. Choice 1 (ruled): a calendar refusal is RETURNED, never fatal.
+//      exists. Choice 1 (ruled): a calendar refusal is RETURNED, never fatal. F-43.87: an event
+//      linked to the lead counts only if its binder is this booking's or it has none.
 //   5  the one invoice, found or created by lead_package_id (uq_invoices_lead_package is the
 //      guard; a lost race re-reads the winner, and the counter number it consumed is skipped,
 //      disclosed).
@@ -284,14 +285,19 @@ async function promoteLead(supabase, params, deps = {}) {
     // ── 4 · the event (choice 1: a refusal is returned, not fatal) ──────────────────
     let event;
     {
-      const byLead = await supabase.from('events').select('id, state')
+      // F-43.87 (packet 3c, chair-ruled): an event linked to this lead counts as this booking's
+      // only when its binder is this booking's binder or it has none. A row linked to the lead
+      // but to ANOTHER binder (Verma's reception carried Sarah's lead id, F-43.91) is someone
+      // else's event and is never taken as hers.
+      const byLead = await supabase.from('events').select('id, state, linked_binder_id')
         .eq('vendor_id', vendor.id).eq('linked_lead_id', leadId).neq('state', 'cancelled').is('deleted_at', null);
       const byBinder = await supabase.from('events').select('id, state')
         .eq('vendor_id', vendor.id).eq('linked_binder_id', binderId).neq('state', 'cancelled').is('deleted_at', null);
       if (byLead.error || byBinder.error) {
         event = { error: (byLead.error || byBinder.error).message };
       } else {
-        const found = [...(byLead.data || []), ...(byBinder.data || [])][0];
+        const ours = (byLead.data || []).filter((e) => e.linked_binder_id == null || e.linked_binder_id === binderId);
+        const found = [...ours, ...(byBinder.data || [])][0];
         if (found) event = { id: found.id, existing: true };
         else if (!isDateKey(lead.wedding_date)) event = { skipped: 'no_wedding_date' };
         else {

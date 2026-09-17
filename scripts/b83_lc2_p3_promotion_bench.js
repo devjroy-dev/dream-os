@@ -22,6 +22,8 @@
 //   §4.19 the F16 refusal carries a token, never prose; §4b.4 the DELETE door passes the code;
 //   §5.6 and §5.7 readOutstanding exposes lead_package_id; M24 to M26 bite them.
 //   No existing cell changed.
+// AMENDED BY LABEL (CE-43 LC-2r, packet 3c, F-43.87, chair-ruled): §6.27 and §6.28, M27.
+//   No existing cell changed.
 //
 // NOT PROVEN HERE (declared): the real database and the real engine client. The double models
 // the unique indexes this act relies on (uq_leads_binder_id, uq_invoices_lead_package,
@@ -599,6 +601,19 @@ function fakeWriteEvent(db, mode = 'ok') {
     const ce2 = await run(P, dbE2, { leadId: 'lead-sarah', kind: 'booking_confirmed' });
     r.eventOnce = ce2.out.body.promoted.event.existing === true && dbE2.tables.events.length === 1;
     // 6.12 the invoice race
+    // 6.27 / 6.28 · F-43.87: the Verma shape (lead link, another binder) is not hers; a lead-only
+    // link with no binder is.
+    const verma = { id: 'ev-verma', vendor_id: V.id, title: 'Verma - reception', linked_binder_id: 'b-verma', linked_lead_id: 'lead-sarah', state: 'upcoming', deleted_at: null };
+    const dbV = makeDb(world({ events: [{ ...verma }] }));
+    const cv = await run(P, dbV, { leadId: 'lead-sarah', kind: 'booking_confirmed' });
+    const vRow = dbV.tables.events.find((e) => e.id === 'ev-verma');
+    const sRow = dbV.tables.events.find((e) => e.id !== 'ev-verma');
+    r.notVerma = cv.out.status === 200 && cv.out.body.promoted.event.created === true && dbV.tables.events.length === 2
+      && !!sRow && sRow.title === 'Sarah · wedding' && sRow.linked_lead_id === 'lead-sarah' && sRow.linked_binder_id === dbV.tables.leads[0].binder_id
+      && JSON.stringify(vRow) === JSON.stringify(verma);
+    const dbL = makeDb(world({ events: [{ id: 'ev-lead', vendor_id: V.id, linked_binder_id: null, linked_lead_id: 'lead-sarah', state: 'upcoming', deleted_at: null }] }));
+    const cl = await run(P, dbL, { leadId: 'lead-sarah', kind: 'booking_confirmed' });
+    r.leadOnly = cl.out.body.promoted.event.existing === true && cl.out.body.promoted.event.id === 'ev-lead' && dbL.tables.events.length === 1;
     const dbI = makeDb(world());
     const invoicesLib = require(P_('src/lib/vendor/invoices.js'));
     const racing = async (sb, vid, p) => {
@@ -645,6 +660,8 @@ function fakeWriteEvent(db, mode = 'ok') {
     ok(r.crashResume, '§6.20 F3: a reservation left by a crashed run is opened under the same id');
     ok(r.choice1, '§6.21 choice 1: a calendar refusal is returned; the booking completes');
     ok(r.eventOnce, '§6.22 a live linked event means no second event');
+    ok(r.notVerma, '§6.27 F-43.87: an event linked to the lead but to another binder is not hers; her event is written and the other row is untouched');
+    ok(r.leadOnly, '§6.28 F-43.87: an event linked to the lead with no binder of its own is still taken as hers');
     ok(r.race, '§6.23 the invoice race: the winner is read, no second invoice, one number skipped');
     ok(r.failStep, '§6.24 a failed step answers 500 promotion_failed with the step named');
     ok(r.retryHeals, '§6.25 the next tap after a failed step completes the booking');
@@ -799,6 +816,8 @@ function fakeWriteEvent(db, mode = 'ok') {
     ['src/api/vendor-engine/cabinet.js', 'const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);', 'const isClientBinder = (b) => isClientStage(b);', async (m) => !(await slicerCells(m, null)).cabClient, 'M19 Clients ignores the booked lead → §2.1 RED'],
     ['src/api/vendor-engine/today.js', 'const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);', 'const isClientBinder = (b) => isClientStage(b);', async (m) => !(await slicerCells(null, m)).todayOut, 'M20 Today ignores the booked lead → §2.5 RED'],
     ['src/lib/vendor/bookingEvent.js', '&& ((bookedIds && bookedIds.has(row.id)) || isBookingStage(row.stage));', '&& isBookingStage(row.stage);', async (m) => !(await seamCells(m)).withSet, 'M21 the seam ignores the booked lead → §3.1 RED'],
+    // packet 3c (F-43.87), amended by label
+    ['src/lib/vendor/promotion.js', '(byLead.data || []).filter((e) => e.linked_binder_id == null || e.linked_binder_id === binderId)', '(byLead.data || [])', async (m) => !(await promotionCells(m)).notVerma, 'M27 any lead-linked event taken as hers → §6.27 RED'],
     // packet 3b (F-43.86), amended by label
     ['src/lib/vendor/invoices.js', 'lead_package_id: i.lead_package_id || null,', '', async (m) => !(await invoiceLibCells(m)).exposed, 'M24 the row drops lead_package_id → §5.6 RED'],
     ['src/api/vendor/invoiceSchedule.js', 'return errRes(res, 409, result.error, result.code);', 'return errRes(res, 409, result.error);', async (m) => !(await deleteDoorCells(m)).code, 'M25 the DELETE door drops the code → §4b.4 RED'],
