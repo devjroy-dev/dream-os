@@ -7,6 +7,7 @@
 //   §1 computeSchedule / splitShares (src/lib/vendor/packageSchedule.js), driven: C-43.2 to C-43.4,
 //      F10, F19, F20, F21, F24, F25, F26, with an arithmetic sweep for the remainder invariant.
 //   §2 validatePackage (src/api/vendor/packages.js): 0168's CHECKs as named refusals.
+//      P2b adds §2.9, §3.6b and M15 for F-43.78 (the middle share ignored when the switch is off).
 //   §3 the Packages writes, the real handlers over a database double that enforces 0168's three
 //      unique indexes on insert AND update, as Postgres does.
 //   §4 the lead's package (src/api/vendor/leadPackages.js): attach, edits, re-attach, refusals, read.
@@ -210,6 +211,13 @@ function validateCells(validatePackage) {
     pairing: f({ delivery_days: null }) === 'delivery_days' && validatePackage({ ...good, delivery_basis: 'on_the_day', delivery_days: 9 }).row.delivery_days === null,
     basis: f({ delivery_basis: 'later' }) === 'delivery_basis',
     items: f({ line_items: [{ label: 'Team', detail: ' ' }] }) === 'line_items' && f({ line_items: {} }) === 'line_items',
+    // F-43.78 (P2b): middle off → the share is not a refusal; the fallback is stored.
+    middleOff: (() => {
+      const a = validatePackage({ ...good, middle_enabled: false, middle_pct: null });
+      const b = validatePackage({ ...good, middle_enabled: false, middle_pct: 0 }, 45);
+      return a.ok && a.row.middle_pct === 30 && b.ok && b.row.middle_pct === 45
+        && f({ middle_enabled: true, middle_pct: null }) === 'middle_pct' && f({ middle_enabled: true, middle_pct: 0 }) === 'middle_pct';
+    })(),
   };
 }
 
@@ -232,6 +240,10 @@ async function writeCells(router) {
       && seed1.line_items.length === 5 && ed.body.package.split[0].amount === 18000;
     const ed2 = await call(router, 'patch', '/:id', { db, vendor: V, params: { id: seed1.id }, body: { deposit_pct: 75 } });
     r.patchMerged = ed2.status === 422 && ed2.body.field === 'remainder' && seed1.deposit_pct === 30;
+    const off = await call(router, 'patch', '/:id', { db, vendor: V, params: { id: seed1.id }, body: { middle_enabled: false, middle_pct: null } });
+    r.patchMiddleOff = off.status === 200 && seed1.middle_enabled === false && seed1.middle_pct === 30
+      && off.body.package.split.map((x) => x.kind).join() === 'deposit,final';
+    await call(router, 'patch', '/:id', { db, vendor: V, params: { id: seed1.id }, body: { middle_enabled: true } });
     const theirs = await call(router, 'patch', '/:id', { db, vendor: OTHER, params: { id: seed1.id }, body: { name: 'Stolen' } });
     r.patchScoped = theirs.status === 404 && seed1.name === 'Photographs, one day';
 
@@ -357,6 +369,7 @@ async function main() {
   ok(v.pairing === true, '§2.6 days needs delivery_days; other bases drop it');
   ok(v.basis === true, '§2.7 an unknown basis refuses');
   ok(v.items === true, '§2.8 a line item needs both a label and a detail');
+  ok(v.middleOff === true, '§2.9 F-43.78: with the middle payment off, a blank or zero share is not a refusal; the fallback is stored');
 
   sec('§3 · the Packages writes');
   const w = pkgs ? await writeCells(pkgs) : { err: 'no packages router' };
@@ -367,6 +380,7 @@ async function main() {
   ok(w.patch === true, '§3.4 Edit renames and prices a seed; seeded_from and vendor_id cannot be rewritten');
   ok(w.patchMerged === true, '§3.5 Edit validates the merged row (a share alone can still break the remainder)');
   ok(w.patchScoped === true, "§3.6 another vendor cannot edit her package");
+  ok(w.patchMiddleOff === true, '§3.6b F-43.78: switching the middle payment off with a blank share saves and keeps the stored share');
   ok(w.setDefault === true, '§3.7 Set as default moves the one default');
   ok(w.softDelete === true, '§3.8 Delete is soft and drops the default flag');
   ok(w.deletedGone === true, '§3.9 a deleted package cannot be deleted or edited again');
@@ -417,8 +431,9 @@ async function main() {
     ['src/lib/vendor/packageSchedule.js', "if (!isDateKey(delivery_on)) return { ok: false, code: 'no_handover_date' };", '', async (m) => !scheduleCells(m).handover, 'M6 the handover gate removed → §1.10 RED'],
     ['src/api/vendor/packages.js', ".update({ is_default: false, updated_at: now })\n    .eq('vendor_id', vendor.id)\n    .eq('is_default', true)", ".update({ updated_at: now })\n    .eq('vendor_id', vendor.id)\n    .eq('is_default', true)", async (m) => !(await writeCells(m)).setDefault, 'M7 the clear step dropped → §3.7 RED'],
     ['src/api/vendor/packages.js', ".eq('id', id)\n    .eq('vendor_id', vendorId)", ".eq('id', id)", async (m) => !(await writeCells(m)).patchScoped, 'M8 readLive loses its vendor scope → §3.6 RED'],
-    ['src/api/vendor/packages.js', "const v = validatePackage({ ...cur, ...pickWritable(req.body) });", "const v = validatePackage({ ...NEW_DEFAULTS, ...pickWritable(req.body), name: pickWritable(req.body).name || cur.name });", async (m) => !(await writeCells(m)).patchMerged || !(await writeCells(m)).patch, 'M9 Edit validates the body alone, not the merged row → §3.4/§3.5 RED'],
+    ['src/api/vendor/packages.js', "const v = validatePackage({ ...cur, ...pickWritable(req.body) }, cur.middle_pct);", "const v = validatePackage({ ...NEW_DEFAULTS, ...pickWritable(req.body), name: pickWritable(req.body).name || cur.name }, cur.middle_pct);", async (m) => !(await writeCells(m)).patchMerged || !(await writeCells(m)).patch, 'M9 Edit validates the body alone, not the merged row → §3.4/§3.5 RED'],
     ['src/api/vendor/packages.js', "if (error.code === '23505') {", 'if (false) {', async (m) => !(await writeCells(m)).race, 'M10 the race branch removed → §3.11 RED'],
+    ['src/api/vendor/packages.js', '    merged = { ...merged, middle_pct: fallbackMiddle };', "    return { ok: false, field: 'middle_pct' };", async (m) => !validateCells(m.validatePackage).middleOff || !(await writeCells(m)).patchMiddleOff, 'M15 the middle-off fallback removed → §2.9/§3.6b RED (F-43.78)'],
     ['src/api/vendor/leadPackages.js', ".update({ deleted_at: now, updated_at: now })\n    .eq('lead_id', leadId)", ".update({ updated_at: now })\n    .eq('lead_id', leadId)", async (m) => !(await attachCells(m)).reattach, 'M11 re-attach does not clear the live row → §4.4 RED'],
     ['src/api/vendor/leadPackages.js', "if (unknown.length) return res.status(422).json({ ok: false, error: 'invalid', field: unknown[0] });", '', async (m) => !(await attachCells(m)).onlyEdits, 'M12 any body key accepted → §4.9 RED'],
     ['src/api/vendor/leadPackages.js', "  const now = new Date().toISOString();\n  const { error: delErr } = await supabase", "  const now = new Date().toISOString();\n  await supabase.from('vendor_packages').update({ name: v.row.name }).eq('id', pkg.id);\n  const { error: delErr } = await supabase", async (m) => { const c = await attachCells(m); return !c.packageUntouched; }, "M13 the vendor's package mutated by an edited attach → §4.3 RED"],

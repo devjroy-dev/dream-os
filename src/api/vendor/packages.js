@@ -63,7 +63,12 @@ function cleanLineItems(v) {
 
 // Validates the MERGED row (current values under the body's), so a PATCH that touches one
 // share is still checked against the other. Returns { ok, row } or { ok: false, field }.
-function validatePackage(merged) {
+//
+// F-43.78 (CE-43 LC-2 P2b, the seat's defect): with the middle payment OFF, the middle share
+// does not apply and is never a reason to refuse. An absent or invalid share is replaced by
+// `fallbackMiddle` (the stored value on an edit, 30 on a new package), because 0168's CHECK
+// still needs a stored share between 1 and 98. With the middle payment ON, it is checked as before.
+function validatePackage(merged, fallbackMiddle = 30) {
   const row = {};
   const name = typeof merged.name === 'string' ? merged.name.trim() : '';
   if (!name || name.length > 120) return { ok: false, field: 'name' };
@@ -76,8 +81,12 @@ function validatePackage(merged) {
   if (merged.total != null && !(Number.isInteger(merged.total) && merged.total > 0)) return { ok: false, field: 'total' };
   row.total = merged.total == null ? null : merged.total;
   if (!(Number.isInteger(merged.deposit_pct) && merged.deposit_pct >= 1 && merged.deposit_pct <= 99)) return { ok: false, field: 'deposit_pct' };
-  if (!(Number.isInteger(merged.middle_pct) && merged.middle_pct >= 1 && merged.middle_pct <= 98)) return { ok: false, field: 'middle_pct' };
   if (typeof merged.middle_enabled !== 'boolean') return { ok: false, field: 'middle_enabled' };
+  const middleValid = Number.isInteger(merged.middle_pct) && merged.middle_pct >= 1 && merged.middle_pct <= 98;
+  if (!middleValid) {
+    if (merged.middle_enabled) return { ok: false, field: 'middle_pct' };
+    merged = { ...merged, middle_pct: fallbackMiddle };
+  }
   if (merged.deposit_pct + (merged.middle_enabled ? merged.middle_pct : 0) >= 100) return { ok: false, field: 'remainder' };
   row.deposit_pct = merged.deposit_pct;
   row.middle_pct = merged.middle_pct;
@@ -181,7 +190,7 @@ router.patch('/:id', requireAuth, resolveVendor({ paramName: 'id', via: 'vendor_
   const { data: cur, error: readErr } = await readLive(supabase, vendor.id, req.params.id);
   if (readErr) return errRes(res, 500, readErr.message);
   if (!cur) return errRes(res, 404, 'Not found.');
-  const v = validatePackage({ ...cur, ...pickWritable(req.body) });
+  const v = validatePackage({ ...cur, ...pickWritable(req.body) }, cur.middle_pct);
   if (!v.ok) return res.status(422).json({ ok: false, error: 'invalid', field: v.field });
   const { data, error } = await supabase
     .from('vendor_packages')

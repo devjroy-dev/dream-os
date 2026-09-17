@@ -1,0 +1,7 @@
+# scripts/floor-manifest-lc2-p2b.txt
+# TDW CE-43 · LC-2 P2b (dream-os) · the delivery's own file table [F-14.16].
+# No new directory. NOT LISTED: FINDINGS_LOG and the roadmap (the chair's to land).
+src/api/vendor/packages.js
+scripts/b82_lc2_p2_packages_bench.js
+scripts/floor-manifest-lc2-p2b.txt
+docs/handovers/TDW_CE43_LC2_P2B_HANDOVER.md
