@@ -1,6 +1,6 @@
 # TDW · CE-43 SPINE ROADMAP — the client lifecycle (2026-09-16)
 
-**Written by CE-43 (the chair) at** dream-os `fe35a480425f06087a438d92a086723ef1c7cf33` / dreamos-pwa `89f18af742b59662fa32085f203e471a05058082`, both derived by command at the moment of cutting. **Status:** RATIFIED IN CHAT by the founder 2026-09-16 unless a line is marked *open*. Amendment 1, 2026-09-17, LC-1 walked. Amendment 2, 2026-09-17, LC-1b walked; R-43.7 to R-43.10 landed. This file is the sequencing authority for CE-43. It stands on `docs/handovers/TDW_CE43_AUDIT1_HANDOVER.md` (F-43.1 to F-43.12, every file:line derived at `17ea09b1` / `89f18af7` from the founder's own rows on account 9888294440) and does not restate its evidence. It supersedes the CE-43 kickoff's item order and `CE_SUCCESSION_CE42_TO_CE43.md` §0 for as long as it is open. It does not amend the master; rulings that touch the master land as an amendment when the first affected packet cuts.
+**Written by CE-43 (the chair) at** dream-os `fe35a480425f06087a438d92a086723ef1c7cf33` / dreamos-pwa `89f18af742b59662fa32085f203e471a05058082`, both derived by command at the moment of cutting. **Status:** RATIFIED IN CHAT by the founder 2026-09-16 unless a line is marked *open*. Amendment 1, 2026-09-17, LC-1 walked. Amendment 2, 2026-09-17, LC-1b walked; R-43.7 to R-43.10 landed. Amendment 3, 2026-09-17, the founder's sequence after LC-4: G6 (her own number), the vendor provisions, the ads track, Block 09, then the bride lane; R-43.12 to R-43.15 landed; IDEAS-1 and IDEAS-2 filed. This file is the sequencing authority for CE-43. It stands on `docs/handovers/TDW_CE43_AUDIT1_HANDOVER.md` (F-43.1 to F-43.12, every file:line derived at `17ea09b1` / `89f18af7` from the founder's own rows on account 9888294440) and does not restate its evidence. It supersedes the CE-43 kickoff's item order and `CE_SUCCESSION_CE42_TO_CE43.md` §0 for as long as it is open. It does not amend the master; rulings that touch the master land as an amendment when the first affected packet cuts.
 
 **Why this file exists.** The audit found that the estate runs two client lifecycles side by side with the same words on them: a typed lead plane (`public.leads`, `public.events`, `public.invoices`, `public.clients`) and Victor's binder plane (`engine.records`). Nothing carries a fact from one to the other at the moments a vendor cares about. Three of the four vendor pages read one plane and the fourth reads the other. Every defect the founder saw on glass on 15 September is a symptom of that. This roadmap replaces the two lifecycles with one spine. It changes the shape of the product, so it is committed, not chatted.
 
@@ -14,7 +14,7 @@ Victor and Donna write a prospect's name, date, stage and money into `engine.rec
 
 ## §2 · FOUNDER RULINGS (his word is the ruling; the chair records)
 
-- **R-43.1** Everything else on the CE-43 board is HELD until LC-1 to LC-4 are walked. No other seat opens; no walk card from the succession note is chartered. The held walks resume after LC-4 in the order the founder then sets.
+- **R-43.1** Everything else on the CE-43 board is HELD until LC-1 to LC-4 are walked. No other seat opens; no walk card from the succession note is chartered. The held walks resume after LC-4 in the order the founder then sets. *(Amended 3: the order after LC-4 is now ruled in §9; the held walks re-sequence under it, vendor-side first, bride-side after Block 09.)*
 - **R-43.2** The audit seat reports, the chair bins, the founder sequences the cure. Sequencing beyond any sitting is the founder's.
 - **R-43.3** A package is the vendor's **own services only**. TDW seeds every vendor with default package options for their category at sign-up (backfilled for existing vendors). After seeding the rows are the vendor's: add, delete, rename and rewrite description and detail without limit. TDW never edits a vendor's package after seeding. Seed content is **drafted by a seat for the founder's veto**, verbatim, per category; no seat invents vendor-visible copy silently.
 - **R-43.4** The seed payment policy on every default package: **30% at booking · 30% one month before the event (optional) · the remainder on delivery.** Per package, vendor-editable. Mechanics ruled by the chair in §4.
@@ -74,7 +74,7 @@ Victor and Donna write a prospect's name, date, stage and money into `engine.rec
 
 **LC-4 · The vendor WhatsApp lane on the spine (R-43.6).** dream-os first, then any pwa tell. An enquiry on the vendor line files `public.leads` and never a binder-first record; `enquiryToBinder` is retired or re-pointed at the lead; Victor's WhatsApp replies quote from the attached package, and the promotion act runs from the lane exactly as from the web. Uses the newly approved Meta permissions where the lane needs them; any new template is a **new filing, never an edit** (R-42.2), rows added to `docs/TEMPLATES.md`. **Walk:** the test handset sends an enquiry to DEV440's line → a lead appears → Victor quotes the package → "booking confirmed" on WhatsApp → client, event, invoice, one act.
 
-**After LC-4:** the held walks (succession note §4 A to G) resume in the founder's order. The Meta approval also re-opens what waited on it (the Sunday brief's live half, the exchange's verification arm 4c-3b-2, R9); they stay held under R-43.1 until then.
+**After LC-4:** see §9 (Amendment 3). *Correction (IDEAS-1, c-43.16):* the Meta approval does **not** re-open the Sunday brief's live half or the exchange's verification arm; both are gated on an Instagram permission the estate does not hold (`capabilities.js:318`, `sundayBrief.js:14,62`). The one provision the approval truly opens is R9, a vendor's own number, and that is G6 in §9.
 
 ---
 
@@ -102,5 +102,29 @@ c-43.1 the first AUDIT-1 charter was not to §10 form · c-43.2 the plane list o
 1. ~~**Delivery default** (C-43.5): event date, or event date plus a category gap?~~ Answered by R-43.7 (Amendment 2).
 2. **Seed drafts**: delivered by PKG-COPY, chair-vetoed under R-43.10.
 3. ~~**Receipt line** copy per payment (Moment 3): wanted at LC-2 or later? Chair's lean: LC-3, once the invoice fills correctly.~~ Answered by R-43.8 (Amendment 2).
+
+## §9 · THE ORDER AFTER LC-4 (Amendment 3, founder-ruled 2026-09-17)
+
+**Founder rulings**
+
+- **R-43.12** Vendor-side provisions build first. The bride lane (P3, P16, P17, P18 in `TDW_CE43_VENDOR_PROVISIONS.md`, and the bride-side walks held from the succession note) resumes only after Block 09 closes.
+- **R-43.13** Ads is on the roadmap as its own track, ADS-1. The founder applies to Meta for the Marketing API now (ads_management and ads_read at Advanced access, business_management, the Page and Instagram permissions, the Marketing API access tier, Business Verification confirmed); the application runs in parallel with LC-2 to LC-4 and needs no byte in the tree. When it lands, VP-5 builds "Ads" as a room on the PWA: the vendor picks a package, a budget and dates; the ad runs as her Page and her Instagram from her own ad account on her own card; the click lands in her WhatsApp on the free three-day window; Victor answers as her front desk; the Sunday brief shows what each rupee of spend became. The spend never touches TDW; zero commission holds.
+- **R-43.14** Two Meta dates are facts, not gates. 23 September 2026 is the effective date of Meta's revised Tech Provider terms, which the founder reads before he accepts them by pressing "Start onboarding"; 15 October 2026 is Meta's retirement of Embedded Signup v2. G6 builds on Embedded Signup v4 from the start, so neither date sequences anything. The G6 seat re-verifies both on Meta's pages at charter; the estate's notes are a reading, not a page.
+- **R-43.15** The shared way is the default for every vendor connecting her own number (she keeps her WhatsApp Business app; her history and contacts come across; her own typing is echoed to the spine). The moved way (her number runs only through TDW; calling and the in-chat catalogue become possible) is opt-in per vendor. *Open for the founder's yes; the chair's lean recorded.*
+
+**The order**
+
+1. LC-2, LC-3, LC-4 as §5, unchanged. Nothing else opens until LC-4 walks.
+2. **G6 · Her own number.** Embedded Signup v4; shared way default, moved opt-in (R-43.15); shell first and whole (R-42.14), benched on the founder's test number; the terms read is the gate for the first live vendor, not for the build. Re-verify R-43.14's dates on Meta's pages at charter.
+3. **The vendor provisions**, one walk per sitting, in the founder's rank from `TDW_CE43_VENDOR_PROVISIONS.md` Part D: **VP-1** the front desk (P1 with P11 date hold, P22 number health, P21 stay-connected); **VP-2** her history and her own typing (P9, P10, P20); **VP-3** money in her own account (P4 or B4, and P23); **VP-4** the wedding day (P13, P14, P15; needs several vendors on one wedding); **VP-5** ads (R-43.13, on Meta's approval). The vendor-side held walks from the succession note (broadcasts D, the shoot board E, the exchange B) re-sequence among these in the founder's order.
+4. **Block 09.**
+5. **The bride lane**: P3, P16, P17, P18, and the bride-side held walks (Frost cards, the muse), in the founder's order (R-43.12).
+
+**Idea sittings, filed**
+
+- **IDEAS-1** (2026-09-17): the WhatsApp inventory and the finding that WABA-DIRECT could already exercise most of what the two permissions name; the real unlock is R9. Its Part D is superseded. Its read-first is credited and rides `TDW_CE43_VENDOR_PROVISIONS.md` §0.
+- **IDEAS-2** (2026-09-17): the provisions sheet, Parts A to E, committed as `TDW_CE43_VENDOR_PROVISIONS.md`. Nothing in it is chartered by being proposed (R-43.1); each provision charters as a sitting under this §9.
+
+---
 
 Trust evidence over narrative, including this file. Sequencing beyond any sitting is the founder's.
