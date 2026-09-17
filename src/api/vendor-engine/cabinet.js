@@ -85,7 +85,12 @@ router.get('/:vendorId',
     // CE-43 · LC-2 · F13(a): a binder with a booked lead behind it is a client, PLUS the
     // legacy six-word set above (LC-1's F-43.18 two homes stay until LC-3 retires them).
     const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);
-    const clients = allBinders.filter(isClientBinder);
+    // CE-43 · LC-2 · packet 3e · point 5 (a), chair-ruled: each client binder carries `booked_lead`,
+    // true when a booked lead stands behind it (the same set this read already holds; no new
+    // query). The PWA hides the binder card's empty-note line on it. `binder_id` itself stays off
+    // every wire (F-43.73); only this boolean leaves.
+    const clients = allBinders.filter(isClientBinder)
+      .map((b) => ({ ...b, booked_lead: bookedLeads.ids.has(b.id) }));
     const leads   = allBinders.filter(b => !isClientBinder(b) && (b.direction || '').toLowerCase() !== 'out');
     // ── `paid` RETIRED at P7.2 Arm E (CE-39, 2026-09-04) ──────────────────────────
     // F-2b2.3 listed this slice for retirement on the ground that its readers were the old

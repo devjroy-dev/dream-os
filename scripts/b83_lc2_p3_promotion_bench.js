@@ -25,6 +25,9 @@
 // AMENDED BY LABEL (CE-43 LC-2r, packet 3c, F-43.87, chair-ruled): §6.27 and §6.28, M27.
 //   No existing cell changed.
 //
+// AMENDED BY LABEL (CE-43 LC-2r, packet 3e, point 5 (a), chair-ruled): §2.6 and §2.7, M31.
+//   No existing cell changed.
+//
 // NOT PROVEN HERE (declared): the real database and the real engine client. The double models
 // the unique indexes this act relies on (uq_leads_binder_id, uq_invoices_lead_package,
 // payment_schedules (invoice_id, ordinal), the records primary key); the founder's walk and
@@ -335,6 +338,11 @@ function fakeWriteEvent(db, mode = 'ok') {
       r.cabLead = l.includes('b-lead') && !c.includes('b-lead');
       const bad = await quiet(() => call(cabinetMod, 'get', '/:vendorId', { db: makeDb(seed(), { fail: (x) => (x.table === 'leads' ? { message: 'down' } : null) }), vendor: V, params: { vendorId: V.id }, agentId: AGENT }));
       r.cabFails = bad.status === 500 && bad.body && bad.body.which === 'leads';
+      const byId = new Map((out.body && out.body.clients || []).map((b2) => [b2.id, b2]));
+      r.flag = byId.has('b-promoted') && byId.get('b-promoted').booked_lead === true
+        && byId.has('b-legacy') && byId.get('b-legacy').booked_lead === false;
+      r.flagOnlyClients = (out.body && out.body.leads || []).every((b2) => !('booked_lead' in b2))
+        && !JSON.stringify(out.body || {}).includes('"binder_id"');
     }
     if (todayMod) {
       const out = await call(todayMod, 'get', '/:vendorId', { db: makeDb(seed()), vendor: V, params: { vendorId: V.id }, agentId: AGENT });
@@ -351,6 +359,8 @@ function fakeWriteEvent(db, mode = 'ok') {
     ok(r.cabLead, '§2.3 Clients: a binder whose lead is only quoted stays a lead');
     ok(r.cabFails, '§2.4 Clients: a failed booked-lead read refuses (500, which = leads), never a silent empty set');
     ok(r.todayOut, '§2.5 Today: the promoted binder leaves new_leads; the quoted one stays');
+    ok(r.flag, '§2.6 point 5 (a): a client binder carries booked_lead, true with a booked lead behind it, false on a legacy client');
+    ok(r.flagOnlyClients, '§2.7 point 5 (a): only client binders carry the flag, and no binder_id leaves the wire (F-43.73)');
   }
 
   async function seamCells(BE) {
@@ -816,6 +826,8 @@ function fakeWriteEvent(db, mode = 'ok') {
     ['src/api/vendor-engine/cabinet.js', 'const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);', 'const isClientBinder = (b) => isClientStage(b);', async (m) => !(await slicerCells(m, null)).cabClient, 'M19 Clients ignores the booked lead → §2.1 RED'],
     ['src/api/vendor-engine/today.js', 'const isClientBinder = (b) => bookedLeads.ids.has(b.id) || isClientStage(b);', 'const isClientBinder = (b) => isClientStage(b);', async (m) => !(await slicerCells(null, m)).todayOut, 'M20 Today ignores the booked lead → §2.5 RED'],
     ['src/lib/vendor/bookingEvent.js', '&& ((bookedIds && bookedIds.has(row.id)) || isBookingStage(row.stage));', '&& isBookingStage(row.stage);', async (m) => !(await seamCells(m)).withSet, 'M21 the seam ignores the booked lead → §3.1 RED'],
+    // packet 3e (point 5), amended by label
+    ['src/api/vendor-engine/cabinet.js', '.map((b) => ({ ...b, booked_lead: bookedLeads.ids.has(b.id) }));', ';', async (m) => !(await slicerCells(m, null)).flag, 'M31 no booked_lead on the client binders → §2.6 RED'],
     // packet 3c (F-43.87), amended by label
     ['src/lib/vendor/promotion.js', '(byLead.data || []).filter((e) => e.linked_binder_id == null || e.linked_binder_id === binderId)', '(byLead.data || [])', async (m) => !(await promotionCells(m)).notVerma, 'M27 any lead-linked event taken as hers → §6.27 RED'],
     // packet 3b (F-43.86), amended by label
