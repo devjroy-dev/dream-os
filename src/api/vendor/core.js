@@ -34,6 +34,11 @@ router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip 
 // §8.9's retirement of the engine reader is a CROSS-REPO seam (the Storefront
 // consumer repoints in the same motion) and is chartered, not done here.
 router.use('/worklist', require('./worklistToday'));
+// ── CE-43 LC-2 packet 2 · F22 (a) · THE LEAD'S PACKAGE MOUNTS HERE, ABOVE THE LEADS ROUTER ──
+// `leadPackages.js` declares `/:leadId/package`; `leads.js` owns `GET /:vendorId` and several
+// `/:leadId/...` routes. The F-40.181 pattern below (schedule above invoices): adjacency is the
+// whole guarantee, so nothing may be mounted between these two lines.
+router.use('/leads',    require('./leadPackages'));
 router.use('/leads',    require('./leads'));
 router.use('/clients',  require('./clients'));
 router.use('/packages', require('./packages'));   // CE-43 LC-2: the Packages room's read (seeds on first read)
