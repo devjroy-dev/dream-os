@@ -1,0 +1,5 @@
+# scripts/floor-manifest-lc2-p4a-readfirst.txt
+# TDW CE-43 · LC-2 packet 4a read-first (dream-os, docs only) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+docs/handovers/TDW_CE43_LC2_P4A_READFIRST.md
+scripts/floor-manifest-lc2-p4a-readfirst.txt
