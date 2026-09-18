@@ -1,0 +1,11 @@
+# scripts/floor-manifest-ce44-lc2-p5.txt
+# TDW CE-44 · LC-2 packet 5 (dream-os) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+docs/handovers/TDW_CE44_LC2_P5_HANDOVER.md
+scripts/b82_lc2_p2_packages_bench.js
+scripts/b85_lc2_p5_bench.js
+scripts/floor-manifest-ce44-lc2-p5.txt
+src/api/vendor-engine/chat.js
+src/api/vendor/leadPackages.js
+src/lib/invoicePdf.js
+src/lib/vendor/calendarSignals.js

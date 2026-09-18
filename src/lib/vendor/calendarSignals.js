@@ -451,6 +451,22 @@ async function lockstepBinderToEvent(supabase, vendor, result) {
         && typeof call.input.date === 'string' && call.input.date.trim()) {
       moves.set(String(call.input.binder_id), call.input.date.trim());
     }
+    // ── F-43.26 · THE MERGE HAND MOVES A DATE TOO ────────────────────────────
+    // `donna_merge` folds the cells she names onto the SURVIVOR, `date` among them
+    // (recordPrimitives.ts's `k in input` loop), and it is keyed by `survivor_id`,
+    // not `binder_id`. So a merge that names a new date left the survivor's linked
+    // event standing on the old one. Filed at LC-1, inherited to LC-2, cured here.
+    //
+    // THE SPLIT HALF OF F-43.26 IS STRUCK (chair, CE-44, with the evidence in this
+    // packet's handover): `donna_split` puts the named date on a NEW record, the
+    // source keeps its own, a new binder has no linked event for this lockstep to
+    // move, and its id lives only in the display, which no gate may parse (CE-215).
+    // `bookingEvent.js` already gives that new binder its event. A line for it here
+    // could never fire, so none is written.
+    if (call.name === 'donna_merge' && call.input.survivor_id
+        && typeof call.input.date === 'string' && call.input.date.trim()) {
+      moves.set(String(call.input.survivor_id), call.input.date.trim());
+    }
   };
   for (const tc of (result.tool_calls || [])) { collect(tc); for (const dc of (tc.donna_calls || [])) collect(dc); }
   for (const [binderId, date] of moves) {

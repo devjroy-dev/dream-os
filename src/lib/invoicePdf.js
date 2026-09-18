@@ -298,11 +298,11 @@ async function generateInvoicePdf({ invoice, vendor, vendorName, schedule, seal 
         const ALIGN = ['left', 'right', 'left', 'right', 'right'];
         const PAD = 6;
 
+        const cellWidth = (i) => W[i] - (i === 0 ? PAD : i === W.length - 1 ? PAD : PAD * 2);
         const cell = (i, text, opts) => {
-          const isFirst = i === 0, isLast = i === W.length - 1;
+          const isFirst = i === 0;
           const x = X[i] + (isFirst ? 0 : PAD);
-          const w = W[i] - (isFirst ? PAD : isLast ? PAD : PAD * 2);
-          doc.text(text, x, opts.y, { width: w, align: ALIGN[i], lineBreak: false });
+          doc.text(text, x, opts.y, { width: cellWidth(i), align: ALIGN[i], lineBreak: false });
         };
 
         doc.fontSize(7.5).fillColor(COLOUR_GREY_LIGHT).font('Helvetica');
@@ -314,18 +314,50 @@ async function generateInvoicePdf({ invoice, vendor, vendorName, schedule, seal 
         rule(y);
         y += 8;
 
+        // ── F-44.29 · THE ROW ADVANCES BY THE LABEL'S MEASURED HEIGHT ─────────
+        // WHAT SHIPPED ON A COUPLE'S DOCUMENT. The row advanced by a flat `y += 14`
+        // while a long `milestone_label` wrapped to two lines, so the label overran
+        // the row beneath it and the last one overran the PAYMENT heading. Measured
+        // on this renderer's own font at this column's own width (146pt): the deposit
+        // label needs 142pt and stands 10.4pt tall on one line; `30% one month before
+        // the first function (optional)` needs 197pt and `The remainder, on delivery,
+        // before the work is handed over` needs 234pt, so both wrap to two lines and
+        // stand 20.8pt. Against a 14pt row that is a ~7pt overrun each.
+        //
+        // IT RENDERED THAT WAY SINCE G2 AND WAS INVISIBLE UNTIL CE-44, because the
+        // chat-served copy never carried a schedule to wrap until F-43.82's cure gave
+        // it one. The cure that exposed it is what made it findable.
+        //
+        // THE CURE IS A MEASUREMENT, NOT A FIT TO TWO STRINGS. `heightOfString` is
+        // asked for the label at the column's real width, and the row takes whichever
+        // is taller, that or the 14pt the table has always used, so a one-line label
+        // renders byte-identically to before. A THIRD, THREE-LINE FIXTURE IS BENCHED
+        // for exactly this reason: a cure tuned to the two labels that exist today
+        // would pass a bench and fail the first vendor who writes a longer one.
+        //
+        // NO LABEL IS RE-WORDED. R-43.3 and R-43.10 hold and the seed ships verbatim;
+        // the page grows to fit the founder's bytes rather than the bytes being cut
+        // to fit the page.
+        const LABEL_COL = 0;
+        const ROW_MIN_H = 14;
         for (const m of rows) {
+          const label = m.milestone_label || '';
+          doc.fontSize(9).font('Helvetica');
+          const labelH = label ? doc.heightOfString(label, { width: cellWidth(LABEL_COL) }) : 0;
+          const rowH = Math.max(ROW_MIN_H, Math.ceil(labelH));
           const pct = m.pct == null ? '' : `${Number(m.pct)}%`;
           // F3 — the milestone state is `payment_schedules.state`'s own vocabulary
           // {pending, paid, waived}, title-cased by the same law as the invoice state.
           const st = m.state ? m.state.charAt(0).toUpperCase() + m.state.slice(1) : '';
           doc.fontSize(9).font('Helvetica');
-          doc.fillColor(COLOUR_BLACK);     cell(0, m.milestone_label || '', { y });
+          // The label alone wraps; every other cell is one line by construction.
+          doc.fillColor(COLOUR_BLACK);
+          doc.text(label, X[0], y, { width: cellWidth(LABEL_COL), align: ALIGN[0] });
           doc.fillColor(COLOUR_GREY_DARK); cell(1, pct, { y });
           doc.fillColor(COLOUR_GREY_DARK); cell(2, fmtDate(m.due_date) || '\u2014', { y });
           doc.fillColor(COLOUR_GREY_DARK); cell(3, money(m.amount_due), { y });
           doc.fillColor(COLOUR_GREY_DARK); cell(4, st, { y });
-          y += 14;
+          y += rowH;
           rule(y);
           y += 8;
         }

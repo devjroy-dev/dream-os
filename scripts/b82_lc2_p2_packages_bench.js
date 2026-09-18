@@ -318,8 +318,15 @@ async function attachCells(router) {
     const jw = await call(router, 'post', '/:leadId/package', { db, vendor: V, params: { leadId: 'lead-sarah' }, body: { package_id: 'pkg-jewel' } });
     const jw2 = await call(router, 'post', '/:leadId/package', { db, vendor: V, params: { leadId: 'lead-sarah' }, body: { package_id: 'pkg-jewel', delivery_on: '2026-12-15' } });
     r.handover = jw.status === 422 && jw.body.code === 'no_handover_date' && jw2.status === 200 && jw2.body.lead_package.delivery_on === '2026-12-15';
-    const unk = await call(router, 'post', '/:leadId/package', { db, vendor: V, params: { leadId: 'lead-sarah' }, body: { package_id: 'pkg-set', deposit_pct: 50 } });
-    r.onlyEdits = unk.status === 422 && unk.body.field === 'deposit_pct';
+    // ── LABELED AMENDMENT (CE-44, LC-2t, packet 5, F-44.6). RE-AIMED, TEETH KEPT,
+    // COUNT PRESERVED, RATIFY-OR-REVERT. The founder walked the gap this cell used to
+    // guard: "the change package button does not give an option of altering the
+    // payment schedule." The five shape fields are now per-couple, so `deposit_pct`
+    // is accepted where it was refused. THE SUBJECT IS UNTOUCHED — this cell has
+    // always asserted that the accept-list is CLOSED and that a key outside it is
+    // refused by name, and it still does, on a key that is outside it in both worlds.
+    const unk = await call(router, 'post', '/:leadId/package', { db, vendor: V, params: { leadId: 'lead-sarah' }, body: { package_id: 'pkg-set', not_a_field: 1 } });
+    r.onlyEdits = unk.status === 422 && unk.body.field === 'not_a_field';
     const gone = await call(router, 'post', '/:leadId/package', { db, vendor: V, params: { leadId: 'lead-sarah' }, body: { package_id: 'pkg-gone' } });
     r.deletedPackage = gone.status === 422 && gone.body.field === 'package_id';
     const theirs = await call(router, 'post', '/:leadId/package', { db, vendor: V, params: { leadId: 'lead-theirs' }, body: { package_id: 'pkg-set' } });
@@ -398,7 +405,7 @@ async function main() {
   ok(a.readNone === true, '§4.6 GET on a lead with none returns null');
   ok(a.monthDate === true, '§4.7 F24: a month-precision wedding date refuses no_wedding_date');
   ok(a.handover === true, '§4.8 F25: a handover package refuses without delivery_on and uses it when given');
-  ok(a.onlyEdits === true, '§4.9 F23: only the five edits are accepted (a share cannot change per couple)');
+  ok(a.onlyEdits === true, '§4.9 F23: the accept-list is closed — a key outside it is refused by name (re-aimed at CE-44, F-44.6)');
   ok(a.deletedPackage === true, '§4.10 a deleted package cannot be attached');
   ok(a.scoped === true, "§4.11 another vendor's lead is not found");
   ok(a.halfFailure === true, '§4.12 the named half-failure: live row cleared, insert refused, 500 and no live row');

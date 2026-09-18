@@ -2750,6 +2750,19 @@ async function lockstepBinderToEvent(req, result) {
       if (isErr(call.result) || isDateUnchanged(call.result)) return; // no write landed -> nothing to mirror
       moves.set(String(call.input.binder_id), call.input.date.trim());
     }
+    // ── F-43.26 · THE MERGE HAND, keyed on survivor_id ───────────────────────
+    // See the twin in `lib/vendor/calendarSignals.js` for why, and for why the
+    // finding's split half is struck. THE TWO COLLECTORS ARE NOT IDENTICAL AND ARE
+    // NOT MADE SO HERE: this one carries `isErr` and `isDateUnchanged`, so a refused
+    // or no-op merge mirrors nothing; the calendarSignals twin has never had those
+    // guards for any hand, and CE-44 ruled that it does not gain them for this one.
+    // Widening a sibling's behaviour while curing a finding is how a second defect
+    // rides in unnamed.
+    if (call.name === 'donna_merge' && call.input.survivor_id
+        && typeof call.input.date === 'string' && call.input.date.trim()) {
+      if (isErr(call.result)) return;
+      moves.set(String(call.input.survivor_id), call.input.date.trim());
+    }
   };
   for (const tc of (result.tool_calls || [])) { collect(tc); for (const dc of (tc.donna_calls || [])) collect(dc); }
   for (const [binderId, date] of moves) {

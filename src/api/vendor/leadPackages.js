@@ -44,7 +44,23 @@ const LEAD_PACKAGE_SELECT =
   'id, lead_id, package_id, snapshot, total, schedule, delivery_on, quoted_at, created_at, updated_at';
 const SNAPSHOT_KEYS = ['name', 'description', 'line_items', 'deposit_pct', 'middle_pct',
   'middle_enabled', 'delivery_basis', 'delivery_days'];
-const EDITABLE = ['name', 'description', 'line_items', 'total', 'delivery_on'];
+// ── EDITABLE · THE ATTACH ROUTE'S ACCEPT-LIST (widened at CE-44, F-44.6) ─────
+// F23 let the couple's copy carry its own name, wording, items and fee. The founder
+// walked the gap: "the change package button does not give an option of altering the
+// payment schedule. it doesnt mirror the package page." The five shape fields now
+// join it, so a couple's schedule is theirs and not the package's.
+//
+// THIS IS THE ONLY DOOR. There is no PATCH route on this router: "Change package"
+// re-attaches, which retires the live lead_packages row and inserts a fresh one
+// (below). So widening this list and the overlay together is the whole cure.
+//
+// `delivery_on` is in this list but NOT in the overlay loop: it is not a package
+// column, and it reaches `computeSchedule` on its own a few lines down.
+const EDITABLE = ['name', 'description', 'line_items', 'total', 'delivery_on',
+  'deposit_pct', 'middle_pct', 'middle_enabled', 'delivery_basis', 'delivery_days'];
+// The overlay's own keys: EDITABLE minus `delivery_on`, for the reason above.
+const OVERLAY_KEYS = ['name', 'description', 'line_items', 'total',
+  'deposit_pct', 'middle_pct', 'middle_enabled', 'delivery_basis', 'delivery_days'];
 
 async function readLiveLeadPackage(supabase, vendorId, leadId) {
   return supabase
@@ -75,12 +91,42 @@ async function attachPackage(supabase, vendor, leadId, rawBody) {
 
   const { data: lead, error: leadErr } = await supabase
     .from('leads')
-    .select('id, vendor_id, wedding_date, wedding_date_precision, deleted_at')
+    .select('id, vendor_id, wedding_date, wedding_date_precision, state, binder_id, deleted_at')
     .eq('id', leadId)
     .eq('vendor_id', vendor.id)
     .maybeSingle();
   if (leadErr) return { status: 500, body: { ok: false, error: leadErr.message } };
   if (!lead || lead.deleted_at) return { status: 404, body: { ok: false, error: 'Not found.' } };
+
+  // ── F-44.31 · A BOOKED COUPLE'S PACKAGE IS FIXED ON THEIR INVOICE ──────────
+  // WHAT THIS STOPS, derived on the tree at CE-44. A re-attach retires the live
+  // lead_packages row and inserts a fresh one with a new id, a fresh schedule and a
+  // fresh delivery_on. NOTHING ELSE MOVES: the invoice keeps its lead_package_id on
+  // the RETIRED row, its amount_total, its payment_schedules rows and its due_date,
+  // and F4 in generateInvoiceForBinder keeps serving it. So the package card and the
+  // couple's invoice would disagree in silence, and the money she is owed would not
+  // follow the fee she just changed. That was already reachable through `total`
+  // alone; widening the accept-list above opens five more ways in.
+  //
+  // THE TEST IS PROMOTION, NOT PAYMENT (chair, CE-44). A lead booked with no advance
+  // is locked exactly as one with an advance. `invoices.js:341` tests
+  // `amount_received > 0` and so lets a booked-but-unpaid couple through; this route
+  // does not repeat that gap.
+  //
+  // RAISED BEFORE THE PACKAGE IS READ, so a refused re-attach does no soft-delete,
+  // no insert and no wasted query.
+  //
+  // THE REFUSAL CARRIES A TOKEN AND NO SENTENCE (F-43.86 (b1)): the door owns the
+  // code, the PWA owns the line. `already_booked` is snake_case and names the
+  // obstacle, as `no_package`, `no_fee`, `no_wedding_date` and `no_handover_date` do.
+  //
+  // THIS IS A HOLDING POSITION, NOT THE ANSWER. The proper post-booking change, where
+  // the invoice and its instalments move with the package, is F-44.17's and LC-3's.
+  // Until that is built the honest act is to refuse rather than to let two records
+  // drift apart.
+  if (String(lead.state || '').trim().toLowerCase() === 'booked' || lead.binder_id) {
+    return { status: 422, body: { ok: false, error: 'refused', code: 'already_booked' } };
+  }
 
   const { data: pkg, error: pkgErr } = await supabase
     .from('vendor_packages')
@@ -95,7 +141,7 @@ async function attachPackage(supabase, vendor, leadId, rawBody) {
   // The snapshot: the package, with the couple's edits laid over it (F23), validated as a
   // package so the same CHECKs hold on the copy.
   const merged = { ...pkg };
-  for (const k of ['name', 'description', 'line_items', 'total']) {
+  for (const k of OVERLAY_KEYS) {
     if (Object.prototype.hasOwnProperty.call(body, k)) merged[k] = body[k];
   }
   const v = validatePackage(merged);
@@ -155,8 +201,16 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
 //   | 500 { ok:false, error:'promotion_failed', step }
 // One home: src/lib/vendor/promotion.js promoteLead. This door carries no words (F26); the
 // PWA maps A9's codes and reads F29 for anything else.
+const PROMOTE_KEYS = ['kind', 'advance_received_on'];
+
 router.post('/:leadId/promote', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), resolveAgent(), asyncHandler(async (req, res) => {
   const body = req.body || {};
+  // CE-44: the same filter the attach route has carried since packet 2 (:72). A key
+  // this route does not accept was ignored in silence, which is the shape that made
+  // F-44.6 dangerous on the door above. The refusal is the one this route's own
+  // contract already documents, `422 invalid` with the field named; no new byte.
+  const unknown = Object.keys(body).filter((k) => !PROMOTE_KEYS.includes(k));
+  if (unknown.length) return res.status(422).json({ ok: false, error: 'invalid', field: unknown[0] });
   const r = await promoteLead(req.app.locals.supabase, {
     vendor: req.vendor,
     agentId: req.agentId,
