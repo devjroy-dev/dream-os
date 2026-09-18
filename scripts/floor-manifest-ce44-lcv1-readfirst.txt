@@ -1,0 +1,5 @@
+# scripts/floor-manifest-ce44-lcv1-readfirst.txt
+# TDW CE-44 · LCV-1 · the LC-Victor read-first (dream-os, docs only) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+docs/handovers/TDW_CE44_LCV_READFIRST.md
+scripts/floor-manifest-ce44-lcv1-readfirst.txt
