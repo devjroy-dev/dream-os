@@ -29,7 +29,7 @@ const resolveVendor  = require('../middleware/resolveVendor');
 const resolveAgent   = require('../middleware/resolveAgent');
 const asyncHandler         = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-const { createInvoice, updateInvoice } = require('../../lib/vendor/invoices');
+const { createInvoice, updateInvoice, invoicePdfSource } = require('../../lib/vendor/invoices'); // F-43.82 (CE-44 packet 4a): the typed source home
 const { generateInvoicePdf }  = require('../../lib/invoicePdf');
 const { executeAndPatch } = require('../../lib/executeAndPatch');
 const isErr = (r) => !!r && typeof r.display === 'string' && r.display.startsWith('ERROR');
@@ -175,29 +175,74 @@ router.patch('/:invoiceId/cancel', requireAuth, resolveVendor(), resolveAgent(),
 // Generate the invoice PDF, upload to the `invoices` storage bucket, set pdf_url.
 // Best-effort: returns the signed URL on success, null on any failure (the invoice
 // itself is already created — a PDF failure must never 500 the create call).
-async function generateAndStoreInvoicePdf(supabase, vendor, invoice) {
+// ── F-43.82, RE-AIMED (CE-44 · LC-2 · packet 4a, chair-ruled) ───────────────
+// THIS FUNCTION HAS TWO CALLERS AND THEY ARE NOT THE SAME DOCUMENT, and until now
+// the comments below spoke only for one of them.
+//
+//   :448, the BINDER path — an invoice minted moments earlier in this very call.
+//         It has no milestones because nothing has had time to write any, and it
+//         is rendered inside the create hot path.
+//   :392, the PACKAGE path — an invoice the promotion act minted, with a schedule
+//         already on it, rendered on demand for the chat lane. This is the document
+//         the couple is shown. It was being served with NO schedule and NO seal,
+//         while the very same invoice served from GET /invoices/:vendorId/:invoiceId/pdf
+//         carried both. One document, two renderings, and only one of them complete.
+//
+// `typed: true` is the package path's answer: the WHOLE source comes from
+// `invoicePdfSource` (src/lib/vendor/invoices.js), the one typed home the money
+// lane already uses. No second reader and no second formatter — the schedule rides
+// on any invoice that has milestones, gated there on the real `has_schedule` column,
+// and an invoice with none renders exactly as it does today.
+//
+// THE CREATE PATH IS UNCHANGED AND STAYS CHEAP. It passes no `typed`, adds no query,
+// and still renders with `schedule: []` and `seal: null` — now because it HAS neither,
+// which is a fact a cell proves rather than a comment asserts.
+//
+// TYPED AND UNREADABLE RETURNS null RATHER THAN RENDERING. The caller already treats
+// null as "PDF generation failed"; quietly falling back to the cheap path would serve
+// the couple the very document this cure exists to stop.
+async function generateAndStoreInvoicePdf(supabase, vendor, invoice, opts = {}) {
   try {
-    const { data: u } = await supabase
-      .from('users').select('name').eq('id', vendor.user_id).maybeSingle();
+    let row = invoice;
+    let vendorRow = vendor;
+    let vendorName = null;
+    let schedule = [];
+    let seal = null;
+
+    if (opts.typed) {
+      const src = await invoicePdfSource(supabase, vendor.id, invoice.id);
+      if (!src.ok) {
+        console.error('[invoices:pdf] typed source failed:', src.error);
+        return null;
+      }
+      row = src.invoice;
+      vendorRow = src.vendor || vendor;
+      vendorName = src.vendorName;
+      schedule = src.schedule;
+      seal = src.seal;
+    }
+
+    if (!vendorName) {
+      const { data: u } = await supabase
+        .from('users').select('name').eq('id', vendor.user_id).maybeSingle();
+      vendorName = u?.name || vendor.business_name || 'Vendor';
+    }
 
     const pdfBuffer = await generateInvoicePdf({
-      invoice,
-      vendor,
-      vendorName: u?.name || vendor.business_name || 'Vendor',
-      // S2 · EMPTY BY CONSTRUCTION, NOT BY OVERSIGHT. `has_schedule` defaults to
-      // false on `public.invoices` and `createSchedule` refuses an invoice that
-      // already has one, so a just-created invoice cannot have milestones yet.
+      invoice: row,
+      vendor: vendorRow,
+      vendorName: vendorName || 'Vendor',
+      // S2 · On the create path these are EMPTY BY CONSTRUCTION, NOT BY OVERSIGHT:
+      // `has_schedule` defaults to false on `public.invoices` and `createSchedule`
+      // refuses an invoice that already has one, so a just-created invoice cannot
+      // have milestones, and reading `vendor_seal` there would add a query to the
+      // hot path of every create to decorate a document the couple has not been
+      // sent yet. On the typed path both arrive from the source home above, which
+      // gates the schedule on the real column and reads the seal once.
       // Passed explicitly rather than left undefined so a reader can tell the
       // difference between "none exist" and "nobody asked".
-      schedule: [],
-      // ── G2 · null EXPLICITLY, AND FOR THE SAME REASON `schedule: []` IS ───
-      // A just-created invoice is rendered the instant it exists, inside the
-      // create call. Reading `vendor_seal` here would add a query to the hot
-      // path of every create to decorate a document the couple has not been sent
-      // yet, and the PDF door re-renders with the seal the moment anyone opens
-      // it. Passed rather than omitted so a reader can tell "deliberately none"
-      // from "nobody asked" — the distinction the line above already draws.
-      seal: null,
+      schedule,
+      seal,
     });
 
     const fileName = `${vendor.id}/INVOICE-${invoice.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;
@@ -389,7 +434,9 @@ async function generateInvoiceForBinder(supabase, vendor, binder) {
   const pkgInvoice = (pkgRows || []).find((r) => r && r.lead_package_id) || null;
   if (pkgInvoice) {
     if (pkgInvoice.pdf_url) return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgInvoice.pdf_url };
-    const pkgPdf = await generateAndStoreInvoicePdf(supabase, vendor, pkgInvoice);
+    // F-43.82 (CE-44 packet 4a): the typed source, so this document carries the
+    // milestones the couple agreed to and the seal the money lane's copy shows.
+    const pkgPdf = await generateAndStoreInvoicePdf(supabase, vendor, pkgInvoice, { typed: true });
     if (!pkgPdf) return { ok: false, error: 'PDF generation failed.' };
     return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgPdf };
   }

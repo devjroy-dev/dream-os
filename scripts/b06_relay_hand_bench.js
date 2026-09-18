@@ -1041,7 +1041,12 @@ await t('§9.13 the engine seam is gated and never cached, like its two siblings
   // cell is about the RELAY block's MEMBERSHIP, which is untouched — only the term
   // that follows it moved, exactly as CE-40's own amendment above recorded when
   // `moneyBlock` arrived.
-  assert.ok(/pingBlock \+ relayBlock \+ moneyBlock \+ expenseBlock;/.test(l), 'the block is not in the dynamic tail');
+  // ── LABELED AMENDMENT (CE-44, LC-2t, packet 4a). RE-AIMED, TEETH KEPT, COUNT
+  // PRESERVED. The tail gains a SIXTH door-built sibling, `bookedBlock`, sited between
+  // relayBlock and moneyBlock by chair ruling. This cell is about the RELAY block's
+  // MEMBERSHIP, which is untouched — only the term that follows it moved, exactly as
+  // CE-40's and CE-42's amendments above recorded when their own siblings arrived.
+  assert.ok(/pingBlock \+ relayBlock \+ bookedBlock \+ moneyBlock \+ expenseBlock;/.test(l), 'the block is not in the dynamic tail');
   // NEVER CACHED, asserted structurally: the cached block is `staticPrefix` and
   // the relay block is a term of `dynamic`. If the block ever joined the cached
   // prefix, a draft staged at 14:00 would still be "waiting" at 14:05.

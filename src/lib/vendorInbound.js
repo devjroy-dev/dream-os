@@ -1734,6 +1734,19 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       expenseFacts = await buildExpenseFacts(supabase, vendor.id);
     } catch (e) { console.warn('[expenses:wa fact-block]', e && e.message); }
 
+    // ── CE-44 · LC-2 · packet 4a · THE BOOKED-CLIENT FACT (c-43.20) ─────────
+    // One seam on this lane, beside its two neighbours, never a per-lane cure
+    // (C-43.1): the web thread builds the same fact from the same module, so the
+    // handset and the browser refuse alike. FAIL-SAFE, which is the opposite of
+    // moneyFacts above: a failed read returns null, the engine receives
+    // `undefined`, V12 never fires, and the arms are the pre-cure world. An
+    // unreadable lead table must not refuse writes that are perfectly lawful.
+    let bookedFacts = null;
+    try {
+      const { buildBookedFacts } = require('./vendor/bookedFacts');
+      bookedFacts = await buildBookedFacts(supabase, vendor.id);
+    } catch (e) { console.warn('[booked:wa fact-block]', e && e.message); }
+
     // ── CE-41 · SEAT G · R-41.104 — THE ROOM, HANDED TO THE ENGINE ──────────
     // `buildLlmForTurn` above stopped reading `victor_mode` for the ROUTE. This
     // is the other half and it is the half that matters to the vendor: without
@@ -1748,6 +1761,9 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       pendingRelay, // TDW_06 F-06.162 (R-29.29) — the open commitment, door-known
       moneyFacts: moneyFacts ? moneyFacts.block : undefined, // F-39.73 (R-VS.2) — the typed ledger, door-read
       expenseFacts: expenseFacts ? expenseFacts.block : undefined, // F-42.97 — the expense book, door-read
+      // CE-44 packet 4a: the WHOLE fact, not just its block — `binderIds` is a control
+      // and reaches the arms ungated; the block alone sits behind estateInRoom.
+      bookedFacts: bookedFacts ? { block: bookedFacts.block, binderIds: bookedFacts.binderIds } : undefined,
       // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
       vendorCategory,
       // P6 FORK-B END
@@ -1811,6 +1827,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready. Find it in the invoices list.`
       ).join('\n');
     }
+    // ── CE-44 · LC-2 · packet 4a · seam 5 · THE TWO SIGNALS, ACTED ON HERE ──
+    // The SAME helper the web thread runs (lib/vendor/lifecycleHands.js), so a booking
+    // confirmed on the handset and one confirmed in the browser go through one copy of
+    // the booking rules (C-43.1). D3, D4 and F29 are the founder's vetoed bytes and are
+    // appended raw for the reason the invoice lines above are: the firewall is sited on
+    // `result.reply` ALONE, and widening it over strings the veto owns would put a
+    // rewriter over the founder's own copy to catch a leak that cannot start there.
+    // The client name inside D3 is read from `public.leads`, the vendor's own row.
+    try {
+      const { runLifecycleSignals } = require('./vendor/lifecycleHands');
+      const { lines: lifecycleLines } = await runLifecycleSignals(supabase, { vendor, agentId, result });
+      if (lifecycleLines.length) replyText += '\n\n' + lifecycleLines.join('\n');
+    } catch (e) { console.error('[lifecycle:wa]', e && e.message); }
+
     // Calendar signals (book / edit / cancel / retro-link / lockstep) — same handler the
     // web door uses, so a booking made over WhatsApp lands on the same calendar with the
     // same binder lockstep. The confirmation suffix rides on Victor's reply.

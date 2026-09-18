@@ -19,7 +19,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { supabase } from './db.js';
 import { MODELS, calcCostInr } from './models.js';
 import { DONNA_SOUL } from './donnaSoul.js';
-import { RECORD_TOOLS, executeRecordTool, recordItem, rs } from './tools/recordPrimitives.js'; // recordItem: TDW_04 engine-lane (ST-3a) · rs: TDW_06 M-4 (R2-B) the house money register
+import { RECORD_TOOLS, executeRecordTool, recordItem, rs, DONNA_BOOKING_TOOL, DONNA_MILESTONE_PAID_TOOL } from './tools/recordPrimitives.js'; // recordItem: TDW_04 engine-lane (ST-3a) · rs: TDW_06 M-4 (R2-B) the house money register
 import { READ_TOOLS, READ_TOOL_NAMES, executeFindTool, executeWhatsDue } from './tools/donnaFind.js';
 import { BENCH_READ_TOOLS, BENCH_READ_NAMES, executeTally, executeHistory } from './tools/donnaBench.js';
 // TDW_06 THE DETERMINISTIC SITTING (forks A-1(b)/A-2(b)) — the history gate's one home.
@@ -43,6 +43,7 @@ import { vendorIdFromAgent } from './vendorIdentity.js'; // TDW_02: rebuild read
 import { phoneKey, nameKey } from './phoneKey.js';
 import { arrivalStamp } from './today.js'; // TDW_06 M-1 (P1, shape b2)
 import type { SnapshotItem, ToolOutcome, ViewRow } from './snapshotTypes.js';
+import type { BookedFact } from './tools/recordPrimitives.js'; // CE-44 packet 4a — the door-built booked-client fact
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -346,7 +347,10 @@ export async function snapshotText(agentId: string): Promise<string> {
 // a fallback, with plain text). A segment ends when she speaks. Her message history is
 // returned as a DonnaSession so the NEXT call resumes the same conversation — that is
 // what makes the exchange two-way instead of a one-shot.
-const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, ...RELAY_TOOLS, ...INTRODUCTION_TOOLS, LISTEN_HARVEY_TALK_TOOL];
+// CE-44 · LC-2 · packet 4a: the two lifecycle signals are named HERE rather than
+// folded into RECORD_TOOLS, because that list is the primitive write-atoms over the
+// wide `records` table and these two write nothing there (chair's lift, verbatim).
+const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, DONNA_BOOKING_TOOL, DONNA_MILESTONE_PAID_TOOL, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, ...RELAY_TOOLS, ...INTRODUCTION_TOOLS, LISTEN_HARVEY_TALK_TOOL];
 // TDW_06 THE HAND — THE CACHE COST OF THE TWO NEW SCHEMAS, NAMED AND ACCEPTED
 // (R-29.17). DONNA_TOOLS rides DONNA_STATIC_PREFIX's cached region, so the two
 // schemas are a ONE-OFF cache-window re-write, not a per-turn charge. Lawful
@@ -442,6 +446,12 @@ export async function runDonnaTurn(
                         // assembled by loop.ts — the provenance hold's corpus. ABSENT ⇒
                         // the hold fails CLOSED on any money figure (a caller that cannot
                         // supply the thread cannot vouch for a figure; F15's direction).
+  bookedFacts?: BookedFact, // CE-44 · LC-2 · packet 4a (c-43.20): the door-built booked-client
+                        // fact, riding the chain `vendorWords` rides and for the same reason —
+                        // `db.ts:13-15` binds this plane to schema 'engine', so `public.leads`
+                        // is unreachable in the arms. Only `binderIds` travels this far; the
+                        // block stays in loop.ts's dynamic tail. ABSENT ⇒ V12 never fires and
+                        // the arms are the pre-cure world (fail-SAFE, read-first-ruled).
 ): Promise<DonnaTurn> {
   const toolCalls: DonnaTurn['tool_calls'] = [];
   // record() pushes a tool-call AND fires it live, so each of Donna's hands leaves the
@@ -723,7 +733,7 @@ export async function runDonnaTurn(
         ) {
           input.binder_id = currentBinderId;
         }
-        outcome = await executeRecordTool(agentId, tu.name, input);
+        outcome = await executeRecordTool(agentId, tu.name, input, bookedFacts);
         mutated = true;
         await patchNote(agentId, outcome); // patch from the CONFIRMED write, not intent
         // Whatever we just wrote becomes the open binder for the rest of this turn.

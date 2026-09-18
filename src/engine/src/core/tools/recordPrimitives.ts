@@ -504,6 +504,60 @@ export const DONNA_ASSIGN_CREW_TOOL: Anthropic.Tool = {
   },
 };
 
+// ── CE-44 · LC-2 · packet 4a · THE TWO LIFECYCLE SIGNALS ─────────────────────
+// SIGNAL ONLY, and for the reason `donna_invoice_pdf` above is: the act lives on
+// `public.leads`, `public.invoices` and `public.payment_schedules`, and this
+// client is bound to `db: { schema: 'engine' }` (`db.ts:13-15`) so it cannot
+// reach any of them. The arm flags intent; the DOOR runs `promoteLead` and
+// `markMilestonePaid` through one shared helper on both lanes and speaks D3 and
+// D4 (chair's fork 1). NOTHING IS WRITTEN HERE — not a row, not a snapshot item,
+// not an open binder.
+//
+// THEY ARE NOT IN `RECORD_TOOLS`. That list is the primitive write-atoms over the
+// wide `records` table, and these two write nothing there. `DONNA_TOOLS` in
+// `donna.ts` names them directly, which is where the chair's lift put them.
+//
+// THE COUPLE IS NAMED, NOT THE BINDER. The booking is what MAKES the binder on
+// most paths (`promotion.js` adopts or opens one), so there is no binder id to
+// give at the moment of asking. The door resolves the name on the plane it can
+// read, confidently or not at all — the same discipline `bookEvents` already
+// keeps for a booking's binder link: exact match, single hit, never a guess.
+//
+// The descriptions are V8 and V10 from the veto record, verbatim, founder's YES
+// 2026-09-17. Not one byte is re-worded here.
+export const DONNA_BOOKING_TOOL: Anthropic.Tool = {
+  name: 'donna_booking',
+  description:
+    "Confirm a couple's booking. The lead moves to booked and the client, the event and the one invoice open from the attached package. If the package or, for an advance, the date it arrived is missing, ask Harvey for it rather than filing.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      lead: { type: 'string', description: "The couple's name, as it stands on the lead." },
+      kind: {
+        type: 'string',
+        enum: ['booking_confirmed', 'advance_paid'],
+        description: 'booking_confirmed = the booking is confirmed and nothing has been paid yet; advance_paid = the advance has arrived.',
+      },
+      advance_received_on: { type: 'string', description: 'YYYY-MM-DD — the date the advance arrived. Needed when kind is advance_paid.' },
+    },
+    required: ['lead', 'kind'],
+  },
+};
+export const DONNA_MILESTONE_PAID_TOOL: Anthropic.Tool = {
+  name: 'donna_milestone_paid',
+  description:
+    "Mark a payment on a booked couple's invoice as received: which payment, and the date it arrived. The amount is that payment's own. The invoice fills up; there is never a second one.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      lead: { type: 'string', description: "The couple's name, as it stands on the lead." },
+      milestone: { type: 'string', description: "Which payment, in the owner's own words — the deposit, the middle payment, the remainder." },
+      received_on: { type: 'string', description: 'YYYY-MM-DD — the date the payment arrived.' },
+    },
+    required: ['lead', 'milestone', 'received_on'],
+  },
+};
+
 export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_MONEY_TOOL, DONNA_DATE_TOOL, DONNA_CLIENT_TOOL, DONNA_NOTE_TOOL,
   DONNA_PHONE_TOOL, DONNA_DOC_TOOL, DONNA_STAGE_TOOL, DONNA_REASONFORACTION_APPEND_TOOL,
@@ -539,7 +593,47 @@ export async function openRecordWithId(
 // ── Executors ────────────────────────────────────────────────────────────────
 type Id = { binder_id?: string };
 
-export async function executeRecordTool(agentId: string, name: string, input: Record<string, unknown>): Promise<ToolOutcome> {
+// ── CE-44 · LC-2 · packet 4a · V12'S PREDICATE ───────────────────────────────
+// THE DOOR-BUILT FACT (c-43.20). `public.leads` is unreachable from this plane —
+// the file says so at :723 and `loop.ts:168` says it again — so the set of binder
+// ids that have a booked lead behind them arrives from the door, built in
+// `lib/vendor/bookedFacts.js` and carried on the chain `vendorWords` rides.
+// ABSENT => V12 never fires and this file is the pre-cure world (fail-SAFE, as
+// the read-first ruled: an unreadable lead table must not refuse lawful writes).
+export type BookedFact = { block: string; binderIds: string[] };
+
+// "A booked stage" in the words each field of work uses. THE DOOR'S TWIN is
+// `BOOKING_STAGE_RE` / `NOT_BOOKING_STAGE_RE` in `lib/vendor/bookingEvent.js`,
+// LC-1's seam predicate, and the two are deliberately the same shape: this plane
+// cannot require that file, so the twin is named here the way `packageScheduleLabel`
+// names its PWA twin. `promotion.js`'s `BOOKED_STAGE` ('confirmed booking') is the
+// word the estate's own booking act writes, and it matches this test.
+const BOOKED_STAGE_RE = /(book|confirm)/i;
+const NOT_BOOKED_STAGE_RE = /(unbook|cancel|lost)/i;
+function meansBooked(stage: unknown): boolean {
+  const s = typeof stage === 'string' ? stage : '';
+  return !!s && BOOKED_STAGE_RE.test(s) && !NOT_BOOKED_STAGE_RE.test(s);
+}
+
+// V12, verbatim from the veto record (founder's YES 2026-09-17). Under R-43.16 a
+// refusal is a control and never a redirect: the line names the fix in its own
+// second sentence, which is why it is spoken rather than swallowed.
+const V12 = 'ERROR: a booked client needs a lead behind it. Ask which package and whether the advance has arrived, then use donna_booking.';
+
+// The shape the two signals check a date against before staging it. It is a SHAPE
+// test and nothing more: whether the day exists, whether it is in the future, and
+// whether it belongs to this invoice are the door's to answer on the plane that
+// holds them. `schedules.js` keeps the same `^\d{4}-\d{2}-\d{2}$` test at its own
+// end, and refuses again there — this one only stops a malformed byte being staged.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function hasLeadBehind(booked: BookedFact | undefined, binderId: string | undefined): boolean {
+  if (!booked || !Array.isArray(booked.binderIds)) return true; // absent fact => pre-cure world
+  if (!binderId) return false;                                   // no binder named => nothing stands behind it
+  return booked.binderIds.includes(binderId);
+}
+
+export async function executeRecordTool(agentId: string, name: string, input: Record<string, unknown>, booked?: BookedFact): Promise<ToolOutcome> {
   const rid = (input as Id).binder_id;
   switch (name) {
     case 'donna_money': {
@@ -641,8 +735,20 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       }
       return writeFields(agentId, rid, { date: input.date }, `date ${input.date}`);
     }
-    case 'donna_client':
+    case 'donna_client': {
+      // V12 · CE-44 packet 4a. The refusal is on the STATE the write would leave
+      // behind, not on the word the owner used: naming a client on a binder that
+      // ALREADY stands at a booked stage, with no lead behind it, leaves exactly
+      // the shape F13(a) forbids — a client with nothing under it. A `donna_client`
+      // with no binder_id opens an ordinary, unstaged binder and is untouched here;
+      // the booked state it would need next is refused by `donna_stage` below.
+      if (booked && rid && !hasLeadBehind(booked, rid)) {
+        const { data: b } = await supabase.from('records')
+          .select('id, stage').eq('id', rid).eq('agent_id', agentId).maybeSingle();
+        if (b && meansBooked(b.stage)) return { display: V12 };
+      }
       return writeFields(agentId, rid, { client: input.client }, `client ${input.client}`);
+    }
     case 'donna_note':
       if (typeof input.note !== 'string' || !input.note.trim()) return { display: 'ERROR: donna_note needs the note text — what should this binder say?' };
       return writeFields(agentId, rid, { note: input.note }, `note`);
@@ -656,6 +762,12 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       return writeFields(agentId, rid, { doc_ref: input.doc_ref }, `doc`);
     case 'donna_stage':
       if (typeof input.stage !== 'string' || !input.stage.trim()) return { display: 'ERROR: donna_stage needs the stage word — where does this binder stand?' };
+      // V12 · CE-44 packet 4a. THIS IS THE ARM THAT MATTERS: moving a binder INTO a
+      // booked stage is the write that would create a booked client with no lead
+      // behind it, and it is refused whether the binder is named or would be opened
+      // by this very call (no binder_id => nothing can stand behind it). Stages that
+      // are not booked-shaped, and binders that already have a lead, pass untouched.
+      if (booked && meansBooked(input.stage) && !hasLeadBehind(booked, rid)) return { display: V12 };
       return writeFields(agentId, rid, { stage: input.stage }, `stage ${input.stage}`);
     case 'donna_write_reasonforaction_append':
       return writeFields(agentId, rid, { reason_for_action: input.reason_for_action }, `reason noted`);
@@ -777,6 +889,36 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       // Signal only — the host stamps the next number, renders the PDF, files it.
       // Donna's hand asks for the document; the number + PDF return through the door.
       return { display: `Invoice document requested for record ${rid} — it is being prepared and will appear in the invoices list.` };
+    }
+    // ── CE-44 · LC-2 · packet 4a · THE TWO SIGNALS ───────────────────────────
+    // They return and write NOTHING. No `writeFields`, no snapshot item, no open
+    // binder — `donna.ts` keeps them out of the mutating path for the same reason
+    // `donna_invoice_pdf` returns a bare display. The staged lines are V9 and V11
+    // from the veto record, verbatim. {date} echoes the request rather than being
+    // re-rendered: R-42.13's full month is the DOOR's obligation, spoken in D3 and
+    // D4, and a second date formatter on this plane would be F-15.10's class.
+    case 'donna_booking': {
+      const lead = typeof input.lead === 'string' ? input.lead.trim() : '';
+      const kind = typeof input.kind === 'string' ? input.kind.trim() : '';
+      if (!lead) return { display: 'ERROR: donna_booking needs the couple — whose booking is this?' };
+      if (kind !== 'booking_confirmed' && kind !== 'advance_paid') {
+        return { display: 'ERROR: donna_booking needs kind — booking_confirmed, or advance_paid when the advance has arrived.' };
+      }
+      // V8's own last sentence, made mechanical: ask Harvey for the date rather
+      // than filing without it. The refusal names what is missing (R-43.16).
+      if (kind === 'advance_paid' && !DATE_RE.test(String(input.advance_received_on ?? '').trim())) {
+        return { display: 'ERROR: donna_booking needs advance_received_on (YYYY-MM-DD) — ask Harvey which day the advance arrived.' };
+      }
+      return { display: `Booking requested for ${lead}; the client, event and invoice are being prepared.` };
+    }
+    case 'donna_milestone_paid': {
+      const lead = typeof input.lead === 'string' ? input.lead.trim() : '';
+      const milestone = typeof input.milestone === 'string' ? input.milestone.trim() : '';
+      const on = String(input.received_on ?? '').trim();
+      if (!lead) return { display: 'ERROR: donna_milestone_paid needs the couple — whose payment is this?' };
+      if (!milestone) return { display: 'ERROR: donna_milestone_paid needs which payment — the deposit, the middle payment, or the remainder.' };
+      if (!DATE_RE.test(on)) return { display: 'ERROR: donna_milestone_paid needs received_on (YYYY-MM-DD) — ask Harvey which day it arrived.' };
+      return { display: `Payment requested for ${lead}: ${milestone}, received ${on}.` };
     }
     case 'donna_book_event': {
       const title = typeof input.title === 'string' ? input.title.trim() : '';

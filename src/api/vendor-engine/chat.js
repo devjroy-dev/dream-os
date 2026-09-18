@@ -1131,13 +1131,19 @@ function mutationLines(done) {
 // callers and the sealed benches unaffected — proven both ways in the bench).
 // Scrubbed here for the witnessed slot's own stated reason PLUS the line's own:
 // it quotes Donna's sentence by name, and the firewall owns that rendering.
-function composedTail({ witnessed, documents, booked, refused, mutated, advised, blocked, unblocked, open }) {
+function composedTail({ witnessed, documents, lifecycle, booked, refused, mutated, advised, blocked, unblocked, open }) {
   const parts = [];
   // scrubText for blockLines' own stated reason: these summaries carry a
   // vendor-supplied NAME back to the wire, and a name is free text. The chip
   // scrubs its own summary at translateBeat; the stored twin scrubs here.
   if (witnessed && witnessed.length) parts.push(scrubText(witnessed.join('\n')));
   if (documents && documents.length) parts.push(invoiceLines(documents));
+  // CE-44 · LC-2 · packet 4a: D3 / D4 / F29, spoken by the ONE lifecycle helper both
+  // lanes run (lib/vendor/lifecycleHands.js). Sited straight after the invoice lines
+  // because a marked payment is that invoice's own news, and ADDITIVE: an absent or
+  // empty `lifecycle` returns the pre-CE-44 bytes exactly. Scrubbed for the reason the
+  // witnessed slot above is — D3 carries a vendor-supplied client name back to the wire.
+  if (lifecycle && lifecycle.length)  parts.push(scrubText(lifecycle.join('\n')));
   if (booked && booked.length)       parts.push(bookingLines(booked));
   if (refused && refused.length)     parts.push(conflictLines(refused));
   if (mutated && mutated.length)     parts.push(mutationLines(mutated));
@@ -3405,6 +3411,25 @@ async function fetchMoneyFacts(req) {
   }
 }
 
+// ── CE-44 · LC-2 · packet 4a · THE BOOKED-CLIENT FACT (c-43.20) ────────────
+// The same door-half shape as its neighbour above and for the same wall: the
+// engine client is bound to schema 'engine' and cannot read `public.leads`, so
+// the set V12 refuses on is built HERE. Called identically by the SSE and JSON
+// routes so the two surfaces cannot refuse differently. Never throws; a failure
+// returns null and the caller passes `undefined` — V12 then never fires and the
+// arms are the pre-cure world (fail-SAFE, read-first-ruled).
+const { runLifecycleSignals } = require('../../lib/vendor/lifecycleHands'); // CE-44 packet 4a · seam 5
+
+async function fetchBookedFacts(req) {
+  try {
+    const { buildBookedFacts } = require('../../lib/vendor/bookedFacts');
+    return await buildBookedFacts(req.app.locals.supabase, req.vendor.id);
+  } catch (e) {
+    console.warn('[booked:pwa fact-block]', e && e.message);
+    return null;
+  }
+}
+
 // F-42.97 (CE-42 V-2) — the EXPENSE half, called identically by both routes for
 // the same reason its sibling is: the SSE and JSON surfaces must not be able to
 // answer about spending differently. Never throws; a failure returns null and the
@@ -3535,6 +3560,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
       const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
       const expenseFacts = await fetchExpenseFacts(req); // F-42.97 — the expense book, door-read
+      const bookedFacts = await fetchBookedFacts(req); // CE-44 packet 4a (c-43.20) — the booked-client fact, door-read
       const result = await runTurn({
         roomAssert, // G2 (R-41.107): the Advisor page's own bar, this turn only, no write
         agentId: req.agentId,
@@ -3544,6 +3570,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         recentActivity,
         moneyFacts: moneyFacts ? moneyFacts.block : undefined,
         expenseFacts: expenseFacts ? expenseFacts.block : undefined,
+        // CE-44 packet 4a: the WHOLE fact, not just its block — `binderIds` is a
+        // control and rides to the arms ungated, the block sits behind estateInRoom.
+        bookedFacts: bookedFacts ? { block: bookedFacts.block, binderIds: bookedFacts.binderIds } : undefined,
         // 04.5 P6 (Fork B): the door normalises, the engine compares — one home for the
         // predicate, so the planner VOICE and the planner GAP LINE cannot diverge.
         vendorCategory: normaliseCategoryForTurn(req.vendor.category),
@@ -3562,6 +3591,11 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // already streamed, so the "ready" line rides as a final text_delta before done.
       const documents = await buildInvoices(req, result);
       if (documents.length) send({ type: 'text_delta', text: '\n\n' + invoiceLines(documents) });
+      // CE-44 packet 4a · seam 5: the two signals are acted on HERE, by the one helper
+      // the vendor lane also calls, so the web thread and the handset cannot book or
+      // mark a payment differently (C-43.1).
+      const { lines: lifecycle } = await runLifecycleSignals(req.app.locals.supabase, { vendor: req.vendor, agentId: req.agentId, result });
+      if (lifecycle.length) send({ type: 'text_delta', text: '\n\n' + scrubText(lifecycle.join('\n')) });
 
       // TDW_04 B4 — F-04.55's cure, chat half. bookEvents' signature changed with it
       // ({booked, refused}); this is one of its two disclosed call sites (Q-B2-7).
@@ -3611,7 +3645,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
       await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
     await persistComposedReply(req, result,
-        composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
+        composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, lifecycle, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
       const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts, expenseFacts }); // wire guard — PWA site 1 of 2 (SSE)
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
@@ -3665,12 +3699,16 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
     const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
     const expenseFacts = await fetchExpenseFacts(req); // F-42.97 — the expense book, door-read
-    const result    = await runTurn({ roomAssert, agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, expenseFacts: expenseFacts ? expenseFacts.block : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
+    const bookedFacts = await fetchBookedFacts(req); // CE-44 packet 4a (c-43.20) — the booked-client fact, door-read
+    const result    = await runTurn({ roomAssert, agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, expenseFacts: expenseFacts ? expenseFacts.block : undefined, bookedFacts: bookedFacts ? { block: bookedFacts.block, binderIds: bookedFacts.binderIds } : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
     if (result.provider_downgrade) {
       logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
     }
 
     const documents = await buildInvoices(req, result);
+    // CE-44 packet 4a · seam 5: the JSON route's twin of the SSE call above — the same
+    // helper, the same order, so the two surfaces cannot act on a signal differently.
+    const { lines: lifecycle } = await runLifecycleSignals(req.app.locals.supabase, { vendor: req.vendor, agentId: req.agentId, result });
     // TDW_04 B4 — the second of bookEvents' two disclosed call sites.
     const { booked, refused } = await bookEvents(req, result);
     const mutated   = await mutateEvents(req, result);
@@ -3697,7 +3735,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const openLine = donnaOpenLine(result);
     await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
     await persistComposedReply(req, result,
-      composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
+      composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, lifecycle, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
     const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts, expenseFacts }); // wire guard — PWA site 2 of 2 (JSON)
 
     // CE-18: the firewall covers the reply itself. TDW_06 M-4 / F-06.36: and now it
@@ -3726,6 +3764,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     // F-04.33: this route hand-rolled the invoice line instead of calling the builder —
     // precisely how a seam gets missed. One builder, one scrub, both routes.
     if (documents.length) reply += '\n\n' + invoiceLines(documents);
+    if (lifecycle.length) reply += '\n\n' + scrubText(lifecycle.join('\n')); // CE-44 packet 4a
     if (booked.length) reply += '\n\n' + bookingLines(booked);
     if (refused.length) reply += '\n\n' + conflictLines(refused);   // TDW_04 B4 — F-04.55
     if (mutated.length) reply += '\n\n' + mutationLines(mutated);

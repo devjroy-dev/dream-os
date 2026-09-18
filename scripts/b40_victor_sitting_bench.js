@@ -420,7 +420,13 @@ function classify(reply, message, facts, mode) {
     // sentences that must govern, and it ends on the plane that had no facts at
     // all until this sitting. The old anchor `+ relayBlock + moneyBlock;` retires
     // with the spelling it pinned.
-    T('  …and it is LAST in the dynamic tail', /\+ relayBlock \+ moneyBlock \+ expenseBlock;/.test(loop));
+    // ── LABELED AMENDMENT (CE-44, LC-2t, packet 4a). RE-AIMED, TEETH KEPT, COUNT
+    // PRESERVED, RATIFY-OR-REVERT. `bookedBlock` (c-43.20) joins the tail BEFORE
+    // moneyBlock, chair-ruled: it carries no figure and no governing sentence, so it
+    // sits with the informers and leaves money and expenses the last two seats CE-77's
+    // position doctrine earned them. THE SUBJECT IS UNTOUCHED — this cell asserts that
+    // the money block still ends the tail with its expense sibling, and it still does.
+    T('  …and it is LAST in the dynamic tail', /\+ relayBlock \+ bookedBlock \+ moneyBlock \+ expenseBlock;/.test(loop));
     T('  …and the expense block is gated on estateInRoom AND its own presence (F-42.97)',
       /const expenseBlock = \(estateInRoom && args\.expenseFacts\) \? `\\n\\n\$\{args\.expenseFacts\}` : '';/.test(loop));
     T('the three-arg guard caller still classifies exactly as before (optional ctx)',

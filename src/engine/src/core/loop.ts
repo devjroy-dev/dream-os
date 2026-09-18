@@ -187,6 +187,24 @@ type RunTurnArgs = {
   // widening of moneyFacts because the two blocks fail independently: an
   // unreadable expense book must not silence a readable invoice book.
   expenseFacts?: string;
+  // ── CE-44 · LC-2 · packet 4a · THE BOOKED-CLIENT FACT (c-43.20, chair-owned) ──
+  // The sixth thing the door knows and this plane cannot reach. `db.ts` binds this
+  // client to `db: { schema: 'engine' }`, so `public.leads` is unreachable here —
+  // the same wall `moneyFacts` was built around, on a different table. Door-built
+  // in `lib/vendor/bookedFacts.js`, one seam on each lane (C-43.1).
+  //
+  // IT IS NOT AN OPAQUE STRING, AND THAT IS THE ONE DIFFERENCE FROM ITS FIVE
+  // SIBLINGS. It carries two halves that travel apart: `block` is the opaque
+  // string the prompt takes, gated on `estateInRoom` with the others; `binderIds`
+  // is the SET V12 refuses on, which is a CONTROL and therefore NOT gated — it
+  // reaches `executeRecordTool`'s fourth argument on every turn the door built it,
+  // room or no room. A gate reads a row, never a display string (CE-215), which is
+  // why the arms are handed ids and never the block.
+  //
+  // ABSENT => the dynamic tail is byte-identical to the pre-cure world AND V12
+  // never fires (the regression law, and the read-first's fail-SAFE ruling: an
+  // unreadable lead table must not refuse lawful writes).
+  bookedFacts?: { block: string; binderIds: string[] };
   // TDW_04.5 P6 (CE-61, Fork B): the vendor's NORMALISED category, door-computed.
   // THE DOOR NORMALISES, THE ENGINE COMPARES — `normaliseCategory` keeps its one home in
   // lib/vendor/categoryFraming.js, which is the whole point of the ruling: Victor's
@@ -704,7 +722,14 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     // plane is the one that had no facts at all until this sitting — 00:52:38 is
     // what an unfenced silence produced.
     const expenseBlock = (estateInRoom && args.expenseFacts) ? `\n\n${args.expenseFacts}` : '';
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock + moneyBlock + expenseBlock;
+    // CE-44 · packet 4a: IT IS NOT LAST, AND THAT IS DELIBERATE (chair-ruled).
+    // CE-77's position doctrine governs the two blocks below it: each ends on the
+    // sentence that must govern its own plane, and those two seats are earned. This
+    // block carries no figure and no governing sentence — it states what stands on
+    // the vendor's books and stops — so it sits with the other informers, after
+    // relayBlock, and leaves money and expenses the last word they hold.
+    const bookedBlock = (estateInRoom && args.bookedFacts && args.bookedFacts.block) ? `\n\n${args.bookedFacts.block}` : '';
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock + bookedBlock + moneyBlock + expenseBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];
@@ -903,7 +928,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         const donnaModelForSeg = args.donnaTransport
           ? args.donnaModelOverride
           : (providerDowngrade ? undefined : (args.donnaModelOverride ?? args.modelOverride));
-        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, donnaTransportForSeg, donnaModelForSeg, vendorWords);
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, donnaTransportForSeg, donnaModelForSeg, vendorWords, args.bookedFacts);
         // F-04.87 (same sitting): her downgrade folds into the turn's flag — the door's
         // activity write and TurnResult see BOTH hands' fidelity, and a bench/gauntlet
         // can void a candidate's turn mechanically instead of trusting a console line.

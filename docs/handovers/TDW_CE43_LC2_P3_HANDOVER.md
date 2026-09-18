@@ -189,4 +189,23 @@ None on Railway or Supabase in this packet: `PACKAGE_MONEY_MIRROR` stays unset. 
   Presentation rulings: C-43.15 sentence-case names; "1 package"; the eight packet 2 failure bytes as landed; F-43.77 filed.
 ```
 
+### Appended at CE-44, packet 4a, 2026-09-18 — the payment lane's four refusals
+
+Founder, verbatim, 2026-09-18: "Yes to d5 and d8. I'll go with your lean" — the chair's reading, stated to him and open to his correction, is that all four lines are approved as the chair put them. They ship verbatim.
+
+```
+  D5  Could not mark the payment. No booked client by that name.
+  D6  Could not mark the payment. Say which one: {labels}.
+  D7  Already marked: {client} · {milestone label} · {date}.
+  D8  Could not mark the payment.
+```
+
+Mechanics, the chair's (CE-44):
+
+- D6's `{labels}` are the unpaid milestones' own stored labels, in schedule order, joined with ` · ` (c-44.5, re-ruled: the labels carry commas of their own, so the joiner is D3's separator).
+- D7's `{date}` is the stored received date through `longDateYear` (R-42.13). **D7 writes nothing.**
+- D5 fires when no booked lead resolves from the name. More than one booked lead by that name takes D8 for now; reported as a candidate, no line minted for it.
+- An invalid calendar date takes D8.
+- Where the client has no unpaid milestone at all: D7 when one is named, D8 otherwise.
+
 Sequencing beyond this sitting is the founder's.
