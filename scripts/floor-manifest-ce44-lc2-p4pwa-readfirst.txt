@@ -1,0 +1,5 @@
+# scripts/floor-manifest-ce44-lc2-p4pwa-readfirst.txt
+# TDW CE-44 · LC-2 packet 4 pwa half read-first (dream-os, DOCS-ONLY under C-44.1) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+docs/handovers/TDW_CE44_LC2_P4PWA_READFIRST.md
+scripts/floor-manifest-ce44-lc2-p4pwa-readfirst.txt
