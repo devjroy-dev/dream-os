@@ -1,0 +1,5 @@
+# scripts/floor-manifest-ce44-lc2-card4a-close.txt
+# TDW CE-44 · LC-2 card 4a close note (dream-os, DOCS-ONLY under C-44.1) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+docs/handovers/TDW_CE44_LC2_CARD4A_CLOSE.md
+scripts/floor-manifest-ce44-lc2-card4a-close.txt
