@@ -36,8 +36,7 @@
 // (declared gap, named in the handover), because inventing vendor-facing copy is
 // the one thing a packet may never do.
 
-const { longDateYear } = require('../witnessLine');
-const { rupees } = require('../witnessLine');
+const { longDateYear, istDay, rupees } = require('../witnessLine');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -210,6 +209,17 @@ function paidLine(client, row, receivedOn, after) {
  */
 async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {} }) {
   const lines = [];
+  // ── F-44.8 (chair, CE-44) · ONE TURN, ONE MILESTONE, ONE LINE ──────────────
+  // Victor called donna_booking and donna_milestone_paid in the same turn on
+  // 18 September. The booking marked the deposit and spoke D3; the payment signal
+  // then arrived for that same deposit, found it paid, and spoke D7. The vendor was
+  // told a payment was marked and, one line later, that it was already marked,
+  // about one rupee figure. Both branches were correct and the pair was not.
+  // So: booking signals run FIRST whatever order they arrived in, every milestone
+  // they mark is remembered here, and a payment signal naming one of them is
+  // ABSORBED — logged, no line, no write. D7 is kept for what the vendor did not
+  // already know. A payment for a DIFFERENT milestone in that turn runs as normal.
+  const markedThisTurn = new Set();
   const promote = deps.promoteLead || ((...a) => require('./promotion').promoteLead(...a));
   const markPaid = deps.markMilestonePaid || ((...a) => require('./schedules').markMilestonePaid(...a));
   if (!vendor || !vendor.id || !agentId) return { lines };
@@ -244,7 +254,10 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
         const { data: after } = await readSchedule(supabase, vendor.id, invoiceId);
         const deposit = (after || []).slice().sort((a, b) => a.ordinal - b.ordinal)
           .find((m) => m.state === 'paid');
-        if (deposit) lines.push(paidLine(String(found.lead.name || '').trim(), deposit, on, after));
+        if (deposit) {
+          markedThisTurn.add(deposit.id); // F-44.8
+          lines.push(paidLine(String(found.lead.name || '').trim(), deposit, on, after));
+        }
       }
     } catch (e) {
       console.error('[lifecycle:booking]', e && e.message);
@@ -288,12 +301,26 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
       const pick = pickMilestone(before, input.milestone);
       if (!pick.ok) {
         console.warn(`[lifecycle:paid] invoice=${inv.invoice.id} milestone="${input.milestone}" ${pick.reason}`);
+        // F-44.8: this turn's own booking marked it moments ago and already said so.
+        if (pick.reason === 'already_paid' && markedThisTurn.has(pick.row.id)) {
+          console.warn(`[lifecycle:paid] milestone=${pick.row.id} was marked by this turn's booking; D7 absorbed`);
+          continue;
+        }
         if (pick.reason === 'already_paid') {
           // D7's date is the STORED one, read back off the row, never the date the
           // owner has just said — that is the whole point of telling him it already
-          // stands. `paid_at` is written by markMilestonePaid as `<date>T00:00:00+05:30`,
-          // so its first ten characters are the vendor's own day.
-          lines.push(LINES.D7(client, String(pick.row.milestone_label || '').trim(), String(pick.row.paid_at || '').slice(0, 10)));
+          // stands. e-44.5: `paid_at` is midnight IST, which Postgres stores and
+          // returns in UTC, so slicing its first ten characters printed the day
+          // BEFORE on every payment. `istDay` is the one home for that conversion
+          // and it fails loudly: no readable day, no D7. A refusal that names the
+          // wrong day is worse than the plain one (chair, CE-44).
+          const day = istDay(pick.row.paid_at);
+          if (!day) {
+            console.warn(`[lifecycle:paid] milestone=${pick.row.id} unreadable paid_at; D7 withheld`);
+            lines.push(LINES.D8);
+            continue;
+          }
+          lines.push(LINES.D7(client, String(pick.row.milestone_label || '').trim(), day));
           continue;
         }
         const labels = unpaidLabels(before);

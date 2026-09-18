@@ -136,6 +136,11 @@ function leadsWorld(extra = []) {
   };
 }
 
+// C-44.3 (chair, CE-44): a double returns a timestamptz THE WAY POSTGRES RETURNS IT
+// — UTC with a two-digit offset. The first cut of this bench stored `paid_at` in the
+// shape the code assumed, so §6.8 went green over e-44.5's off-by-one day. A double
+// shaped to agree with the code under test proves nothing.
+const PAID_AT = (day) => `${day} 18:30:00+00`; // midnight IST on the NEXT day
 const SCHED = (invoiceId) => ([
   { id: 'ms-1', invoice_id: invoiceId, vendor_id: V.id, ordinal: 1, milestone_label: 'Deposit, 30% of the fee, on booking', amount_due: 24000, due_date: '2026-09-17', state: 'pending', paid_at: null },
   { id: 'ms-2', invoice_id: invoiceId, vendor_id: V.id, ordinal: 2, milestone_label: '30% one month before the first function (optional)', amount_due: 24000, due_date: '2026-11-22', state: 'pending', paid_at: null },
@@ -329,10 +334,10 @@ function payWorld(over = {}) {
   {  // D3 — a middle payment marked, the next one due. The deposit already stands
      // marked, which is card 4a step 2's own order: a middle payment comes after one.
     const wD3 = payWorld();
-    wD3.payment_schedules = SCHED('inv-1').map((m) => (m.ordinal === 1 ? { ...m, state: 'paid', paid_at: '2026-09-11T00:00:00+05:30' } : m));
+    wD3.payment_schedules = SCHED('inv-1').map((m) => (m.ordinal === 1 ? { ...m, state: 'paid', paid_at: PAID_AT('2026-09-10') } : m));
     const db = makeDb(wD3);
     const marked = [];
-    const deps = { markMilestonePaid: async (_s, _v, id, amt, on) => { marked.push([id, amt, on]); const r = db.tables.payment_schedules.find((m) => m.id === id); r.state = 'paid'; r.paid_at = `${on}T00:00:00+05:30`; return { ok: true }; } };
+    const deps = { markMilestonePaid: async (_s, _v, id, amt, on) => { marked.push([id, amt, on]); const r = db.tables.payment_schedules.find((m) => m.id === id); r.state = 'paid'; r.paid_at = PAID_AT(on.slice(0,8) + String(Number(on.slice(8,10)) - 1).padStart(2,'0')); return { ok: true }; } };
     const r = await runHelper(db, turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the middle payment', received_on: '2026-09-18' }), deps);
     ok(marked.length === 1 && marked[0][0] === 'ms-2' && marked[0][1] === 24000 && marked[0][2] === '2026-09-18',
       '§6.1 the owner\'s words pick the middle milestone and its OWN amount is marked');
@@ -345,16 +350,16 @@ function payWorld(over = {}) {
      // opinion about the same fact.
     const wSkip = payWorld();  // deposit STILL unpaid, the middle one marked out of order
     const db = makeDb(wSkip);
-    const deps = { markMilestonePaid: async (_s, _v, id, _a, on) => { const x = db.tables.payment_schedules.find((m) => m.id === id); x.state = 'paid'; x.paid_at = `${on}T00:00:00+05:30`; return { ok: true }; } };
+    const deps = { markMilestonePaid: async (_s, _v, id, _a, on) => { const x = db.tables.payment_schedules.find((m) => m.id === id); x.state = 'paid'; x.paid_at = PAID_AT(on.slice(0,8) + String(Number(on.slice(8,10)) - 1).padStart(2,'0')); return { ok: true }; } };
     const r = await runHelper(db, turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the middle payment', received_on: '2026-09-18' }), deps);
     ok(r.lines && r.lines[0].endsWith('Next due 17 September 2026.'),
       '§6.2b "Next due" is the first pending by ordinal, the same rule the writer stamps on the invoice');
   }
   {  // D4 — the last one
     const w = payWorld();
-    w.payment_schedules = SCHED('inv-1').map((m) => (m.ordinal === 3 ? m : { ...m, state: 'paid', paid_at: '2026-09-01T00:00:00+05:30' }));
+    w.payment_schedules = SCHED('inv-1').map((m) => (m.ordinal === 3 ? m : { ...m, state: 'paid', paid_at: PAID_AT('2026-08-31') }));
     const db = makeDb(w);
-    const deps = { markMilestonePaid: async (_s, _v, id, _a, on) => { const r = db.tables.payment_schedules.find((m) => m.id === id); r.state = 'paid'; r.paid_at = `${on}T00:00:00+05:30`; return { ok: true }; } };
+    const deps = { markMilestonePaid: async (_s, _v, id, _a, on) => { const r = db.tables.payment_schedules.find((m) => m.id === id); r.state = 'paid'; r.paid_at = PAID_AT(on.slice(0,8) + String(Number(on.slice(8,10)) - 1).padStart(2,'0')); return { ok: true }; } };
     const r = await runHelper(db, turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the remainder', received_on: '2026-09-18' }), deps);
     ok(r.lines && r.lines[0] === L.D4('Sarah'), '§6.3 the last pending milestone gives D4, "paid in full."');
     ok(r.lines && !r.lines[0].includes('Next due'), '§6.4 and D4 carries no next-due clause');
@@ -372,10 +377,10 @@ function payWorld(over = {}) {
       '§6.7 an unmatched payment gives D6 carrying the UNPAID labels, in schedule order, joined with " · " (c-44.5)');
 
     const wPaid = payWorld();
-    wPaid.payment_schedules = SCHED('inv-1').map((m) => (m.ordinal === 1 ? { ...m, state: 'paid', paid_at: '2026-09-11T00:00:00+05:30' } : m));
+    wPaid.payment_schedules = SCHED('inv-1').map((m) => (m.ordinal === 1 ? { ...m, state: 'paid', paid_at: PAID_AT('2026-09-10') } : m));
     const r7 = await runHelper(makeDb(wPaid), turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the deposit', received_on: '2026-09-18' }), deps);
     ok(r7.lines && r7.lines[0] === 'Already marked: Sarah · Deposit, 30% of the fee, on booking · 11 September 2026.',
-      '§6.8 an already-marked payment gives D7 with the STORED date, not the date just said');
+      '§6.8 an already-marked payment gives D7 with the STORED date as the vendor\'s IST day (e-44.5), not the date just said');
 
     const dbNoWrite = makeDb(wPaid);
     await runHelper(dbNoWrite, turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the deposit', received_on: '2026-09-18' }), { markMilestonePaid: async () => { throw new Error('D7 must not write'); } });
@@ -394,7 +399,7 @@ function payWorld(over = {}) {
     ok(rNoInv.lines && rNoInv.lines[0] === L.D8, '§6.13 no invoice behind the couple takes D8');
 
     const wAll = payWorld();
-    wAll.payment_schedules = SCHED('inv-1').map((m) => ({ ...m, state: 'paid', paid_at: '2026-09-01T00:00:00+05:30' }));
+    wAll.payment_schedules = SCHED('inv-1').map((m) => ({ ...m, state: 'paid', paid_at: PAID_AT('2026-08-31') }));
     const rAll = await runHelper(makeDb(wAll), turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'whatever', received_on: '2026-09-18' }), deps);
     ok(rAll.lines && rAll.lines[0] === L.D8, '§6.14 nothing unpaid and nothing named: D8, never an empty D6');
   }
@@ -414,7 +419,7 @@ function payWorld(over = {}) {
   }
   {  // the nested path
     const db = makeDb(payWorld());
-    const deps = { markMilestonePaid: async (_s, _v, id, _a, on) => { const r = db.tables.payment_schedules.find((m) => m.id === id); r.state = 'paid'; r.paid_at = `${on}T00:00:00+05:30`; return { ok: true }; } };
+    const deps = { markMilestonePaid: async (_s, _v, id, _a, on) => { const r = db.tables.payment_schedules.find((m) => m.id === id); r.state = 'paid'; r.paid_at = PAID_AT(on.slice(0,8) + String(Number(on.slice(8,10)) - 1).padStart(2,'0')); return { ok: true }; } };
     const r = await runHelper(db, nested('donna_milestone_paid', { lead: 'Sarah', milestone: 'the deposit', received_on: '2026-09-18' }), deps);
     ok(r.lines && r.lines.length === 1 && r.lines[0].startsWith('Payment marked: Sarah'), '§6.20 a signal nested under donna_calls is read too, as buildInvoices reads it');
   }
@@ -521,6 +526,81 @@ function payWorld(over = {}) {
     ok(/lead_id/.test(inv) && /amount_total/.test(inv) && /lead_package_id/.test(inv), '§10.4 invoices carries lead_id, amount_total and lead_package_id');
   }
 
+  // ══ §12 · 4a-h1 · e-44.5, F-44.8, F-44.12, V13 ════════════════════════════
+  sec('§12 · 4a-h1 — the IST day, the absorbed D7, the instalments, V13');
+  {
+    const W = tryRequire('src/lib/witnessLine.js');
+    ok(W && W.istDay('2026-09-17 18:30:00+00') === '2026-09-18', '§12.1 18:30:00Z rolls to the next IST day');
+    ok(W && W.istDay('2026-09-17 18:29:59+00') === '2026-09-17', '§12.2 18:29:59Z does not');
+    ok(W && W.istDay('2026-09-18') === '2026-09-18', '§12.3 a plain date string passes through unchanged');
+    ok(W && W.istDay('junk') === null && W.istDay(null) === null, '§12.4 junk returns null — it fails loudly, never a wrong day');
+    ok(W && W.istDay('2026-09-17T18:30:00Z') === '2026-09-18', '§12.5 and it reads the ISO spelling too');
+  }
+  {
+    // F-44.8: one turn carrying BOTH signals for the SAME milestone.
+    const db = makeDb(payWorld());
+    const deps = {
+      promoteLead: async () => { const d = db.tables.payment_schedules.find((m) => m.ordinal === 1); d.state = 'paid'; d.paid_at = PAID_AT('2026-09-17'); return { status: 200, body: { ok: true, promoted: { invoice_id: 'inv-1' } } }; },
+      markMilestonePaid: async () => { throw new Error('the absorbed branch must not write'); },
+    };
+    const both = { tool_calls: [
+      { name: 'donna_booking', input: { lead: 'Meera', kind: 'advance_paid', advance_received_on: '2026-09-18' } },
+      { name: 'donna_milestone_paid', input: { lead: 'Sarah', milestone: 'the deposit', received_on: '2026-09-18' } },
+    ] };
+    const r = await runHelper(db, both, deps);
+    ok(r.lines && r.lines.length === 1 && r.lines[0].startsWith('Payment marked: Meera'),
+      '§12.6 the booking speaks D3 and the payment naming the SAME milestone is absorbed — one line, not two');
+    ok(r.lines && !r.lines.some((l) => l.startsWith('Already marked')), '§12.7 no D7 for what this turn just said');
+  }
+  {
+    // F-44.8's other half: a DIFFERENT milestone in the same turn still runs.
+    const db = makeDb(payWorld());
+    const deps = {
+      promoteLead: async () => { const d = db.tables.payment_schedules.find((m) => m.ordinal === 1); d.state = 'paid'; d.paid_at = PAID_AT('2026-09-17'); return { status: 200, body: { ok: true, promoted: { invoice_id: 'inv-1' } } }; },
+      markMilestonePaid: async (_s, _v, id, _a, on) => { const m = db.tables.payment_schedules.find((x) => x.id === id); m.state = 'paid'; m.paid_at = PAID_AT(on.slice(0, 8) + String(Number(on.slice(8, 10)) - 1).padStart(2, '0')); return { ok: true }; },
+    };
+    const both = { tool_calls: [
+      { name: 'donna_booking', input: { lead: 'Meera', kind: 'advance_paid', advance_received_on: '2026-09-18' } },
+      { name: 'donna_milestone_paid', input: { lead: 'Sarah', milestone: 'the middle payment', received_on: '2026-09-18' } },
+    ] };
+    const r = await runHelper(db, both, deps);
+    ok(r.lines && r.lines.length === 2 && r.lines[1].includes('30% one month before'),
+      '§12.8 a DIFFERENT milestone in the same turn runs and speaks D3 as normal');
+  }
+  {
+    // V13 · F-44.15, driven on the compiled engine.
+    const V13 = "ERROR: this client's money lives on the package invoice. Use donna_milestone_paid to mark a payment. Do not edit the record's money.";
+    ok(vetoSrc.includes(V13), '§12.9 V13 is byte-identical to the veto record');
+    ok((await run('donna_money_edit', { binder_id: 'b-sarah', amount_received: 80000 }, FACT)).display === V13,
+      '§12.10 Victor\'s donna_money_edit on a binder with a booked lead is refused with V13');
+    const noFact = await run('donna_money_edit', { binder_id: 'b-sarah', amount_received: 80000 }, undefined);
+    ok(noFact.display !== V13,
+      '§12.11 the DOOR\'s write — executeAndPatch.js:12 passes three arguments, no booked set — is not refused');
+    ok((await run('donna_money', { binder_id: 'b-sarah', amount: 15000, direction: 'in' }, FACT)).display !== V13,
+      '§12.12 donna_money still writes: it is the vendor\'s only door for a sale outside the package (F-44.17)');
+    ok((await run('donna_money_edit', { binder_id: 'b-plain', amount_received: 500 }, FACT)).display !== V13,
+      '§12.13 a binder with no booked lead behind it is untouched');
+    ok(/executeRecordTool\(agentId, name, input\)/.test(readIf('src/lib/executeAndPatch.js')),
+      '§12.14 THE SEPARATOR: executeAndPatch passes THREE arguments — if anyone threads the set through it, this cell reds');
+  }
+  {
+    // F-44.12 · the instalments, and the bound.
+    const MF = tryRequire('src/lib/vendor/moneyFacts.js');
+    ok(MF && MF.MILESTONE_LINE_CAP === 40, '§12.15 the instalment cap is 40 lines across the block');
+    ok(MF && /first 20 invoices only/.test(MF.CUT_LINE(20)) && /not listed here/.test(MF.CUT_LINE(20)),
+      '§12.16 the cut line names N and says plainly that the others have instalments (chair, CE-44)');
+    const WG = tryRequire('src/lib/wireGuardVictor.js');
+    const facts = { ok: true, unreadable: false, rowCount: 1, handles: {
+      amounts: ['32,000', '32000', '32,000', '32000'], rowAmounts: [32000],
+      numbers: ['TDW/DEV440/17'], names: ['Swati Test'] } };
+    ok(WG && WG.moneyGrounded('Swati Test middle payment, Rs 26,667, received 18 September 2026.', facts, null) === false,
+      '§12.17 F-44.10\'s own invented figure convicts on a turn that reaches the fence');
+    ok(WG && WG.moneyGrounded('Swati Test still owes Rs 32,000 on the remainder.', facts, null) === true,
+      '§12.18 a true instalment figure is admitted, because the block now holds it');
+    ok(!facts.handles.rowAmounts.includes(24000),
+      '§12.19 instalments do NOT enter rowAmounts — ARM B\'s pool is not an invoice\'s own parts plus another\'s whole');
+  }
+
   // ══ §11 · mutations ════════════════════════════════════════════════════════
   sec('§11 · mutations of production code — each must turn its named cell RED');
   let mPass = 0, mFail = 0;
@@ -566,7 +646,7 @@ function payWorld(over = {}) {
   {
     const m = loadMutated('src/lib/vendor/lifecycleHands.js', "return (rows || []).filter((m) => m.state === 'pending')\n    .slice().sort((a, b) => a.ordinal - b.ordinal)\n    .map((m) => String(m.milestone_label || '').trim())", "return (rows || [])\n    .slice().sort((a, b) => a.ordinal - b.ordinal)\n    .map((m) => String(m.milestone_label || '').trim())");
     const wPaid = payWorld();
-    wPaid.payment_schedules = SCHED('inv-1').map((x) => (x.ordinal === 1 ? { ...x, state: 'paid', paid_at: '2026-09-11T00:00:00+05:30' } : x));
+    wPaid.payment_schedules = SCHED('inv-1').map((x) => (x.ordinal === 1 ? { ...x, state: 'paid', paid_at: PAID_AT('2026-09-10') } : x));
     const r = m.mod ? await quiet(() => safe(() => m.mod.runLifecycleSignals(makeDb(wPaid), { vendor: V, agentId: AGENT, result: turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the thing', received_on: '2026-09-18' }), deps: { markMilestonePaid: async () => ({ ok: true }) } }))) : {};
     mut('M8 · offering a PAID label in D6 breaks §6.7 (unpaid labels only)', !!r.lines && /Deposit, 30%/.test(r.lines[0]));
   }
@@ -617,6 +697,35 @@ function payWorld(over = {}) {
     const wl = payWorld();
     const r = m.mod ? await quiet(() => safe(() => m.mod.runLifecycleSignals(makeDb(wl), { vendor: V, agentId: AGENT, result: turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the thing', received_on: '2026-09-18' }), deps: { markMilestonePaid: async () => ({ ok: true }) } }))) : {};
     mut('M14 · a comma joiner in D6 breaks §6.7 (c-44.5)', !!r.lines && !r.lines[0].includes(' · '));
+  }
+
+  {
+    // THE MUTATION THAT WOULD HAVE CAUGHT e-44.5. Restores the sliced UTC string.
+    // It bites only because the double now returns paid_at as Postgres does (C-44.3).
+    const m = loadMutated('src/lib/vendor/lifecycleHands.js', 'const day = istDay(pick.row.paid_at);', "const day = String(pick.row.paid_at || '').slice(0, 10);");
+    const wPaid = payWorld();
+    wPaid.payment_schedules = SCHED('inv-1').map((x) => (x.ordinal === 1 ? { ...x, state: 'paid', paid_at: PAID_AT('2026-09-10') } : x));
+    const r = m.mod ? await quiet(() => safe(() => m.mod.runLifecycleSignals(makeDb(wPaid), { vendor: V, agentId: AGENT, result: turn('donna_milestone_paid', { lead: 'Sarah', milestone: 'the deposit', received_on: '2026-09-18' }), deps: { markMilestonePaid: async () => ({ ok: true }) } }))) : {};
+    mut('M15 · slicing the UTC string back breaks §6.8 (e-44.5, the off-by-one day)', !!r.lines && r.lines[0].includes('10 September'));
+  }
+  {
+    const m = loadMutated('src/lib/vendor/lifecycleHands.js', "if (pick.reason === 'already_paid' && markedThisTurn.has(pick.row.id))", 'if (false)');
+    const db = makeDb(payWorld());
+    const deps = {
+      promoteLead: async () => { const d = db.tables.payment_schedules.find((x) => x.ordinal === 1); d.state = 'paid'; d.paid_at = PAID_AT('2026-09-17'); return { status: 200, body: { ok: true, promoted: { invoice_id: 'inv-1' } } }; },
+      markMilestonePaid: async () => ({ ok: true }),
+    };
+    const both = { tool_calls: [
+      { name: 'donna_booking', input: { lead: 'Meera', kind: 'advance_paid', advance_received_on: '2026-09-18' } },
+      { name: 'donna_milestone_paid', input: { lead: 'Sarah', milestone: 'the deposit', received_on: '2026-09-18' } },
+    ] };
+    const r = m.mod ? await quiet(() => safe(() => m.mod.runLifecycleSignals(db, { vendor: V, agentId: AGENT, result: both, deps }))) : {};
+    mut('M16 · dropping the absorb rule breaks §12.6 (D3 then D7 on one milestone)', !!r.lines && r.lines.length === 2);
+  }
+  {
+    const m = loadMutated('src/engine/dist/core/tools/recordPrimitives.js', 'if (booked && hasLeadBehind(booked, rid))\n                return { display: V13 };', 'if (false)\n                return { display: V13 };');
+    const r = m.mod ? await safe(() => m.mod.executeRecordTool(AGENT, 'donna_money_edit', { binder_id: 'b-sarah', amount_received: 80000 }, FACT)) : {};
+    mut('M17 · disarming V13 breaks §12.10', !!r.display && !r.display.startsWith("ERROR: this client's money"));
   }
 
   console.log(`\n  mutations: ${mPass} bit, ${mFail} did not`);

@@ -620,6 +620,9 @@ function meansBooked(stage: unknown): boolean {
 // second sentence, which is why it is spoken rather than swallowed.
 const V12 = 'ERROR: a booked client needs a lead behind it. Ask which package and whether the advance has arrived, then use donna_booking.';
 
+// V13, verbatim from the veto record (founder's YES 2026-09-18, "V13 yes").
+const V13 = "ERROR: this client's money lives on the package invoice. Use donna_milestone_paid to mark a payment. Do not edit the record's money.";
+
 // The shape the two signals check a date against before staging it. It is a SHAPE
 // test and nothing more: whether the day exists, whether it is in the future, and
 // whether it belongs to this invoice are the door's to answer on the plane that
@@ -773,6 +776,22 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       return writeFields(agentId, rid, { reason_for_action: input.reason_for_action }, `reason noted`);
     case 'donna_money_edit': {
       if (!rid) return { display: 'ERROR: donna_money_edit needs binder_id.' };
+      // ── V13 · F-44.15 (chair, CE-44) · THE MONEY OF A BOOKED CLIENT IS THE
+      //    INVOICE'S ───────────────────────────────────────────────────────────
+      // On 18 September this arm took seven calls and left binder 7c9e4d51 at
+      // received 80,000 against pending 56,000 on an 80,000 fee, because it patches
+      // each money cell independently and has no cross-field opinion. Every field it
+      // writes is derivable from the package invoice and none of them is a vendor
+      // act, so on a binder with a booked lead behind it the hand is refused whole.
+      // `donna_money` is NOT refused: it writes the headline amount with a witnessed
+      // note and is the vendor's only door for a sale outside the package (F-44.17).
+      //
+      // THE FOURTH ARGUMENT IS WHAT SEPARATES VICTOR'S HAND FROM THE DOOR'S:
+      // `executeAndPatch.js:12` calls this function with THREE arguments, so the
+      // door's own writers — the R-43.11 mirror at schedules.js, binderWrite, harvest
+      // — carry no booked set and pass untouched, while donna.ts:726 supplies it and
+      // only Victor's turn is refused. Fail-safe with no set, as V12 is.
+      if (booked && hasLeadBehind(booked, rid)) return { display: V13 };
       const { data: before, error: befErr } = await supabase.from('records')
         .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
       if (befErr || !before) return { display: `ERROR: binder ${rid} not found.` };

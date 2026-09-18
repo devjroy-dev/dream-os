@@ -49,8 +49,8 @@
 // none", and the direction is deliberate: the expensive failure here is a
 // confident wrong number, not a refusal.
 
-const { readOutstanding, OUTSTANDING_STATES } = require('./invoices');
-const { rupees } = require('../witnessLine');
+const { readOutstanding, OUTSTANDING_STATES, invoiceScheduleRows } = require('./invoices');
+const { rupees, longDateYear } = require('../witnessLine');
 const { VICTOR_LINES, STATE_WORDS } = require('../victorLines');
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -109,6 +109,63 @@ function invoiceLine(row) {
   return `${row.client_name} — ${owed} owed${handle}`;
 }
 
+// ── F-44.12 · THE INSTALMENTS BENEATH A PACKAGE INVOICE (chair-ruled, CE-44) ──
+// WHY THIS EXISTS. The block gave Victor a total and no schedule, so on a turn
+// about a package couple he held the sum owed and nothing about how it is owed.
+// He filled the gap himself: on 18 September he invented Rs 26,667 for a middle
+// payment that stands at Rs 24,000, and an entire schedule dated 22 December 2026
+// and 8 February 2027 against rows that carry neither date (F-44.10). The vacuum
+// does not excuse the assertion, but it is a vacuum and this closes it.
+//
+// ONE HOME, NO NEW READER. The rows come from `invoiceScheduleRows` in
+// `src/lib/vendor/invoices.js`, already the single home for a document's
+// milestones and already the source `invoicePdfSource` reads, so the block and
+// the PDF cannot disagree about a couple's instalments.
+//
+// UNPAID ONLY, IN ORDINAL ORDER. A paid milestone is not money owed, and this
+// block's last sentence governs money owed. Listing a settled instalment would
+// invite it back into an answer about what is outstanding.
+//
+// THE FIGURES BECOME HELD, WHICH IS THE OTHER HALF OF THE CURE. Every amount
+// rendered here is pushed into `handles.amounts`, so the equality fence admits a
+// true instalment and convicts an invented one on any turn that reaches it.
+// They are NOT pushed into `rowAmounts`: that is ARM B's addend set, and adding
+// instalments to it would let a spoken "subtotal" be assembled from an invoice's
+// own parts plus another invoice's whole, which is the book counted twice in a
+// new shape.
+// THE BOUND (chair, CE-44). A book of 20 package invoices renders 60 body lines,
+// so the instalments are capped. Invoice lines are NEVER dropped: the block's last
+// sentence governs money owed and an unlisted invoice makes it false. The budget is
+// spent in the block's existing order, which `invoices.js:546` orders by created_at
+// DESCENDING, newest first. An invoice is never split — the budget stops before one
+// it cannot list whole, so a vendor never sees half a couple's schedule.
+const MILESTONE_LINE_CAP = 40;
+// Model-facing, and it is mechanics rather than decoration: without it an invoice
+// whose instalments were cut looks exactly like an invoice that has none, which is
+// the false sentence F-44.10 already produced once.
+const CUT_LINE = (n) =>
+  `Instalments are shown for the first ${n} invoices only. The others have instalments that are not listed here.`;
+
+async function milestoneLines(supabase, vendorId, row) {
+  if (!row.lead_package_id || !row.id) return [];
+  let rows = [];
+  try {
+    rows = await invoiceScheduleRows(supabase, vendorId, row.id);
+  } catch (e) {
+    console.warn('[money:milestones]', e && e.message);
+    return [];
+  }
+  return (rows || [])
+    .filter((m) => m && m.state === 'pending')
+    .slice()
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map((m) => ({
+      amount: Math.round(Number(m.amount_due) || 0),
+      text: `${String(m.milestone_label || '').trim()} — ${rupees(m.amount_due)} due ${longDateYear(m.due_date)}`,
+    }))
+    .filter((m) => m.amount > 0);
+}
+
 /**
  * buildMoneyFacts(supabase, vendorId)
  *   -> { ok, block, handles: { amounts, numbers, names }, rowCount, unreadable }
@@ -162,7 +219,29 @@ async function buildMoneyFacts(supabase, vendorId) {
   }
 
   const total = outstanding.reduce((sum, r) => sum + r.amount_owed, 0);
-  const lines = outstanding.map(invoiceLine);
+  // F-44.12: each outstanding invoice's line, then its own unpaid instalments
+  // indented beneath it. A non-package invoice has none and renders exactly as
+  // it does today, so the pre-cure bytes are untouched wherever there is no
+  // schedule to show.
+  const lines = [];
+  const milestoneAmounts = [];
+  let spent = 0;
+  let listed = 0;
+  let cut = false;
+  for (const r of outstanding) {
+    lines.push(`- ${invoiceLine(r)}`);
+    if (cut) continue;
+    const ms = await milestoneLines(supabase, vendorId, r);
+    if (!ms.length) continue;
+    if (spent + ms.length > MILESTONE_LINE_CAP) { cut = true; continue; } // never split an invoice
+    for (const m of ms) {
+      lines.push(`  - ${m.text}`);
+      milestoneAmounts.push(m.amount);
+    }
+    spent += ms.length;
+    listed += 1;
+  }
+  if (cut) lines.push(CUT_LINE(listed));
   const head =
     outstanding.length === 1
       ? 'One invoice outstanding:'
@@ -193,13 +272,16 @@ async function buildMoneyFacts(supabase, vendorId) {
   };
   outstanding.forEach((r) => pushAmount(r.amount_owed));
   pushAmount(total);
+  // F-44.12: the instalment figures are HELD (admitted by the equality fence) but
+  // never enter `rowAmounts` above, for the reason stated at milestoneLines.
+  milestoneAmounts.forEach(pushAmount);
 
   return {
     ok: true,
     unreadable: false,
     rowCount: outstanding.length,
     handles,
-    block: `${HEADER}\n${head}\n${lines.map((l) => `- ${l}`).join('\n')}\n${FOOTER}`,
+    block: `${HEADER}\n${head}\n${lines.join('\n')}\n${FOOTER}`,
   };
 }
 
@@ -208,4 +290,4 @@ async function buildMoneyFacts(supabase, vendorId) {
 // polices is a cell that goes green after the frame changes underneath it.
 const FRAME_BYTES = [HEADER, FOOTER, UNREADABLE_HEADER, 'The only honest answer about money this turn is'];
 
-module.exports = { buildMoneyFacts, invoiceLine, HEADER, FOOTER, UNREADABLE_HEADER, FRAME_BYTES };
+module.exports = { buildMoneyFacts, invoiceLine, HEADER, FOOTER, UNREADABLE_HEADER, FRAME_BYTES, MILESTONE_LINE_CAP, CUT_LINE };

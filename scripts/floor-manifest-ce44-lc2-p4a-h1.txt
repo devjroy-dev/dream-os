@@ -1,0 +1,11 @@
+# scripts/floor-manifest-ce44-lc2-p4a-h1.txt
+# TDW CE-44 · LC-2 packet 4a-h1 (dream-os) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+docs/handovers/TDW_CE43_LC2_P3_HANDOVER.md
+docs/handovers/TDW_CE44_LC2_P4A_HANDOVER.md
+scripts/b84_lc2_p4a_lifecycle_bench.js
+scripts/floor-manifest-ce44-lc2-p4a-h1.txt
+src/engine/src/core/tools/recordPrimitives.ts
+src/lib/vendor/lifecycleHands.js
+src/lib/vendor/moneyFacts.js
+src/lib/witnessLine.js

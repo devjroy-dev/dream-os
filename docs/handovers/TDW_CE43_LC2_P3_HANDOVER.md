@@ -208,4 +208,17 @@ Mechanics, the chair's (CE-44):
 - An invalid calendar date takes D8.
 - Where the client has no unpaid milestone at all: D7 when one is named, D8 otherwise.
 
+### Appended at CE-44, packet 4a-h1, 2026-09-18 — the booked client's money
+
+Founder, verbatim, 2026-09-18: "V13 yes"
+
+```
+  V13 ERROR: this client's money lives on the package invoice. Use donna_milestone_paid to mark a payment. Do not edit the record's money.
+```
+
+Mechanics, the chair's (CE-44, F-44.15):
+
+- V13 is spoken by `donna_money_edit` alone, on a binder that has a booked lead behind it. `donna_money` is **not** refused: it writes the headline amount with a witnessed note, and it is the vendor's only door for a sale outside the package (F-44.17, LC-3).
+- It keys on `executeRecordTool`'s fourth argument, exactly as V12 does, and fails safe to the pre-cure world when that argument is undefined. `executeAndPatch.js:12` calls with three arguments, so the door's own writers — the R-43.11 mirror, `binderWrite`, `harvest` — pass untouched and only Victor's hand is refused.
+
 Sequencing beyond this sitting is the founder's.

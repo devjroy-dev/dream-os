@@ -111,6 +111,47 @@ function longDateYear(iso) {
   return `${l} ${String(iso).trim().slice(0, 4)}`;
 }
 
+// ── CE-44 · LC-2 · 4a-h1 · e-44.5's CURE · THE IST CALENDAR DAY ──────────────
+// WHY THIS EXISTS. `markMilestonePaid` stamps `paid_at` as `<date>T00:00:00+05:30`,
+// midnight IST, which Postgres stores and returns as `2026-09-17 18:30:00+00`. D7
+// took the first ten characters of that string and called them the vendor's day,
+// so every payment dated in IST printed as the day before. The founder saw
+// "17 September 2026" one line under a door line that correctly said the 18th.
+//
+// THE TREE HELD NO HOME FOR THIS. Searched before writing: `detail.js` renders
+// date AND time for an admin page, `contractPdf.js:934` is time-only, and
+// `longDate` below takes a plain ISO DATE and returns its input unchanged on
+// anything else — which is exactly why the wrong day printed instead of failing.
+// So this is the home, sited beside `longDate` because the month vocabulary and
+// the never-let-a-server's-timezone-move-a-vendor's-date discipline both live here.
+//
+// IT FAILS LOUDLY (chair, CE-44). Anything it cannot read returns null and logs,
+// and the caller must then say nothing rather than a wrong day. A plain ISO date
+// with no time passes through untouched, since it is already a calendar day and
+// re-zoning it would move it.
+function istDay(ts) {
+  const raw = String(ts == null ? '' : ts).trim();
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw; // already a calendar day
+  // Postgres returns a two-digit offset (`+00`), which Date() refuses; ISO wants
+  // `+00:00`. Normalised here rather than at the caller, because every caller
+  // reading a timestamptz would otherwise carry the same repair.
+  const iso = (raw.includes('T') ? raw : raw.replace(' ', 'T'))
+    .replace(/([+-]\d{2})$/, '$1:00');
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    console.warn('[witnessLine:istDay] unreadable timestamp:', raw);
+    return null;
+  }
+  // Shift by IST's fixed offset and read the day in UTC. India has one zone and
+  // no daylight saving, so a fixed shift is exact and needs no locale table.
+  const shifted = new Date(d.getTime() + (5 * 60 + 30) * 60 * 1000);
+  const y = shifted.getUTCFullYear();
+  const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function rupees(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) return null;
@@ -333,6 +374,6 @@ module.exports = {
   FILING_HANDS, PREFIX,
   UPDATED_PREFIX, REMOVED_PREFIX, UPDATED_BARE, REMOVED_BARE,
   UPDATE_HANDS, REMOVE_HANDS, describeChange,
-  shortDate, longDate, longDateYear, rupees, describeHand,
+  shortDate, longDate, longDateYear, istDay, rupees, describeHand,
   witnessFooter, hasWitnessFooter, appendWitness,
 };
