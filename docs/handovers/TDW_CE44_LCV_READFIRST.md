@@ -1,4 +1,4 @@
-# repo: dream-os @ ddb5a74cbec25f25b5b50ae2addcb754aeab7021 · dreamos-pwa @ 1db8a88e7b30373e220ae5048bc1f7b4fa0cc68a
+# repo: dream-os @ 72db66931b7338b83a2f2a6a47d29a3fc833a25a · dreamos-pwa @ c82753a1eb32527ec5622d9aef28275679d83764
 # TDW · CE-44 · SEAT LCV-1 · LC-VICTOR · THE READ-FIRST · 2026-09-18
 
 Docs only. Both tips re-derived at origin at the moment of cutting; ladder tail 0168. Accepted by
@@ -10,6 +10,11 @@ founder's rulings that decide its open forks are recorded as pending where they 
 A delivery is docs-only when every path it writes is under `docs/` or is its own
 `scripts/floor-manifest-*.txt`. It verifies on the guard, the verbatim unzip and the dirt check
 against its manifest. No bench, no floor.
+
+**Revised at `72db669` after P1 (CE-44, 2026-09-19)**, docs-only, on the slot the chair granted.
+Items 2 and 15 carry R-44.14 and R-44.15, which supersede option (b). Item 9 records attach as
+built. Item 12 gains what P1 left open. §16 records P1: its table, committed byte for byte at
+`docs/handovers/TDW_CE44_LCV_P1_EAR_TABLE.md`, is the evidence of record.
 
 Every file:line below was read by command in this seat's session. Lines cited into files that
 4a-h1 moved are re-derived at `a3bddb9`; chat.js, vendorInbound.js, loop.ts and donna.ts are
@@ -96,41 +101,68 @@ words only as the provenance check (:445, :651). She picks the hands (donna.ts:5
 report and plain receipts return to him (loop.ts:1080 to :1086). **His model text is the reply**
 (loop.ts:871), and the door appends its lines after it.
 
-**The structured request**, returned through a tool schema and never parsed from text: `route`
-(task, search, neither) · `act` (an act hand or a lookup kind) · `client_as_spoken` (never
-resolved by the model; F-44.9, F-44.16) · `amount` (whole rupees) · `date` (ISO) · `milestone`
-(as spoken) · `missing[]` · `advice_part` (a flag for the mixed turn). Produced by the ear seat's
-model in the business room. None of today's prose is written on the working surfaces.
+**THE EAR, RULED: R-44.14 and R-44.15** (founder, 2026-09-19, after P1's table). His words,
+verbatim, line breaks his:
 
-**Three ears.** (a) The chain as it is, Victor's text discarded: cheapest, but two hops and the
-relay class whole. (b) Donna hears directly: one hop, the relay class dies, the ear moves to her
-seat. It is already live for relay: `composeBody` calls `runDonnaTurn(agentId, raw)` from the door
-with the vendor's words and reads only her structured signal (relaySeat.js:432 to :446, :484).
-(c) A regex parser alone cannot hear mumbled speech; R-29.32's door-owned trigger
-(relaySeat.js:392 to :398, :459) is the pattern for the router's first pass.
+> "listener haiku-
+> operator-deepseek
+> code-code
+>
+> vendor ai assistant to bride (Eliza)-haiku
+>
+> Codespaces-deleted"
 
-**Recommendation, provisional until P1's table:** (b) for the ear, with (c)'s pattern owning the
-trigger, the questions and the confirmation. Under (b) `dear_donna_talk` and `TALK_FUSE` leave the
-business room, Fork C's receipts lose their reader, `listen_harvey_talk` becomes the door's
-question, and the door takes a structured result per hand in place of the regex parse at
-undoContract.js:36 to :106 (P4).
+Asked whether a listener parsing her words to an operator on DeepSeek is better than one listener
+only whose model can be chosen, the chair recommended one listener, and the founder answered
+*"ill go with your lean on this CE"* (R-44.15).
 
-**The seat is separate from the shape.** The ear's seat is the `donna` role on each lane and tier
-(modelRouter.js:234, :250 to :254), resolved from `admin_config` with a `donna_provider` and
-`donna_model` split (:340 to :344), panel-switchable between exactly two models (:97 to :98, :116
-to :119). E-1, E-4 and CE-98 are rulings and seat DeepSeek there. The gauntlet holds no listener
-evidence for either model under (b). **The listener's model is held for after P1 (chair).**
+**The chair's reading of the two together, stated to him and open to his correction** (a reading,
+not his words):
+- **One listener per vendor message, and it has no hands.** Her sentence, with the recent thread,
+  goes to the listener; it returns the structured request and nothing else. The DOOR validates the
+  request, maps each act to a hand by a table, runs the hand through the door's existing path
+  (`executeAndPatch`, as binderWrite.js:124 and invoices.js:299 already do), and writes the reply
+  from the rows. No second model sits between the request and the hand: a listener handing to an
+  operator is today's chain again, and P1 measured that hop (C3 matched C2's act on 8 of 21).
+- **The listener's model is a panel choice** between the two SWITCHABLE models
+  (modelRouter.js:116 to :119), set to `claude-haiku-4-5-20251001`. `VENDOR_ROLES` holds
+  `['provider', 'donna']` (modelRouter.js:234), so the listener is a third role: a code change to
+  the router and its panel, sized in P2.
+- **The operator leaves the vendor's turn** and stays on DeepSeek for whatever of hers is not that
+  turn; E-1, E-4 and CE-98 stand for her. What is left for her seat is derived in P2's read-first.
+- **One sentence may carry several acts** (P1 row 11: a confirmed booking, a fee, a follow-up and
+  an invoice), so the request is a LIST of acts the door runs in order, each confirmed or refused
+  on its own line. Designed in P2's read-first.
+- **Eliza** (`src/agent/souls/elizaSoul.js`) speaks to brides on Haiku. The chair reads that as
+  also covering the relay draft a bride reads (R-44.9), whose `composeBody` runs Donna's seat today
+  (relaySeat.js:438 to :452). That reading goes back to the founder for his word before anything
+  is built on it.
+- Replies on the working surfaces are code's (R-44.4).
 
-**One consequence of R-44.9 for that choice, to be put to the founder with P1's table as one plain
-sentence:** under (b) the relay draft's author is Donna's seat, as it already is today
-(`composeBody`, relaySeat.js:438 to :452), so whichever model P1's table seats in the ear also
-drafts the messages that go to a bride, unless he chooses to seat the two differently.
+**THIS SUPERSEDES OPTION (b).** The weighing of three ears below is kept as the record of how the
+ruling was reached.
 
-**The ear's memory.** Under (b) the ear has no thread: `donnaSession` lives inside one turn
-(loop.ts:809), and `loadThread` feeds Victor, returning role and content only; it reads `meta`
-solely to drop tombstones (memory.ts:98 to :107). The door hands the ear the replayed thread. On a
-correction turn the ear sees the door's lines as assistant content and its own last structured
-request from `meta`, through one additive map in `loadThread`.
+**The structured request, as ruled after P1.** Returned through a tool schema and never parsed
+from text: `route` (task, search, neither) and a list `acts[]`, each carrying `act` (an act hand or
+a lookup kind), `client_as_spoken` (never resolved by the model; F-44.9, F-44.16), `amount_rupees`
+(whole rupees, **minimum 1**; absent means absent, F-44.40), `date_as_spoken` (the words she used;
+**the door resolves them against today in IST through witnessLine.js's date home and no model does
+date arithmetic**, F-44.38), `milestone` (as spoken) and `missing[]`; with `advice_part` (a flag for
+the mixed turn) on the request. None of today's prose is written on the working surfaces.
+
+**Three ears, as weighed before P1 (superseded by R-44.14 and R-44.15).** (a) The chain as it is,
+Victor's text discarded: two hops and the relay class whole. (b) Donna hears directly: one hop, the
+ear moves to her seat; already live for relay (`composeBody`, relaySeat.js:432 to :446, :484).
+(c) A regex parser alone cannot hear mumbled speech; R-29.32's door-owned trigger (relaySeat.js:392
+to :398, :459) is the pattern for the router's first pass.
+
+**The listener's memory (F-44.39).** A cold ear cannot hear a fragment: P1's cold ears rightly
+returned "neither" on about twenty of sixty fixture sentences ("full", "New.", "Give pdf", "Send
+it", an email address). The door hands the listener the recent thread: the door's own lines as the
+assistant's side and the listener's last requests from `meta`, through one additive map in
+`loadThread` (which today reads `meta` only to drop tombstones, memory.ts:98 to :107). P2 proves it
+on those twenty rows, thread in hand, with live keys on the founder's machine, supervised by this
+seat.
 
 **What is stored (W3, A3): both.** The door's lines in `content`, which history re-renders
 (chat.js:3835) and the replay teaches; the structured request in `meta` (0081's jsonb), no DDL.
@@ -458,6 +490,13 @@ date is accepted separately at `:103`. No deposit, middle or delivery-basis term
 packet 5 cures that (F-44.6 amended), ahead of LC-Victor. The door act is designed on the route as
 it will stand after that cut, and this seat re-pins when it lands.
 
+**Attach, as built (packet 5, `509f55a`).** The route overlays the five per-couple keys plus
+`total` (`leadPackages.js:62`, `OVERLAY_KEYS`), with `delivery_on` through `EDITABLE` (`:59`), and
+refuses a booked lead at 422 with `code: 'already_booked'` (`:128`, F-44.31). The pwa speaks
+R-44.12's byte for that code (`LeadPackageCard.tsx:296` to `:299`, `:392`). Attach as a door act
+therefore stands on the route as built and speaks that refusal. **"Change package after booking"
+is not attach's: it sits with F-44.17 in LC-3.**
+
 **Against LC-4: RULED, R-44.7 (founder, 2026-09-18, "LC victor before LC 4").** LC-4's walk says
 "Victor quotes the package" (roadmap :75), a narrating Victor; cut first, its reply path would be
 built on the prose LC-Victor removes. LC-Victor's P1 to P6 come before LC-4; LC-3 may run alongside
@@ -534,6 +573,14 @@ Each walked before the next cuts; every witness a row, a cell or a table, never 
 - Whether an iOS WhatsApp link opens Safari: a handset witness.
 - The cost of handing the ear the thread under (b): unmeasured.
 - F-43.43's own derivation, never done (succession note :89).
+- The `already_booked` predicate (`leadPackages.js:128`) refuses when the lead's state is `booked`
+  **or** it already carries a `binder_id`. Whether a lead that is not booked can hold a binder is
+  not derived.
+- What is left for Donna's seat once the door runs hands from a request: every caller of
+  `runDonnaTurn` and of her tools outside the vendor's turn, by file and line. P2's read-first.
+- The door's behaviour when the second of three acts is refused. P2's read-first.
+- The chair's reading that Eliza on Haiku covers the relay draft a bride reads: pending the
+  founder's word.
 
 **Struck, ruled:** R1. **R-44.9** (founder, 2026-09-18): *"relay feature as is. a code cant do the
 job intended for an agent writing and improving the reply"*. The relay draft stands (item 3).
@@ -618,11 +665,73 @@ voice and receipts (loop.ts:1080 to :1086) → **his text is the reply** (:871),
 door runs signals and appends its lines (composedTail, chat.js:1134; vendorInbound.js:1821 to
 :1849) → the guard classifies (chat.js:3649, :3739; vendorInbound.js:1946) → the wire.
 
-R-44.4 in these terms: the hands stay Donna's, unchanged and shared with the doors (item 1); the
-mouth becomes the door's; Victor's voice leaves the business room and stays in the advisor room;
-the ear is Victor's model today and Donna's seat under (b). The chair's expectation matches the
-tree only under (b), and the founder's own words credit the ear to Victor. That question is his,
-after P1's table.
+**The same turn under R-44.4, R-44.14 and R-44.15** (the chair's reading of R-44.14 and R-44.15,
+open to the founder's correction): the door builds the thread and calls **the listener** (a third
+router role, Haiku) → the listener returns the request, a list of acts, and nothing else → the door
+validates it, resolves each client and each spoken date itself, and maps each act to a hand by a
+table → **the door runs each hand** through its existing path (`executeAndPatch`) in order,
+confirming before money (item 6) → **the door writes the reply** from the rows, one line per act,
+with R-44.8's link where the request carries advice → the door stores its lines as `content` and
+the request in `meta`. **Victor is not in this turn at all**; his voice stays in the advisor room.
+**Donna's model is not in this turn either**: her hands are run by the door, and her seat (DeepSeek,
+E-1, E-4, CE-98) keeps only what is not the vendor's turn, derived in P2's read-first. The founder's
+line 1, "victor can hear everything", is answered by his own R-44.14: the listener is the ear.
+
+## §16 · After P1: the ear table (CE-44, 2026-09-19)
+
+**The run.** Supervised by this seat on the founder's Codespace at `72db669`, fed from the
+Supabase editor's CSV export of the corpus SELECT; `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+never entered the Codespace, and the two provider keys were added as Codespaces secrets and then
+deleted. The rig's `FINGERPRINT` line equalled the founder's S1 row exactly: `user_rows=308
+with_relay=100 earliest_utc=2026-06-23T19:16:29.981839 latest_utc=2026-09-18T09:35:00.505712`.
+201 rows (67 sentences × 3 candidates), `NO_REQUEST` 0, `NO_RELAY` 46. Usage: C1 67 calls, 13703 in
+/ 7749 out tokens; C2 67 calls, 65895 in / 8785 out; C3 21 calls, 4620 in / 3225 out. The rig
+removed itself and the tree was clean.
+
+**The evidence of record** is the founder's table file, committed byte for byte at
+`docs/handovers/TDW_CE44_LCV_P1_EAR_TABLE.md`, sha256
+`aa29bbbdc31ec6ea96a87c63e2175598a01110e2828a138396885240d398820d`, 215 lines.
+
+**What it showed (the chair's reading of the table, recorded):**
+- The two direct ears agree on route on **54 of 67**. Where they differ it is mostly questions:
+  C1 (DeepSeek) routed as `neither` what C2 (Haiku) routed as `search` on rows 15, 24 ("Am I free
+  in 16th December"), 32, 36, 37, 40, 46, 51, 55 and 56; rows 44 and 57 ("Show the invoice here")
+  C1 heard as a task where Haiku heard a search. Under R-44.5 a `neither` sends her to the advisor
+  link, so a missed search is the costliest error an ear can make.
+- Haiku heard R-44.9's class where DeepSeek did not: row 60 `quote_send` against `neither`, row 66
+  `relay` against `date`; and caught row 13's fee.
+- About twenty of the sixty fixture sentences are fragments that mean nothing cold; both ears
+  rightly returned `neither`. P1 says nothing about them (F-44.39).
+- **Today's relays carry inventions into the operator's instructions.** The four, verbatim from
+  the table's `heard` column for C3:
+  - Row 6, the vendor: "Swati Test paid the middle payment on 18 September". The relay: "Swati Test
+    — log middle payment: Rs 26,667, received 18 September 2026. This is the 33.33% milestone
+    payment on the Rs 80,000 fee for the wedding 22 February 2027."
+  - Row 8, the vendor: "Swati Test, phone +918595356978. Wedding date 22 February 2027. Fee quoted
+    Rs 80,000, package Photographs and film. The advance arrived today." The relay: "Update Swati
+    Test to confirmed booking: phone +918595356978, wedding 22 February 2027, fee Rs 80,000
+    (Photographs and film package). Raise invoice against this booking. Advance Rs 80,000 confirmed
+    received today — log as paid against the invoice." *Recorded beside it: she named no advance
+    figure, and all three ears returned 80000 against the advance.*
+  - Row 30, the vendor: "Send a message to priya mehta asking her to pay the advance". The relay:
+    "Send a message to Priya Mehta at 8757788550 asking her to pay the advance for her quoted
+    booking (Rs 42,000)." C3 heard it as `advance_paid` with 42000.
+  - Row 31, the vendor: "Add 8757788550 as phone number of priya mehta". The relay: "Log Priya
+    Mehta's phone number as 8757788550. She's the quoted lead from 10 September, Rs 42,000."
+
+**Findings from the table (allocated by the chair):**
+- **F-44.38.** The rig gave the ear no "today", so every yearless date came back in a wrong year
+  (C1 2025, C2 2024). Ruled for the contract: the listener returns the date as spoken; the door
+  resolves it against today in IST through witnessLine.js's home. No model does date arithmetic.
+- **F-44.39.** The listener must be handed the recent thread. P2 proves it on the twenty fragments.
+- **F-44.40.** An amount of 0 was emitted where no figure was spoken (C1 row 5, C2 row 61). The
+  schema takes a minimum of 1; the door treats absent as absent.
+- For the door's resolver, not a finding: C2 returns "Khanna wedding" and "Tandon wedding" for
+  Khanna and Tandon, and row 23 put "Personal" in `client_as_spoken` for a blocked day.
+
+**Line shifts recorded at `72db669`.** Packet 5 inserted 13 lines at `chat.js:2753`. Every chat.js
+citation in this document below `:2752` holds; every one above it is +13 at this tip (for example
+the two `runTurn` calls at `:3577` and `:3716`, the room assertion at `:3538`).
 
 ---
 

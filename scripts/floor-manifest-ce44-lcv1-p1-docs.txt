@@ -1,0 +1,7 @@
+# scripts/floor-manifest-ce44-lcv1-p1-docs.txt
+# TDW CE-44 · LCV-1 · the read-first revised after P1, Amendment 4a, P1's table (dream-os, docs only, C-44.1) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory.
+docs/handovers/TDW_CE44_LCV_READFIRST.md
+docs/handovers/TDW_CE44_LCV_P1_EAR_TABLE.md
+docs/specs/TDW_CE43_SPINE_ROADMAP.md
+scripts/floor-manifest-ce44-lcv1-p1-docs.txt

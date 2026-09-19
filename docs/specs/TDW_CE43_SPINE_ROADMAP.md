@@ -155,6 +155,58 @@ LC-2's §9 order is superseded on one point: LC-Victor is inserted, and it is a 
 
 **F-43.26's split half is STRUCK.** It does not survive this amendment and no sitting carries it.
 
+
+## §11 · AMENDMENT 4a (CE-44, 2026-09-19): R-44.1 to R-44.9 in the founder's own words
+
+Amendment 4's heading promised his own words and paraphrased R-44.1 to R-44.6, and it omitted
+R-44.7 to R-44.9. This amendment carries all nine verbatim, typos included, from where each was
+recorded: R-44.1 to R-44.6 from `docs/handovers/TDW_CE44_LC2_P4A_HANDOVER.md` §4 (lines 215 to
+253), R-44.7 to R-44.9 from `docs/handovers/TDW_CE44_LCV_READFIRST.md`. Nothing else in this file
+changes.
+
+- **R-44.1** (2026-09-18): *"as you recomended, after lc 4"*
+- **R-44.2** (amending R-44.1): *"1 and 3 ith your lean."*
+- **R-44.3** (amending R-43.11's timing, from the same words as R-44.2): *"1 and 3 ith your lean."*
+- **R-44.4** (2026-09-18):
+
+  > "I think your idea is exactly what the estate requires. victor can hear everything and
+  > understand the mumbled words of a vendor. and the replies being shorter is, as you righlty
+  > pointed out, what the vendors will like
+  >
+  > initially the idea was victor to be a business manager but the product identity has evolved
+  > over time. So victor and his fancy mouth stays in advisory room. The code takes over the
+  > replies in the whatsapp lane and tdw chat. and for anything the guard doesnt have a reply,
+  > anything where a task or a search about estate isnt the question, we give victor his mouth in
+  > the whatsapp and tdw chat room - say a vendor asks how should i price my package. i want to
+  > increase----no guard or code can answer that. victor comes and does the job here.
+  >
+  > we complete the mirror zip and then start LC Victor execution"
+
+- **R-44.5** (2026-09-18):
+
+  > "CE- advisor victor is a seperate room. to simplify it further, any question not about the
+  > estate can be answered with a statement redirecting the vendor to advisory room on the pwa
+  > aong with a direct link to open advisory chat. (NO ADVISORY MODE ON WHATSAPP)"
+
+- **R-44.6** (2026-09-18):
+
+  > "we need one last addendum. any question (mixed with estate question and advisory question)
+  > gets the code answeing along with a link for the advisory part. and your questions- ill go
+  > with your lean."
+
+- **R-44.7** (2026-09-18), with C-44.1 from the same words: *"docs only skis the floor. not
+  needed. LC victor before LC 4, whats the redirect line option?"*
+- **R-44.8** (2026-09-18), shown option A, option B and B with Victor's name: *"A with A"*. The two
+  bytes, his:
+
+  ```
+  advice only:                                  I handle your bookings, payments and calendar here. For advice, ask Victor: {link}
+  mixed turn, after the door's line or lines:   For advice, ask Victor: {link}
+  ```
+
+- **R-44.9** (2026-09-18): *"relay feature as is. a code cant do the job intended for an agent
+  writing and improving the reply"*
+
 ---
 
 Trust evidence over narrative, including this file. Sequencing beyond any sitting is the founder's.
