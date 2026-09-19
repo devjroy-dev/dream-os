@@ -79,6 +79,7 @@ const ROLE_FIELDS = Object.freeze({
   provider: ['provider', 'model'],
   donna:    ['donna_provider', 'donna_model'],
   nudge:    ['nudge_provider', 'nudge_model'],
+  listener: ['listener_provider', 'listener_model'], // CE-44 LC-Victor P2 (R-44.14)
 });
 
 function parseValue(text) {
@@ -100,7 +101,7 @@ function driftFields(live, code) {
   if (!live) return [];
   if (!code) return ['(no code default — this lane resolves on the router\'s literal)'];
   const names = new Set([...Object.keys(live), ...Object.keys(code)]
-    .filter((k) => /^(provider|model|donna_provider|donna_model|nudge_provider|nudge_model)$/.test(k)));
+    .filter((k) => /^(provider|model|donna_provider|donna_model|nudge_provider|nudge_model|listener_provider|listener_model)$/.test(k)));
   return [...names].filter((k) => live[k] !== code[k]).sort();
 }
 
@@ -111,7 +112,10 @@ function unknownFields(live) {
   if (!live) return [];
   // F-41.93: the per-role stamps join the known set. The row-level pair stays known
   // too — rows written before F1b carry it and must not start reading as junk.
-  return Object.keys(live).filter((k) => !/^(provider|model|donna_provider|donna_model|nudge_provider|nudge_model|changed_by|changed_at|changed_(by|at)_(provider|donna|nudge))$/.test(k)).sort();
+  return Object.keys(live).filter((k) => !/^(provider|model|donna_provider|donna_model|nudge_provider|nudge_model|changed_by|changed_at|changed_(by|at)_(provider|donna|nudge))$/.test(k))
+    // CE-44 LC-Victor P2: the listener's two fields and its stamps are known fields too. A separate
+    // filter, so the line above stays byte-for-byte what b63's M24 mutates.
+    .filter((k) => !/^(listener_provider|listener_model|changed_(by|at)_listener)$/.test(k)).sort();
 }
 
 // ── c-41.53 (seat F, self-caught) — THE BRIDE LANE'S BLANK MODEL ────────────

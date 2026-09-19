@@ -2374,6 +2374,9 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       } catch (e) { console.warn('[wire-guard stage2 wa delivery]', e.message); }
     }
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
+    // CE-44 LC-Victor P2 (R-44.14, R-44.15, R-44.17): THE SILENT LISTENER, after the wire closes,
+    // never awaited; it writes nothing the vendor reads (src/lib/vendor/listenerDoor.js).
+    setImmediate(() => { require('./vendor/listenerDoor').recordListening({ supabase, agentId, route: llmWiring.route, message: body, result, lane: 'whatsapp' }); });
     // ── F-06.188's STAMP · THE DOOR MARKS ITS OWN CONFIRM ────────────────────
     // `doorAsked` used to decide adjacency by regexing THIS row's body. It now
     // reads this stamp, so a copy change can never move the gate again. The value

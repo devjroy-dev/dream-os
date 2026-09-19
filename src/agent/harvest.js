@@ -465,3 +465,7 @@ module.exports = { runHarvest };
 module.exports._disambiguation = { nameKey, questionSegments, computeDisambiguationHolds };
 // F-04.80 bench seam (scripts/b6_f80_bench.js drives the REAL bodies):
 module.exports._anchor = { messageNamesKey };
+// CE-44 LC-Victor P2: the silent listener meters through THIS writer, so the estate keeps exactly
+// two usage-write homes (tdw10 3.1: loop.ts and this file). Its rows carry conversation_id NULL:
+// spend, never a turn, which is exactly what a listener's call is.
+module.exports._meter = { harvestMeterRow, writeHarvestUsage };

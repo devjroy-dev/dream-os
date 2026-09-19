@@ -231,7 +231,12 @@ function resolveVendorRoom({ surface, modeOverride, roomAssert }) {
   return 'business';
 }
 
-const VENDOR_ROLES = Object.freeze(['provider', 'donna']);
+// CE-44 LC-Victor P2 (R-44.14, R-44.15): the LISTENER is the third vendor role. It hears
+// the vendor's message and returns a structured request; it holds no hands and speaks no
+// reply. Its split rides the same geometry as Donna's (listener_provider/listener_model),
+// validated, allow-set-guarded and key-guarded the same way; unset, it follows the
+// lane's primary, exactly as Donna does, so the panel's "following" reads true.
+const VENDOR_ROLES = Object.freeze(['provider', 'donna', 'listener']);
 // CE-41 · SEAT G · R-41.104 (Fork C, chair-ruled) — `advisor` IS A PER-SURFACE
 // TIER, NOT A UNIVERSAL ONE.
 //
@@ -251,7 +256,11 @@ function vendorLanes(surface, extra, opts) {
   const tiers = (opts && opts.advisor === false) ? [...CANON_TIERS] : [...CANON_TIERS, 'advisor'];
   return tiers.map((tier) => ({
     key: `model.${surface}.${tier}`, surface, tier,
-    roles: VENDOR_ROLES, reachable: true, ...extra,
+    // CE-44 LC-Victor P2: the listener hears the WORKING room only. The advisor room is Victor's
+    // (R-44.4) and the door never calls the listener there, so its lane offers no listener switch:
+    // a switch that changes nothing is a claim the panel cannot keep.
+    roles: tier === 'advisor' ? VENDOR_ROLES.filter((r) => r !== 'listener') : VENDOR_ROLES,
+    reachable: true, ...extra,
   }));
 }
 
@@ -318,7 +327,7 @@ function enforceAllowSet(surface, route) {
   if (!allow) return route;
   const fallback = DEFAULTS[`model.${surface}.default`] || { provider: 'anthropic', model: HAIKU };
   let out = route;
-  for (const field of ['model', 'nudge_model', 'donna_model']) {
+  for (const field of ['model', 'nudge_model', 'donna_model', 'listener_model']) {
     const m = out[field];
     if (m == null) continue;
     if (allow.has(m)) continue;
@@ -348,6 +357,9 @@ function parseRoute(text) {
       // `src/agent/closerEngine.js`; nothing else has wake turns.
       if (v.nudge_provider && !CONF[v.nudge_provider]) { delete v.nudge_provider; delete v.nudge_model; }
       if (v.nudge_provider && !v.nudge_model) delete v.nudge_provider;
+      // CE-44 LC-Victor P2: the listener's split, the same drop-rather-than-guess rule.
+      if (v.listener_provider && !CONF[v.listener_provider]) { delete v.listener_provider; delete v.listener_model; }
+      if (v.listener_provider && !v.listener_model) delete v.listener_provider;
       return v;
     }
   } catch (_e) { /* junk falls through to defaults */ }
@@ -355,6 +367,13 @@ function parseRoute(text) {
 }
 
 function guardKeys(route) {
+  // CE-44 LC-Victor P2: a keyless listener split is DROPPED (the listener then follows
+  // the primary), loudly, and the checks below still run on what remains.
+  if (route.listener_provider && route.listener_provider !== 'anthropic' && !providerKeyPresent(route.listener_provider)) {
+    console.warn(`[provider_misconfigured] listener route ${route.listener_provider} keyless  its split dropped, it follows the primary`);
+    const { listener_provider, listener_model, ...rest } = route;
+    route = rest;
+  }
   if (route.provider !== 'anthropic' && !providerKeyPresent(route.provider)) {
     console.warn(`[provider_misconfigured] ${route.provider} routed but its key is absent — anthropic fallback`);
     return { provider: 'anthropic', model: HAIKU, misconfigured: true };

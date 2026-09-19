@@ -48,6 +48,7 @@ const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 const { scrubText, witnessWireScrub } = require('../../lib/vendor/scrub'); // TDW_04 B2 — F-04.38 · witnessWireScrub: TDW_06 M-4 / F-06.36
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
 const { ensureBookingEvents } = require('../../lib/vendor/bookingEvent'); // CE-43 LC-1 F-43.1(a): the booking event seam, one home
+const listenerDoor = require('../../lib/vendor/listenerDoor'); // CE-44 LC-Victor P2: the silent listener
 const { longDateYear } = require('../../lib/witnessLine'); // CE-43 LC-1b F-43.29: the full-month Updated: line
 const { blockDates, unblockDates, blockLines, unblockLines } = require('../../lib/vendor/blockHands'); // TDW_04 B2 §1.5
 
@@ -3513,6 +3514,17 @@ const cappedReplyFor = (meta) => (meta.turns_cap === 0 ? CAP_ZERO_LINE : CAPPED_
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
 // handler likewise accepted-and-ignored its `history` field).
+// CE-44 LC-Victor P2 (R-44.14, R-44.15, R-44.17): THE SILENT LISTENER, AFTER THE WIRE CLOSES.
+// Never awaited by the reply: setImmediate runs it only once the response has been handed off.
+// It hears the working room only (the advisor room is Victor's, R-44.18) and writes nothing a
+// vendor reads: meta on the named row, and one uncounted usage row (listenerDoor.js).
+function listenAfterWire(req, llmWiring, message, result, roomAssert) {
+  if (roomAssert === 'advisor' || !result) return;
+  const supabase = req.app.locals.supabase;
+  const route = llmWiring && llmWiring.route;
+  setImmediate(() => { listenerDoor.recordListening({ supabase, agentId: req.agentId, route, message, result, lane: 'pwa' }); });
+}
+
 router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) => {
   const body    = req.body || {};
   const message = typeof body.message === 'string' ? body.message.trim() : '';
@@ -3693,6 +3705,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
       res.end();
       fireHarvest(req, message, result); // TDW_02 P4 — after the wire closes
+      listenAfterWire(req, llmWiring, message, result, roomAssert); // CE-44 LC-Victor P2: after the wire closes
     } catch (e) {
       console.error('[vendor-e chat SSE]', e.message);
       send({ type: 'error', message: 'Chat failed.' });
@@ -3767,6 +3780,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // F-06.130: the delivery witness, recorded before the bytes leave — this route's
       // pre-delivery seam is the resolution point, and nothing intervenes after it.
       await stage2RecordDelivery(req.app.locals.supabase, guardVerdict && guardVerdict.run_id, { arm: 'glitch_line', delivered: s2, seat: 'pwa_json' });
+      listenAfterWire(req, llmWiring, message, result, roomAssert); // CE-44 LC-Victor P2: runs after res.json hands off
       return res.json({
         ok: true, reply: s2, tool_calls: [], refresh: false,
         meta: await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }),
@@ -3787,6 +3801,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     if (openLine) reply += '\n\n' + scrubText(openLine);                        // TDW_06 D-6, last
 
     fireHarvest(req, message, result); // TDW_02 P4 — response is fully built; fires post-return
+    listenAfterWire(req, llmWiring, message, result, roomAssert); // CE-44 LC-Victor P2: runs after res.json hands off
     const toolNames = (result.tool_calls || []).map((t) => t.name);
     return res.json({
       ok: true,

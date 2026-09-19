@@ -1,0 +1,14 @@
+# scripts/floor-manifest-ce44-lcv1-p2.txt
+# TDW CE-44 · LCV-1 · LC-Victor P2, the silent listener (dream-os, code) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else.
+src/lib/modelRouter.js
+src/api/admin/modelRoutes.js
+src/agent/harvest.js
+src/lib/vendor/listenerDoor.js
+src/api/vendor-engine/chat.js
+src/lib/vendorInbound.js
+scripts/lib/p1_ear_rig.js
+scripts/b86_lcv_p2_bench.js
+scripts/floor-manifest-ce44-lcv1-p2.txt
+docs/handovers/TDW_CE44_LCV_READFIRST.md
+docs/handovers/TDW_CE44_LCV_P2_HANDOVER.md

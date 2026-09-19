@@ -129,14 +129,21 @@ not his words):
   `['provider', 'donna']` (modelRouter.js:234), so the listener is a third role: a code change to
   the router and its panel, sized in P2.
 - **The operator leaves the vendor's turn** and stays on DeepSeek for whatever of hers is not that
-  turn; E-1, E-4 and CE-98 stand for her. What is left for her seat is derived in P2's read-first.
+  turn; E-1, E-4 and CE-98 stand for her. **Derived at P2 and ruled by R-44.16: exactly one job is
+  left for her seat on the working surfaces, composing the relay draft** (`composeBody`,
+  `src/lib/vendor/relaySeat.js:441`, the only caller of `runDonnaTurn` besides loop.ts:931, which
+  leaves when the door takes the hands at P4 and P5).
 - **One sentence may carry several acts** (P1 row 11: a confirmed booking, a fee, a follow-up and
   an invoice), so the request is a LIST of acts the door runs in order, each confirmed or refused
   on its own line. Designed in P2's read-first.
-- **Eliza** (`src/agent/souls/elizaSoul.js`) speaks to brides on Haiku. The chair reads that as
-  also covering the relay draft a bride reads (R-44.9), whose `composeBody` runs Donna's seat today
-  (relaySeat.js:438 to :452). That reading goes back to the founder for his word before anything
-  is built on it.
+- **Eliza** (`src/agent/souls/elizaSoul.js`) speaks to brides on Haiku, on the couple's own line
+  (`resolveModel` on `wa_couple`, `src/agent/engine.js:351`). `model.wa_couple.default` already
+  ships as Haiku (`src/lib/modelRouter.js:66`), so R-44.14's "Eliza, Haiku" confirms the shipped
+  route and changes nothing.
+  *Withdrawn:* the chair's earlier reading that Eliza on Haiku also covered the relay draft a bride
+  reads. **R-44.16** (founder, 2026-09-19), asked whether he meant those drafts to move to Haiku:
+  *"no"*. The relay draft stays with the operator on DeepSeek; `composeBody` at
+  `src/lib/vendor/relaySeat.js:441` is untouched in seat and in code, as R-44.9 already had it.
 - Replies on the working surfaces are code's (R-44.4).
 
 **THIS SUPERSEDES OPTION (b).** The weighing of three ears below is kept as the record of how the
@@ -325,6 +332,9 @@ order by 1, 2;
 
 ## Item 3 · The router
 
+*Superseded in part by R-44.17 and R-44.18 (§17): no advice classification exists, no redirect
+line is spoken, and at P5 only the door speaks in the working rooms. Kept below as the record.*
+
 **Today:** nowhere in code. No classifier exists on either vendor lane; the only `…Estate…`
 symbol is an Instagram URL check (igImport.js:216). Victor's model decides implicitly. The only
 room switch is the advisor page's own assertion (chat.js:3525), the sole way in (loop.ts:405 to
@@ -404,6 +414,25 @@ is answered without her packages. (ii) A door-built note of her own packages and
 (package names, fees, items, bookings per package; no clients and no phones), behind a gate: a
 reply in which any figure is not in the note by equality does not ship. **Recommended: (ii)**,
 on record.
+
+**RULED: R-44.19** (founder, 2026-09-19), verbatim: *"Advisor doesn't stay blind to numbers. He won't
+be able to advise then. Advisor has no power tp write today. Only read. What's an advisor who can't
+see the clients estate"*. Option (ii) is ruled; the estate-blind adviser with no gate is withdrawn.
+P8 stands, now required, as LC-Victor's last packet: a door-built note of her own business (packages,
+fees, items, bookings per package and what is owed; no client names the advice does not need and NO
+phone numbers) feeds the adviser, and a gate withholds any reply carrying a figure the note does not
+hold. The adviser gains no estate hand. What she reads when the gate withholds is the founder's byte,
+asked at P8's charter.
+
+*The correction of fact beside it (the chair's, given to the founder):* the adviser does **not** read
+the estate today. loop.ts at `0675964`: `estateInRoom = !isConsult && !isAdvisor` (:454), its own
+comment "advisor keeps the OWNER but drops all estate" (:453), and every estate read gated on it:
+`loadFacts` (:463), `snapshotText` (:464), `donnaMessages` (:465), the calendar and activity blocks
+(:672, :673), lead pings (:688), the pending relay (:696), `moneyBlock` (:710), `expenseBlock` (:724),
+`bookedBlock` (:731). His tools are the handbook and `jot_advice`, `dear_donna_talk` disabled (:766 to
+:774). The founder is right on the other half: no estate write, and none is added. **So P8 builds
+sight; it does not preserve it.** W-1 is touched there (loop.ts's advisor branch, and advisorLens.ts
+if his register changes), under a lift issued at P8 against a named list and not before.
 
 **A constraint from the CE-44 4a handover §1, recorded for LCV-1:** the money fence as built can
 convict a true sentence about what has already been paid, because the block does not hold that
@@ -576,11 +605,14 @@ Each walked before the next cuts; every witness a row, a cell or a table, never 
 - The `already_booked` predicate (`leadPackages.js:128`) refuses when the lead's state is `booked`
   **or** it already carries a `binder_id`. Whether a lead that is not booked can hold a binder is
   not derived.
-- What is left for Donna's seat once the door runs hands from a request: every caller of
-  `runDonnaTurn` and of her tools outside the vendor's turn, by file and line. P2's read-first.
 - The door's behaviour when the second of three acts is refused. P2's read-first.
-- The chair's reading that Eliza on Haiku covers the relay draft a bride reads: pending the
-  founder's word.
+
+**Struck, derived:** what is left for Donna's seat. Exactly two callers of `runDonnaTurn` exist
+(loop.ts:931, `src/lib/vendor/relaySeat.js:441`); once the door takes the hands, one job is left on
+the working surfaces, the relay draft.
+
+**Struck, ruled:** the Eliza reading. **R-44.16** (founder, 2026-09-19): *"no"*. The relay draft
+stays on DeepSeek (item 2).
 
 **Struck, ruled:** R1. **R-44.9** (founder, 2026-09-18): *"relay feature as is. a code cant do the
 job intended for an agent writing and improving the reply"*. The relay draft stands (item 3).
@@ -606,6 +638,9 @@ draft waits for her thumb. R-43.16: the line is lawful because it carries the co
 lanes.
 
 ## Item 14 · The bytes, for the founder
+
+*R-44.8's two bytes are approved and UNUSED (R-44.17); they enter no file. The working rooms'
+leftover line and its batch are R-44.18's, in §17.*
 
 **The redirect line, RULED: R-44.8.** The founder, verbatim, 2026-09-18, shown option A, option B
 and B with Victor's name, each in the plain and the mixed case: *"A with A"*. The chair's reading,
@@ -674,8 +709,10 @@ confirming before money (item 6) → **the door writes the reply** from the rows
 with R-44.8's link where the request carries advice → the door stores its lines as `content` and
 the request in `meta`. **Victor is not in this turn at all**; his voice stays in the advisor room.
 **Donna's model is not in this turn either**: her hands are run by the door, and her seat (DeepSeek,
-E-1, E-4, CE-98) keeps only what is not the vendor's turn, derived in P2's read-first. The founder's
-line 1, "victor can hear everything", is answered by his own R-44.14: the listener is the ear.
+E-1, E-4, CE-98) keeps only what is not the vendor's turn: on the working surfaces, exactly one job,
+composing the relay draft (`composeBody`, `src/lib/vendor/relaySeat.js:441`), which R-44.16 keeps on
+DeepSeek. The founder's line 1, "victor can hear everything", is answered by his own R-44.14: the
+listener is the ear.
 
 ## §16 · After P1: the ear table (CE-44, 2026-09-19)
 
@@ -732,6 +769,71 @@ removed itself and the tree was clean.
 **Line shifts recorded at `72db669`.** Packet 5 inserted 13 lines at `chat.js:2753`. Every chat.js
 citation in this document below `:2752` holds; every one above it is +13 at this tip (for example
 the two `runTurn` calls at `:3577` and `:3716`, the room assertion at `:3538`).
+
+## §17 · R-44.17 and R-44.18: no advice router; only code speaks in the working rooms (CE-44, 2026-09-19)
+
+**R-44.17** (founder), verbatim: *"yes. let the business mode run as it is running today. any advice
+that is asked, the estate handles it today. it continues getting handled the samee way."* Before it,
+his reasons, verbatim: *"i dont think people or vendors will ask for advice on whatsapp lane in any
+case. See, a vendor would see the pwa-advisory room and would know. whatsapp as a channel exists for
+business. so in hindsight, id rather not have that router coding complication. I feel itll be
+unnecessarily burdensome because now we will have to keep a tab with the model is categorising as
+advice and what is a task."* **R-44.5, R-44.6 and R-44.8 are WITHDRAWN**; R-44.8's two bytes are
+approved and unused. There is no advice classification anywhere: the listener returns tasks and
+lookups only, and `advice_part` leaves the schema. `ADVISOR_ON_WHATSAPP` and R-VS.4's refusal stand as
+they are. What falls out of LC-Victor: the router's advice and mixed branches, the short form, `?q=`,
+and P3 as a packet. **F-44.21** (the signed-out deep link loses its destination) stays a true finding
+for any link into the app and is **re-filed to LC-3**. P8 stands (item 5, R-44.19).
+
+**R-44.18** (founder), verbatim: *"I think option 1 is better than option 2 because my 60 something
+examples are merely what we could come up with. There can be a million more."* and, quoting the
+chair's first cut back: *"Option 1 is One. Victor leaves the working rooms completely. This is option
+two, and it's what you've just described. Only code speaks there. With Victor gone, a whole layer of
+machinery can be deleted: the relay between the two AIs, the fuse for when they argue, and the checker
+that watches his prose for invented figures. There is nothing left to watch. Each message costs one AI
+call, and every reply comes from the records."* The chair's reading, stated to him: **Victor leaves
+the working rooms entirely**, WhatsApp and the TDW chat's working room; only the door speaks there.
+This supersedes R-44.17's clause that leftover turns are answered as today, and R-44.4's fourth
+sentence with it. When the door takes the replies, `dear_donna_talk`, `TALK_FUSE`, Fork C, the class
+ladder and wireGuardVictor's working-surface limbs are **deleted, not repaired**. The operator keeps
+her one job, the relay draft (R-44.16). Victor speaks in the Advisor room and nowhere else. The
+chair's second cut (narrowing the build to the acts his sixty messages used) is **refused**: the full
+inventory of item 1 stands as the target, sequenced by frequency, money and lifecycle first.
+
+**The leftover line, his byte** (for a message the door can make no task or lookup of):
+
+```
+I didn't catch a task in that. You can say things like:
+```
+
+followed by **two examples drawn at random** from a batch. His words: *"We will have a batch of 10
+messages- 2 messages at random show up everytime the code days I didn't catch a task in that."* and
+*"for the examples, we will not use swati name."* No real or fixture name appears in any example.
+
+**The batch, approved by him verbatim ("Your examples are perfect."), each line a byte:**
+
+```
+The Sharma wedding is confirmed for 5 December, fee 60,000
+The advance came in today for the Kapoor booking
+Am I free on 14 February?
+Block 20 March, personal
+Move the Verma shoot to 22 November
+Raise the invoice for the Bose wedding
+Who are my new leads?
+What's due this week?
+Add a new lead, haldi shoot on 3 January
+Send a message to my client asking for the advance
+```
+
+He added: *"Add two for teams as well- assignment of a task."* **PENDING his word**, the chair's two
+drafts, not yet bytes:
+
+```
+Assign my assistant to the 5 December wedding          (PENDING)
+Who is on the team for the 14 February shoot?          (PENDING)
+```
+
+None of R-44.18 is P2's to build; the line and the batch are P5's.
 
 ---
 
