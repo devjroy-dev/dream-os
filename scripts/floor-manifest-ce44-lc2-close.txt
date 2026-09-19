@@ -1,0 +1,7 @@
+# CE-44 · LC-2 CLOSE · docs-only under C-44.1 · dream-os only.
+# No bench and no floor is owed: no executable byte moves. F-19.16 still governs the set —
+# a dirty path outside this list is a STOP.
+docs/handovers/TDW_CE44_LC2_CLOSE_HANDOVER.md
+docs/specs/TDW_CE43_SPINE_ROADMAP.md
+docs/specs/TDW_19_V2_BUSINESS_SOLUTIONS_MASTER.md
+scripts/floor-manifest-ce44-lc2-close.txt

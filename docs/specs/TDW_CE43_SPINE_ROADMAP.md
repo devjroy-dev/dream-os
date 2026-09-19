@@ -110,7 +110,7 @@ c-43.1 the first AUDIT-1 charter was not to §10 form · c-43.2 the plane list o
 - **R-43.12** Vendor-side provisions build first. The bride lane (P3, P16, P17, P18 in `TDW_CE43_VENDOR_PROVISIONS.md`, and the bride-side walks held from the succession note) resumes only after Block 09 closes.
 - **R-43.13** Ads is on the roadmap as its own track, ADS-1. The founder applies to Meta for the Marketing API now (ads_management and ads_read at Advanced access, business_management, the Page and Instagram permissions, the Marketing API access tier, Business Verification confirmed); the application runs in parallel with LC-2 to LC-4 and needs no byte in the tree. When it lands, VP-5 builds "Ads" as a room on the PWA: the vendor picks a package, a budget and dates; the ad runs as her Page and her Instagram from her own ad account on her own card; the click lands in her WhatsApp on the free three-day window; Victor answers as her front desk; the Sunday brief shows what each rupee of spend became. The spend never touches TDW; zero commission holds.
 - **R-43.14** Two Meta dates are facts, not gates. 23 September 2026 is the effective date of Meta's revised Tech Provider terms, which the founder reads before he accepts them by pressing "Start onboarding"; 15 October 2026 is Meta's retirement of Embedded Signup v2. G6 builds on Embedded Signup v4 from the start, so neither date sequences anything. The G6 seat re-verifies both on Meta's pages at charter; the estate's notes are a reading, not a page.
-- **R-43.15** The shared way is the default for every vendor connecting her own number (she keeps her WhatsApp Business app; her history and contacts come across; her own typing is echoed to the spine). The moved way (her number runs only through TDW; calling and the in-chat catalogue become possible) is opt-in per vendor. *Open for the founder's yes; the chair's lean recorded.*
+- **R-43.15** The shared way is the default for every vendor connecting her own number (she keeps her WhatsApp Business app; her history and contacts come across; her own typing is echoed to the spine). The moved way (her number runs only through TDW; calling and the in-chat catalogue become possible) is opt-in per vendor. **CLOSED at CE-44 on the founder's yes; no longer open.**
 
 **The order**
 
@@ -124,6 +124,36 @@ c-43.1 the first AUDIT-1 charter was not to §10 form · c-43.2 the plane list o
 
 - **IDEAS-1** (2026-09-17): the WhatsApp inventory and the finding that WABA-DIRECT could already exercise most of what the two permissions name; the real unlock is R9. Its Part D is superseded. Its read-first is credited and rides `TDW_CE43_VENDOR_PROVISIONS.md` §0.
 - **IDEAS-2** (2026-09-17): the provisions sheet, Parts A to E, committed as `TDW_CE43_VENDOR_PROVISIONS.md`. Nothing in it is chartered by being proposed (R-43.1); each provision charters as a sitting under this §9.
+
+---
+
+## §10 · AMENDMENT 4 (CE-44, LC-2 closing, 2026-09-18 and 2026-09-19)
+
+### The founder's rulings, in his own words
+
+- **R-44.1** The guard sitting on Victor happens. *His concern, raised on the card 4a walk, that Victor answers with figures nobody gave him.*
+- **R-44.2** The guard sitting opens after card 4a and before packet 4b.
+- **R-44.3** `PACKAGE_MONEY_MIRROR=1` goes live on Railway.
+- **R-44.4 / R-44.5 / R-44.6** Code takes over the replies in WhatsApp and in the TDW chat. Victor's mouth stays in the PWA advisory room. The guard sitting is absorbed into LC-Victor, and **packet 4b is HELD** behind LCV-1's read-first.
+- **R-44.10** The keyboard comes up only when she tapped something that names the field, and never just because a sheet opened. Founder: **"yes."**
+- **R-44.11** The wishbone advance renders the next cell WITHOUT focus. Offered as two shapes; founder: **"ok. first one"**
+- **R-44.12** A booked couple's refusal reads "This couple is booked. The package is fixed on their invoice.", mapped to `already_booked`, replacing `attachFailed` for that code alone. Founder: **"OK TO YUR SUGGESTION."** *This sentence must be rewritten when F-44.17 lands.*
+- **R-44.13** The attach sheet is built AS DRAWN in the approved mock. Founder: **"YES"**
+- **V13** The record's money door refuses on a package client: "ERROR: this client's money lives on the package invoice. Use donna_milestone_paid to mark a payment. Do not edit the record's money." Founder: **"V13 yes"**
+
+Two further findings came from his own walk, in his words: **F-44.35**, *"phone number isnt visible in leads details."* And on the wishbone advance, *"yes. with keyboard down."*
+
+### The order after LC-2, as the founder has ruled it
+
+LC-2's §9 order is superseded on one point: LC-Victor is inserted, and it is a hard gate.
+
+1. **LC-Victor, P1 to P6.** Absorbs the guard sitting (R-44.4 to R-44.6) and **packet 4b**, which is no longer a packet of LC-2. Its read-first has landed as `docs/handovers/TDW_CE44_LCV_READFIRST.md`.
+2. **LC-3 alongside**, on its own seat, from the tree.
+3. **LC-4**, after LC-Victor's six packets, not before.
+4. **LC-Victor is the hard gate on G6.** G6 does not open until it closes: her own number is not connected to a mouth that invents figures.
+5. **G6**, then **VP-1 to VP-5** as §9 has them, with **ADS-1** on Meta's approval, then **Block 09**, then **the bride lane** (R-43.12).
+
+**F-43.26's split half is STRUCK.** It does not survive this amendment and no sitting carries it.
 
 ---
 

@@ -264,3 +264,44 @@ Block 19 is SEALED when every phase G0–G7 is built and walked on the founder's
 - **§4 G5.1:** built through sitting 2 — the peer found by search (R-40.104), told (R-G51.15), withdrawable (R-40.107).
 - **§6 gates:** templates Active on The Dream Wedding Direct: `tdw_wedding_credit`, `tdw_wedding_consent`, `tdw_review_request` (MARKETING), `tdw_contract_sign`, `tdw_contract_sign_otp` (AUTH), `tdw_payment_reminder`, `tdw_lead_alert_utility`, `tdw_referral_alert`, `tdw_contract_copy` (Document header). Google OAuth client on `tdw-business-solutions` (Testing; publish prerequisites in `TDW_INFRA_GOOGLE_OAUTH.md`).
 - **§7:** the seven-ink law (R-40.129) is the shell's palette.
+
+---
+
+## MASTER AMENDMENT · R-43.11 · the client lifecycle, as LC-2 built it (CE-44, 2026-09-18)
+
+R-43.11 asked that this master carry the lifecycle the founder ruled at CE-43, once it was
+built rather than while it was drawn. LC-2 has built and walked it. This is that text.
+
+**A lead becomes a client through a package, not through a form.** The vendor attaches one
+of her own packages to an enquiry. The package is a template; what lands on the couple is a
+**snapshot** of it, held on `public.lead_packages` with the couple's own fee, wording, line
+items and payment shares. Editing her package afterwards never reaches a couple already
+quoted, and editing a couple's terms never reaches her package. That separation is the
+whole of the model and every walk in LC-2 tested it in both directions.
+
+**The couple's payment shape is theirs.** Deposit share, middle payment share and whether
+the middle is taken at all, the delivery basis and its days, all live on the couple's
+snapshot and are set per couple in the attach sheet, which mirrors the package page's own
+fields and labels. The schedule the couple sees is computed from those, not from the
+package.
+
+**Booking fixes the money.** On booking, an invoice is minted from the snapshot and the
+instalments are written from the schedule. From that moment the package is fixed on the
+invoice: the attach sheet refuses a change with *"This couple is booked. The package is
+fixed on their invoice."* (R-44.12) and offers no way forward, because none exists yet.
+
+**What still writes a package client's money, corrected.** The earlier draft of this
+paragraph said the record's money doors were closed on a package client. They are not, and
+the correction matters more than the claim did. The engine's own door refuses (V13: *this
+client's money lives on the package invoice; use `donna_milestone_paid`*), and the mirror
+keeps the binder coherent. But the **app's** doors are not all guarded: `binderWrite.js:124`
+writes; `invoices.js:376` is unguarded; `invoices.js:341` is locked but tests the payment
+rather than the lead. That is **F-44.18**, allocated to LC-3, and until it lands a package
+client's money can still be edited from the app side. Nothing in this master should be read
+as saying otherwise.
+
+**What is not built yet, named so the gap is visible.** Changing a package after booking,
+and a sale outside the package, are **F-44.17**, to LC-3; when it lands, R-44.12's sentence
+above must be rewritten to name the way forward rather than close the door. A merged
+couple's retired binder stays hidden rather than deleted and calendar rows keep pointing at
+it, **F-44.32**, to LC-3.
