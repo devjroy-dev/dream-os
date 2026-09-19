@@ -1,4 +1,5 @@
 # repo: dream-os @ 0675964ce5a4680ee8ed9a6483e17ef7092b2fd1 (base) · dreamos-pwa @ c82753a1eb32527ec5622d9aef28275679d83764
+# revised at close (docs only, C-44.1) on dream-os @ cb84f6fbc1bcf625298a7f5b631c8c49071c1992 · dreamos-pwa @ 320ad7e39f7e70e0fb4be6b37b84b4299a3c8307
 # TDW · CE-44 · SEAT LCV-1 · LC-VICTOR P2 · THE SILENT LISTENER · HANDOVER
 
 **Rung b86.** Code, so it verifies on the founder's own floor end to end
@@ -151,6 +152,145 @@ CE-98 stand for her.
   restore never ran. Nothing delivered was touched (the source tree's dirt was re-proved equal to the
   manifest and the ZIP byte-equal to it), and the copy was discarded. From here no floor of this seat
   is stopped once started.
+
+## 10 · The panel cut (dreamos-pwa `320ad7e`) and F-44.43 on the live glass
+
+**Before the cut, a look without a tap** (founder's screenshots, 20 September, `thedreamwedding.in/admin/switchboard`): on
+"Answer vendors on WhatsApp" and "Answer vendors in the app", every working-room tier (Basic, Essential, Signature,
+Prestige) showed a third row named by the raw word `listener`, lowercase, reading "borrowed · following Victor" (for
+example WhatsApp Basic: `listener · DeepSeek · borrowed · following Victor`; WhatsApp Essential: `listener · Anthropic
+· borrowed · following Victor`); the Advisor lane showed Victor and Donna only; Trial read-only; the couple, marketing,
+gap-filling and bride-app lanes carried no listener row. The founder, verbatim: *"no. i havent tapped."*
+
+**The cut** landed at `320ad7e` (parent `c82753a1`, eight paths, byte-identical to the ZIP the chair diffed; Vercel
+Ready, Production). Its verify on his Codespace: `tsc clean` · `b87 · 26 pass · 0 fail` · `next build` succeeded ·
+`FLOOR = NAMED BASE, no delta  (refusals, not in base: 0)` · `VERIFY GREEN`.
+
+**The read-back after the cut:** every working-room tier's third row read **Listener**, still "borrowed · following
+Victor"; the Advisor lane none. **The eight picks, final state as the founder left it:** the Listener on **Anthropic**
+(`changed 20 Sept`) on Essential, Signature and Prestige on both vendor surfaces; on **Basic, both surfaces, DeepSeek**
+(`changed 20 Sept`), by his choice, verbatim: *"ive kept victor and listener on basic for each on deepseek"*. A Victor
+change on app Basic was made by mistake and reverted by him (*"i changed by mistake"*); Victor and Donna answer with
+the same models as before, their Basic stamps now reading 20 September. The panel showed each pick back to him, which
+is F-44.43's cure witnessed live. Two picks per tier were needed where the unset listener already showed Anthropic by
+following Victor: the two-way switch ignores a tap on the option already lit (`ModelRoutesPanel.tsx`, `TwoWay`).
+
+## 11 · P2's walk: the listening table, seventeen rows
+
+**Fixture tiers** (read-only SELECT, two rows): 9888294440 **signature**, 8595356978 **prestige**. Tonight's traffic was
+therefore heard on Haiku. Every row below: `listener_model` `claude-haiku-4-5-20251001`, `tier` signature, `heard`
+true, `listener_error` null, `fx_agents` 2.
+
+| at (IST) | lane | her sentence | heard_request |
+|---|---|---|---|
+| 20 Sep 02:37:38 | whatsapp | Who are my leads? | `{"acts":[{"act":"find"}],"route":"search"}` |
+| 20 Sep 02:38:18 | whatsapp | What's due this week? | `{"acts":[{"act":"whatsdue"}],"route":"search"}` |
+| 20 Sep 02:39:04 | whatsapp | Am I free in 14 Feb | `{"acts":[{"act":"find","date_as_spoken":"14 Feb"}],"route":"search"}` |
+| 20 Sep 02:39:31 | whatsapp | Full | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:39:49 | whatsapp | Send it | `{"acts":[{"act":"relay"}],"route":"task"}` |
+| 20 Sep 02:40:02 | whatsapp | 14 Feb | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:40:16 | whatsapp | Refresh | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:40:26 | whatsapp | Full | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:40:53 | whatsapp | Refresh | `{"acts":[{"act":"find"}],"route":"search"}` |
+| 20 Sep 02:41:09 | whatsapp | 14 Feb | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:45:57 | whatsapp | Nananana | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:46:19 | whatsapp | Time date effort ? | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:46:28 | whatsapp | Can't be there. | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:46:38 | whatsapp | Need to ask how to structure ncrease booking | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:46:55 | whatsapp | Hello what? | `{"acts":[],"route":"none"}` |
+| 20 Sep 02:52:27 | pwa | am i free on 19th | search / find, `date_as_spoken` "19th" |
+| 20 Sep 02:52:49 | pwa | who are my new leads | search / find |
+
+The fifteen WhatsApp rows are the founder's own export, verbatim. **The two pwa rows are as the chair recorded them from
+the founder's table** (those two rows reached the chair and not this seat). The web door's three call sites are
+witnessed live by them: P2's walk is GREEN on both lanes.
+
+**F-44.39 on real traffic, side by side.** P1's cold ear (no thread) returned `neither` for "Send it"; tonight, with the
+thread in hand, the same two words were heard as `{"acts":[{"act":"relay"}],"route":"task"}`. **F-44.38's contract
+witnessed:** "Am I free in 14 Feb" returned `date_as_spoken` "14 Feb", unconverted. **R-44.17 working:** the
+advice-shaped sentence ("Need to ask how to structure ncrease booking") returned `none`.
+
+## 12 · The two app-chat replies, evidence for P7
+
+The founder's two screenshots of the pwa turns above reached the chair; their text, **as the chair quoted it**: asked "am
+i free on 19th" on 20 September, Victor replied that "19 September was yesterday" and that the next free day "is 22
+September onwards — until Dholakia on 21 Sep, which is tomorrow", a sentence that contradicts itself; and "who are my
+new leads" drew six numbered lines of prose with "Plus three more" and "The actionable ones". The listener's record of
+the same two turns is one clean request each. **Cure nothing:** Victor leaves these rooms at P5 onward (R-44.18).
+
+## 13 · The cost row (corrected SELECT; e-9)
+
+From `engine.usage`, the two fixtures, 30 days, turns split from uncounted spend and spend by model; `fx_agents` 2:
+
+| kind | model | rows | avg ₹ | median ₹ | total ₹ | avg in | avg out | avg cache read | window (UTC) |
+|---|---|---|---|---|---|---|---|---|---|
+| spend (uncounted) | claude-haiku-4-5-20251001 | 17 | 0.17 | 0.18 | 2.97 | 1471 | 54 | 0 | 2026-09-19 21:07:40 to 21:22:51 |
+| spend (uncounted) | deepseek-v4-flash | 66 | 0.02 | 0.01 | 1.00 | 1049 | 8 | 45 | 2026-09-01 to 2026-09-19 |
+| turn (counted) | deepseek-v4-flash | 12 | 0.18 | 0.035 | 2.19 | 6989 | 175 | 40802 | 2026-09-03 to 2026-09-09 |
+| turn (counted) | haiku | 190 | 1.78 | 0.82 | 338.16 | 4711 | 249 | 51139 | 2026-08-21 to 2026-09-19 |
+
+**The listener** is the first line: 17 uncounted rows, equal to the walk's 17 heard turns over the same window, about
+**₹0.17 a message**, reading 1,471 tokens with the thread (P1's cold estimate: ₹0.16 at 983). Against **₹1.78** for an
+average Victor-plus-Donna turn, the listener costs about a tenth. The ledger's own ₹100-to-the-dollar convention
+(`models.ts:60`). **The limit, F-44.47:** `engine.usage` names no spender, so the listener and harvest are told apart
+by model alone; that fails on any lane where both route to one provider (Basic tonight). Until the spender marker lands,
+every cost SELECT says so in its own comment.
+
+## 14 · Findings from P2's close, as allocated
+
+- **F-44.42.** `bf1_bride_tool_fidelity_bench` is RED when it actually runs; the named base carries it only as REFUSED
+  on a keyless machine. It ran live on the first P2 floor because the Codespace still held deleted secrets. Its failing
+  cell and provider text are **not available** (the floor prints the bench's name only). Filed to the bride lane with
+  Block 09: RED when it runs, refused on a keyless machine, failing cell unknown.
+- **F-44.43.** The live switchboard drew the server's `listener` role through a catch-all to `nudge_provider`, named
+  by its raw key, unable to show a pick back. **Closed** by the panel cut (§10): an explicit role-to-field map, and an
+  unknown role renders no row.
+- **F-44.44.** The app's "Start a fresh thread" control (`components/vendor/FreshThreadControl.tsx`, D-7,
+  founder-approved 17 July) was deleted with the old `/vendor` tree in the P7.2 flip (`4bcc87b5`, 3 September) and never
+  re-mounted in the shell; `POST /thread/fresh` (chat.js:3911) and `useChat.freshThread()` (useChat.ts:221) are live
+  with no caller. The founder, verbatim: *"refresh as a term sent to victor used to refresh and clear his recent convo
+  thread and began a new convo. there was a refresh button on pwa as wel for refresh which i find is missing"*. Filed to
+  LC-3 with the shell. Recorded: the WhatsApp word is `fresh`, whole message, since `e400e45` (22 July), never
+  `refresh`; "refresh" is an ordinary turn.
+- **F-44.45.** The same word, "Refresh", was heard as `none` and then as search/find with no subject. **Ruled for the
+  door:** a lookup that names no entity, no date and no kind the door can run is treated as nothing to act on, and takes
+  the leftover line when that line goes live at P5. The door never runs a lookup on nothing. Fixtures: that pair.
+- **F-44.46.** **Ruled for the door's date resolver (F-44.38):** a day spoken with no month resolves to the NEXT such
+  day on or after today in IST, never a past one; "19th" asked on 20 September is 19 October. A month with no year
+  resolves to its next occurrence the same way. The founder may prefer the door to ask; until he says so, this stands.
+  Fixtures: that sentence on that date.
+- **F-44.47.** `engine.usage` names no spender (§13). LC-Victor, in the first packet that touches the usage writer
+  again: a spender marker on the row, derived from `docs/db/ENGINE_SCHEMA.md` and the writer at `harvest.js:90` to
+  `:108` before proposing; if it needs DDL, the migration number is asked of the chair (C-43.8).
+
+## 15 · Errors and corrections owned
+
+- **e-7** (above, §9).
+- **e-8.** P2's dream-os cut put `listener` into the working-room lanes' roles without checking what the live panel does
+  with a role it does not know (F-44.43). Found by reading the pwa at its tip before building the panel cut.
+- **e-9.** The first cost SELECT counted every `engine.usage` row, mixing counted turns, harvest's spend and the
+  listener's uncounted rows (its 279 rows, ₹1.21 average, ₹0.61 median, are not a turn cost). Corrected in §13.
+- **The chair's, recorded:** **c-44.19**, told this seat its read-first held R-44.1 to R-44.9 verbatim when R-44.1 and
+  R-44.3 were absent and R-44.4 to R-44.6 there by number only; **c-44.20**, ruled the rig's home "under scripts/"
+  without reading the floor's collection rule (F-44.41); **c-44.21**, sequenced dream-os before the pwa and, diffing
+  P2, never asked what the live panel does with a role it does not know.
+
+## 16 · A standing card rule, from this walk
+
+**Deleting a Codespaces secret is not unloading it.** A running Codespace keeps secrets it has already loaded until it
+is stopped. Every card that uses Codespaces secrets ends its deletion steps with the yes/no check reading **"no · no"
+AFTER a stop and restart**, witnessed on the founder's screen, and the card is not closed until it does. (Earned tonight:
+the check read "yes · yes" after deletion, and a live bench ran on the deleted key.)
+
+## 17 · Carried forward
+
+- **P5's card, first precondition:** the Listener on Basic is on DeepSeek on both surfaces, by the founder's tap
+  (§10). R-44.14 seats it on Haiku, and P1 showed what DeepSeek does to questions. It bears on nothing while the
+  listener is silent; he decides before P5.
+- **Pending the founder, nothing built on it:** his word on the two team example lines (read-first §17).
+- **Next:** P4's read-first, the structured result per hand, the three hands P5 needs first (`donna_booking`,
+  `donna_milestone_paid`, `donna_invoice_pdf`), and the order of the rest from a read-only count of acts in
+  `meta.listener` since `cb84f6f` deployed.
 
 ---
 
