@@ -85,7 +85,13 @@ The correct sequence: standalone WhatsApp products → PWA shells (trust) → Di
 - Every schema change goes through a numbered migration file in db/migrations/
 - Migration sequence is unified — bride and vendor share one sequence. Last applied: 0022.
 - Never edit an applied migration file. Changes go in the next numbered file.
-- RLS disabled on all tables. service_role key held by Railway only. Enable at Phase 3 before Discover.
+- **RLS ENABLED ON ALL TABLES IN `public` — 20 September 2026, migration `0170` (CE-44, SEC-1).**
+  No policies; `anon` and `authenticated` hold nothing; the service role bypasses RLS and keeps its
+  grants. **⚠ SUPERSEDES, not deletes:** this line read *"RLS disabled on all tables. service_role
+  key held by Railway only. Enable at Phase 3 before Discover."* That plan was overtaken — the
+  estate was found open to the browser's public key on 101 of 102 tables and closed at CE-44,
+  before Phase 3 rather than at it. See `docs/SCHEMA.md` §RLS and
+  `docs/handovers/TDW_CE44_SEC1_HANDOVER.md`.
 
 ### Agent architecture
 - **Vendor agent:** src/index.js (entry) → src/agent/engine.js (loop, MAX_ITERATIONS=5) → src/agent/tools.js → src/agent/systemPrompt.js
@@ -795,9 +801,16 @@ Rendered in the same bride PWA Surprise Me tab.
 - This is a qualified lead. Not cold.
 
 **Infrastructure:**
-- RLS enabled on Supabase. Before Discover surfaces vendor data to unauthenticated brides,
-  row-level security must be live. Policy: vendors table public reads limited to
-  discover_eligible=true rows and safe columns only (no leads, clients, invoices, expenses).
+- **RLS is live as of 20 September 2026 (`0170`, CE-44, SEC-1), but in its CLOSED form: enabled on
+  every table with NO policy.** ⚠ The prerequisite below is superseded in its timing and **still
+  open in its substance.** It read: *"RLS enabled on Supabase. Before Discover surfaces vendor data
+  to unauthenticated brides, row-level security must be live. Policy: vendors table public reads
+  limited to discover_eligible=true rows and safe columns only (no leads, clients, invoices,
+  expenses)."* Row level security is now live everywhere, so the first sentence is met. **The
+  POLICY is not written.** Today `anon` reaches nothing at all, which is safe but is also not
+  Discover: a public read of `vendors` limited to `discover_eligible=true` rows and safe columns
+  needs its own policy plus a grant back to `anon` on those columns, and that is a deliberate,
+  separately-walked piece of work, not a side effect of `0170`.
 - Railway region move: EU West → Mumbai. 150-200ms latency acceptable at 50 vendors.
   Must happen before scaling beyond founding cohort. Do at Phase 3 start, before traffic grows.
 
@@ -849,7 +862,11 @@ See FINDINGS_LOG.md for full details on each item.
 - [ ] Migration 0024b applied
 - [ ] vendors.discover_eligible column populated by Swati editorial pass
 - [ ] discover_readiness seeded for at least 3 cities, at least 1 category each
-- [ ] RLS enabled on Supabase — vendors table read policy live
+- [x] RLS enabled on Supabase — **done 20 September 2026 (`0170`, CE-44)**, every table, no policy
+- [ ] ⚠ **vendors table read policy live — STILL OPEN.** The checkbox above was one line covering two
+  jobs; only the first is done. Discover needs a named policy on `public.vendors` for
+  `discover_eligible=true` rows plus a column-scoped grant back to `anon`. Splitting it here so the
+  tick on the first half cannot be read as the second.
 - [ ] Railway region moved to Mumbai
 - [ ] shortlist_vendor, list_my_vendors, ask_vendor tools working in WhatsApp
 - [ ] Discover UI live at thedreamwedding.in/discover

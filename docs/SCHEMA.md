@@ -429,8 +429,31 @@ Defined in src/agent/categories.js. 16 categories locked 2026-05-15.
 | invoices | No (private) | 5 MB | application/pdf | Booking confirmation PDFs |
 
 ## RLS
-Disabled on all tables. service_role key held by Railway only.
-Will enable when bride-side public access is needed (Session 9).
+
+**✅ ENABLED ON EVERY TABLE IN `public` — 20 September 2026, migration `0170`, founder-run on
+production and walked (CE-44, SEC-1; F-44.73 closed).** All 102 base tables in `public` carry row
+level security with **no policy**, so `anon` and `authenticated` reach no row through PostgREST.
+Both roles were also stripped of every privilege on tables, sequences and routines in `public`,
+and the schema's default privileges were changed so a new table does not arrive granted. The
+service role bypasses RLS and keeps its grants, so dream-os is unaffected. Witnessed: the census
+after read public 102 / 0 / 0 with engine unchanged at 25 / 18 / 0, and the founder's own REST
+probe with the public key went `http=200 bytes=47` before to `http=401` after, five minutes apart.
+The dashboard's own counters moved from Exposed tables 102 of 127 to **0 of 127** and Exposed
+functions to **0 of 15**, and "Automatically expose new tables" is **OFF**.
+
+**⚠ THE PRIOR LINES ARE SUPERSEDED, NOT DELETED.** They read: *"Disabled on all tables.
+service_role key held by Railway only. Will enable when bride-side public access is needed
+(Session 9)."* They were true when written and **stale from some point before 20 September 2026**,
+by which date 101 of 102 tables were reachable with the browser's public key. Kept in this
+sentence so a reader can see that this document asserted the estate was closed by design while it
+was open in fact, rather than finding a paragraph replaced and no record that it was.
+
+**One residual, recorded and not softened.** Supabase's internal `supabase_admin` role still holds
+default privileges granting `anon` and `authenticated` in `public`; the SQL editor runs as
+`postgres`, which is not a member of it and cannot alter them. A table created **by that role**
+would still arrive granted. The dashboard switch neutralises it in practice, and the protocol law
+(CE-44: a migration creating a table in `public` enables RLS in the same transaction) removes the
+dependence on a dashboard setting.
 
 ## Realtime enabled on
 conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients, muse_saves, circle_members, circle_activity, circle_sessions, couple_tasks, couple_bookings, couple_receipts
