@@ -1,0 +1,13 @@
+# scripts/floor-manifest-ce44-sec1b.txt
+# CE-44 · SEC-1 Part B · seat LCV-4. The declared dirt for this delivery, read by
+# scripts/run-floor.sh --delivery (F-14.16). The SET is tolerated; the CONTENTS
+# are hashed before and after the run and a moved byte is a hard stop.
+#
+# 0170 is ALREADY APPLIED IN PRODUCTION. It was run by the founder on 20 September
+# 2026. Filing it here changes nothing in the estate; it makes the tree tell the
+# truth about what ran, byte for byte against SEC-1's pinned hash.
+db/migrations/0170_public_schema_lockdown.sql
+scripts/lib/rls_ladder_check.js
+scripts/b91_rls_ladder_bench.js
+scripts/floor-manifest-ce44-sec1b.txt
+docs/handovers/TDW_CE44_SEC1B_HANDOVER.md
