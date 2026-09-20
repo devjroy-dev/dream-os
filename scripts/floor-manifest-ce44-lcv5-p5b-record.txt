@@ -1,0 +1,10 @@
+# CE-44 · LCV-5 · the P5b investigation record. DOCS ONLY (C-44.1): every path is under docs/
+# or is this manifest. No bench, no floor. Nothing here is runnable; the rig's source is filed
+# as .txt under docs/ so run-floor.sh's scripts/*.js glob cannot reach it.
+docs/handovers/TDW_CE44_LCV5_P5B_INVESTIGATION.md
+docs/handovers/TDW_CE44_LCV5_P5B_TABLE_ANTHROPIC_S1.md
+docs/handovers/TDW_CE44_LCV5_P5B_TABLE_DEEPSEEK_S1.md
+docs/handovers/TDW_CE44_LCV5_P5B_TABLE_ANTHROPIC_S1_REJUDGED.md
+docs/handovers/TDW_CE44_LCV5_P5B_TABLE_DEEPSEEK_S1_REJUDGED.md
+docs/handovers/TDW_CE44_LCV5_P5B_RIG_r5_SOURCE.txt
+scripts/floor-manifest-ce44-lcv5-p5b-record.txt
