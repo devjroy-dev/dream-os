@@ -1,0 +1,12 @@
+# scripts/floor-manifest-ce44-lcv1-p4a.txt
+# TDW CE-44 · LCV-1 · LC-Victor P4a, the structured result of a hand (dream-os, code) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else.
+src/lib/vendor/handResult.js
+src/lib/vendor/lifecycleHands.js
+src/api/vendor-engine/chat.js
+src/lib/vendorInbound.js
+src/lib/undoContract.js
+scripts/b86_lcv_p2_bench.js
+scripts/b88_lcv_p4a_bench.js
+scripts/floor-manifest-ce44-lcv1-p4a.txt
+docs/handovers/TDW_CE44_LCV_P4A_HANDOVER.md

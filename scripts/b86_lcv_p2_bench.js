@@ -24,6 +24,14 @@ const { execSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const BASE = '0675964ce5a4680ee8ed9a6483e17ef7092b2fd1';
+// C-44.7 (CE-44, amended at P4a, e-11): what P2's cut DID is measured on P2's OWN commit, a fixed range
+// that cannot move: BASE..P2_TIP. It was measured base-against-working-tree, which held for one day and
+// reddened on the first lawful edit after it (P4a's). A missing commit FAILS the cells, naming it (C-44.4).
+const P2_TIP = 'cb84f6fbc1bcf625298a7f5b631c8c49071c1992';
+const os = require('os');
+const hasCommit = (sha, cwd) => { try { execSync(`git cat-file -e ${sha}^{commit}`, { cwd, stdio: 'ignore' }); return true; } catch (_e) { return false; } };
+const rangeDels = (cwd, from, to, rel) => { const l = execSync(`git diff --numstat ${from} ${to} -- ${rel}`, { cwd }).toString().trim(); return l ? Number(l.split(/\s+/)[1]) : 0; };
+const rangeChanged = (cwd, from, to) => execSync(`git diff --name-only ${from} ${to}`, { cwd }).toString().split('\n').filter(Boolean);
 let pass = 0; let fail = 0; const failed = [];
 function T(name, cond) {
   if (cond) { pass += 1; console.log(`  PASS  ${name}`); }
@@ -196,12 +204,11 @@ const goodLlm = (seen) => async (provider, p) => {
 
   // ─── §6 THE WIRE: nothing the vendor reads changes, on either lane ───────────────────────────
   console.log('\n§6 the wire');
-  let base = BASE;
-  try { execSync(`git cat-file -e ${BASE}^{commit}`, { cwd: ROOT, stdio: 'ignore' }); } catch (_e) { base = 'HEAD'; }
-  const numstat = (rel) => execSync(`git diff --numstat ${base} -- ${rel}`, { cwd: ROOT }).toString().trim();
-  const dels = (rel) => { const l = numstat(rel); return l ? Number(l.split(/\s+/)[1]) : 0; };
-  T('§6 chat.js: not one line of today\'s is removed or changed (additions only)', dels('src/api/vendor-engine/chat.js') === 0);
-  T('§6 vendorInbound.js: not one line of today\'s is removed or changed (additions only)', dels('src/lib/vendorInbound.js') === 0);
+  const missing = [BASE, P2_TIP].filter((c) => !hasCommit(c, ROOT));
+  T(`§6 P2's own commits are present (${BASE.slice(0, 7)}..${P2_TIP.slice(0, 7)})${missing.length ? ': MISSING ' + missing.join(', ') : ''}`, missing.length === 0);
+  const additionsOnly = (cwd, from, to) => rangeDels(cwd, from, to, 'src/api/vendor-engine/chat.js') === 0 && rangeDels(cwd, from, to, 'src/lib/vendorInbound.js') === 0;
+  T('§6 P2 removed or changed not one line of chat.js (its own commit, additions only)', missing.length === 0 && rangeDels(ROOT, BASE, P2_TIP, 'src/api/vendor-engine/chat.js') === 0);
+  T('§6 P2 removed or changed not one line of vendorInbound.js (its own commit, additions only)', missing.length === 0 && rangeDels(ROOT, BASE, P2_TIP, 'src/lib/vendorInbound.js') === 0);
   const cj = src('src/api/vendor-engine/chat.js');
   const orderCell = (text) => {
     const sse = text.indexOf('      listenAfterWire(req, llmWiring, message, result, roomAssert);');
@@ -227,14 +234,32 @@ const goodLlm = (seen) => async (provider, p) => {
 
   // ─── §7 W-1 AND THE UNTOUCHED ────────────────────────────────────────────────────────────────
   console.log('\n§7 W-1');
-  const changed = execSync(`git diff --name-only ${base}`, { cwd: ROOT }).toString().split('\n')
-    .concat(execSync('git ls-files --others --exclude-standard', { cwd: ROOT }).toString().split('\n')).filter(Boolean);
-  T(`§7 W-1: no src/engine/src/** path differs from base (${base.slice(0, 7)})`, !changed.some((p) => p.startsWith('src/engine/src/')));
-  T('§7 W-1: no soul or lens file differs from base', !changed.some((p) => /soul|lens/i.test(p)));
-  T('§7 pwaPaths.js, victorLines.js and src/lib/vendor/relaySeat.js are unchanged from base',
-    !['src/lib/pwaPaths.js', 'src/lib/victorLines.js', 'src/lib/vendor/relaySeat.js'].some((p) => changed.includes(p)));
-  T('§7 R-44.17: R-44.8\'s bytes enter no file', !fs.existsSync(path.join(ROOT, 'src/lib/vendor/adviceLines.js'))
-    && !changed.filter((p) => /^src\//.test(p) && fs.existsSync(path.join(ROOT, p))).some((p) => src(p).includes('For advice, ask Victor')));
+  const changed = missing.length ? null : rangeChanged(ROOT, BASE, P2_TIP);
+  const w1 = (list) => !!list && !list.some((p) => p.startsWith('src/engine/src/'));
+  const noSoulLens = (list) => !!list && !list.some((p) => /soul|lens/i.test(p));
+  T(`§7 W-1: P2's own commit touched no src/engine/src/** path (${BASE.slice(0, 7)}..${P2_TIP.slice(0, 7)})`, w1(changed));
+  T('§7 W-1: P2\'s own commit touched no soul or lens file', noSoulLens(changed));
+  T('§7 P2\'s own commit left pwaPaths.js, victorLines.js and src/lib/vendor/relaySeat.js untouched',
+    !!changed && !['src/lib/pwaPaths.js', 'src/lib/victorLines.js', 'src/lib/vendor/relaySeat.js'].some((p) => changed.includes(p)));
+  T('§7 R-44.17: R-44.8\'s bytes entered no file in P2\'s own commit', !!changed
+    && !changed.filter((p) => /^src\//.test(p)).some((p) => { try { return execSync(`git show ${P2_TIP}:${p}`, { cwd: ROOT }).toString().includes('For advice, ask Victor'); } catch (_e) { return false; } }));
+  // The mutations: the SAME predicates on a SYNTHETIC range (a throwaway repository whose second
+  // commit removes a line of chat.js and touches an engine path). History is never rewritten.
+  {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'b86-range-'));
+    const g = (c) => execSync(`git -c user.email=b86@bench.invalid -c user.name=b86 ${c}`, { cwd: tmp, stdio: 'pipe' }).toString().trim();
+    try {
+      g('init -q');
+      fs.mkdirSync(path.join(tmp, 'src/api/vendor-engine'), { recursive: true }); fs.mkdirSync(path.join(tmp, 'src/lib'), { recursive: true });
+      fs.writeFileSync(path.join(tmp, 'src/api/vendor-engine/chat.js'), 'a\nb\n'); fs.writeFileSync(path.join(tmp, 'src/lib/vendorInbound.js'), 'x\n');
+      g('add -A'); g('commit -q -m one'); const c1 = g('rev-parse HEAD');
+      fs.writeFileSync(path.join(tmp, 'src/api/vendor-engine/chat.js'), 'a\nc\n');
+      fs.mkdirSync(path.join(tmp, 'src/engine/src/core'), { recursive: true }); fs.writeFileSync(path.join(tmp, 'src/engine/src/core/x.ts'), 'y\n');
+      g('add -A'); g('commit -q -m two'); const c2 = g('rev-parse HEAD');
+      T('§7 M5 a P2 commit that had removed a line of chat.js reddens the additions-only cell', additionsOnly(tmp, c1, c2) === false);
+      T('§7 M6 a P2 commit that had touched an engine path reddens the W-1 cell', w1(rangeChanged(tmp, c1, c2)) === false);
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
 
   // ─── §8 THE RIG'S HOME (F-44.41) ─────────────────────────────────────────────────────────────
   console.log('\n§8 the rig');

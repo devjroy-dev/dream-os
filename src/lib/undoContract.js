@@ -21,7 +21,7 @@ const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 function ref(plane, id) { return id ? { plane, id } : undefined; }
 
-function deriveFiling(vendorId, name, input, result) {
+function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-Victor P4a, what the door made
   const r = typeof result === 'string' ? result : '';
 
   // F3: an ERROR display never crosses raw — the honest failure line + retry flag.
@@ -88,15 +88,26 @@ function deriveFiling(vendorId, name, input, result) {
     return { kind: 'write', summary: `Money filed${amt ? `: ${amt}` : ''}`, record_ref: ref('records', id) };
   }
 
+  // CE-44 LC-Victor P4a · F-44.30 CURED. This branch used to run `/INV[-\w]+/i` over the ENGINE's
+  // display ("Invoice document requested for record <binder id> ...") and so printed the word
+  // "Invoice" as the number ("Invoice minted: Invoice"), and it took the BINDER's id for an invoice
+  // id and offered an undo at /invoices/<binder id>/cancel, an invoice that does not exist. It now
+  // reads only what the DOOR made: `door.invoice_number` (buildInvoicesWithResults, chat.js). With no
+  // number known (a live beat, before the door has made it) it names none; with no invoice id held
+  // it claims no undo rather than a wrong one. No pattern is run over a display string here.
   if (name && name.startsWith('donna_invoice')) {
-    const id = (r.match(UUID) || [])[0];
-    const num = (r.match(/INV[-\w]+/i) || [])[0];
+    const num = door && door.invoice_number ? String(door.invoice_number) : '';
+    const invoiceId = door && door.invoice_id;
+    const binderId = input && input.binder_id;
     return {
       kind: 'write',
       summary: `Invoice minted${num ? `: ${num}` : ''}`,
-      ...(id ? { record_ref: ref('typed', id), undo: { method: 'PATCH', path: `/api/v2/vendor/invoices/${id}/cancel` } } : {}),
+      ...(invoiceId
+        ? { record_ref: ref('typed', invoiceId), undo: { method: 'PATCH', path: `/api/v2/vendor/invoices/${invoiceId}/cancel` } }
+        : (binderId ? { record_ref: ref('records', binderId) } : {})),
     };
   }
+
 
   // Everything else: a witnessed write worth a chip, no undo claimed.
   const id = (input && input.binder_id) || (r.match(UUID) || [])[0];

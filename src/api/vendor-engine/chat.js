@@ -283,12 +283,12 @@ const NARRATED_LOOKUP_RE = new RegExp([
 //     as "Filed") — EXCEPT when the door's own display is an ERROR (F3).
 //   · calendar hands are the chat.js doors' business: bookingLines/mutationLines
 //     already speak for them in this same tail. One act, one line, never two.
-function chipFiling(vendorId, name, input, result) {
+function chipFiling(vendorId, name, input, result, door) {
   if (name === 'listen_harvey_talk') return null;
   const kindOf = actionKind(name);
   const raw = typeof result === 'string' ? result : '';
   if (kindOf !== 'write' && !raw.startsWith('ERROR')) return null;
-  return deriveFiling(vendorId, name, input, raw);
+  return deriveFiling(vendorId, name, input, raw, door); // door: CE-44 LC-Victor P4a
 }
 
 // THE CURE ITSELF (D-2). Her hands are read from the turn's OWN nested donna_calls
@@ -305,11 +305,15 @@ function chipFiling(vendorId, name, input, result) {
 // A filed turn now replays WITNESSED; a narrated turn replays BARE. That asymmetry
 // is the cure. Its effect on the dispatch failure is a STATED INFERENCE (D-2),
 // watched and reported — never claimed.
-function donnaWitnessLines(vendorId, result) {
+function donnaWitnessLines(vendorId, result, documents) {
   const lines = [];
+  // CE-44 LC-Victor P4a (F-44.30): an invoice's line names the number the DOOR made, read from
+  // this turn's documents by the binder it was made for; never a pattern over a display string.
+  const madeFor = new Map(((documents) || []).filter((d) => d && d.binder_id).map((d) => [d.binder_id, d]));
   for (const call of (result && result.tool_calls) || []) {
     for (const dc of (call && call.donna_calls) || []) {
-      const filing = chipFiling(vendorId, dc && dc.name, dc && dc.input, dc && dc.result);
+      const door = dc && dc.name === 'donna_invoice_pdf' && dc.input ? madeFor.get(dc.input.binder_id) : undefined;
+      const filing = chipFiling(vendorId, dc && dc.name, dc && dc.input, dc && dc.result, door);
       if (filing && filing.summary) lines.push(filing.summary);
     }
   }
@@ -417,7 +421,17 @@ function translateBeat(e, vendorId) {
 // donna_invoice_pdf is Donna's SIGNAL hand: the engine only flags intent. The door mints
 // the real numbered document (idempotent). Shared by the JSON and SSE paths so the invoice
 // contract is identical on both.
+// CE-44 LC-Victor P4a: buildInvoices keeps its name and its answer (the documents) for its callers;
+// buildInvoicesWithResults also returns one structured result per binder asked for (handResult.js),
+// which P5's door speaks from. F-44.48: this and vendorInbound.js's twin are two per-surface homes
+// for one act, named and carried to P5, not cured here.
 async function buildInvoices(req, result) {
+  return (await buildInvoicesWithResults(req, result)).documents;
+}
+
+async function buildInvoicesWithResults(req, result) {
+  const HR = require('../../lib/vendor/handResult');
+  const results = [];
   const eng = req.app.locals.supabase.schema('engine');
   const wantInvoice = new Set();
   for (const tc of (result.tool_calls || [])) {
@@ -432,13 +446,21 @@ async function buildInvoices(req, result) {
       const { data: binder } = await eng.from('records')
         .select('id, client, phone, amount, amount_received, note')
         .eq('agent_id', req.agentId).eq('id', binderId).maybeSingle();
+      if (!binder) { results.push(HR.invoice('refused:no_binder', { ids: { record_id: binderId } })); continue; }
       if (binder && Number(binder.amount) > 0) {
         const gen = await generateInvoiceForBinder(req.app.locals.supabase, req.vendor, binder);
-        if (gen && gen.ok) documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: binder.client });
+        if (gen && gen.ok) {
+          documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: binder.client, binder_id: binderId });
+          results.push(HR.invoice('minted', { ids: { record_id: binderId }, client: binder.client, invoice_number: gen.invoice_number }));
+        } else {
+          results.push(HR.invoice('refused:not_minted', { ids: { record_id: binderId }, client: binder.client }));
+        }
+      } else {
+        results.push(HR.invoice('refused:no_amount', { ids: { record_id: binderId }, client: binder.client }));
       }
-    } catch (e) { console.error('[vendor-e chat:donna_invoice_pdf]', e.message); }
+    } catch (e) { console.error('[vendor-e chat:donna_invoice_pdf]', e.message); results.push(HR.invoice('refused:exception', { ids: { record_id: binderId } })); }
   }
-  return documents;
+  return { documents, results };
 }
 
 // The chat-door confirms the invoice NUMBER only (the download lives in the invoices list).
@@ -3670,7 +3692,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
       await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
     await persistComposedReply(req, result,
-        composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, lifecycle, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
+        composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result, documents), documents, lifecycle, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
       const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts, expenseFacts }); // wire guard — PWA site 1 of 2 (SSE)
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
@@ -3761,7 +3783,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const openLine = donnaOpenLine(result);
     await recordMessageRoom(req.app.locals.supabase, result);   // R-41.142
     await persistComposedReply(req, result,
-      composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, lifecycle, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
+      composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result, documents), documents, lifecycle, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
     const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts, expenseFacts }); // wire guard — PWA site 2 of 2 (JSON)
 
     // CE-18: the firewall covers the reply itself. TDW_06 M-4 / F-06.36: and now it
@@ -4037,6 +4059,9 @@ module.exports.patchComposedReply    = patchComposedReply; // R-29.26 — the co
 module.exports.ACK_INTENT_RE         = ACK_INTENT_RE;
 // TDW_06 P6b (F-06.4/F-06.2): door-seam seams exposed for b06_advisor_route_bench.
 module.exports.buildLlmForTurn       = buildLlmForTurn;
+module.exports.buildInvoicesWithResults = buildInvoicesWithResults; // CE-44 LC-Victor P4a
+module.exports.buildInvoices         = buildInvoices;            // CE-44 LC-Victor P4a (b88)
+module.exports.donnaWitnessLines     = donnaWitnessLines;       // CE-44 LC-Victor P4a (b88)
 module.exports.abandonActiveThread   = abandonActiveThread; // TDW_06 P7a (F-06.8): shared flip seam
 module.exports.fireHarvest           = fireHarvest;
 module.exports.advisorHarvestGate    = advisorHarvestGate;

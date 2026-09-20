@@ -37,6 +37,14 @@
 // the one thing a packet may never do.
 
 const { longDateYear, istDay, rupees } = require('../witnessLine');
+const HR = require('./handResult'); // CE-44 LC-Victor P4a: the structured result, one home
+// e-12 (CE-44): THE LINE FIRST, THE RESULT BEST-EFFORT. Every result below is kept through note(), after the
+// line it rides beside. A result must never cost a vendor her line: if building or keeping one failed, the
+// line already pushed stands alone, the signal's catch is NOT reached (it would push a SECOND line, F29 or
+// D8, after a line like "Payment marked"), and the turn does not error. b88 pins it with a builder made to throw.
+function note(results, buildResult) {
+  try { results.push(buildResult()); } catch (e) { try { console.warn('[lifecycle:result]', e && e.message); } catch (_e) { /* */ } }
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -209,6 +217,9 @@ function paidLine(client, row, receivedOn, after) {
  */
 async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {} }) {
   const lines = [];
+  // CE-44 LC-Victor P4a: one structured result per signal, beside its line (handResult.js). The
+  // lines are untouched; P5's door will speak from `results` instead of Victor's prose.
+  const results = [];
   // ── F-44.8 (chair, CE-44) · ONE TURN, ONE MILESTONE, ONE LINE ──────────────
   // Victor called donna_booking and donna_milestone_paid in the same turn on
   // 18 September. The booking marked the deposit and spoke D3; the payment signal
@@ -222,21 +233,21 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
   const markedThisTurn = new Set();
   const promote = deps.promoteLead || ((...a) => require('./promotion').promoteLead(...a));
   const markPaid = deps.markMilestonePaid || ((...a) => require('./schedules').markMilestonePaid(...a));
-  if (!vendor || !vendor.id || !agentId) return { lines };
+  if (!vendor || !vendor.id || !agentId) return { lines, results };
 
   // ── donna_booking ──────────────────────────────────────────────────────────
   for (const input of collect(result, 'donna_booking')) {
     try {
       const kind = String(input.kind || '').trim();
       const on = String(input.advance_received_on || '').trim();
-      if (kind !== 'booking_confirmed' && kind !== 'advance_paid') { lines.push(LINES.F29); continue; }
+      if (kind !== 'booking_confirmed' && kind !== 'advance_paid') { lines.push(LINES.F29); note(results, () => HR.booking('refused:invalid_kind', { line_key: 'F29' })); continue; }
       // The same real-calendar-date test the payment lane runs, reaching this lane's
       // own vetoed byte: an advance dated 2026-02-30 is F29, not a booking.
-      if (kind === 'advance_paid' && !isRealDate(on)) { lines.push(LINES.F29); continue; }
+      if (kind === 'advance_paid' && !isRealDate(on)) { lines.push(LINES.F29); note(results, () => HR.booking('refused:invalid_date', { line_key: 'F29' })); continue; }
       const found = await resolveLead(supabase, vendor.id, input.lead);
       if (!found.ok) {
         console.warn(`[lifecycle:booking] vendor=${vendor.id} lead="${input.lead}" ${found.reason}`);
-        lines.push(LINES.F29); continue;
+        lines.push(LINES.F29); note(results, () => HR.booking(`refused:${found.reason}`, { line_key: 'F29' })); continue;
       }
       const res = await promote(supabase, {
         vendor, agentId, leadId: found.lead.id, kind,
@@ -244,11 +255,14 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
       });
       if (!res || res.status !== 200 || !res.body || !res.body.ok) {
         console.warn(`[lifecycle:booking] vendor=${vendor.id} lead=${found.lead.id} refused: ${JSON.stringify(res && res.body)}`);
-        lines.push(LINES.F29); continue;
+        lines.push(LINES.F29); note(results, () => HR.booking(HR.bookingRefusalCode(res), { ids: { lead_id: found.lead.id }, client: found.lead.name, line_key: 'F29' })); continue;
       }
       // D1 ("Booked: {client}. Client, event and invoice {number} are ready.") is
       // 4b's byte by the chair's split, so 4a says nothing for the booking itself.
       // The DEPOSIT, when it arrived with the booking, is a payment and gets D3.
+      const promoted = res.body.promoted || {};
+      const bookedIds = { lead_id: found.lead.id, record_id: promoted.binder_id, invoice_id: promoted.invoice_id };
+      const bookedClient = String(found.lead.name || '').trim();
       if (kind === 'advance_paid') {
         const invoiceId = res.body.promoted && res.body.promoted.invoice_id;
         const { data: after } = await readSchedule(supabase, vendor.id, invoiceId);
@@ -256,12 +270,20 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
           .find((m) => m.state === 'paid');
         if (deposit) {
           markedThisTurn.add(deposit.id); // F-44.8
-          lines.push(paidLine(String(found.lead.name || '').trim(), deposit, on, after));
+          const said = paidLine(String(found.lead.name || '').trim(), deposit, on, after);
+          lines.push(said);
+          note(results, () => HR.booking('advance_recorded', { ids: bookedIds, client: bookedClient, amount_rupees: deposit.amount_due, on, invoice_number: promoted.invoice_number, line_key: said === D4(bookedClient) ? 'D4' : 'D3' }));
+        } else {
+          note(results, () => HR.booking('advance_recorded', { ids: bookedIds, client: bookedClient, on, invoice_number: promoted.invoice_number, line_key: null }));
         }
+      } else {
+        // D1 is 4b's byte (comment above): the booking itself speaks no line here.
+        note(results, () => HR.booking('booked', { ids: bookedIds, client: bookedClient, invoice_number: promoted.invoice_number, line_key: null }));
       }
     } catch (e) {
       console.error('[lifecycle:booking]', e && e.message);
       lines.push(LINES.F29);
+      note(results, () => HR.booking('refused:exception', { line_key: 'F29' }));
     }
   }
 
@@ -277,7 +299,7 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
       // arm checked the shape; this checks the day exists, before the writer runs.
       if (!isRealDate(on)) {
         console.warn(`[lifecycle:paid] vendor=${vendor.id} received_on="${on}" not a real date`);
-        lines.push(LINES.D8); continue;
+        lines.push(LINES.D8); note(results, () => HR.milestone('refused:invalid_date', { line_key: 'D8' })); continue;
       }
       const found = await resolveLead(supabase, vendor.id, input.lead, true);
       if (!found.ok) {
@@ -285,18 +307,20 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
         // D5 is "no booked client by that name". More than one by that name is not
         // that sentence — it is a name that resolves too well — so it takes D8 and is
         // reported to the chair as a candidate rather than given a byte of its own.
-        lines.push(found.reason === 'not_found' ? LINES.D5 : LINES.D8); continue;
+        lines.push(found.reason === 'not_found' ? LINES.D5 : LINES.D8);
+        note(results, () => HR.milestone(`refused:${found.reason}`, { line_key: found.reason === 'not_found' ? 'D5' : 'D8' }));
+        continue;
       }
       const client = String(found.lead.name || '').trim();
       const inv = await invoiceOfLead(supabase, vendor.id, found.lead.id);
       if (!inv.ok) {
         console.warn(`[lifecycle:paid] lead=${found.lead.id} ${inv.reason || inv.error}`);
-        lines.push(LINES.D8); continue;
+        lines.push(LINES.D8); note(results, () => HR.milestone('refused:no_invoice', { ids: { lead_id: found.lead.id }, client, line_key: 'D8' })); continue;
       }
       const { data: before, error: sErr } = await readSchedule(supabase, vendor.id, inv.invoice.id);
       if (sErr) {
         console.warn(`[lifecycle:paid] schedule ${sErr.message}`);
-        lines.push(LINES.D8); continue;
+        lines.push(LINES.D8); note(results, () => HR.milestone('refused:schedule_read', { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, line_key: 'D8' })); continue;
       }
       const pick = pickMilestone(before, input.milestone);
       if (!pick.ok) {
@@ -304,6 +328,7 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
         // F-44.8: this turn's own booking marked it moments ago and already said so.
         if (pick.reason === 'already_paid' && markedThisTurn.has(pick.row.id)) {
           console.warn(`[lifecycle:paid] milestone=${pick.row.id} was marked by this turn's booking; D7 absorbed`);
+          note(results, () => HR.milestone('absorbed', { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, line_key: null }));
           continue;
         }
         if (pick.reason === 'already_paid') {
@@ -318,15 +343,18 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
           if (!day) {
             console.warn(`[lifecycle:paid] milestone=${pick.row.id} unreadable paid_at; D7 withheld`);
             lines.push(LINES.D8);
+            note(results, () => HR.milestone('refused:unreadable_paid_at', { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, line_key: 'D8' }));
             continue;
           }
           lines.push(LINES.D7(client, String(pick.row.milestone_label || '').trim(), day));
+          note(results, () => HR.milestone('already_marked', { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, amount_rupees: pick.row.amount_due, on: day, line_key: 'D7' }));
           continue;
         }
         const labels = unpaidLabels(before);
         // D6 asks WHICH ONE, so it is only sayable when there is more than nothing to
         // choose between. With no unpaid milestone left and none named, D8 (chair).
         lines.push(labels.length ? LINES.D6(labels) : LINES.D8);
+        note(results, () => HR.milestone(`refused:${pick.reason}`, { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, line_key: labels.length ? 'D6' : 'D8' }));
         continue;
       }
       const marked = await markPaid(supabase, vendor.id, pick.row.id, pick.row.amount_due, on, { agentId });
@@ -335,20 +363,26 @@ async function runLifecycleSignals(supabase, { vendor, agentId, result, deps = {
         // The writer's own ALREADY_PAID, if it lands between the read and the write.
         if (marked && marked.code === 'ALREADY_PAID') {
           lines.push(LINES.D7(client, String(pick.row.milestone_label || '').trim(), on));
+          note(results, () => HR.milestone('already_marked', { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, amount_rupees: pick.row.amount_due, on, line_key: 'D7' }));
         } else {
           lines.push(LINES.D8);
+          note(results, () => HR.milestone('refused:not_marked', { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, line_key: 'D8' }));
         }
         continue;
       }
       const { data: after } = await readSchedule(supabase, vendor.id, inv.invoice.id);
-      lines.push(paidLine(client, pick.row, on, after));
+      const said = paidLine(client, pick.row, on, after);
+      lines.push(said);
+      const full = said === D4(client);
+      note(results, () => HR.milestone(full ? 'paid_in_full' : 'paid', { ids: { lead_id: found.lead.id, invoice_id: inv.invoice.id }, client, amount_rupees: pick.row.amount_due, on, line_key: full ? 'D4' : 'D3' }));
     } catch (e) {
       console.error('[lifecycle:paid]', e && e.message);
       lines.push(LINES.D8);
+      note(results, () => HR.milestone('refused:exception', { line_key: 'D8' }));
     }
   }
 
-  return { lines };
+  return { lines, results };
 }
 
 module.exports = {

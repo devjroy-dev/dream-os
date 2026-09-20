@@ -1793,16 +1793,26 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       }
     }
     const invoiceDocs = [];
+    // CE-44 LC-Victor P4a: one structured result per binder asked for, as chat.js's twin records
+    // (handResult.js). Carried for P5's door; nothing here reads it yet. F-44.48 names the twin.
+    const invoiceResults = [];
+    const HRi = require('./vendor/handResult');
     for (const binderId of wantInvoice) {
       try {
         const { data: bnd } = await supabase.schema('engine').from('records')
           .select('id, client, phone, amount, amount_received, note')
           .eq('agent_id', agentId).eq('id', binderId).maybeSingle();
+        if (!bnd) invoiceResults.push(HRi.invoice('refused:no_binder', { ids: { record_id: binderId } }));
         if (bnd && Number(bnd.amount) > 0) {
           const gen = await generateInvoiceForBinder(supabase, vendor, bnd);
           if (gen && gen.ok) invoiceDocs.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: bnd.client });
+          invoiceResults.push(gen && gen.ok
+            ? HRi.invoice('minted', { ids: { record_id: binderId }, client: bnd.client, invoice_number: gen.invoice_number })
+            : HRi.invoice('refused:not_minted', { ids: { record_id: binderId }, client: bnd.client }));
+        } else if (bnd) {
+          invoiceResults.push(HRi.invoice('refused:no_amount', { ids: { record_id: binderId }, client: bnd.client }));
         }
-      } catch (e) { console.error('[whatsapp:donna_invoice_pdf]', e.message); }
+      } catch (e) { console.error('[whatsapp:donna_invoice_pdf]', e.message); invoiceResults.push(HRi.invoice('refused:exception', { ids: { record_id: binderId } })); }
     }
 
     // Message 1 — Victor's reply + a NUMBER-ONLY confirmation line per invoice (no URL).
