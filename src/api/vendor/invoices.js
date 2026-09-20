@@ -433,12 +433,12 @@ async function generateInvoiceForBinder(supabase, vendor, binder) {
   if (pkgErr) console.warn('[invoices:package-read]', pkgErr.message);
   const pkgInvoice = (pkgRows || []).find((r) => r && r.lead_package_id) || null;
   if (pkgInvoice) {
-    if (pkgInvoice.pdf_url) return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgInvoice.pdf_url };
+    if (pkgInvoice.pdf_url) return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgInvoice.pdf_url, made: 'served' }; // F-44.49
     // F-43.82 (CE-44 packet 4a): the typed source, so this document carries the
     // milestones the couple agreed to and the seal the money lane's copy shows.
     const pkgPdf = await generateAndStoreInvoicePdf(supabase, vendor, pkgInvoice, { typed: true });
     if (!pkgPdf) return { ok: false, error: 'PDF generation failed.' };
-    return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgPdf };
+    return { ok: true, invoice_number: pkgInvoice.invoice_number, pdf_url: pkgPdf, made: 'served' }; // F-44.49: rendered folds into served
   }
 
   // 1 — idempotent ONLY while the figures are unchanged. A binder accrues several
@@ -461,6 +461,8 @@ async function generateInvoiceForBinder(supabase, vendor, binder) {
     && Number(latest.amount_total) === (Number(binder.amount) || 0);
 
   let invoice = stillCurrent ? latest : null;
+  // CE-44 LC-Victor P5 · F-44.49, MINTED IS NOT SERVED: true only when createInvoice below runs in THIS call.
+  let mintedNow = false;
 
   // 2 — no row yet: create the formal invoice (assigns the next series number)
   if (!invoice) {
@@ -474,6 +476,7 @@ async function generateInvoiceForBinder(supabase, vendor, binder) {
     });
     if (!created.ok) return created;
     invoice = created.invoice;
+    mintedNow = true;
     // Link to the money-record binder AND set amount_paid from what's actually
     // been received. createInvoice hardcodes amount_paid:0, but the PDF computes
     // balance = amount_total - amount_paid, so the received money must land here
@@ -488,13 +491,13 @@ async function generateInvoiceForBinder(supabase, vendor, binder) {
 
   // 3 — already has a stored PDF? serve it (idempotent, no re-render needed)
   if (invoice.pdf_url) {
-    return { ok: true, invoice_number: invoice.invoice_number, pdf_url: invoice.pdf_url };
+    return { ok: true, invoice_number: invoice.invoice_number, pdf_url: invoice.pdf_url, made: mintedNow ? 'minted' : 'served' };
   }
 
   // 4 — render + store the PDF (proven base-vendor path, invoices bucket)
   const pdfUrl = await generateAndStoreInvoicePdf(supabase, vendor, invoice);
   if (!pdfUrl) return { ok: false, error: 'PDF generation failed.' };
-  return { ok: true, invoice_number: invoice.invoice_number, pdf_url: pdfUrl };
+  return { ok: true, invoice_number: invoice.invoice_number, pdf_url: pdfUrl, made: mintedNow ? 'minted' : 'served' }; // F-44.49
 }
 
 

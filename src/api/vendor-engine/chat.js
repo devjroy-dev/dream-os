@@ -465,10 +465,11 @@ async function buildInvoicesWithResults(req, result) {
 
 // The chat-door confirms the invoice NUMBER only (the download lives in the invoices list).
 // F-04.33 (same seam): d.client is DB-sourced and rode raw on both routes.
+// CE-44 LC-Victor P5 · F-44.48, F-43.34, ruled option (i): the invoice sentence has ONE home,
+// src/lib/vendor/doorLines.js byte 13 (V1, the founder's), and BOTH lanes read it from there.
 function invoiceLines(documents) {
-  return scrubText(documents.map((d) =>
-    `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready — find it in the invoices list to download or send.`
-  ).join('\n'));
+  const { invoiceReady } = require('../../lib/vendor/doorLines');
+  return scrubText(documents.map((d) => invoiceReady(d.invoice_number, d.client)).filter(Boolean).join('\n'));
 }
 
 // donna_book_event is Donna's SIGNAL hand for the calendar: the engine flags intent, the
@@ -3532,6 +3533,32 @@ const WA_CAP_ZERO_LINE = CAP_ZERO_LINE +
 // hostage the next time the vocabulary moved — 0115's whole lesson.
 const cappedReplyFor = (meta) => (meta.turns_cap === 0 ? CAP_ZERO_LINE : CAPPED_LINE(meta));
 
+// ── CE-44 LC-Victor P5 · THE WORKING DOOR ON THE APP LANE (src/lib/vendor/workingDoor.js) ─────────
+// Runs after the cap check and the route, before anything else is fetched. A door-only turn is
+// persisted to the engine thread (one counted usage row, F-44.52) and answered with the door's lines;
+// every other turn falls to the chain carrying the request already heard, so the chain's
+// recordListening makes no second model call. The advisor room is never touched.
+async function doorTurn(req, llmWiring, message, roomAssert) {
+  if (roomAssert === 'advisor') return null;
+  let out = null;
+  try {
+    out = await require('../../lib/vendor/workingDoor').preTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId, route: llmWiring && llmWiring.route, message, lane: 'pwa' });
+  } catch (e) { console.warn('[door:pwa]', e && e.message); return null; }
+  // Once the door has answered, the turn is the door's to the end: a failed persist is logged, never a chain turn.
+  if (out && out.door) {
+    try { await require('../../lib/vendor/workingDoor').persistDoorTurn({ supabase: req.app.locals.supabase, agentId: req.agentId, message, out, lane: 'pwa' }); }
+    catch (e) { console.error('[door:pwa persist]', e && e.message); }
+  }
+  return out;
+}
+// The synthetic result harvest reads on a door-only turn: her message, the door's lines as the reply,
+// the hands it ran. On a turn where the door asked WHICH client (byte 8) harvest is skipped: byte 8
+// carries no "?", so F-04.72's hold would not fire on the very name just called ambiguous.
+function doorHarvest(req, message, out) {
+  if (!out || out.skipHarvest) return;
+  fireHarvest(req, message, { tool_calls: out.toolCalls || [], reply: out.reply });
+}
+
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
@@ -3544,7 +3571,7 @@ function listenAfterWire(req, llmWiring, message, result, roomAssert) {
   if (roomAssert === 'advisor' || !result) return;
   const supabase = req.app.locals.supabase;
   const route = llmWiring && llmWiring.route;
-  setImmediate(() => { listenerDoor.recordListening({ supabase, agentId: req.agentId, route, message, result, lane: 'pwa' }); });
+  setImmediate(() => { listenerDoor.recordListening({ supabase, agentId: req.agentId, route, message, result, lane: 'pwa', ear: req._lcvEar }); });
 }
 
 router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) => {
@@ -3602,6 +3629,20 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         return res.end();
       }
       const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId, roomAssert }); // TDW_02 P5 · P7b ctx · G2 R-41.107
+      // CE-44 LC-Victor P5: the working door. ONE non-empty text_delta, then done; no chip (ruled (a)).
+      const doorOut = await doorTurn(req, llmWiring, message, roomAssert);
+      if (doorOut && doorOut.door) {
+        send({ type: 'text_delta', text: scrubText(doorOut.reply) });
+        const doorDone = { type: 'done', tool_calls: doorOut.toolNames, refresh: !!doorOut.refresh, room: 'business' };
+        doorDone.meta = await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier });
+        if (doorOut.documents.length) doorDone.documents = doorOut.documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
+        send(doorDone);
+        if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
+        res.end();
+        doorHarvest(req, message, doorOut);
+        return;
+      }
+      req._lcvEar = doorOut ? doorOut.ear : null;
       const calendarSnapshot = await fetchCalendarSnapshot(req);
       const scratchpad = await fetchScratchpad(req);
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
@@ -3742,6 +3783,17 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       return res.json({ ok: true, capped: true, reply: cappedReplyFor(metaPre), tool_calls: [], refresh: false, meta: metaPre });
     }
     const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId, roomAssert }); // TDW_02 P5 · P7b ctx · G2 R-41.107
+    // CE-44 LC-Victor P5: the working door, the JSON route's twin of the SSE call above.
+    const doorOut = await doorTurn(req, llmWiring, message, roomAssert);
+    if (doorOut && doorOut.door) {
+      const doorMeta = await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier });
+      doorHarvest(req, message, doorOut);
+      return res.json({
+        ok: true, reply: scrubText(doorOut.reply), tool_calls: doorOut.toolNames, refresh: !!doorOut.refresh, room: 'business', meta: doorMeta,
+        documents: doorOut.documents.length ? doorOut.documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
+      });
+    }
+    req._lcvEar = doorOut ? doorOut.ear : null;
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)

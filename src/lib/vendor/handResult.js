@@ -67,7 +67,7 @@ const CODES = Object.freeze({
   donna_merge: Object.freeze(['created', 'updated', 'refused:write_failed', 'merged', 'refused:missing_ids', 'refused:same_record', 'refused:unreadable_amount', 'refused:partial', 'refused:exception', 'refused:result_unbuildable']),
   donna_split: Object.freeze(['created', 'updated', 'refused:write_failed', 'split', 'refused:missing_binder', 'refused:not_found', 'refused:unreadable_amount', 'refused:nothing_to_change', 'refused:partial', 'refused:exception', 'refused:result_unbuildable']),
   donna_invoice_pdf: Object.freeze([
-    'minted', 'refused:result_unbuildable', 'refused:no_binder', 'refused:no_amount', 'refused:not_minted', 'refused:exception',
+    'minted', 'served', 'refused:result_unbuildable', 'refused:no_binder', 'refused:no_amount', 'refused:not_minted', 'refused:exception',
   ]),
 });
 
@@ -192,6 +192,12 @@ function bookingRefusalCode(res) {
   } catch (_e) { return 'refused:not_promoted'; }
 }
 
+// CE-44 LC-Victor P5: THE DOOR'S OWN LINE KEYS, validated against the door's one byte home
+// (src/lib/vendor/doorLines.js) and NOT added to LINE_KEYS above, whose every key must be a key of
+// lifecycleHands' LINES (b88 1.2). A door line the founder did not approve has no key here.
+const DOOR_LINE_KEYS = Object.freeze(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12', 'B13', 'B14', 'D1']);
+function isDoorLineKey(k) { try { return typeof k === 'string' && DOOR_LINE_KEYS.includes(k); } catch (_e) { return false; } }
+
 // CE-44 LC-Victor P4b: THE READER for an engine-born write hand. `outcome` is what executeRecordTool (or
 // executeDonnaLead) returned, whole, as src/lib/executeAndPatch.js hands it back; its `result` is the engine's
 // WriteResult. TOTAL: whatever it is handed, it returns a frozen result for `hand`; a missing or malformed
@@ -207,4 +213,4 @@ function fromOutcome(hand, outcome) {
   } catch (e) { return minimal(hand, e && e.message); }
 }
 
-module.exports = { CODES, LINE_KEYS, validate, make, booking, milestone, invoice, bookingRefusalCode, fromOutcome };
+module.exports = { CODES, LINE_KEYS, validate, make, booking, milestone, invoice, bookingRefusalCode, fromOutcome, DOOR_LINE_KEYS, isDoorLineKey };

@@ -1,0 +1,20 @@
+# CE-44 · LCV-2 · LC-Victor P5 · the working door for money and invoices · rung b90
+# base dream-os 2d9b9f377d2068d7154ecdcd71879268add09386 · W-1 NONE · no pwa byte
+db/migrations/0169_pending_money_acts.sql
+docs/handovers/TDW_CE44_LCV_P5_HANDOVER.md
+scripts/b80_lc1b_door_strings_bench.js
+scripts/b88_lcv_p4a_bench.js
+scripts/b90_lcv_p5_bench.js
+scripts/floor-manifest-ce44-lcv2-p5.txt
+src/agent/harvest.js
+src/api/vendor-engine/chat.js
+src/api/vendor/invoices.js
+src/lib/vendor/doorLines.js
+src/lib/vendor/handResult.js
+src/lib/vendor/lifecycleHands.js
+src/lib/vendor/listenerDoor.js
+src/lib/vendor/pendingMoneyActs.js
+src/lib/vendor/spokenDate.js
+src/lib/vendor/workingDoor.js
+src/lib/vendorInbound.js
+scripts/tdw10_combined_cap_bench.js

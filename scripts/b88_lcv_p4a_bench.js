@@ -264,7 +264,16 @@ async function lifecycleCell(mod) {
   const OWN_LINES = nonInv.tool_calls[0].donna_calls.map((d) => UC.deriveFiling(V.id, d.name, d.input, d.result).summary);
   T('4.5 every other hand\'s line is the undo contract\'s own, untouched by the door\'s documents', JSON.stringify(chat.donnaWitnessLines(V.id, nonInv, [{ invoice_number: 'TDW/DEV440/17', binder_id: 'b-1' }])) === JSON.stringify(OWN_LINES));
   const vi = fs.readFileSync(P('src/lib/vendorInbound.js'), 'utf8');
-  T('4.6 WhatsApp: the invoice sentence is unchanged', vi.includes("`Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready. Find it in the invoices list.`"));
+  // 4.6 AMENDED at CE-44 LC-Victor P5 (the chair's ruling, option (i); F-44.48, F-43.34). It pinned the
+  // sentence as a literal at the WhatsApp call site, which pins where it sat one day (C-44.7's class).
+  // The sentence now has ONE home, src/lib/vendor/doorLines.js byte 13, hash-carried, and BOTH lanes read
+  // it from there. Same strength: the bytes are pinned by their hash, and the lane holds no copy of them.
+  const DLN = require(P('src/lib/vendor/doorLines.js'));
+  T('4.6 WhatsApp: the invoice sentence is byte 13 in its one home, hash-pinned, and the lane speaks it only through that home',
+    DLN.LINES.B13 === 'Invoice {number} for {client} is ready. Find it in the invoices list.'
+    && DLN.LINE_HASHES.B13 === '45f9284524fc2546d8ca5a34ae51d036efc1a887f2104a35a473e283dda9658c'
+    && vi.includes("require('./vendor/doorLines').invoiceReady(d.invoice_number, d.client)")
+    && !vi.includes('is ready. Find it in the invoices list.'));
 
   sec('5  W-1 and the untouched spine');
   // C-44.7 (b): what P4a changed is its OWN manifest, which run-floor.sh --delivery proves equals the dirt.

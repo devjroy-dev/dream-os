@@ -283,13 +283,23 @@ t('§2.2 buildMeta is PLAIN-ARGS — the WhatsApp door has no Express req and mu
     'buildMeta still reads req.* — the co-dependent lesson recorded beside buildLlmForTurn was not learned');
 });
 
-t('§2.3 BOTH-SIDES: every PWA call site passes the new shape; no old-shape call survives', () => {
-  const calls = (chatText.match(/await buildMeta\([^)]*\)/g) || []);
-  assert.strictEqual(calls.length, 5, `expected exactly the five PWA call sites, found ${calls.length}`);
+// §2.3 AMENDED at CE-44 LC-Victor P5 (the chair's ruling; C-44.7). It pinned EXACTLY five call sites, the
+// key count of a live module, so P5's two lawful door-turn meters reddened it though no old shape came back.
+// Its real subject is unchanged and keeps its strength: at least one call site exists and EVERY one passes
+// the plain-arguments shape; how many there are is not this cell's business. §2.3m proves it still bites.
+const both = (text) => {
+  const calls = (text.match(/await buildMeta\([^)]*\)/g) || []);
+  assert.ok(calls.length >= 1, 'no buildMeta call site found at all (a silent zero is not a pass)');
   for (const c of calls) {
     assert.ok(/\{ supabase: req\.app\.locals\.supabase, agentId: req\.agentId, tier: productTier \}/.test(c),
       `a call site still uses the retired positional shape: ${c}`);
   }
+};
+t('§2.3 BOTH-SIDES: every PWA call site passes the new shape; no old-shape call survives', () => { both(chatText); });
+t('§2.3m the amended cell still bites: one call site given the retired positional shape reddens it', () => {
+  const retired = chatText.replace('await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier })', 'await buildMeta(req, productTier)');
+  assert.notStrictEqual(retired, chatText, 'the mutation anchor is missing');
+  assert.throws(() => both(retired));
 });
 
 ta('§2.4 the meter returns the SAME reading after the refactor — the both-sides clause, by execution', async () => {

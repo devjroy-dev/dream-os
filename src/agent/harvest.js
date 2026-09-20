@@ -100,6 +100,10 @@ async function writeHarvestUsage(supabase, agentId, m) {
       cache_read_tokens: m.cache_read_tokens,
       cache_write_tokens: m.cache_write_tokens,
     };
+    // CE-44 LC-Victor P5 · F-44.52: a door-answered turn is ONE MESSAGE toward her limit (R-44.21 (b)).
+    // Only then does the caller hand a conversation id, and only then is the row counted; every other
+    // row stays conversation_id NULL, the line above left byte for byte (b86 M2 anchors on it).
+    if (m && typeof m.conversation_id === 'string' && m.conversation_id) row.conversation_id = m.conversation_id;
     const { error } = await supabase.schema('engine').from('usage').insert(row);
     if (error && /cache_(read|write)_tokens/i.test(error.message)) {
       // loop.ts's own column-guard convention: a pre-DDL database degrades to the

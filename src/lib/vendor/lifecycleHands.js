@@ -390,4 +390,7 @@ module.exports = {
   // exported for b84: the bytes are read from here and never retyped in a cell
   LINES, D3, D4, F29, isRealDate, unpaidLabels,
   collect, resolveLead, pickMilestone, paidLine,
+  // CE-44 LC-Victor P5: the working door resolves a payment before it stages it with the SAME two
+  // reads this helper applies with, never a second copy (src/lib/vendor/workingDoor.js).
+  invoiceOfLead, readSchedule,
 };

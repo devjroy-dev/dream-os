@@ -1747,6 +1747,27 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       bookedFacts = await buildBookedFacts(supabase, vendor.id);
     } catch (e) { console.warn('[booked:wa fact-block]', e && e.message); }
 
+    // ── CE-44 LC-Victor P5 · THE WORKING DOOR ON THE WHATSAPP LANE (src/lib/vendor/workingDoor.js) ──
+    // After the cap gate and the route, before the chain. A door-only turn is persisted to the engine
+    // thread (one counted usage row, F-44.52), sent, logged as the chain's reply is, and returns here;
+    // it never writes the chain's reply variable. Every other turn falls to the chain UNCHANGED,
+    // carrying the request already heard so the chain's recordListening makes no second model call.
+    // ONCE THE DOOR HAS ANSWERED, THE TURN IS THE DOOR'S TO THE END (the chair's rule on P5's cut): the
+    // delivery runs in speakOnWhatsApp, every step in its own guard, and this branch RETURNS whatever it
+    // did. Only a door that did NOT answer (door: false, or preTurn itself unreachable) falls to the chain.
+    let doorEar = null;
+    let doorOut = null;
+    try { doorOut = await require('./vendor/workingDoor').preTurn({ supabase, vendor, agentId, route: llmWiring && llmWiring.route, message: body, lane: 'whatsapp' }); }
+    catch (e) { console.warn('[door:wa]', e && e.message); }
+    if (doorOut && doorOut.door) {
+      try {
+        const d = await require('./vendor/workingDoor').speakOnWhatsApp({ supabase, agentId, phone, convoId: convo.id, message: body, out: doorOut, sendWhatsApp });
+        console.log(`[door:wa] spoke alone (${(doorOut.keys || []).join(',') || 'lifecycle'}) sent=${d.sent} logged=${d.logged} agent=${agentId}`);
+      } catch (e) { console.error('[door:wa after the door answered]', e && e.message); }
+      return;
+    }
+    doorEar = doorOut ? doorOut.ear : null;
+
     // ── CE-41 · SEAT G · R-41.104 — THE ROOM, HANDED TO THE ENGINE ──────────
     // `buildLlmForTurn` above stopped reading `victor_mode` for the ROUTE. This
     // is the other half and it is the half that matters to the vendor: without
@@ -1834,8 +1855,9 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         // CE-43 LC-1b · F-43.28(c), ruled D1 (a), founder veto V1 YES: the Meta lane sends
         // no document (whatsapp.js refuses media, M1 text-only), so the line promises none.
         // The real send is LC-4's (F-43.28 arm a); the loop below is untouched (F-43.32).
-        `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready. Find it in the invoices list.`
-      ).join('\n');
+        // CE-44 LC-Victor P5 · F-44.48, ruled option (i): the sentence's ONE home is doorLines.js byte 13.
+        require('./vendor/doorLines').invoiceReady(d.invoice_number, d.client)
+      ).filter(Boolean).join('\n');
     }
     // ── CE-44 · LC-2 · packet 4a · seam 5 · THE TWO SIGNALS, ACTED ON HERE ──
     // The SAME helper the web thread runs (lib/vendor/lifecycleHands.js), so a booking
@@ -2386,7 +2408,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
     // CE-44 LC-Victor P2 (R-44.14, R-44.15, R-44.17): THE SILENT LISTENER, after the wire closes,
     // never awaited; it writes nothing the vendor reads (src/lib/vendor/listenerDoor.js).
-    setImmediate(() => { require('./vendor/listenerDoor').recordListening({ supabase, agentId, route: llmWiring.route, message: body, result, lane: 'whatsapp' }); });
+    setImmediate(() => { require('./vendor/listenerDoor').recordListening({ supabase, agentId, route: llmWiring.route, message: body, result, lane: 'whatsapp', ear: doorEar }); });
     // ── F-06.188's STAMP · THE DOOR MARKS ITS OWN CONFIRM ────────────────────
     // `doorAsked` used to decide adjacency by regexing THIS row's body. It now
     // reads this stamp, so a copy change can never move the gate again. The value

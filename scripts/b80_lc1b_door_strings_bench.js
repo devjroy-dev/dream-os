@@ -233,10 +233,35 @@ async function main() {
     ok(c3.C4 === false, `§6 M3 ${name} full month creeps onto Cancelled: → C4 RED`);
   }
   {
-    const m4 = loadMutated('src/lib/vendorInbound.js',
-      "is ready. Find it in the invoices list.`", "— sending the PDF now.`");
-    const c4 = m4.mod && m4.mod.processVendorInbound ? await doorCells(m4.mod) : {};
-    ok(c4.C1a === false && c4.C1b === false, '§6 M4 vendorInbound PDF promise restored → C1a and C1b RED');
+    // M4 AMENDED at CE-44 LC-Victor P5 (the chair's ruling, option (i); F-44.48). The sentence left
+    // vendorInbound.js for its ONE home, src/lib/vendor/doorLines.js byte 13, so the mutation is re-aimed
+    // there: the PDF promise is restored IN THE HOME, with its hash re-stamped the way a deliberate edit
+    // would have to be (else the home refuses to load at all, which would be a different red), the
+    // mutated home is placed in the require cache, and a FRESH vendorInbound is driven through the real
+    // processVendorInbound. C1a and C1b must still go RED. Same strength, one home.
+    const m4 = await (async () => {
+      const home = P('src/lib/vendor/doorLines.js');
+      const vin = P('src/lib/vendorInbound.js');
+      const orig = fs.readFileSync(home, 'utf8');
+      const oldByte = 'Invoice {number} for {client} is ready. Find it in the invoices list.';
+      const newByte = 'Invoice {number} for {client} is ready — sending the PDF now.';
+      const crypto = require('crypto');
+      const hx = (t) => crypto.createHash('sha256').update(t, 'utf8').digest('hex');
+      if (!orig.includes(JSON.stringify(oldByte)) || !orig.includes(hx(oldByte))) return { missing: true };
+      const mutatedHome = orig.replace(JSON.stringify(oldByte), JSON.stringify(newByte)).replace(hx(oldByte), hx(newByte));
+      const saved = { home: require.cache[home], vin: require.cache[vin] };
+      try {
+        const hm = new Module(home, module); hm.filename = home; hm.paths = Module._nodeModulePaths(path.dirname(home));
+        hm._compile(mutatedHome, home); hm.loaded = true; require.cache[home] = hm;
+        delete require.cache[vin];
+        const mod = require(vin);
+        const c = await doorCells(mod);
+        return { cells: c };
+      } catch (e) { console.log(`  (mutated doorLines.js did not drive: ${e.message.split('\n')[0]})`); return { failed: true }; }
+      finally { require.cache[home] = saved.home; if (saved.vin) require.cache[vin] = saved.vin; else delete require.cache[vin]; }
+    })();
+    const c4 = m4.cells || {};
+    ok(c4.C1a === false && c4.C1b === false, '§6 M4 the PDF promise restored in the sentence\'s one home (doorLines.js) → C1a and C1b RED');
     const m5 = loadMutated('src/lib/vendorInbound.js',
       "const mediaMsg = await sendWhatsApp(phone, '', [d.pdf_url]);", "const mediaMsg = null;");
     const c5 = m5.mod && m5.mod.processVendorInbound ? await doorCells(m5.mod) : {};

@@ -174,11 +174,16 @@ async function writeUsage(supabase, agentId, ear, deps = {}) {
 // THE ONE ENTRY. Called after the wire closes, never awaited by the reply. Hears the turn, merges
 // { listener: {...} } into the named row's meta (never overwriting what is there), writes the
 // uncounted usage row. Never throws.
-async function recordListening({ supabase, agentId, route, message, result, lane }, deps = {}) {
+// CE-44 LC-Victor P5: `ear` is the request the working door ALREADY HEARD before the reply
+// (src/lib/vendor/workingDoor.js). On a chain turn it is recorded as it is and NO second model call
+// is made; a doubled listener call would be a doubled cost nobody would see. Absent, the turn is heard
+// here once, exactly as P2 built it.
+function heardAlready(e) { return !!e && typeof e === 'object' && !!e.seat && ('request' in e); }
+async function recordListening({ supabase, agentId, route, message, result, lane, ear: heard }, deps = {}) {
   try {
     const id = result && result.assistant_message_id;
     if (!id) return;
-    const ear = await hear({ supabase, route, message, conversationId: result.conversation_id, excludeId: id }, deps);
+    const ear = heardAlready(heard) ? heard : await hear({ supabase, route, message, conversationId: result.conversation_id, excludeId: id }, deps);
     const eng = supabase.schema('engine');
     const { data } = await eng.from('messages').select('meta').eq('id', id).maybeSingle();
     const prior = (data && data.meta && typeof data.meta === 'object') ? data.meta : {};
