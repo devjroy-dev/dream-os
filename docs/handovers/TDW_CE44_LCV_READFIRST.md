@@ -825,13 +825,54 @@ Add a new lead, haldi shoot on 3 January
 Send a message to my client asking for the advance
 ```
 
-He added: *"Add two for teams as well- assignment of a task."* **PENDING his word**, the chair's two
-drafts, not yet bytes:
+He added: *"Add two for teams as well- assignment of a task."* His two lines, 20 September, verbatim:
+*"two teams assignment one can be about adding priya to a team and one will be something else you
+decide"*, then *"second can be assinging mira a team event"*, then, told that Mira is already the marketing
+lane's persona (`modelRoutesCopy.ts:52`, R-41.89), *"add Harsh in place of mira"*. The chair read
+`donna_assign_crew` (`recordPrimitives.ts:493` to `:494`): it puts a team member on a booking or takes them
+off, for a date already on the calendar, and nothing creates a team member, so "adding priya to a team" is
+drafted as adding her to an event's team. An example may only promise what the lane can do.
+
+**THE BATCH IS COMPLETE AT TWELVE**, every byte approved by him, none pending, verbatim and in this order,
+after the line itself:
 
 ```
-Assign my assistant to the 5 December wedding          (PENDING)
-Who is on the team for the 14 February shoot?          (PENDING)
+I didn't catch a task in that. You can say things like:
+The Sharma wedding is confirmed for 5 December, fee 60,000
+The advance came in today for the Kapoor booking
+Am I free on 14 February?
+Block 20 March, personal
+Move the Verma shoot to 22 November
+Raise the invoice for the Bose wedding
+Who are my new leads?
+What's due this week?
+Add a new lead, haldi shoot on 3 January
+Send a message to my client asking for the advance
+Add Priya to the team for the 5 December wedding
+Assign Harsh to the 14 February shoot
 ```
+
+**Withdrawn, not to reappear:** "Assign my assistant to the 5 December wedding", "Who is on the team for the
+14 February shoot?", "Assign Mira to the 14 February shoot". His rule stands: no fixture name (*"we will not
+use swati name."*); Priya and Harsh are his own choices.
+
+Two examples are drawn at random each time the line is spoken (R-44.18). The bytes go live at P5 and not
+before; when they do, they live in ONE home, hash-carried as `victorLines.js` carries its founder bytes, and a
+cell proves each example is a sentence the listener routes to an act or a lookup the door can run, so the line
+never offers her something the lane cannot do.
+
+**R-44.20** (founder, 20 September, verbatim): *"Basic on deep seek. two teams assignment one can be about
+adding priya to a team and one will be something else you decide"*. The Listener on the Basic tier STAYS on
+DeepSeek on both vendor surfaces; every other working-room tier is on Haiku. His tap and his cost decision,
+made knowing what P1 showed DeepSeek does to questions. **P5's first precondition:** he has decided; the card
+says so, and its walk includes one QUESTION sent from a Basic-tier vendor so what that tier hears is seen, not
+assumed. No fixture is on Basic (9888294440 signature, 8595356978 prestige); how that turn is driven is the
+chair's to rule with him at P5's charter.
+
+**For P5's design (the chair's, from P4a's walk; not a finding):** on a just-booked client whose invoice is
+made at booking, Victor asked WHICH invoice and did not reach the tool; the named re-issue did. When the door
+speaks for invoices, "send me X's invoice" on a client with exactly one invoice serves it without a question,
+and with more than one asks by number.
 
 None of R-44.18 is P2's to build; the line and the batch are P5's.
 

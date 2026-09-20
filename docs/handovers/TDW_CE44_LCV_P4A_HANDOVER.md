@@ -1,4 +1,5 @@
 # repo: dream-os @ 704950243522c4b788ad8d6bc898be3d21e1e245 (base) · dreamos-pwa @ 320ad7e39f7e70e0fb4be6b37b84b4299a3c8307
+# closed (docs only, C-44.1) on dream-os @ f3f7398c6eb1f777461fd87f4e1ad9e26f1badd2
 # TDW · CE-44 · SEAT LCV-1 · LC-VICTOR P4a · THE STRUCTURED RESULT OF A HAND · HANDOVER
 
 **Rung b88.** Code, so it verifies on the founder's own floor end to end (`run-floor.sh --delivery
@@ -116,6 +117,51 @@ TDW/DEV440/<number>"**, the real number. A payment and a booking should read exa
 P4b (the engine-born hands) under its own pre-cut note and lift. F-44.48 and F-43.34 to P5 (one invoice home,
 one invoice sentence on both lanes). P5's first precondition: R-44.20 (Basic's Listener on DeepSeek, his
 decision), and the Basic-tier question, the chair's to rule with him at P5's charter.
+
+## 9 · P4a's close: landed and walked
+
+**Landed** at `f3f7398c6eb1f777461fd87f4e1ad9e26f1badd2` (parent `7049502`; nine paths as the manifest, byte-identical
+to the ZIP the chair confirmed, sha256 `3dea3f56…3bdb48`). On the founder's Codespace: `b88 · 78 pass · 0 fail`,
+`b86 · 58 pass · 0 fail`; `[F-14.16] declared files unmoved — set and contents both verified.`; `FLOOR = NAMED
+BASE, no delta  (refusals, not in base: 4)`; FLOOR GREEN. Railway ACTIVE, "Deployment successful".
+
+**The walk**, TDW chat's working room, fixture vendor, client **Walk45**. Asked first to "raise an invoice for
+walk45", Victor answered that Walk45 already has an invoice on file (TDW/DEV440/19, made when the booking was
+confirmed) and asked whether to re-issue it or raise a new one; the tool was not reached. On **"Re-issue the same
+invoice for Walk45"** the tool ran: the live chip read **"Invoice minted"**, with no ": Invoice" and no undo;
+after a reload the saved line read **"Invoice minted: TDW/DEV440/19"**; the invoice sentence ("Invoice
+TDW/DEV440/19 for Walk45 is ready…") was unchanged. **F-44.30 is closed.**
+
+## 10 · Findings and law recorded at P4a's close
+
+- **F-44.45** (ruled for the door): a lookup naming no entity, no date and no kind the door can run is nothing to
+  act on and takes the leftover line at P5; the door never runs a lookup on nothing. Fixtures: "Refresh", heard
+  once as none and once as search/find (P2 handover §14).
+- **F-44.46** (ruled for the date resolver): a day with no month resolves to the next such day on or after today
+  in IST; "19th" asked on 20 September is 19 October. The founder may prefer the door to ask.
+- **F-44.47:** `engine.usage` names no spender; the listener and harvest are told apart by model alone. A spender
+  marker lands in the first packet that touches the usage writer again.
+- **F-44.48:** the invoice is made and delivered by two per-surface paths (`chat.js` `buildInvoices` and
+  `vendorInbound.js`'s twin), C-43.1's class. Filed to P5 with F-43.34, where the door speaks for invoices
+  through one home. Named in P4a, not cured.
+- **C-44.7** (chair's mechanics): a cell that pins what a packet did is measured against a fixed commit range,
+  the packet's own committed manifest, or bytes with their own permanent home; never base against working tree.
+- **C-44.8** (standing law, from the founder's words, verbatim: *"from next time tell me exactly the clients name.
+  no guessing game."*): every card names the exact client and the exact words to send, and says what he should see
+  for each. Where the act depends on a fixture's state, the card's first step is a schema-witnessed SELECT, with
+  its control, showing that state.
+
+## 11 · Errors and corrections owned, P4 in full
+
+- **e-10.** P2's close carried runnable blocks in the message awaiting the chair's read; he ran them first. The
+  form since: a message awaiting the chair carries only the hash, the file list and each block described; the
+  blocks follow the confirm.
+- **e-11**, **e-12** (§7 above).
+- **e-13.** P4a's card said "a booked client with a fee" and named none, and assumed the invoice tool would fire;
+  on a just-booked client Victor asked which invoice instead. Cured by C-44.8.
+- **The chair's:** **c-44.22**, an assumption about where a hand's result is produced, stated as fact without
+  reading the case bodies (P4 "cannot be W-1 NONE"); **c-44.23** (§7 above); **c-44.24**, its own summary to the
+  founder said "ask for an invoice for a booked client" and named none.
 
 ---
 

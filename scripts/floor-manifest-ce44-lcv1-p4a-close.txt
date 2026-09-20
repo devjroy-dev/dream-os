@@ -1,0 +1,6 @@
+# scripts/floor-manifest-ce44-lcv1-p4a-close.txt
+# TDW CE-44 · LCV-1 · LC-Victor P4a's close and the queued records (dream-os, docs only, C-44.1) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else.
+docs/handovers/TDW_CE44_LCV_READFIRST.md
+docs/handovers/TDW_CE44_LCV_P4A_HANDOVER.md
+scripts/floor-manifest-ce44-lcv1-p4a-close.txt
