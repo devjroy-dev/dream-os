@@ -1,0 +1,10 @@
+# CE-44 · LCV-2 · LC-Victor P5-h1 · R-44.24, F-44.60, F-44.61, F-44.62 · rung b90 (extended)
+# base dream-os ecc564d9dc2ecacf0e0fde20ff7260396a941738 · W-1 NONE · no pwa byte
+docs/handovers/TDW_CE44_LCV_P5H1_HANDOVER.md
+scripts/b90_lcv_p5_bench.js
+scripts/floor-manifest-ce44-lcv2-p5h1.txt
+src/lib/vendor/blockHands.js
+src/lib/vendor/doorLines.js
+src/lib/vendor/listenerDoor.js
+src/lib/vendor/spokenDate.js
+src/lib/vendor/workingDoor.js

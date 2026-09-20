@@ -56,7 +56,7 @@ const EAR_TOOL = {
             act: { type: 'string', description: 'lead, booking_confirmed, advance_paid, milestone_paid, attach_package, invoice, date, book_event, block_date, unblock_date, edit_event, cancel_event, assign_crew, note, relay, quote_send, find, whatsdue, history, tally' },
             client_as_spoken: { type: 'string', description: 'The client exactly as she said it. Empty if none.' },
             amount_rupees: { type: 'integer', minimum: 1, description: 'Whole rupees, only if she said a figure. Omit otherwise.' },
-            date_as_spoken: { type: 'string', description: 'The date in her own words (for example "5th December", "today"). Never converted. Empty if none.' },
+            date_as_spoken: { type: 'string', description: 'The date in her own words, returned verbatim and never converted. A word that places the day relative to now IS a date: "today", "yesterday", "this morning", "last Friday" are dates, exactly like "5th December". When she says when money came in, however she says it, put those words here. Empty only if she gave no date at all.' },
             milestone: { type: 'string', description: 'The payment as she named it. Empty if none.' },
             missing: { type: 'array', items: { type: 'string' } },
           },

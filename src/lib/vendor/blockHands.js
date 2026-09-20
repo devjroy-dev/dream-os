@@ -142,20 +142,29 @@ async function unblockDates(supabase, vendorId, result) {
 // not: "nothing was written" is TRUE — blockDate is fail-closed (F15) and
 // eventWrite's conflict path writes NOTHING without force. This is the
 // never-false-done covenant wearing calendar clothes.
+//
+// CE-44 LC-Victor P5-h1 · F-44.62 (ruled, F-43.29's class): the WORDS of all six lines stay byte for byte; only
+// the date renders in full, "20 March 2027", through witnessLine's longDateYear (R-42.13, his standing rule: full
+// month on vendor glass). longDateYear returns anything that is not a plain ISO date unchanged, so a line keeps
+// the shape it had rather than printing "null". The founder has been told and may take it back.
 function blockLines(done) {
+  const { longDateYear } = require('../witnessLine');
   return done.map((d) => {
     const why = d.reason ? ` — ${d.reason}` : '';
-    if (d.ok)                        return `Blocked: ${d.date}${why}. The day's off your calendar.`;
-    if (d.code === 'ALREADY_BLOCKED') return `${d.date} was already blocked. Nothing changed.`;
-    return `Couldn't block ${d.date} — nothing was written. Try again or block it from the calendar.`;
+    const day = longDateYear(d.date);
+    if (d.ok)                        return `Blocked: ${day}${why}. The day's off your calendar.`;
+    if (d.code === 'ALREADY_BLOCKED') return `${day} was already blocked. Nothing changed.`;
+    return `Couldn't block ${day} — nothing was written. Try again or block it from the calendar.`;
   }).join('\n');
 }
 
 function unblockLines(done) {
+  const { longDateYear } = require('../witnessLine');
   return done.map((d) => {
-    if (d.ok)         return `Unblocked: ${d.date}. The day's back on your calendar.`;
-    if (d.notBlocked) return `${d.date} wasn't blocked. Nothing changed.`;
-    return `Couldn't unblock ${d.date} — nothing was written. Try again or unblock it from the calendar.`;
+    const day = longDateYear(d.date);
+    if (d.ok)         return `Unblocked: ${day}. The day's back on your calendar.`;
+    if (d.notBlocked) return `${day} wasn't blocked. Nothing changed.`;
+    return `Couldn't unblock ${day} — nothing was written. Try again or unblock it from the calendar.`;
   }).join('\n');
 }
 

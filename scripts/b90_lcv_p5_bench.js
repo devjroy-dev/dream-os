@@ -146,8 +146,8 @@ async function main() {
   // ─── §1 THE BYTES ────────────────────────────────────────────────────────────────────────────
   sec('1 doorLines.js: the founder\'s bytes, verbatim, hash-pinned here');
   const RULED = {
-    B1: 'Mark this payment? {client} · {which payment} · Rs {amount} · {date}. Reply yes or no.',
-    B2: 'Confirm this booking? {client} · {package} · Rs {total}. Reply yes or no.',
+    B1: 'Mark this payment? {client} · {which payment} · Rs {amount} · {date}. Reply YES or NO.',
+    B2: 'Confirm this booking? {client} · {package} · Rs {total}. Reply YES or NO.',
     B3: 'Okay. Nothing was changed.',
     B4: 'Could not confirm the booking. No lead called {name}. Add the lead first.',
     B5: 'Could not confirm the booking. {client} has no package yet. Attach a package first.',
@@ -164,7 +164,7 @@ async function main() {
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
   const HASHES = {
-    B1: 'd0cd79058807bbf4868c91f8bc505c93472da93437c21e35426b4a3d1035a32c', B2: 'c1e04ddc53106c891849d95d3c59904cb071095bbeb1ef73ae67ba9e809750a2',
+    B1: '1fb5297d3c1193543d8385e514fe42b1856be16deb6cabf2e83cf036169ed4ba', B2: 'cd29bd0dfbde4e0dba9cf4df73e12bc7b69880aea0337562e77d96228e8259eb',
     B3: 'a6a5c9b1c22d6a82413e6bb856363e8a98e902a4b092368a16ef21bb6b30066d', B4: '2dff7d6656c93fa39dd45da087484bb39ef3751b00a0c2e1ca7d4b3503068684',
     B5: 'c628ff61df8eec8e034ec24ac22d2e6b54e060eeb460260d32a6f2d9fa84d190', B6: '728d219fdb8a4ce07778dcf346665975d7ab651f7501efa6ff3f8a7144eb3029',
     B7: '44b5c385d187f3cc29ce05c210a524a8be162ab127f2bf97cbe22bc90dd8e331', B8: 'ecf5d241deae90b77bc9d840928aacc2a1fc781f3fd2b6ea9cb2a25db7675166',
@@ -259,7 +259,7 @@ async function main() {
   db = makeDb(world());
   r = await run(db, 'Sarah paid the middle payment on 18 September', req([{ act: 'milestone_paid', client_as_spoken: 'Sarah', date_as_spoken: '18 September', milestone: 'middle payment', amount_rupees: 99999 }]));
   const staged = db.tables['public.pending_money_acts'];
-  T('5.9 a payment is STAGED and asked in B1, the figure the ROW\'s (Rs 24,000), never the listener\'s 99999', r.out.door === true && r.out.reply === 'Mark this payment? Sarah · 30% one month before the first function (optional) · Rs 24,000 · 18 September 2026. Reply yes or no.' && staged.length === 1 && staged[0].state === 'staged' && !JSON.stringify(staged[0].request).includes('99999'));
+  T('5.9 a payment is STAGED and asked in B1, the figure the ROW\'s (Rs 24,000), never the listener\'s 99999', r.out.door === true && r.out.reply === 'Mark this payment? Sarah · 30% one month before the first function (optional) · Rs 24,000 · 18 September 2026. Reply YES or NO.' && staged.length === 1 && staged[0].state === 'staged' && !JSON.stringify(staged[0].request).includes('99999'));
   T('5.10 staging runs NO hand (nothing marked, nothing promoted)', marked.length === 0 && promoted.length === 0 && r.out.toolNames.length === 0 && r.out.refresh === false);
   T('5.11 the staged row waits 15 minutes', Math.abs(Date.parse(staged[0].expires_at) - Date.now() - 15 * 60000) < 5000);
   r = await run(db, 'yes', req([]));
@@ -303,12 +303,12 @@ async function main() {
   // bookings
   db = makeDb(world());
   r = await run(db, 'Meera is confirmed', req([{ act: 'booking_confirmed', client_as_spoken: 'Meera', amount_rupees: 70000 }]));
-  T('5.24 a booking is STAGED and asked in B2 from the PACKAGE row (Rs 60,000), never the listener\'s 70000', r.out.reply === 'Confirm this booking? Meera · Photographs and film · Rs 60,000. Reply yes or no.' && promoted.length === 0);
+  T('5.24 a booking is STAGED and asked in B2 from the PACKAGE row (Rs 60,000), never the listener\'s 70000', r.out.reply === 'Confirm this booking? Meera · Photographs and film · Rs 60,000. Reply YES or NO.' && promoted.length === 0);
   r = await run(db, 'ok', req([]));
   T('5.25 on yes, booking_confirmed speaks D1 alone with the number the door made', r.out.door === true && r.out.reply === 'Booked: Meera. Client, event and invoice TDW/DEV440/23 are ready.' && promoted.length === 1 && promoted[0].kind === 'booking_confirmed');
   db = makeDb(world());
   r = await run(db, 'Meera advance came today', req([{ act: 'advance_paid', client_as_spoken: 'Meera', date_as_spoken: 'today' }]));
-  T('5.26 an advance is asked in B2 with NO advance shown (ruled)', r.out.reply === 'Confirm this booking? Meera · Photographs and film · Rs 60,000. Reply yes or no.');
+  T('5.26 an advance is asked in B2 with NO advance shown (ruled)', r.out.reply === 'Confirm this booking? Meera · Photographs and film · Rs 60,000. Reply YES or NO.');
   r = await run(db, 'yes', req([]));
   T('5.27 on yes, advance_paid speaks D1 THEN D3 or D4 (R-44.21, two of his bytes in that order)', r.out.reply.startsWith('Booked: Meera. Client, event and invoice TDW/DEV440/23 are ready.\n\nPayment marked: Meera') && promoted[1].kind === 'advance_paid');
   r = await run(db, 'Kavya is confirmed', req([{ act: 'booking_confirmed', client_as_spoken: 'Kavya' }]));
@@ -663,6 +663,63 @@ async function main() {
   const wdFirst = cold(`const w=require(${W});require(${C});console.log(JSON.stringify(w.glitchLine()))`);
   T('14.1 the door reads the byte LAZILY, at the moment it speaks, from its one home in chat.js: the full string cold from workingDoor alone, and in both load orders', !!full && full.length > 20 && JSON.parse(full) === GLITCH && wdAlone === full && chatFirst === full && wdFirst === full);
   T('14.2 workingDoor holds no copy of the glitch byte', !src('src/lib/vendor/workingDoor.js').includes(GLITCH));
+
+  // ─── §15 P5-h1 (the chair's ruling after P5's walk): R-44.24, F-44.60, F-44.61, F-44.62 ────────────────
+  sec('15 P5-h1');
+  // R-44.24: the ask ends "Reply YES or NO." and nothing else in B1 or B2 moved
+  T('15.1 R-44.24: B1 and B2 end "Reply YES or NO.", every other byte as ruled at R-44.21 (f)',
+    DL.LINES.B1 === 'Mark this payment? {client} · {which payment} · Rs {amount} · {date}. Reply YES or NO.'
+    && DL.LINES.B2 === 'Confirm this booking? {client} · {package} · Rs {total}. Reply YES or NO.'
+    && DL.LINES.B1.replace('Reply YES or NO.', 'Reply yes or no.') === 'Mark this payment? {client} · {which payment} · Rs {amount} · {date}. Reply yes or no.'
+    && DL.LINES.B2.replace('Reply YES or NO.', 'Reply yes or no.') === 'Confirm this booking? {client} · {package} · Rs {total}. Reply yes or no.');
+  T('15.2 R-44.24: how her reply is read does not change (YES, Yes, yes; NO, No, no)', ['YES', 'Yes', 'yes'].every((x) => PMA.decide(x) === 'yes') && ['NO', 'No', 'no'].every((x) => PMA.decide(x) === 'no'));
+  const oldRowDb = makeDb(world());
+  oldRowDb.tables['engine.messages'].push({ id: 'old-q', conversation_id: 'c-1', role: 'assistant', content: 'Mark this payment? Sarah · Deposit, 30% of the fee, on booking · Rs 24,000 · 20 September 2026. Reply yes or no.', meta: { listener: { door: true, asked: 'B1' } }, created_at: new Date(Date.now() + 2000).toISOString() });
+  const plainDb = makeDb(world());
+  plainDb.tables['engine.messages'].push({ id: 'text-only', conversation_id: 'c-1', role: 'assistant', content: 'Mark this payment? Sarah · Deposit · Rs 24,000 · 20 September 2026. Reply YES or NO.', meta: null, created_at: new Date(Date.now() + 2000).toISOString() });
+  T('15.3 a question written under the OLD wording is still the door\'s (meta.listener.asked), and the NEW wording without the meta is not (never by its text)',
+    (await quiet(() => WD.lastWasDoorQuestion(oldRowDb, AG))) === true && (await quiet(() => WD.lastWasDoorQuestion(plainDb, AG))) === false);
+  // F-44.60
+  const dsp = JSON.stringify(LD.EAR_TOOL.input_schema.properties.acts.items.properties.date_as_spoken.description);
+  T('15.4 F-44.60: the listener is told plainly that relative words ARE dates, returned verbatim', /today/.test(dsp) && /yesterday/.test(dsp) && /this morning/.test(dsp) && /last Friday/.test(dsp) && /verbatim/.test(dsp) && !/advice/i.test(dsp));
+  const R = (x, dir) => SD.resolveSpokenDate(x, { todayIso: '2026-09-20', direction: dir });
+  T('15.5 F-44.60: his sentence\'s word, and its neighbours, resolve in IST as received dates (20 September 2026 was a Sunday)',
+    R('today', 'past').iso === '2026-09-20' && R('this morning', 'past').iso === '2026-09-20' && R('yesterday evening', 'past').iso === '2026-09-19'
+    && R('last Friday', 'past').iso === '2026-09-18' && R('friday', 'past').iso === '2026-09-18' && R('last sunday', 'past').iso === '2026-09-13');
+  T('15.6 a received date that can only be after today is still B7 (next friday, tomorrow); a lookup goes forward', R('next friday', 'past').reason === 'unreadable' && R('tomorrow', 'past').reason === 'unreadable' && R('friday', 'future').iso === '2026-09-25');
+  // F-44.61
+  db = makeDb(world());
+  r = await run(db, 'Sarah paid the advance today', req([{ act: 'advance_paid', client_as_spoken: 'Sarah', date_as_spoken: 'today' }]));
+  T('15.7 F-44.61: an advance on a lead ALREADY BOOKED whose deposit is paid is D7, no question, nothing staged', r.out.door === true && r.out.reply === 'Already marked: Sarah · Deposit, 30% of the fee, on booking · 18 September 2026.' && db.tables['public.pending_money_acts'].length === 0);
+  db = makeDb(world()); db.tables['public.payment_schedules'].find((x) => x.id === 'ms-1').state = 'pending'; db.tables['public.payment_schedules'].find((x) => x.id === 'ms-1').paid_at = null;
+  r = await run(db, 'Sarah paid the advance today', req([{ act: 'advance_paid', client_as_spoken: 'Sarah', date_as_spoken: 'today' }]));
+  T('15.8 F-44.61: an advance on a booked lead with the deposit unpaid is asked as the DEPOSIT in B1 (the row\'s label and amount, her date), staged as milestone_paid',
+    r.out.reply === `Mark this payment? Sarah · Deposit, 30% of the fee, on booking · Rs 24,000 · ${require(P('src/lib/witnessLine.js')).longDateYear(SD.todayIstIso())}. Reply YES or NO.`
+    && db.tables['public.pending_money_acts'][0].act === 'milestone_paid' && db.tables['public.pending_money_acts'][0].request.milestone_id === 'ms-1');
+  db = makeDb(world());
+  r = await run(db, 'Meera advance came today', req([{ act: 'advance_paid', client_as_spoken: 'Meera', date_as_spoken: 'today' }]));
+  T('15.9 F-44.61: on a lead NOT booked the advance is still the booking question, B2', r.out.reply === 'Confirm this booking? Meera · Photographs and film · Rs 60,000. Reply YES or NO.');
+  m = await withMutated('src/lib/vendor/workingDoor.js', [["  if (act.act === 'advance_paid' && key(found.lead.state) === 'booked') return planPayment(", "  if (false) return planPayment("]], [], async (rq) => {
+    const d = makeDb(world()); d.tables['public.payment_schedules'].find((x) => x.id === 'ms-1').state = 'pending';
+    const oo = await quiet(() => rq('src/lib/vendor/workingDoor.js').preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message: 'x', lane: 'pwa' }, { llmCreate: ear(req([{ act: 'advance_paid', client_as_spoken: 'Sarah', date_as_spoken: 'today' }])), lifecycle: lifeDeps(d) }));
+    return oo.reply;
+  });
+  T('11.17 M15 an advance on a booked lead routed to the booking path again reddens 15.8 (no deposit question)', typeof m === 'string' && !m.startsWith('Mark this payment?'));
+  // F-44.62
+  const BH = require(P('src/lib/vendor/blockHands.js'));
+  const OLD = { ok: (d, w) => `Blocked: ${d}${w}. The day's off your calendar.`, already: (d) => `${d} was already blocked. Nothing changed.`, fail: (d) => `Couldn't block ${d} — nothing was written. Try again or block it from the calendar.`,
+    uok: (d) => `Unblocked: ${d}. The day's back on your calendar.`, not: (d) => `${d} wasn't blocked. Nothing changed.`, ufail: (d) => `Couldn't unblock ${d} — nothing was written. Try again or unblock it from the calendar.` };
+  const FULL = '20 March 2027';
+  T('15.10 F-44.62: "Blocked:" reads the full date, the words byte for byte', BH.blockLines([{ date: '2027-03-20', ok: true, reason: 'Personal time' }]) === OLD.ok(FULL, ' — Personal time'));
+  T('15.11 F-44.62: the other five lines, words byte for byte, full dates', BH.blockLines([{ date: '2027-03-20', code: 'ALREADY_BLOCKED' }]) === OLD.already(FULL) && BH.blockLines([{ date: '2027-03-20' }]) === OLD.fail(FULL)
+    && BH.unblockLines([{ date: '2027-03-20', ok: true }]) === OLD.uok(FULL) && BH.unblockLines([{ date: '2027-03-20', notBlocked: true }]) === OLD.not(FULL) && BH.unblockLines([{ date: '2027-03-20' }]) === OLD.ufail(FULL));
+  T('15.12 F-44.62: no ISO date survives on any of the six; a value that is not a plain date is left as it was, never "null"', !/\d{4}-\d{2}-\d{2}/.test(BH.blockLines([{ date: '2027-03-20', ok: true }, { date: '2027-03-21', code: 'ALREADY_BLOCKED' }, { date: '2027-03-22' }]) + BH.unblockLines([{ date: '2027-03-20', ok: true }, { date: '2027-03-21', notBlocked: true }, { date: '2027-03-22' }]))
+    && BH.blockLines([{ date: 'soon', ok: true }]) === OLD.ok('soon', ''));
+  m = await withMutated('src/lib/vendor/blockHands.js', [['    if (d.ok)                        return `Blocked: ${day}${why}.', '    if (d.ok)                        return `Blocked: ${d.date}${why}.']], [], async (rq) => rq('src/lib/vendor/blockHands.js').blockLines([{ date: '2027-03-20', ok: true, reason: 'Personal time' }]));
+  T('11.18 M16 the raw ISO date restored on "Blocked:" reddens 15.10', m === OLD.ok('2027-03-20', ' — Personal time'));
+  const man2 = 'scripts/floor-manifest-ce44-lcv2-p5h1.txt';
+  const l2 = fs.existsSync(P(man2)) ? fs.readFileSync(P(man2), 'utf8').split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : null;
+  T(`15.13 W-1 NONE for P5-h1, read from its OWN manifest (${man2}); no engine, soul or lens path`, !!l2 && l2.length > 0 && !l2.some((x) => x.startsWith('src/engine/') || /soul|lens/i.test(x)));
 
   console.log(`\n════════  b90 · ${pass} pass · ${fail} fail  ════════\n`);
   if (fail) { console.log('RED. Failing:'); failed.forEach((f) => console.log('   ·', f)); process.exit(1); }

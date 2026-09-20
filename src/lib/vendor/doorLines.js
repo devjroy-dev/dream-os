@@ -4,7 +4,7 @@
 // EVERY STRING A VENDOR READS FROM THE WORKING DOOR LIVES HERE AND NOWHERE ELSE. The bytes are the
 // founder's: B1 to B13 ruled verbatim at R-44.21 (f), 2026-09-20 ("ill go with your ruling on all
 // except no. 3"); D1 his from the CE-43 veto record (TDW_CE43_LC2_P3_HANDOVER.md:173), homeless in
-// code until now; B14 his at R-44.22 (a) (F-44.58); the leftover line and its twelve examples R-44.18's, the first reworded by his
+// code until now; B14 his at R-44.22 (a) (F-44.58); B1 and B2 end "Reply YES or NO." by his word at R-44.24; the leftover line and its twelve examples R-44.18's, the first reworded by his
 // yes at R-44.21 (e) (F-44.54). D3 to D8 and F29 are NOT here: they keep their one home in
 // lifecycleHands.js LINES and the door reads them from there.
 //
@@ -27,9 +27,9 @@ const crypto = require('crypto');
 
 const LINES = Object.freeze({
   // the payment confirmation question (staged; she said a payment arrived)
-  B1: "Mark this payment? {client} · {which payment} · Rs {amount} · {date}. Reply yes or no.",
+  B1: "Mark this payment? {client} · {which payment} · Rs {amount} · {date}. Reply YES or NO.",
   // the booking confirmation question (staged; she said a booking is confirmed or an advance came)
-  B2: "Confirm this booking? {client} · {package} · Rs {total}. Reply yes or no.",
+  B2: "Confirm this booking? {client} · {package} · Rs {total}. Reply YES or NO.",
   // her no to a staged money act
   B3: "Okay. Nothing was changed.",
   // a booking on a name with no lead (F-44.5)
@@ -78,8 +78,8 @@ const EXAMPLES = Object.freeze([
 ]);
 
 const LINE_HASHES = Object.freeze({
-  B1: 'd0cd79058807bbf4868c91f8bc505c93472da93437c21e35426b4a3d1035a32c',
-  B2: 'c1e04ddc53106c891849d95d3c59904cb071095bbeb1ef73ae67ba9e809750a2',
+  B1: '1fb5297d3c1193543d8385e514fe42b1856be16deb6cabf2e83cf036169ed4ba',
+  B2: 'cd29bd0dfbde4e0dba9cf4df73e12bc7b69880aea0337562e77d96228e8259eb',
   B3: 'a6a5c9b1c22d6a82413e6bb856363e8a98e902a4b092368a16ef21bb6b30066d',
   B4: '2dff7d6656c93fa39dd45da087484bb39ef3751b00a0c2e1ca7d4b3503068684',
   B5: 'c628ff61df8eec8e034ec24ac22d2e6b54e060eeb460260d32a6f2d9fa84d190',

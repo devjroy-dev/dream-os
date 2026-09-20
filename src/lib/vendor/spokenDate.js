@@ -95,9 +95,28 @@ function resolveRaw(spoken, opts) {
     const s = spoken.toLowerCase().replace(/[,]/g, ' ').replace(/\s+/g, ' ').trim()
       .replace(/^(on|by|of)\s+/, '').replace(/^the\s+/, '');
     if (!s) return { ok: false, reason: 'none' };
-    if (/^(today|aaj)$/.test(s)) return { ok: true, iso: today };
-    if (s === 'yesterday') return { ok: true, iso: addDays(today, -1) };
-    if (s === 'tomorrow') return { ok: true, iso: addDays(today, 1) };
+    // F-44.60 (P5-h1): words that place the day relative to now ARE dates, resolved here in IST.
+    const PART = '(?: (?:morning|afternoon|evening|night))?';
+    if (new RegExp(`^(?:today|aaj)${PART}$`).test(s) || /^(?:this (?:morning|afternoon|evening)|tonight)$/.test(s)) return { ok: true, iso: today };
+    if (new RegExp(`^yesterday${PART}$`).test(s) || s === 'last night') return { ok: true, iso: addDays(today, -1) };
+    if (s === 'day before yesterday' || s === 'the day before yesterday') return { ok: true, iso: addDays(today, -2) };
+    if (new RegExp(`^tomorrow${PART}$`).test(s)) return { ok: true, iso: addDays(today, 1) };
+    const WD = { sun: 0, mon: 1, tue: 2, tues: 2, wed: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6 };
+    const wm = /^(last |this |next )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tues|tue|wed|thurs|thur|thu|fri|sat)$/.exec(s);
+    if (wm) {
+      const target = WD[wm[2].slice(0, 3) === 'thu' ? 'thu' : wm[2].slice(0, 3)];
+      const [y, mo, d0] = today.split('-').map(Number);
+      const dow = new Date(Date.UTC(y, mo - 1, d0)).getUTCDay();
+      const which = (wm[1] || '').trim();
+      if (which === 'last' || (!which && direction === 'past') || (which === 'this' && direction === 'past')) {
+        let back = (dow - target + 7) % 7;
+        if (which === 'last' && back === 0) back = 7;
+        return { ok: true, iso: addDays(today, -back) };
+      }
+      let fwd = (target - dow + 7) % 7;
+      if (which === 'next' && fwd === 0) fwd = 7;
+      return { ok: true, iso: addDays(today, fwd) };
+    }
     let m;
     if ((m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s))) {
       const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];

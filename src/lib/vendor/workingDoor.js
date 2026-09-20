@@ -102,6 +102,18 @@ async function planMoney(supabase, vendor, act, L) {
       }
       return { speak: L.lifecycle.LINES.D8, key: 'D8' };
     }
+    return planPayment(supabase, vendor, found.lead, act.milestone || '', d.iso, L);
+  }
+  return planBooking(supabase, vendor, act, L);
+}
+
+// A payment on a booked lead, resolved to its milestone row, asked in B1 or answered D6, D7 or D8. Shared by
+// milestone_paid and, since F-44.61, by advance_paid on a lead that is ALREADY booked (the deposit).
+async function planPayment(supabase, vendor, lead, words, receivedIso, L) {
+  {
+    const found = { lead };
+    const d = { iso: receivedIso };
+    const act = { milestone: words };
     const client = String(found.lead.name || '').trim();
     const inv = await L.lifecycle.invoiceOfLead(supabase, vendor.id, found.lead.id);
     if (!inv.ok) return { speak: L.lifecycle.LINES.D8, key: 'D8' };
@@ -121,6 +133,10 @@ async function planMoney(supabase, vendor, act, L) {
     if (!line) return null;
     return { stage: { act: 'milestone_paid', request: { lead_id: found.lead.id, lead_name: client, milestone: act.milestone || label, milestone_id: pick.row.id, received_on: d.iso } }, speak: line, key: 'B1' };
   }
+}
+
+async function planBooking(supabase, vendor, act, L) {
+  const name = act.client_as_spoken.trim();
   // booking_confirmed · advance_paid
   let received;
   if (act.act === 'advance_paid') {
@@ -138,6 +154,9 @@ async function planMoney(supabase, vendor, act, L) {
     }
     return { speak: L.lifecycle.LINES.F29, key: 'F29' };
   }
+  // F-44.61 (ruled): an advance on a lead that is ALREADY booked is not a booking. It is the DEPOSIT, resolved and
+  // asked in B1 with the row's own label, amount and her received date; a deposit already paid is D7, no question.
+  if (act.act === 'advance_paid' && key(found.lead.state) === 'booked') return planPayment(supabase, vendor, found.lead, 'deposit', received, L);
   const client = String(found.lead.name || '').trim();
   const { data: lp, error } = await supabase.from('lead_packages').select('id, total, schedule, snapshot')
     .eq('lead_id', found.lead.id).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle();
@@ -433,4 +452,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
