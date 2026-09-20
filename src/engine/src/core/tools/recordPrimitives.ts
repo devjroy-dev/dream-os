@@ -217,18 +217,18 @@ async function writeFields(
     // real client — caught by `error`. The `!data` complement closes the version-dependent
     // { data:null, error:null } tail so the hand fails honest (its own ERROR result) and
     // NEVER reads id off null. Prefix kept "ERROR updating record" for the startsWith gate.
-    if (error || !data) return { display: error ? `ERROR updating record: ${error.message}` : `ERROR updating record: id ${recordId} returned no row (not found or not owned).` };
+    if (error || !data) return { result: { ok: false, code: 'refused:write_failed', ids: {} }, display: error ? `ERROR updating record: ${error.message}` : `ERROR updating record: id ${recordId} returned no row (not found or not owned).` };
     await logEvent(agentId, 'update', data.id, label);
-    return { display: `Updated record ${data.id} — ${label}.\n  binder now reads: ${binderLine(data)}`, item: recordItem(data) };
+    return { result: { ok: true, code: 'updated', ids: { record_id: data.id } }, display: `Updated record ${data.id} — ${label}.\n  binder now reads: ${binderLine(data)}`, item: recordItem(data) };
   }
   const { data, error } = await supabase
     .from('records')
     .insert({ agent_id: agentId, ...fields })
     .select(SELECT).single();
   // F-04.86-family fail-closed floor (both legs, CE-chartered) — see the update leg.
-  if (error || !data) return { display: error ? `ERROR creating record: ${error.message}` : 'ERROR creating record: the insert returned no row.' };
+  if (error || !data) return { result: { ok: false, code: 'refused:write_failed', ids: {} }, display: error ? `ERROR creating record: ${error.message}` : 'ERROR creating record: the insert returned no row.' };
   await logEvent(agentId, 'create', data.id, label);
-  return { display: `Record ${data.id} created — ${label}.\n  binder now reads: ${binderLine(data)}`, item: recordItem(data) };
+  return { result: { ok: true, code: 'created', ids: { record_id: data.id } }, display: `Record ${data.id} created — ${label}.\n  binder now reads: ${binderLine(data)}`, item: recordItem(data) };
 }
 
 // ── The atoms ────────────────────────────────────────────────────────────────
@@ -641,13 +641,13 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
   switch (name) {
     case 'donna_money': {
       const parsed = parseMoney(input.amount);
-      if (parsed == null) return { display: `ERROR: could not read amount "${String(input.amount)}". Give plain rupees (250000) or notation ('2.5L', '90k', '1.2cr') — never compute the zeros yourself.` };
+      if (parsed == null) return { result: { ok: false, code: 'refused:unreadable_amount', ids: {} }, display: `ERROR: could not read amount "${String(input.amount)}". Give plain rupees (250000) or notation ('2.5L', '90k', '1.2cr') — never compute the zeros yourself.` };
       const dirIn = input.direction === 'in' || input.direction === 'out' ? input.direction : null;
-      if (!dirIn) return { display: 'ERROR: donna_money needs direction (in or out).' };
+      if (!dirIn) return { result: { ok: false, code: 'refused:missing_direction', ids: {} }, display: 'ERROR: donna_money needs direction (in or out).' };
       if (rid) {
         const { data: existing, error: exErr } = await supabase.from('records')
           .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
-        if (exErr || !existing) return { display: `ERROR: binder ${rid} not found.` };
+        if (exErr || !existing) return { result: { ok: false, code: 'refused:not_found', ids: {} }, display: `ERROR: binder ${rid} not found.` };
         if (existing.amount != null) {
           // TDW_04 engine-lane (ST-6, absorbed 02-HOTFIX-2): old ≠ new guard.
           // Re-stating the same figure with the same direction is not a replace —
@@ -655,6 +655,7 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
           // honest answer is that the figure already stands.
           if (Number(existing.amount) === parsed && (existing.direction ?? null) === dirIn) {
             return {
+              result: { ok: true, code: 'unchanged', ids: { record_id: rid } },
               display: `MONEY UNCHANGED on ${rid} — ${moneyWords(parsed)} ${dirIn} already stands; nothing re-stamped.`,
               item: recordItem(existing),
             };
@@ -704,7 +705,7 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
             confess, new Set(['note']),
           );
           if (outcome.display.startsWith('ERROR')) return outcome;
-          return { display: `MONEY REPLACED on ${rid} — ${oldLine} → ${newLine} (old figure kept in the story and the event trail).\n${outcome.display.split('\n').slice(1).join('\n')}`, item: outcome.item };
+          return { result: { ok: true, code: 'replaced', ids: { record_id: rid } }, display: `MONEY REPLACED on ${rid} — ${oldLine} → ${newLine} (old figure kept in the story and the event trail).\n${outcome.display.split('\n').slice(1).join('\n')}`, item: outcome.item };
         }
       }
       return writeFields(agentId, rid, { amount: parsed, direction: dirIn }, `money ${moneyWords(parsed)} ${dirIn}`);
@@ -727,10 +728,11 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       if (rid) {
         const { data: existing, error: exErr } = await supabase.from('records')
           .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
-        if (exErr || !existing) return { display: `ERROR: binder ${rid} not found.` };
+        if (exErr || !existing) return { result: { ok: false, code: 'refused:not_found', ids: {} }, display: `ERROR: binder ${rid} not found.` };
         const incoming = typeof input.date === 'string' ? input.date.trim() : '';
         if (incoming && existing.date === incoming) {
           return {
+            result: { ok: true, code: 'unchanged', ids: { record_id: rid } },
             display: `DATE UNCHANGED on ${rid} — date ${incoming} already stands; nothing re-written, nothing re-dragged.`,
             item: recordItem(existing),
           };
@@ -748,34 +750,34 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       if (booked && rid && !hasLeadBehind(booked, rid)) {
         const { data: b } = await supabase.from('records')
           .select('id, stage').eq('id', rid).eq('agent_id', agentId).maybeSingle();
-        if (b && meansBooked(b.stage)) return { display: V12 };
+        if (b && meansBooked(b.stage)) return { result: { ok: false, code: 'refused:v12', ids: {} }, display: V12 };
       }
       return writeFields(agentId, rid, { client: input.client }, `client ${input.client}`);
     }
     case 'donna_note':
-      if (typeof input.note !== 'string' || !input.note.trim()) return { display: 'ERROR: donna_note needs the note text — what should this binder say?' };
+      if (typeof input.note !== 'string' || !input.note.trim()) return { result: { ok: false, code: 'refused:missing_note', ids: {} }, display: 'ERROR: donna_note needs the note text — what should this binder say?' };
       return writeFields(agentId, rid, { note: input.note }, `note`);
     case 'donna_note_append':
-      if (!rid) return { display: 'ERROR: donna_note_append needs binder_id.' };
-      if (typeof input.note !== 'string' || !input.note.trim()) return { display: 'ERROR: donna_note_append needs the line to add.' };
+      if (!rid) return { result: { ok: false, code: 'refused:missing_binder', ids: {} }, display: 'ERROR: donna_note_append needs binder_id.' };
+      if (typeof input.note !== 'string' || !input.note.trim()) return { result: { ok: false, code: 'refused:missing_note', ids: {} }, display: 'ERROR: donna_note_append needs the line to add.' };
       return writeFields(agentId, rid, { note: input.note }, `note line added`, new Set(['note']));
     case 'donna_phone':
       return writeFields(agentId, rid, { phone: input.phone }, `phone`);
     case 'donna_doc':
       return writeFields(agentId, rid, { doc_ref: input.doc_ref }, `doc`);
     case 'donna_stage':
-      if (typeof input.stage !== 'string' || !input.stage.trim()) return { display: 'ERROR: donna_stage needs the stage word — where does this binder stand?' };
+      if (typeof input.stage !== 'string' || !input.stage.trim()) return { result: { ok: false, code: 'refused:missing_stage', ids: {} }, display: 'ERROR: donna_stage needs the stage word — where does this binder stand?' };
       // V12 · CE-44 packet 4a. THIS IS THE ARM THAT MATTERS: moving a binder INTO a
       // booked stage is the write that would create a booked client with no lead
       // behind it, and it is refused whether the binder is named or would be opened
       // by this very call (no binder_id => nothing can stand behind it). Stages that
       // are not booked-shaped, and binders that already have a lead, pass untouched.
-      if (booked && meansBooked(input.stage) && !hasLeadBehind(booked, rid)) return { display: V12 };
+      if (booked && meansBooked(input.stage) && !hasLeadBehind(booked, rid)) return { result: { ok: false, code: 'refused:v12', ids: {} }, display: V12 };
       return writeFields(agentId, rid, { stage: input.stage }, `stage ${input.stage}`);
     case 'donna_write_reasonforaction_append':
       return writeFields(agentId, rid, { reason_for_action: input.reason_for_action }, `reason noted`);
     case 'donna_money_edit': {
-      if (!rid) return { display: 'ERROR: donna_money_edit needs binder_id.' };
+      if (!rid) return { result: { ok: false, code: 'refused:missing_binder', ids: {} }, display: 'ERROR: donna_money_edit needs binder_id.' };
       // ── V13 · F-44.15 (chair, CE-44) · THE MONEY OF A BOOKED CLIENT IS THE
       //    INVOICE'S ───────────────────────────────────────────────────────────
       // On 18 September this arm took seven calls and left binder 7c9e4d51 at
@@ -794,7 +796,7 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       if (booked && hasLeadBehind(booked, rid)) return { display: V13 };
       const { data: before, error: befErr } = await supabase.from('records')
         .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
-      if (befErr || !before) return { display: `ERROR: binder ${rid} not found.` };
+      if (befErr || !before) return { result: { ok: false, code: 'refused:not_found', ids: {} }, display: `ERROR: binder ${rid} not found.` };
       const patch: Record<string, unknown> = {};
       const confess: string[] = [];
       let sawMoneyField = false; // TDW_04 engine-lane (ST-6): input arrived but matched current figures
@@ -804,7 +806,7 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       for (const [field, word] of moneyFields) {
         if (field in input) {
           const parsed = parseMoney(input[field]);
-          if (parsed == null) return { display: `ERROR: could not read ${field} "${String(input[field])}". Give plain rupees or notation ('2.5L', '90k', '1.2cr').` };
+          if (parsed == null) return { result: { ok: false, code: 'refused:unreadable_amount', ids: {} }, display: `ERROR: could not read ${field} "${String(input[field])}". Give plain rupees or notation ('2.5L', '90k', '1.2cr').` };
           sawMoneyField = true;
           const old = before[field] as number | null;
           // TDW_04 engine-lane (ST-6, absorbed 02-HOTFIX-2): the amount fields gain the
@@ -828,9 +830,9 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
         // TDW_04 engine-lane (ST-6): distinguish "nothing sent" (caller error) from
         // "everything sent already stands" (honest no-op — never an ERROR, never a stamp).
         if (sawMoneyField) {
-          return { display: `MONEY UNCHANGED on ${rid} — the figures given already stand; nothing stamped.`, item: recordItem(before) };
+          return { result: { ok: true, code: 'unchanged', ids: { record_id: rid } }, display: `MONEY UNCHANGED on ${rid} — the figures given already stand; nothing stamped.`, item: recordItem(before) };
         }
-        return { display: 'ERROR: donna_money_edit needs at least one money cell to change.' };
+        return { result: { ok: false, code: 'refused:nothing_to_change', ids: {} }, display: 'ERROR: donna_money_edit needs at least one money cell to change.' };
       }
       // ── F-39.23's CURE (CE-39 hygiene, ruling 3) ─────────────────────────────
       // WHAT STOOD HERE: `patch.note = '[money corrected <date>] received: (empty)
@@ -856,19 +858,19 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       // Re-derived from the callers down at CE-39; ratified as a misfile at c-39.35.
       const outcome = await writeFields(agentId, rid, patch, `money corrected — ${confess.join('; ') || 'no change'}`);
       if (outcome.display.startsWith('ERROR')) return outcome;
-      return { display: `MONEY CORRECTED on ${rid} — ${confess.join('; ')}.\n${outcome.display.split('\n').slice(1).join('\n')}`, item: outcome.item };
+      return { result: { ok: true, code: 'corrected', ids: { record_id: rid } }, display: `MONEY CORRECTED on ${rid} — ${confess.join('; ')}.\n${outcome.display.split('\n').slice(1).join('\n')}`, item: outcome.item };
     }
     case 'donna_edit': {
-      if (!rid) return { display: 'ERROR: donna_edit needs binder_id.' };
+      if (!rid) return { result: { ok: false, code: 'refused:missing_binder', ids: {} }, display: 'ERROR: donna_edit needs binder_id.' };
       const patch: Record<string, unknown> = {};
       for (const k of ['client', 'date', 'note', 'phone', 'doc_ref', 'stage', 'reason_for_action']) {
         if (k in input) patch[k] = input[k];
       }
       const moneyKeys = ['amount', 'direction', 'amount_received', 'amount_pending', 'payment_status'].filter((k) => k in input);
       if (moneyKeys.length && !Object.keys(patch).length) {
-        return { display: `REFUSED — money cells (${moneyKeys.join(', ')}) are not edited here. Money corrections go through donna_money_edit, the one witnessed door.` };
+        return { result: { ok: false, code: 'refused:money_not_here', ids: {} }, display: `REFUSED — money cells (${moneyKeys.join(', ')}) are not edited here. Money corrections go through donna_money_edit, the one witnessed door.` };
       }
-      if (!Object.keys(patch).length) return { display: 'ERROR: donna_edit needs at least one cell to change.' };
+      if (!Object.keys(patch).length) return { result: { ok: false, code: 'refused:nothing_to_change', ids: {} }, display: 'ERROR: donna_edit needs at least one cell to change.' };
 
       // TDW_04 B3 (Q-B3-1 as amended 2026-07-16) — THE DATE CELL'S old ≠ new
       // GUARD. donna_edit is the tool F-04.43's real specimen fired (turn log,
@@ -885,13 +887,13 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       if ('date' in patch) {
         const { data: existing, error: exErr } = await supabase.from('records')
           .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
-        if (exErr || !existing) return { display: `ERROR: binder ${rid} not found.` };
+        if (exErr || !existing) return { result: { ok: false, code: 'refused:not_found', ids: {} }, display: `ERROR: binder ${rid} not found.` };
         const incoming = typeof patch.date === 'string' ? patch.date.trim() : '';
         if (incoming && existing.date === incoming) {
           delete patch.date;
           dateUnchanged = `DATE UNCHANGED on ${rid} — date ${incoming} already stands; nothing re-written, nothing re-dragged.`;
           if (!Object.keys(patch).length) {
-            return { display: dateUnchanged, item: recordItem(existing) };
+            return { result: { ok: true, code: 'unchanged', ids: { record_id: rid } }, display: dateUnchanged, item: recordItem(existing) };
           }
         }
       }
@@ -1016,29 +1018,29 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
         : `Crew change requested: ${member} off booking ${eid} — sent to the calendar; it will confirm or refuse.` };
     }
     case 'donna_hide': {
-      if (!rid) return { display: 'ERROR: donna_hide needs binder_id.' };
+      if (!rid) return { result: { ok: false, code: 'refused:missing_binder', ids: {} }, display: 'ERROR: donna_hide needs binder_id.' };
       const { error } = await supabase.from('records')
         .update({ hidden: true, hidden_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', rid).eq('agent_id', agentId);
-      if (error) return { display: `ERROR hiding record: ${error.message}` };
+      if (error) return { result: { ok: false, code: 'refused:write_failed', ids: {} }, display: `ERROR hiding record: ${error.message}` };
       await logEvent(agentId, 'hide', rid, 'set aside (archived, recoverable)');
-      return { display: `Record ${rid} set aside (archived, recoverable).`, remove: `record:${rid}` };
+      return { result: { ok: true, code: 'hidden', ids: { record_id: rid } }, display: `Record ${rid} set aside (archived, recoverable).`, remove: `record:${rid}` };
     }
     case 'donna_unarchive':
     case 'donna_retrieve': {  // old name accepted during the transition — same hand
-      if (!rid) return { display: 'ERROR: donna_retrieve needs binder_id.' };
+      if (!rid) return { result: { ok: false, code: 'refused:missing_binder', ids: {} }, display: 'ERROR: donna_retrieve needs binder_id.' };
       const { data, error } = await supabase.from('records')
         .update({ hidden: false, hidden_at: null, updated_at: new Date().toISOString() })
         .eq('id', rid).eq('agent_id', agentId).select(SELECT).single();
-      if (error) return { display: `ERROR retrieving record: ${error.message}` };
+      if (error) return { result: { ok: false, code: 'refused:write_failed', ids: {} }, display: `ERROR retrieving record: ${error.message}` };
       await logEvent(agentId, 'retrieve', rid, 'brought back into the active picture');
-      return { display: `Record ${rid} brought back into the active picture.`, item: recordItem(data) };
+      return { result: { ok: true, code: 'retrieved', ids: { record_id: rid } }, display: `Record ${rid} brought back into the active picture.`, item: recordItem(data) };
     }
     case 'donna_merge': {
       const survivorId = typeof input.survivor_id === 'string' ? input.survivor_id.trim() : '';
       const retireId = typeof input.retire_id === 'string' ? input.retire_id.trim() : '';
-      if (!survivorId || !retireId) return { display: 'ERROR: donna_merge needs survivor_id and retire_id.' };
-      if (survivorId === retireId) return { display: 'ERROR: survivor_id and retire_id are the same record — nothing to merge.' };
+      if (!survivorId || !retireId) return { result: { ok: false, code: 'refused:missing_ids', ids: {} }, display: 'ERROR: donna_merge needs survivor_id and retire_id.' };
+      if (survivorId === retireId) return { result: { ok: false, code: 'refused:same_record', ids: {} }, display: 'ERROR: survivor_id and retire_id are the same record — nothing to merge.' };
       // Fold the values she named onto the survivor (replace path — she names the truth per cell).
       const patch: Record<string, unknown> = {};
       for (const k of ['client', 'direction', 'date', 'note', 'phone', 'doc_ref', 'stage', 'payment_status', 'reason_for_action']) {
@@ -1047,7 +1049,7 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       for (const k of ['amount', 'amount_received', 'amount_pending']) {
         if (k in input) {
           const parsed = parseMoney(input[k]);
-          if (parsed == null) return { display: `ERROR: could not read ${k} "${String(input[k])}". Give plain rupees or notation ('2.5L', '90k').` };
+          if (parsed == null) return { result: { ok: false, code: 'refused:unreadable_amount', ids: {} }, display: `ERROR: could not read ${k} "${String(input[k])}". Give plain rupees or notation ('2.5L', '90k').` };
           patch[k] = parsed;
         }
       }
@@ -1067,9 +1069,10 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       const { error: retErr } = await supabase.from('records')
         .update({ hidden: true, hidden_at: new Date().toISOString(), reason_for_action: mergedReason, updated_at: new Date().toISOString() })
         .eq('id', retireId).eq('agent_id', agentId);
-      if (retErr) return { display: `Survivor updated, but ERROR retiring ${retireId}: ${retErr.message}` };
+      if (retErr) return { result: { ok: false, code: 'refused:partial', ids: { record_id: survivorId, retired_id: retireId } }, display: `Survivor updated, but ERROR retiring ${retireId}: ${retErr.message}` };
       await logEvent(agentId, 'merge_retire', retireId, `merged into ${survivorId}, set aside`);
       return {
+        result: { ok: true, code: 'merged', ids: { record_id: survivorId, retired_id: retireId } },
         display: `Merged ${retireId} into ${survivorId} — ${Object.keys(patch).length ? Object.keys(patch).join(', ') + ' folded onto survivor; ' : ''}duplicate set aside (recoverable).`,
         item: survivorItem,
         remove: `record:${retireId}`,
@@ -1077,11 +1080,11 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
     }
     case 'donna_split': {
       const sourceId = typeof input.source_id === 'string' ? input.source_id.trim() : '';
-      if (!sourceId) return { display: 'ERROR: donna_split needs source_id.' };
+      if (!sourceId) return { result: { ok: false, code: 'refused:missing_binder', ids: {} }, display: 'ERROR: donna_split needs source_id.' };
       // The source must really exist and be hers — never split a phantom.
       const { data: src, error: srcErr } = await supabase.from('records')
         .select('id, reason_for_action').eq('id', sourceId).eq('agent_id', agentId).single();
-      if (srcErr || !src) return { display: `ERROR: source record ${sourceId} not found.` };
+      if (srcErr || !src) return { result: { ok: false, code: 'refused:not_found', ids: {} }, display: `ERROR: source record ${sourceId} not found.` };
       // The cells she names belong to the SECOND thing — they open the new binder.
       const newFields: Record<string, unknown> = {};
       for (const k of ['client', 'direction', 'date', 'note', 'phone', 'doc_ref', 'stage', 'payment_status']) {
@@ -1090,11 +1093,11 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       for (const k of ['amount', 'amount_received', 'amount_pending']) {
         if (k in input) {
           const parsed = parseMoney(input[k]);
-          if (parsed == null) return { display: `ERROR: could not read ${k} "${String(input[k])}". Give plain rupees or notation ('2.5L', '90k').` };
+          if (parsed == null) return { result: { ok: false, code: 'refused:unreadable_amount', ids: {} }, display: `ERROR: could not read ${k} "${String(input[k])}". Give plain rupees or notation ('2.5L', '90k').` };
           newFields[k] = parsed;
         }
       }
-      if (Object.keys(newFields).length === 0) return { display: 'ERROR: donna_split needs at least one cell for the new record (whose truth is being separated out?).' };
+      if (Object.keys(newFields).length === 0) return { result: { ok: false, code: 'refused:nothing_to_change', ids: {} }, display: 'ERROR: donna_split needs at least one cell for the new record (whose truth is being separated out?).' };
       const today = new Date().toISOString().slice(0, 10);
       const newReason = typeof input.reason_for_action === 'string' && input.reason_for_action.trim()
         ? `${input.reason_for_action.trim()}\nSplit from ${sourceId} on ${today}.`
@@ -1108,17 +1111,18 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       const { error: crumbErr } = await supabase.from('records')
         .update({ reason_for_action: existing ? `${existing}\n${crumb}` : crumb, updated_at: new Date().toISOString() })
         .eq('id', sourceId).eq('agent_id', agentId);
-      if (crumbErr) return { display: `New record ${newId} created, but ERROR marking source: ${crumbErr.message}` };
+      if (crumbErr) return { result: { ok: false, code: 'refused:partial', ids: { record_id: newId, source_id: sourceId } }, display: `New record ${newId} created, but ERROR marking source: ${crumbErr.message}` };
       await logEvent(agentId, 'split_out', sourceId, `split: ${newId} separated out`);
       return {
+        result: { ok: true, code: 'split', ids: { record_id: newId, source_id: sourceId } },
         display: `Split ${sourceId}: new record ${newId} opened with ${Object.keys(newFields).join(', ')}; both binders carry the trail. If any of the source's cells belonged to the one that left, correct the source with donna_edit.`,
         item: created.item,
       };
     }
     case 'donna_repeatfollowup': {
-      if (!rid) return { display: 'ERROR: donna_repeatfollowup needs binder_id.' };
+      if (!rid) return { result: { ok: false, code: 'refused:missing_binder', ids: {} }, display: 'ERROR: donna_repeatfollowup needs binder_id.' };
       const followOn = typeof input.follow_on === 'string' ? input.follow_on.trim() : '';
-      if (!followOn) return { display: 'ERROR: donna_repeatfollowup needs follow_on (YYYY-MM-DD).' };
+      if (!followOn) return { result: { ok: false, code: 'refused:missing_date', ids: {} }, display: 'ERROR: donna_repeatfollowup needs follow_on (YYYY-MM-DD).' };
       const fields: Record<string, unknown> = { followup_on: followOn };
       if (typeof input.why === 'string' && input.why.trim()) fields.followup_note = input.why.trim();
       if (typeof input.repeat === 'string' && input.repeat.trim()) fields.repeat_every = input.repeat.trim();
@@ -1126,6 +1130,6 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       return writeFields(agentId, rid, fields, `follow-up on ${followOn}${rpt}`);
     }
     default:
-      return { display: `Unknown record tool: ${name}` };
+      return { result: { ok: false, code: 'refused:unknown_tool', ids: {} }, display: `Unknown record tool: ${name}` };
   }
 }

@@ -174,7 +174,7 @@ export async function executeDonnaLead(
 ): Promise<ToolOutcome> {
   const vendorId = await vendorIdFromAgent(agentId);
   if (!vendorId) {
-    return { display: 'ERROR filing lead: could not resolve the owner account for this agent — nothing was written. Tell the owner the lead needs to be added from the Leads screen for now.' };
+    return { result: { ok: false, code: 'refused:no_owner', ids: {} }, display: 'ERROR filing lead: could not resolve the owner account for this agent — nothing was written. Tell the owner the lead needs to be added from the Leads screen for now.' };
   }
   const pub = supabase.schema('public');
   const { state: mappedState, strayWord } = mapStage(input.stage);
@@ -195,7 +195,7 @@ export async function executeDonnaLead(
     const { data, error: readErr } = await pub.from('leads').select(SEL)
       .eq('vendor_id', vendorId).eq('phone', input.contact)
       .is('deleted_at', null).order('created_at', { ascending: false });
-    if (readErr) return { display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
+    if (readErr) return { result: { ok: false, code: 'refused:read_failed', ids: {} }, display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
     existing = (data as LeadRow[]) || [];
     if (existing.length) matchedBy = 'phone';
   }
@@ -203,7 +203,7 @@ export async function executeDonnaLead(
     const { data, error: readErr } = await pub.from('leads').select(SEL)
       .eq('vendor_id', vendorId).ilike('name', input.name)
       .is('deleted_at', null).order('created_at', { ascending: false });
-    if (readErr) return { display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
+    if (readErr) return { result: { ok: false, code: 'refused:read_failed', ids: {} }, display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
     existing = (data as LeadRow[]) || [];
     if (existing.length) matchedBy = 'name';
   }
@@ -351,7 +351,7 @@ export async function executeDonnaLead(
     const refusedOut = refusedFacts.length ? refusedFacts : undefined;
 
     if (Object.keys(patch).length === 0) {
-      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}${notWrittenNote}`, item: leadItem(cur), plain: plainClause, refused: refusedOut };
+      return { result: { ok: true, code: 'unchanged', ids: { lead_id: cur.id } }, display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}${notWrittenNote}`, item: leadItem(cur), plain: plainClause, refused: refusedOut };
     }
 
     // Recompute draft state from the merged row (spec P3: every update recomputes).
@@ -372,11 +372,11 @@ export async function executeDonnaLead(
     }
 
     const { data, error } = await writeLead('update', patch, cur.id);
-    if (error) return { display: `ERROR updating lead: ${error.message}` };
+    if (error) return { result: { ok: false, code: 'refused:write_failed', ids: {} }, display: `ERROR updating lead: ${error.message}` };
     const row = data ?? ({ ...cur, ...patch } as LeadRow);
     const changed = Object.keys(patch).filter((k) => k !== 'draft_meta').join(', ');
     const flag = ambiguous ? ` Note: ${existing.length} leads matched — updated the most recent; if you meant a different one, tell me which.` : '';
-    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}${notWrittenNote}`, item: leadItem(row), plain: plainClause, refused: refusedOut };
+    return { result: { ok: true, code: 'lead_updated', ids: { lead_id: cur.id } }, display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}${notWrittenNote}`, item: leadItem(row), plain: plainClause, refused: refusedOut };
   }
 
   // ── No match -> create new (the typed-plane draft; thin is welcome).
@@ -403,9 +403,10 @@ export async function executeDonnaLead(
   row.draft_meta = leadDraftMeta(row, 'victor');
 
   const { data, error } = await writeLead('insert', row);
-  if (error) return { display: `ERROR saving lead: ${error.message}` };
+  if (error) return { result: { ok: false, code: 'refused:write_failed', ids: {} }, display: `ERROR saving lead: ${error.message}` };
   const saved = data as LeadRow;
   return {
+    result: { ok: true, code: 'lead_created', ids: { lead_id: saved.id } },
     display: `Lead saved. id=${saved.id}, name=${saved.name ?? 'unknown'}, state=${saved.state ?? 'new'}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)`,
     item: leadItem(saved),
   };

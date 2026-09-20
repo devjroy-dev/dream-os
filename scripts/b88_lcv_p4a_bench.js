@@ -150,8 +150,11 @@ async function lifecycleCell(mod) {
 
   sec('1  the shape: closed, and naming only bytes that exist');
   const lineKeys = new Set(Object.keys(LH.LINES));
-  T('1.1 three hands, each with a closed, frozen code set', Object.keys(HR.CODES).join() === 'donna_booking,donna_milestone_paid,donna_invoice_pdf'
-    && Object.values(HR.CODES).every((c) => Object.isFrozen(c) && c.length > 0));
+  // C-44.7 (e-15, amended at P4b): P4a's three hands are PRESENT, each with its closed frozen set. The cell says
+  // nothing about what else exists: later packets lawfully add hands (P4b's write hands, P7's lookups).
+  const p4aPresent = (hr) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf'].every((h) => Array.isArray(hr.CODES[h]) && Object.isFrozen(hr.CODES[h]) && hr.CODES[h].length > 0);
+  T('1.1 P4a\'s three hands are present, each with a closed, frozen code set', p4aPresent(HR));
+  T('1.1m a handResult missing a P4a hand reddens 1.1', p4aPresent({ CODES: { donna_booking: HR.CODES.donna_booking, donna_milestone_paid: HR.CODES.donna_milestone_paid } }) === false);
   const keysExist = (hr) => Object.values(hr.LINE_KEYS).every((ks) => ks.every((k) => k === null || lineKeys.has(k)));
   T("1.2 every line_key a hand may name is a key of lifecycleHands' LINES today, or null (P4 mints nothing)", keysExist(HR));
   T('1.3 an invoice names no line yet (F-44.48 and F-43.34 carry its one home to P5)', JSON.stringify(HR.LINE_KEYS.donna_invoice_pdf) === '[null]');

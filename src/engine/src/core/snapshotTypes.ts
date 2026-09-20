@@ -79,6 +79,14 @@ export type ViewRow = {
   hidden?: boolean | null;
 };
 
+// CE-44 LC-Victor P4b: what an engine-born write hand did, as data. `code` is one of that hand's closed set
+// (src/lib/vendor/handResult.js holds the sets); `ids` are the rows it wrote or refused on. Plain literals only.
+export type WriteResult = {
+  ok: boolean;
+  code: string;
+  ids: { record_id?: string; lead_id?: string; retired_id?: string; source_id?: string };
+};
+
 export type ToolOutcome = {
   display: string;
   item?: SnapshotItem | null;     // upsert this item into the note
@@ -128,4 +136,8 @@ export type ToolOutcome = {
   // plus donnaFind's arrival line). They are different carriers with different
   // reach. See relaySeam.ts for the guard this field feeds and the boundary law.
   refused?: RefusedFact[] | null;
+  // CE-44 LC-Victor P4b (W-1 lift, CE-44): the structured result of an engine-born WRITE hand, read by the
+  // door straight off the outcome (src/lib/executeAndPatch.js returns the whole outcome). `display` is
+  // unchanged beside it: Donna reads `display`; the door reads `result`. Optional; absent means none.
+  result?: WriteResult | null;
 };

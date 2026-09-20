@@ -45,6 +45,27 @@ const CODES = Object.freeze({
     'refused:unmatched', 'refused:unavailable', 'refused:nothing_pending', 'refused:not_marked',
     'refused:exception',
   ]),
+  // CE-44 LC-Victor P4b: the engine-born WRITE hands, each set read line by line from recordPrimitives.ts and
+  // donnaLead.ts at 85fda3d (the pre-cut note). Their result is born IN the engine (ToolOutcome.result) and read
+  // here by fromOutcome(); `unknown_tool` is the dispatcher's, not a hand's, so it is in no set.
+  donna_money: Object.freeze(['created', 'updated', 'refused:write_failed', 'unchanged', 'replaced', 'refused:unreadable_amount', 'refused:missing_direction', 'refused:not_found', 'refused:exception', 'refused:result_unbuildable']),
+  donna_money_edit: Object.freeze(['created', 'updated', 'refused:write_failed', 'unchanged', 'corrected', 'refused:missing_binder', 'refused:not_found', 'refused:unreadable_amount', 'refused:nothing_to_change', 'refused:exception', 'refused:result_unbuildable']),
+  donna_date: Object.freeze(['created', 'updated', 'refused:write_failed', 'unchanged', 'refused:not_found', 'refused:exception', 'refused:result_unbuildable']),
+  donna_client: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:v12', 'refused:exception', 'refused:result_unbuildable']),
+  donna_lead: Object.freeze(['lead_created', 'lead_updated', 'unchanged', 'refused:no_owner', 'refused:read_failed', 'refused:write_failed', 'refused:exception', 'refused:result_unbuildable']),
+  donna_stage: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:missing_stage', 'refused:v12', 'refused:exception', 'refused:result_unbuildable']),
+  donna_note: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:missing_note', 'refused:exception', 'refused:result_unbuildable']),
+  donna_note_append: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:missing_binder', 'refused:missing_note', 'refused:exception', 'refused:result_unbuildable']),
+  donna_phone: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:exception', 'refused:result_unbuildable']),
+  donna_doc: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:exception', 'refused:result_unbuildable']),
+  donna_write_reasonforaction_append: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:exception', 'refused:result_unbuildable']),
+  donna_edit: Object.freeze(['created', 'updated', 'refused:write_failed', 'unchanged', 'refused:missing_binder', 'refused:money_not_here', 'refused:nothing_to_change', 'refused:not_found', 'refused:exception', 'refused:result_unbuildable']),
+  donna_repeatfollowup: Object.freeze(['created', 'updated', 'refused:write_failed', 'refused:missing_binder', 'refused:missing_date', 'refused:exception', 'refused:result_unbuildable']),
+  donna_hide: Object.freeze(['hidden', 'refused:missing_binder', 'refused:write_failed', 'refused:exception', 'refused:result_unbuildable']),
+  donna_retrieve: Object.freeze(['retrieved', 'refused:missing_binder', 'refused:write_failed', 'refused:exception', 'refused:result_unbuildable']),
+  donna_unarchive: Object.freeze(['retrieved', 'refused:missing_binder', 'refused:write_failed', 'refused:exception', 'refused:result_unbuildable']),
+  donna_merge: Object.freeze(['created', 'updated', 'refused:write_failed', 'merged', 'refused:missing_ids', 'refused:same_record', 'refused:unreadable_amount', 'refused:partial', 'refused:exception', 'refused:result_unbuildable']),
+  donna_split: Object.freeze(['created', 'updated', 'refused:write_failed', 'split', 'refused:missing_binder', 'refused:not_found', 'refused:unreadable_amount', 'refused:nothing_to_change', 'refused:partial', 'refused:exception', 'refused:result_unbuildable']),
   donna_invoice_pdf: Object.freeze([
     'minted', 'refused:result_unbuildable', 'refused:no_binder', 'refused:no_amount', 'refused:not_minted', 'refused:exception',
   ]),
@@ -56,6 +77,25 @@ const LINE_KEYS = Object.freeze({
   donna_booking: Object.freeze(['F29', 'D3', 'D4', null]),
   donna_milestone_paid: Object.freeze(['D3', 'D4', 'D5', 'D6', 'D7', 'D8', null]),
   donna_invoice_pdf: Object.freeze([null]),
+  // P4b's write hands speak no door line yet (P5 gives them bytes); every result names none.
+  donna_money: Object.freeze([null]),
+  donna_money_edit: Object.freeze([null]),
+  donna_date: Object.freeze([null]),
+  donna_client: Object.freeze([null]),
+  donna_lead: Object.freeze([null]),
+  donna_stage: Object.freeze([null]),
+  donna_note: Object.freeze([null]),
+  donna_note_append: Object.freeze([null]),
+  donna_phone: Object.freeze([null]),
+  donna_doc: Object.freeze([null]),
+  donna_write_reasonforaction_append: Object.freeze([null]),
+  donna_edit: Object.freeze([null]),
+  donna_repeatfollowup: Object.freeze([null]),
+  donna_hide: Object.freeze([null]),
+  donna_retrieve: Object.freeze([null]),
+  donna_unarchive: Object.freeze([null]),
+  donna_merge: Object.freeze([null]),
+  donna_split: Object.freeze([null]),
 });
 
 // Not a failure and not a write: the payment already stands. `absorbed` is ok (this turn's own
@@ -85,10 +125,21 @@ function validate(r) {
   } catch (_e) { return ['unreadable result']; }
 }
 
+// e-16 (CE-44): the HAND is taken as a name TOTALLY. A hand whose string conversion throws (an object whose
+// toString and valueOf throw) used to reach `hasOwnProperty.call(CODES, hand)` unguarded, so the safety net
+// itself threw. Now: a string is itself; anything else goes through String() inside a try; failing that, 'unknown'.
+function handName(hand) {
+  try { if (typeof hand === 'string') return hand; const s = String(hand); return typeof s === 'string' ? s : 'unknown'; } catch (_e) { return 'unknown'; }
+}
+
 function minimal(hand, why) {
-  const h = Object.prototype.hasOwnProperty.call(CODES, hand) ? hand : safeStr(hand);
-  warn(`[handResult] ${h}: result unbuildable (${safeStr(why)})`);
-  return Object.freeze({ hand: h, ok: false, code: 'refused:result_unbuildable', ids: Object.freeze({}), line_key: null });
+  try {
+    const h = handName(hand);
+    warn(`[handResult] ${h}: result unbuildable (${safeStr(why)})`);
+    return Object.freeze({ hand: h, ok: false, code: 'refused:result_unbuildable', ids: Object.freeze({}), line_key: null });
+  } catch (_e) {
+    return Object.freeze({ hand: 'unknown', ok: false, code: 'refused:result_unbuildable', ids: Object.freeze({}), line_key: null });
+  }
 }
 
 // One scalar id: a non-empty string (or a finite number, taken as its string). Anything else is dropped.
@@ -103,7 +154,7 @@ function build(hand, code, fields) {
   const c = safeStr(code);
   const ids = {};
   const fi = (f.ids && typeof f.ids === 'object') ? f.ids : {};
-  for (const k of ['lead_id', 'record_id', 'invoice_id']) { const v = idOf(fi[k]); if (v) ids[k] = v; }
+  for (const k of ['lead_id', 'record_id', 'invoice_id', 'retired_id', 'source_id']) { const v = idOf(fi[k]); if (v) ids[k] = v; }
   const lk = f.line_key === undefined || f.line_key === null ? null : (typeof f.line_key === 'string' ? f.line_key : undefined);
   const r = { hand, ok: okFor(c), code: c, ids: Object.freeze(ids), line_key: lk };
   if (typeof f.client === 'string' && f.client.trim()) r.client = f.client.trim();
@@ -119,6 +170,7 @@ function build(hand, code, fields) {
 }
 
 function make(hand, code, fields) {
+  hand = handName(hand); // e-16: the hand guarded first; the line below is byte for byte as it was
   try { return build(hand, code, fields); } catch (e) { return minimal(hand, e && e.message); }
 }
 
@@ -140,4 +192,19 @@ function bookingRefusalCode(res) {
   } catch (_e) { return 'refused:not_promoted'; }
 }
 
-module.exports = { CODES, LINE_KEYS, validate, make, booking, milestone, invoice, bookingRefusalCode };
+// CE-44 LC-Victor P4b: THE READER for an engine-born write hand. `outcome` is what executeRecordTool (or
+// executeDonnaLead) returned, whole, as src/lib/executeAndPatch.js hands it back; its `result` is the engine's
+// WriteResult. TOTAL: whatever it is handed, it returns a frozen result for `hand`; a missing or malformed
+// result, a code outside the hand's closed set, or an `ok` that disagrees with the code yields the minimal
+// result ('refused:result_unbuildable'). It never reads `display`.
+function fromOutcome(hand, outcome) {
+  try {
+    const r = outcome && typeof outcome === 'object' ? outcome.result : null;
+    if (!r || typeof r !== 'object') return minimal(hand, 'no result on the outcome');
+    const code = typeof r.code === 'string' ? r.code : '';
+    if (r.ok !== okFor(code)) return minimal(hand, `engine ok ${safeStr(r.ok)} disagrees with code ${safeStr(code)}`);
+    return make(hand, code, { ids: r.ids, line_key: null });
+  } catch (e) { return minimal(hand, e && e.message); }
+}
+
+module.exports = { CODES, LINE_KEYS, validate, make, booking, milestone, invoice, bookingRefusalCode, fromOutcome };

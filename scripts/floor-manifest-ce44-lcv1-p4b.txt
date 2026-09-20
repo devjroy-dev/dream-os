@@ -1,0 +1,11 @@
+# scripts/floor-manifest-ce44-lcv1-p4b.txt
+# TDW CE-44 · LCV-1 · LC-Victor P4b, the engine-born write hands' result (dream-os, code, under the W-1 lift) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else.
+src/engine/src/core/snapshotTypes.ts
+src/engine/src/core/tools/recordPrimitives.ts
+src/engine/src/core/tools/donnaLead.ts
+src/lib/vendor/handResult.js
+scripts/b88_lcv_p4a_bench.js
+scripts/b89_lcv_p4b_bench.js
+scripts/floor-manifest-ce44-lcv1-p4b.txt
+docs/handovers/TDW_CE44_LCV_P4B_HANDOVER.md
