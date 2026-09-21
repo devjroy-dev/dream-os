@@ -182,6 +182,8 @@ async function main() {
     B15: 'Could not make the invoice. No client called {name}.',
     B32: 'Could not attach the package. No lead called {name}. Add the lead first.',
     B34: 'I cannot do that by message yet. Use the app for it.',
+    // RE-PINNED (CE-44 LCV-10 PART B-2, first cut): B35 his at R-44.39 ("Yes to your recomendation"), hash-carried; B31 and B33 stay B-2's second cut's.
+    B35: 'Which client? Say the name.',
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -204,6 +206,7 @@ async function main() {
     B15: 'f5a96043bb86272066b085f699a88d0aa4adbeb04871d6b95ea59e7f56db5ab0',
     B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
     B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
+    B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };
@@ -276,7 +279,8 @@ async function main() {
   let r = await run(db, 'Sarah paid the middle payment on 18 September and move the Verma shoot', req([{ act: 'milestone_paid', client_as_spoken: 'Sarah', date_as_spoken: '18 September', milestone: 'middle payment' }, { act: 'edit_event', client_as_spoken: 'Verma' }]));
   T('5.1 PIN (a): an uncovered act beside a covered one sends the WHOLE message to the chain; nothing written, nothing staged', r.out.door === false && r.out.why === 'uncovered' && writes(db) === 0 && r.calls === 1);
   r = await run(db, 'the middle payment came in today', req([{ act: 'milestone_paid', date_as_spoken: 'today', milestone: 'middle payment' }]));
-  T('5.2 PIN (b): a covered act naming no client goes to the chain', r.out.door === false && writes(db) === 0);
+  // 5.2 RE-PINNED (CE-44 LCV-10 PART B-2, first cut; R-44.39): a covered act naming no client is now the DOOR'S turn: it asks B35, his byte, keeps its note and WRITES NOTHING. The strength kept is the write count.
+  T('5.2 PIN (b) re-pinned: a covered act naming no client is asked B35 by the door (R-44.39), and NOTHING is written', r.out.door === true && r.out.reply === 'Which client? Say the name.' && writes(db) === 0);
   r = await run(db, 'Full', req([], 'none'));
   T('5.3 PIN (c): no act goes to the chain (the leftover line is NOT live, R-44.21 (a))', r.out.door === false && r.out.why === 'uncovered' && writes(db) === 0 && r.calls === 1);
   r = await run(db, 'Sarah paid', 'err');

@@ -42,6 +42,9 @@ const SYSTEM = [
   // wedding date said with a new lead was heard a second time as book_event. It is the listener's prompt byte, not a
   // founder byte, and PROSE IS NOT A MECHANISM: workingDoor.withoutEchoedEvents is the mechanism; b94 pins both.
   'A wedding date said with a new lead belongs to that lead: put it in the lead\'s date and record no book_event for it.',
+  // R-44.39 / LCV-10 Part B-2 (the chair's line, c-44.44 applied to what the ear RETURNS): on Part One's walk "The booking is
+  // confirmed" was heard as NO ACT, so the door's "Which client? Say the name." was unreachable for the sentence it was written for.
+  'A job said without a name is still a job: record it, with client_as_spoken empty.',
 ].join(' ');
 
 const EAR_TOOL = {
@@ -60,7 +63,7 @@ const EAR_TOOL = {
             act: { type: 'string', description: 'lead, booking_confirmed, advance_paid, milestone_paid, attach_package, invoice, date, book_event, block_date, unblock_date, edit_event, cancel_event, assign_crew, note, relay, quote_send, find, whatsdue, history, tally' },
             // F-44.100 (CE-44 LCV-8): the listener put "haldi shoot" here and the door filed a lead of that name. The
             // description now says what a client IS. It is the listener's prompt byte, not a founder byte; b92 pins it.
-            client_as_spoken: { type: 'string', description: 'The NAME of a person, a couple or a family, exactly as she said it. A kind of event or shoot (haldi, mehendi, sangeet, wedding, reception, engagement, a shoot) is NEVER a client. When she is answering the assistant\'s question about who the lead is, her answer IS the name, whatever the word. When no name was said it is EMPTY.' },
+            client_as_spoken: { type: 'string', description: 'The NAME of a person, a couple or a family, exactly as she said it. A kind of event or shoot (haldi, mehendi, sangeet, wedding, reception, engagement, a shoot) is NEVER a client. When she is answering the assistant\'s question about who the lead is, her answer IS the name, whatever the word. When no name was said it is EMPTY. A word with a meaning of its own that sits INSIDE a longer name is part of that name: "Walk P7 Haldi" is the name Walk P7 Haldi and never Walk P7; copy the name WHOLE, as she typed it.' },
             // P6a-2 (the chair's ruling on c-44.44): the package she named, so the door has a name to resolve. OPTIONAL.
             package_as_spoken: { type: 'string', description: 'The package exactly as she named it. Empty if none.' },
             amount_rupees: { type: 'integer', minimum: 1, description: 'Whole rupees, only if she said a figure. Omit otherwise.' },

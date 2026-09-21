@@ -244,7 +244,8 @@ async function main() {
   const mixedNameless = req([lead('Meera Walk Nine', '20 February 2027'), event('Meera Walk Nine', '20 February 2027'), { act: 'booking_confirmed' }]);
   db = makeDb(world());
   r = await turn(db, 'x', mixedNameless);
-  T('3.1 INVENTED: an echo beside a covered act naming NO client: the door stands aside (uncovered) and the stand-in speaks LEFTOVER, the covered-no-client byte of today, NOT B34: the two read ONE request', r.out.door === false && r.out.why === 'uncovered' && J(r.said.keys) === 'LEFTOVER' && leadsIn(db).length === 0);
+  // 3.1 RE-PINNED (CE-44 LCV-10 PART B-2, first cut; R-44.39): the covered act naming no client is now asked B35 by the DOOR, and the echo is still dropped on the way (the request read as covered, not B34). Nothing filed.
+  T('3.1 INVENTED: an echo beside a covered act naming NO client: the echo is dropped, the request reads covered, and the door asks B35 (never B34); nothing filed', r.out.door === true && J(r.said.keys) === 'B35' && leadsIn(db).length === 0);
   T('3.2 standKey alone, turn 8 as heard under the reason `uncovered`: never B34 (every act left is covered and named)', WD.standKey({ door: false, why: 'uncovered', ear: { request: turn8() } }, { lifecycle: LH }, NOW).key === 'LEFTOVER' && WD.standKey({ door: false, why: 'uncovered', ear: { request: req([lead('A', '20 February 2027'), event('B', '20 February 2027')]) } }, { lifecycle: LH }, NOW).key === 'B34');
   db = makeDb(world());
   r = await turn(db, 'Add a new lead Meera Walk Nine 9876543210, wedding on 20 February 2027', req([lead('Meera Walk Nine', '20 February 2027'), event('Meera Walk Nine', '20 February 2027')]));

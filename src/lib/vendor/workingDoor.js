@@ -181,6 +181,19 @@ function withoutEchoedEvents(request, nowMs) {
 
 // ── F-44.112 · THE DOOR'S OWN NOTE OF A DATE IT ASKED FOR (LCV-10 Part B-1) ─────────────────────────
 const DATE_ASKS = Object.freeze(['B6', 'B7', 'B21', 'B26', 'B28']);
+// LCV-10 PART B-2 (first cut; R-44.39, the chair's rulings of 21 and 22 September): THE DOOR KEEPS ITS OWN NOTE OF A NAME IT ASKED FOR TOO.
+// B18 (a lead with no name) and B35 (a booking, payment, invoice or attach with no client). Her WHOLE TRIMMED MESSAGE IS THE NAME,
+// event words and all, whatever the listener made of it (F-44.105's live failures: "Walk P7 Haldi" heard as "Walk P7"). The note lapses
+// ONLY when the listener heard an act of a kind the note does not hold, or a noted kind RESTATED with a new date (F-44.115 applied to
+// names; a date equal to her whole message, or to the date the note already carries, is not new: F-44.116). A nameless note holds no
+// client, so "a different client" cannot fire on it. A closed YES word is an answer the door cannot read: the question is asked ONCE more,
+// then B3. Where a message holds a nameless lead AND a nameless money act, B18 is asked FIRST and B35 after it, the note carrying the
+// rest, one question at a time. B35's answer fills EVERY nameless act but `lead`. THE NOTE NEVER WRITES MONEY here either.
+const NAME_ASKS = Object.freeze(['B18', 'B35']);
+const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS]);
+const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && !spokenText(a.client_as_spoken));
+const namelessLead = (acts) => (Array.isArray(acts) ? acts : []).some((a) => a && typeof a === 'object' && a.act === 'lead' && !spokenText(a.client_as_spoken));
+const allKindsCovered = (acts) => Array.isArray(acts) && acts.length > 0 && acts.length <= 4 && acts.every((a) => a && typeof a === 'object' && COVERED.includes(a.act));
 const NOTE_SLOTS = Object.freeze(['act', 'client_as_spoken', 'package_as_spoken', 'date_as_spoken', 'milestone']);
 const directionOf = (act) => (act === 'advance_paid' || act === 'milestone_paid' ? 'past' : 'future');
 // One act as the note keeps it: the slots the door reads, strings only, nothing else. null when it is no covered act.
@@ -196,9 +209,12 @@ function noteAct(a) {
 // same message that did not run because of it. Every act must pass the covered check as any heard request must.
 function validNote(n) {
   try {
-    if (!n || typeof n !== 'object' || !DATE_ASKS.includes(n.asked) || !Array.isArray(n.acts) || !n.acts.length || n.acts.length > 4) return null;
+    if (!n || typeof n !== 'object' || !ASKS.includes(n.asked) || !Array.isArray(n.acts) || !n.acts.length || n.acts.length > 4) return null;
     const acts = n.acts.map(noteAct);
-    if (acts.some((a) => !a) || !allCovered({ route: 'task', acts })) return null;
+    if (acts.some((a) => !a)) return null;
+    // a NAME note is a covered request with the one thing missing that was asked for; a DATE note passes the covered check as any request must
+    if (NAME_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || !(n.asked === 'B18' ? namelessLead(acts) : namelessOf(acts).length)) return null; }
+    else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
     return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null };
   } catch (_e) { return null; }
@@ -689,7 +705,24 @@ async function preTurn(args, depsIn) {
     // moved on, the note LAPSES and her message is handled fresh below. Otherwise the saved act runs with her words as its
     // date and the plans answer as they answer any unreadable date.
     let fromNote = null;
-    if (note) {
+    // A NAME NOTE (B18 or B35): decided before the date-note branch below.
+    const askAgain = (line, key, tries) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries }, answered: key, why: 'note_reasked' });
+    if (note && NAME_ASKS.includes(note.asked)) {
+      const name = message.trim();
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      const kinds = note.acts.map((a) => a.act);
+      const carried = note.acts.map((a) => key(a.date_as_spoken)).filter(Boolean);
+      const newDate = (a) => !!spokenText(a.date_as_spoken) && key(a.date_as_spoken) !== key(name) && !carried.includes(key(a.date_as_spoken));
+      const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && (!kinds.includes(a.act) || newDate(a)));
+      if (PMA.decide(name) === 'yes') {
+        if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+        return askAgain(DL.LINES[note.asked], note.asked, note.tries + 1);
+      }
+      if (!movedOn) {
+        fromNote = { route: 'task', acts: note.acts.map((a) => ((note.asked === 'B18' ? (a.act === 'lead' && !spokenText(a.client_as_spoken)) : (a.act !== 'lead' && !spokenText(a.client_as_spoken))) ? { ...a, client_as_spoken: name } : { ...a })) };
+        st.answered = note.asked;
+      }
+    } else if (note) {
       const own = resolveSpokenDate(message.trim(), { direction: note.direction, nowMs });
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
       // F-44.115 (the chair's ruling of 22 September, superseding "only an act OTHER than the noted one lapses the note", which was too
@@ -700,16 +733,29 @@ async function preTurn(args, depsIn) {
       // then restated the job. The re-ask remains ONLY for no act heard, or the noted act heard with no date. A job handled fresh that is
       // refused again writes a NEW note at tries 0: she may retype as often as she likes and is never told "Nothing was changed" for it.
       const noted = note.acts[0];
-      const restated = (a) => a.act === noted.act && (!!spokenText(a.date_as_spoken)
+      // F-44.116 (the chair's ruling of 22 September, on his "whenever" heard as the attach WITH date "whenever"): a heard date that is, under key(),
+      // HER WHOLE TRIMMED MESSAGE is not a restatement but her answer heard twice; it stays a re-ask and the note keeps its tries.
+      const restated = (a) => a.act === noted.act && ((!!spokenText(a.date_as_spoken) && key(a.date_as_spoken) !== key(message.trim()))
         || (!!spokenText(a.client_as_spoken) && !!spokenText(noted.client_as_spoken) && key(a.client_as_spoken) !== key(noted.client_as_spoken)));
       const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && (a.act !== noted.act || restated(a)));
       if (own.ok || !movedOn) fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, date_as_spoken: message.trim() } : { ...a })) };
     }
     let heard = fromNote;
+    // THE NAME QUESTION (R-44.39): a request whose every act the door covers, one of them a booking, payment, invoice or attach with NO
+    // client, is the door's. It asks B18 first if a lead is nameless too, else B35, and keeps a note carrying every act; nothing runs
+    // until the name comes. Read on the request the door decides on, whichever way it came.
+    const askName = (rq, tries) => {
+      if (!rq || !allKindsCovered(rq.acts) || !(namelessOf(rq.acts).length || namelessLead(rq.acts))) return null;
+      if (st.ear && st.ear.request && Array.isArray(st.ear.request.acts) && st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');
+      const k = namelessLead(rq.acts) ? 'B18' : 'B35';
+      return { door: true, reply: DL.LINES[k], keys: [k], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: k, acts: rq.acts.map((a) => ({ ...a })), tries }, ...(st.answered ? { answered: st.answered } : {}), why: 'name_asked' };
+    };
+    if (fromNote) { const ask = askName(fromNote, 0); if (ask) return ask; }
     if (!fromNote) {
     if (!st.ear || !st.ear.request) return CHAIN(st.ear, 'no_request');
     // F-44.110: the door DECIDES on the request with an echoed event dropped; st.ear, which is recorded, keeps what was HEARD.
     heard = withoutEchoedEvents(st.ear.request, nowMs);
+    { const ask = askName(heard, 0); if (ask) return ask; }
     if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');
     // F-44.96's guard: a lead whose message carries a phone-shaped number goes WHOLE to the chain, which files it.
     if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');
@@ -813,6 +859,11 @@ async function preTurn(args, depsIn) {
     // F-44.112: a turn that ends in exactly ONE date question keeps its note. ONE RE-ASK, THEN B3: a note turn that ends in a
     // date question AGAIN keeps a note once more (tries 1); the next, having written nothing, answers B3 and keeps none. A turn
     // that wrote something is never answered "Nothing was changed": it says what it did and simply keeps no further note.
+    // F-44.100's net spoke B18 for a lead named only by event words: that B18 keeps a note too, the event-word name dropped from the lead so
+    // that her answer is the name (as the exception always made it), carrying every other act of the message. Nothing was written on such a turn.
+    if (!st.wrote && st.keys.length === 1 && st.keys[0] === 'B18') {
+      st.note = { asked: 'B18', acts: acts.map((a) => (a.act === 'lead' && eventOnly(a.client_as_spoken) ? (({ client_as_spoken: _c, ...rest }) => rest)(a) : { ...a })), tries: fromNote ? note.tries + 1 : 0 };
+    }
     if (st.dateAsks.length === 1) {
       const tries = fromNote ? note.tries + 1 : 0;
       if (tries > 1) {
@@ -956,4 +1007,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

@@ -165,9 +165,12 @@ const T4_JSON = '{"acts":[{"act":"lead","date_as_spoken":"5th March 27","client_
 const T6_SAID = 'Add a new lead kabir walk 9, wedding on 5 March 2027';
 const T6_JSON = '{"acts":[{"act":"lead","date_as_spoken":"5 March 2027","client_as_spoken":"kabir walk 9"}],"route":"task"}';
 const NONE_JSON = '{"acts":[],"route":"none"}';
-// 22 SEPTEMBER, step 1, HIS WORDS as his app's thread shows them. THE HEARING IS INFERRED (no export yet): the date with his full stop kept.
-const S1_SAID = 'Add a new lead. Tara walk ten. Wedding on 5th March 27.';
-const S1_INFERRED = { route: 'task', acts: [{ act: 'lead', client_as_spoken: 'Tara walk ten', date_as_spoken: '5th March 27.' }] };
+// C-44.12 (corrected in LCV-10 Part B-2's first cut): 22 SEPTEMBER's FIX WALK, turn 1, HIS WORDS and the RECORDED hearing from his export
+// (Supabase CSV, 30 rows, sha256 0e8b3cf7336c6535…): the live ear STRIPPED his full stop from the date itself and kept his lower case in the name.
+// The Tara walk ten sentence of the 21st has no export yet; its hearing is still owed. S1_CONSTRUCTED below is what 3.3 uses ON PURPOSE, labelled.
+const S1_SAID = 'Add new lead. Nisha walk eleven. Wedding on 5th March 27.';
+const S1_JSON = '{"acts":[{"act":"lead","date_as_spoken":"5th March 27","client_as_spoken":"Nisha walk eleven"}],"route":"task"}';
+const S1_INFERRED = { route: 'task', acts: [{ act: 'lead', client_as_spoken: 'Tara walk ten', date_as_spoken: '5th March 27.' }] }; // A CONSTRUCTION, not a record: the ear keeping the stop
 const B3 = 'Okay. Nothing was changed.';
 const B6 = 'When did the payment come in?';
 const B7 = 'I could not read that date. Say it like 5 December.';
@@ -307,8 +310,8 @@ async function main() {
   }); } catch (e) { console.log(`        (${e.message})`); }
   T('3.1 PART A\'s WALK, TURN 4 THEN TURN 6, his words and the heard requests VERBATIM: refused (B7), he retypes the whole sentence, and IT FILES, as it did at 6456690: "Lead added: kabir walk 9 · 5 March 2027."', reg.a.reply === B7 && reg.b.reply === 'Lead added: kabir walk 9 · 5 March 2027.' && reg.leads.length === 1);
   db = makeDb(world());
-  const s1 = []; for (let i = 0; i < 3; i += 1) s1.push((await turn(db, S1_SAID, JSON.parse(JSON.stringify(S1_INFERRED)), 'whatsapp')).reply);
-  T('3.2 22 SEPTEMBER, STEP 1, his words three times in one thread, THE HEARING INFERRED (his full stop kept in the date; no export yet): after the cure THE FIRST FILES THE LEAD, and no message is answered B7 or B3', s1[0] === 'Lead added: Tara walk ten · 5 March 2027.' && s1.every((x) => x !== B7 && x !== B3) && leadsIn(db)[0].wedding_date === '2027-03-05');
+  const s1 = []; for (let i = 0; i < 3; i += 1) s1.push((await turn(db, S1_SAID, JSON.parse(S1_JSON), 'whatsapp')).reply);
+  T('3.2 22 SEPTEMBER\'s FIX WALK, TURN 1, his words and the RECORDED hearing VERBATIM, three times in one thread: the first FILES the lead as it did live, and no message is answered B7 or B3', s1[0] === 'Lead added: Nisha walk eleven · 5 March 2027.' && s1.every((x) => x !== B7 && x !== B3) && leadsIn(db)[0].wedding_date === '2027-03-05');
   // F-44.115 ALONE, with F-44.114 held back: the strip is removed for this one cell so his first message is refused as it was live; his SECOND, the same
   // sentence retyped, must then be handled fresh (refused again with a NEW note at tries 0), and his THIRD must NOT be "Nothing was changed".
   let alone = { replies: [], tries: [] };
@@ -317,7 +320,7 @@ async function main() {
     for (let i = 0; i < 3; i += 1) { replies.push((await turn(d, S1_SAID, JSON.parse(JSON.stringify(S1_INFERRED)), 'whatsapp', M)).reply); tries.push(noteIn(d).tries); }
     return { replies, tries };
   }); } catch (e) { console.log(`        (${e.message})`); }
-  T('3.3 THE SAME THREE with the strip held back, so F-44.115 is seen ALONE: his log read B7, B7, B3; now it reads B7, B7, B7, each a fresh refusal with a note at tries 0, and he is never told "Nothing was changed"', alone.replies.join('|') === [B7, B7, B7].join('|') && alone.tries.join() === '0,0,0');
+  T('3.3 A LABELLED CONSTRUCTION (the ear keeping his full stop, which the record shows it did NOT), the strip held back, so F-44.115 is seen ALONE: the 21st\'s log read B7, B7, B3; it now reads B7, B7, B7, each a fresh refusal with a note at tries 0, never "Nothing was changed"', alone.replies.join('|') === [B7, B7, B7].join('|') && alone.tries.join() === '0,0,0');
 
   // ─── §4 THE CARD ───────────────────────────────────────────────────────────────────────────
   sec('4 every SAY line on the fix\'s walk card, in ONE thread and one database');
@@ -363,8 +366,9 @@ async function main() {
   const one = (w) => (w.turns === 0 && w.sent.length === 1 && Array.isArray(w.sent[0].media) && w.sent[0].media.length === 0 ? w.sent[0].text : `turns=${w.turns} sent=${w.sent.length}`);
   {
     const d = makeDb(world()); d.tables['engine.records'].push({ id: 'b-walk', agent_id: AG, client: 'Walk45', amount: 50000, amount_received: 0, hidden: false, date: '2026-09-25' });
-    const c1 = await driveWA({ db: d, message: 'Add a new lead. Nisha Walk Eleven. Wedding on 5th March 27.', request: req([lead('Nisha Walk Eleven', '5th March 27.')]) });
-    T('4.1 ON WHATSAPP, SAY "Add a new lead. Nisha Walk Eleven. Wedding on 5th March 27." (HIS OWN PUNCTUATION; hearing in the INFERRED shape of 22 September): "Lead added: Nisha Walk Eleven · 5 March 2027."', one(c1) === 'Lead added: Nisha Walk Eleven · 5 March 2027.');
+    const c1 = await driveWA({ db: d, message: 'Add a new lead. Nisha Walk Eleven. Wedding on 5th March 27.', request: req([lead('Nisha Walk Eleven', '5th March 27')]) });
+    const c1b = await driveWA({ db: makeDb(world()), message: 'Add a new lead. Nisha Walk Eleven. Wedding on 5th March 27.', request: req([lead('Nisha Walk Eleven', '5th March 27.')]) });
+    T('4.1 ON WHATSAPP, SAY "Add a new lead. Nisha Walk Eleven. Wedding on 5th March 27." (his punctuation; the hearing in the RECORDED shape, the ear dropping the stop), and BESIDE it the construction where the ear keeps it: "Lead added: Nisha Walk Eleven · 5 March 2027." both ways', one(c1) === 'Lead added: Nisha Walk Eleven · 5 March 2027.' && one(c1b) === 'Lead added: Nisha Walk Eleven · 5 March 2027.');
     const c2 = await turn(d, 'Add a new lead Rohan Walk Eleven, wedding on 31 February 2027', req([lead('Rohan Walk Eleven', '31 February 2027')]));
     const c3 = await turn(d, '5 march', JSON.parse(NONE_JSON));
     T('4.2 SAY "Add a new lead Rohan Walk Eleven, wedding on 31 February 2027", then "5 march" (heard as Part A\'s turn 5 was: NO ACT): B7, then "Lead added: Rohan Walk Eleven · 5 March 2027."', c2.reply === B7 && c3.reply === 'Lead added: Rohan Walk Eleven · 5 March 2027.');
@@ -427,7 +431,8 @@ async function main() {
     [['  while (b > a && stray(str[b - 1])) b -= 1;\n', '']], [],
     async (rq) => [rq(SDf).resolveSpokenDate('5 March 2027.', {}).ok, rq(SDf).resolveSpokenDate('(5 March 2027', {}).ok].join(), (v) => v === 'false,true');
   await mut('7.6 M6 THE RESTATED JOB no longer lapsing the note: his retyped sentence is read as a date again, B7 (reddens 2.1, 3.1, 4.3): 14bc61d exactly', WDf,
-    [["const restated = (a) => a.act === noted.act && (!!spokenText(a.date_as_spoken)\n        || (", 'const restated = (a) => a.act === noted.act && ((']], [],
+    // ANCHOR RE-AIMED (LCV-10 Part B-2, first cut): the line gained F-44.116's echo test; what M6 proves is unchanged.
+    [["const restated = (a) => a.act === noted.act && ((!!spokenText(a.date_as_spoken) && key(a.date_as_spoken) !== key(message.trim()))\n        || (", 'const restated = (a) => a.act === noted.act && ((']], [],
     async (rq) => flow(rq, [['Add a new lead Kiran Walk Eleven, wedding on 31 February 2027', req([lead('Kiran Walk Eleven', '31 February 2027')])], ['Add a new lead Kiran Walk Eleven, wedding on 5 March 2027', req([lead('Kiran Walk Eleven', '5 March 2027')])]]), (x) => x.out[1].reply === B7 && leadsIn(x.d).length === 0);
   await mut('7.7 M7 F-44.113\'s half removed: a same-kind job for a DIFFERENT client is read as a date (reddens 2.3)', WDf,
     [["key(a.client_as_spoken) !== key(noted.client_as_spoken)));", 'false));']], [],

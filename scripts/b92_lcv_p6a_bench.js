@@ -375,8 +375,10 @@ async function main() {
   await mut('10.3 M3 phoneShaped without its guard throws on a hostile value (reddens 9.1)', WDf,
     [['  try { return typeof text === \'string\' && PHONE_RE.test(text); } catch (_e) { return false; }', '  return PHONE_RE.test(text);']], [],
     async (rq) => { let t = 0; for (const a of H) { try { rq(WDf).phoneShaped(a); } catch (_e) { t += 1; } } return t; }, (t) => t > 0);
-  await mut('10.4 M4 the lead exception removed: a nameless lead goes to the chain, B18 is never said (reddens 5.6 and 4.1)', WDf,
-    [["    if (request.acts.some((a) => a && a.act === 'lead')) {", '    if (false) {']], [],
+  // ANCHOR WIDENED (CE-44 LCV-10 PART B-2, first cut): since the name question a nameless lead is also caught by askName BEFORE allCovered, a second
+  // guard; M4 now removes BOTH so the cell still proves the exception's own worth. What it proves is unchanged.
+  await mut('10.4 M4 the lead exception AND the name question removed: a nameless lead goes to the chain, B18 is never said (reddens 5.6 and 4.1)', WDf,
+    [["    if (request.acts.some((a) => a && a.act === 'lead')) {", '    if (false) {'], ["    { const ask = askName(heard, 0); if (ask) return ask; }\n", '']], [],
     async (rq) => leadCase(rq, 'Add a new lead, haldi shoot on 3 January', [{ act: 'lead', date_as_spoken: '3 January' }]), (x) => x.r.door === false && x.r.why === 'uncovered');
   await mut('10.5 M5 precision passed on every lead: a dateless lead is written claiming a day (reddens 5.5)', WDf,
     [["...(p.wedding_date ? { wedding_date: p.wedding_date, wedding_date_precision: 'day' } : {})", "wedding_date_precision: 'day', ...(p.wedding_date ? { wedding_date: p.wedding_date } : {})"]], [],

@@ -25,7 +25,8 @@
 // leftover() below, and the door calls it in ONE place. AN EXAMPLE IS SHOWN ONLY WHEN THE DOOR COVERS ITS ACT:
 // EXAMPLE_ACTS carries example → act, so each later packet switches its example on by covering its act.
 // B15 (R-44.27, his; owed by the packet in which the chain leaves, which is this one), B32 (R-44.36) and B34
-// (R-44.38, his "yes" to the chair's proposal) entered with the same cut. B31 and B33 enter with Part Two.
+// (R-44.38, his "yes" to the chair's proposal) entered with the same cut. B35 (R-44.39) entered with LCV-10 Part B-2's first cut; B31 and
+// B33 enter with its second.
 //
 // TOTAL: render() and every line builder below never throw; a slot that cannot be filled yields null
 // and the caller speaks nothing from it (the door then stands aside to the chain).
@@ -105,6 +106,9 @@ const LINES = Object.freeze({
   // an act HEARD that the door does not cover yet, a mixed message holding one, or a lead carrying a phone-shaped
   // number (R-44.38, HIS: the chair proposed the byte and his word was "yes"). Nothing is written on such a turn.
   B34: "I cannot do that by message yet. Use the app for it.",
+  // a job the door knows (a booking, a payment, an invoice, an attach) that names NO client (R-44.39, HIS: "Yes to your recomendation";
+  // LCV-10 Part B-2, first cut). `lead` keeps B18. The door keeps its own note of it (meta.listener.note), as it does for B18.
+  B35: "Which client? Say the name.",
   // a booking made (vetoed CE-43, TDW_CE43_LC2_P3_HANDOVER.md:173; homeless until P5)
   D1: "Booked: {client}. Client, event and invoice {number} are ready.",
   // R-44.18; LIVE since LCV-9 Part One (R-44.37): spoken when NO ACT was heard, followed by two covered examples
@@ -168,6 +172,7 @@ const LINE_HASHES = Object.freeze({
   B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
   B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
   B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
+  B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });
