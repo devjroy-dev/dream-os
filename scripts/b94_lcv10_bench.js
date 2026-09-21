@@ -53,6 +53,9 @@ const TURN8_SAID = 'Add a new lead Walk P8 Fresh, wedding on 20 February 2027';
 const turn8 = () => JSON.parse(TURN8_JSON);
 // Deep equality with keys sorted: normaliseRequest writes each act's keys in ITS order, so the record is compared by value, never by key order.
 const canon = (v) => JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, k) => { o[k] = x[k]; return o; }, {}) : x));
+// e-62 (accepted by the chair): with the drop removed, 2.3 dereferenced a field a refused turn does not carry and the bench CRASHED,
+// listing no later cell. J() joins what is there, so a missing helper or a refused turn reads as a named FAIL and every later cell still lists.
+const J = (a) => (Array.isArray(a) ? a.join() : '');
 const isTurn8 = (v) => canon(v) === canon(JSON.parse(TURN8_JSON));
 const B34 = 'I cannot do that by message yet. Use the app for it.';
 const SENTENCE = "A wedding date said with a new lead belongs to that lead: put it in the lead's date and record no book_event for it.";
@@ -209,9 +212,9 @@ async function main() {
   let db = makeDb(world());
   let r = await turn(db, TURN8_SAID, turn8());
   let filed = leadsIn(db);
-  T(`2.1 THE SPECIMEN FIRST (${RECORD} §3 turn 8, his exact sentence, the exact heard request): the door takes the turn and THE LEAD IS FILED: "Lead added: Walk P8 Fresh · 20 February 2027."`, r.out.door === true && r.out.reply === 'Lead added: Walk P8 Fresh · 20 February 2027.' && r.out.keys.join() === 'B17' && filed.length === 1 && filed[0].name === 'Walk P8 Fresh' && filed[0].wedding_date === '2027-02-20' && filed[0].wedding_date_precision === 'day' && filed[0].source === 'self');
+  T(`2.1 THE SPECIMEN FIRST (${RECORD} §3 turn 8, his exact sentence, the exact heard request): the door takes the turn and THE LEAD IS FILED: "Lead added: Walk P8 Fresh · 20 February 2027."`, r.out.door === true && r.out.reply === 'Lead added: Walk P8 Fresh · 20 February 2027.' && J(r.out.keys) === 'B17' && filed.length === 1 && filed[0].name === 'Walk P8 Fresh' && filed[0].wedding_date === '2027-02-20' && filed[0].wedding_date_precision === 'day' && filed[0].source === 'self');
   T('2.2 WHAT IS RECORDED IS WHAT WAS HEARD: the verdict\'s ear, and meta.listener.request on the door\'s own row, still hold BOTH acts', isTurn8(r.out.ear.request) && (() => { const row = db.tables['engine.messages'].filter((m) => m.role === 'assistant').slice(-1)[0]; return !!row && row.meta.listener.door === true && isTurn8(row.meta.listener.request) && row.meta.listener.lane === 'pwa'; })());
-  T('2.3 one hand ran, donna_lead, and nothing else was written: no event, no package, nothing staged', r.out.toolNames.join() === 'donna_lead' && r.out.toolCalls[0].result === 'lead_created' && lpsIn(db).length === 0 && db.tables['public.pending_money_acts'].length === 0 && !db.log.inserts.some((i) => /events|calendar/.test(i.table)));
+  T('2.3 one hand ran, donna_lead, and nothing else was written: no event, no package, nothing staged', J(r.out.toolNames) === 'donna_lead' && ((r.out.toolCalls || [])[0] || {}).result === 'lead_created' && lpsIn(db).length === 0 && db.tables['public.pending_money_acts'].length === 0 && !db.log.inserts.some((i) => /events|calendar/.test(i.table)));
   // INVENTED requests (no walk record holds a hearing for these sentences): each a GENUINE second job beside a lead.
   const second = [
     ['another client', 'Add a new lead Meera Walk Nine, wedding on 20 February 2027, and book Kabir Walk Nine that day', [lead('Meera Walk Nine', '20 February 2027'), event('Kabir Walk Nine', '20 February 2027')]],
@@ -224,7 +227,7 @@ async function main() {
   for (const [label, message, a] of second) {
     db = makeDb(world());
     r = await turn(db, message, req(a));
-    T(`2.4 INVENTED, a genuine second job (${label}): still uncovered, the stand-in speaks B34, and NOTHING is filed`, r.out.door === false && r.out.why === 'uncovered' && r.said.reply === B34 && r.said.keys.join() === 'B34' && leadsIn(db).length === 0 && r.said.toolCalls.length === 0);
+    T(`2.4 INVENTED, a genuine second job (${label}): still uncovered, the stand-in speaks B34, and NOTHING is filed`, r.out.door === false && r.out.why === 'uncovered' && r.said.reply === B34 && J(r.said.keys) === 'B34' && leadsIn(db).length === 0 && r.said.toolCalls.length === 0);
   }
   db = makeDb(world());
   r = await turn(db, 'Book Meera Walk Nine on 20 February 2027', req([event('Meera Walk Nine', '20 February 2027')]));
@@ -234,14 +237,14 @@ async function main() {
   T('2.6 BESIDE the specimen, the tidier hearing (`lead` alone, as the morning of 21 September heard this shape, and as the new prompt sentence asks): filed the same', r.out.reply === 'Lead added: Meera Walk Nine · 20 February 2027.' && leadsIn(db).length === 1);
   db = makeDb(world());
   r = await turn(db, 'x', req([lead('Meera Walk Nine', '15 March 0227'), event('Meera Walk Nine', '15 March 0227')]));
-  T('2.7 an echo of a date the door refuses: the echo is dropped (neither resolves, same words) and the lead answers its OWN byte, B21, not B34', r.out.door === true && r.out.keys.join() === 'B21' && leadsIn(db).length === 0);
+  T('2.7 an echo of a date the door refuses: the echo is dropped (neither resolves, same words) and the lead answers its OWN byte, B21, not B34', r.out.door === true && J(r.out.keys) === 'B21' && leadsIn(db).length === 0);
 
   // ─── §3 THE STAND-IN AND THE PHONE GUARD ───────────────────────────────────────────────────
   sec('3 the stand-in reads the request as the door decided on it; the phone guard still stands');
   const mixedNameless = req([lead('Meera Walk Nine', '20 February 2027'), event('Meera Walk Nine', '20 February 2027'), { act: 'booking_confirmed' }]);
   db = makeDb(world());
   r = await turn(db, 'x', mixedNameless);
-  T('3.1 INVENTED: an echo beside a covered act naming NO client: the door stands aside (uncovered) and the stand-in speaks LEFTOVER, the covered-no-client byte of today, NOT B34: the two read ONE request', r.out.door === false && r.out.why === 'uncovered' && r.said.keys.join() === 'LEFTOVER' && leadsIn(db).length === 0);
+  T('3.1 INVENTED: an echo beside a covered act naming NO client: the door stands aside (uncovered) and the stand-in speaks LEFTOVER, the covered-no-client byte of today, NOT B34: the two read ONE request', r.out.door === false && r.out.why === 'uncovered' && J(r.said.keys) === 'LEFTOVER' && leadsIn(db).length === 0);
   T('3.2 standKey alone, turn 8 as heard under the reason `uncovered`: never B34 (every act left is covered and named)', WD.standKey({ door: false, why: 'uncovered', ear: { request: turn8() } }, { lifecycle: LH }, NOW).key === 'LEFTOVER' && WD.standKey({ door: false, why: 'uncovered', ear: { request: req([lead('A', '20 February 2027'), event('B', '20 February 2027')]) } }, { lifecycle: LH }, NOW).key === 'B34');
   db = makeDb(world());
   r = await turn(db, 'Add a new lead Meera Walk Nine 9876543210, wedding on 20 February 2027', req([lead('Meera Walk Nine', '20 February 2027'), event('Meera Walk Nine', '20 February 2027')]));
@@ -317,7 +320,7 @@ async function main() {
     T('6.1 SAY "Add a new lead Meera Walk Nine, wedding on 20 February 2027", heard in turn 8\'s SHAPE (lead AND book_event): "Lead added: Meera Walk Nine · 20 February 2027."', s1.said.reply === 'Lead added: Meera Walk Nine · 20 February 2027.' && s1.said.stood !== true);
     const s2 = await turn(d, 'Attach Photographs and film to Meera Walk Nine', req([{ act: 'attach_package', client_as_spoken: 'Meera Walk Nine', package_as_spoken: 'Photographs and film' }]));
     const lp = lpsIn(d);
-    T('6.2 SAY "Attach Photographs and film to Meera Walk Nine" (heard in the shape of Part One\'s turn 10): "Package attached: Meera Walk Nine · Photographs and film · Rs 80,000.", on THE LEAD STEP 1 FILED, from the row', s2.said.reply === 'Package attached: Meera Walk Nine · Photographs and film · Rs 80,000.' && s2.said.keys.join() === 'B22' && lp.length === 1 && lp[0].lead_id === leadsIn(d)[0].id && lp[0].package_id === 'p-film' && Number(lp[0].total) === 80000);
+    T('6.2 SAY "Attach Photographs and film to Meera Walk Nine" (heard in the shape of Part One\'s turn 10): "Package attached: Meera Walk Nine · Photographs and film · Rs 80,000.", on THE LEAD STEP 1 FILED, from the row', s2.said.reply === 'Package attached: Meera Walk Nine · Photographs and film · Rs 80,000.' && J(s2.said.keys) === 'B22' && lp.length === 1 && lp[0].lead_id === leadsIn(d)[0].id && lp[0].package_id === 'p-film' && Number(lp[0].total) === 80000);
     const before = leadsIn(d).length;
     const s3 = await turn(d, 'Add a new lead Kabir Walk Nine and block 20 March', req([lead('Kabir Walk Nine'), { act: 'block_date', date_as_spoken: '20 March' }]));
     T('6.3 SAY "Add a new lead Kabir Walk Nine and block 20 March" (INVENTED hearing: lead AND block_date): "I cannot do that by message yet. Use the app for it.", and Kabir Walk Nine is NOT filed', s3.said.reply === B34 && leadsIn(d).length === before);
@@ -336,7 +339,8 @@ async function main() {
   T('7.2 the manifest names exactly the six paths this packet touches (C-44.7: its own committed manifest)', JSON.stringify(man.slice().sort()) === JSON.stringify([
     'docs/handovers/TDW_CE44_LCV10_PARTA_HANDOVER.md', MAN, 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b94_lcv10_bench.js', LDf, WDf].sort()));
   const wdS = src(WDf).replace(/^\s*\/\/.*$/gm, ''); // comments stripped: code alone is counted
-  T('7.3 the drop is applied in exactly TWO places, preTurn before the covered check and standKeyOf, and the phone guard\'s line is byte-identical to 627323b (b92 M\'s anchor)', (wdS.match(/withoutEchoedEvents\(/g) || []).length === 3 && wdS.indexOf('const heard = withoutEchoedEvents(st.ear.request, nowMs);') > 0 && wdS.indexOf('const heard = withoutEchoedEvents(st.ear.request, nowMs);') < wdS.indexOf("if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');") && wdS.includes("    if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');\n"));
+  // 7.3 RE-PINNED (CE-44 LCV-10 PART B-1): same two places, same order; the first line's bytes changed as M1's note says.
+  T('7.3 the drop is applied in exactly TWO places, preTurn before the covered check and standKeyOf, and the phone guard\'s line is byte-identical to 627323b (b92 M\'s anchor)', (wdS.match(/withoutEchoedEvents\(/g) || []).length === 3 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') > 0 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') < wdS.indexOf("if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');") && wdS.includes("    if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');\n"));
   T('7.4 no byte a vendor reads was added: doorLines.js is not in this packet and COVERED is the six of 627323b', !man.includes('src/lib/vendor/doorLines.js') && WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package' && !WD.COVERED.includes('book_event'));
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────
@@ -376,7 +380,8 @@ async function main() {
   sec('9 mutations of production code, each reddening its cell');
   const driveM = async (rq, message, request) => { const d = makeDb(world()); const M = rq(WDf); LF._resetLaneFlagCache(); const out = await quiet(() => M.preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message, lane: 'pwa' }, { llmCreate: earOf(request), nowMs: NOW })); const said = out && out.door === true ? out : await quiet(() => M.standIn({ supabase: d, out }, { nowMs: NOW })); return { out, said, leads: leadsIn(d) }; };
   await mut('9.1 M1 THE DROP REMOVED from preTurn: turn 8 as heard reads B34 again and the lead is NOT filed, 21 September\'s walk exactly (reddens 2.1, 5.1, 6.1; and b93 11.6)', WDf,
-    [['    const heard = withoutEchoedEvents(st.ear.request, nowMs);\n', '    const heard = st.ear.request;\n']], [],
+    // ANCHOR RE-AIMED (CE-44 LCV-10 PART B-1): the line lost its `const` when the door's note gained a second source for `heard`; what it proves is unchanged.
+    [['    heard = withoutEchoedEvents(st.ear.request, nowMs);\n', '    heard = st.ear.request;\n']], [],
     async (rq) => driveM(rq, TURN8_SAID, turn8()), (x) => x.out.door === false && x.out.why === 'uncovered' && x.leads.length === 0);
   await mut('9.2 M2 the drop no longer comparing the CLIENT: another couple\'s event on the same day is swallowed and the message reads covered (reddens 1.4 and 2.4)', WDf,
     [['leads.some((l) => key(l.client_as_spoken) === key(a.client_as_spoken) && sameSpokenDay(', 'leads.some((l) => sameSpokenDay(']], [],

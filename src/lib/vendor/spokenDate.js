@@ -148,19 +148,23 @@ function resolveRaw(spoken, opts) {
       return c ? { ok: true, iso: c } : { ok: false, reason: 'unreadable' };
     }
     const DAY = '(\\d{1,2})(?:st|nd|rd|th)?';
+    // F-44.111 (CE-44 LCV-10 Part B-1; the chair's cure): WITNESSED on the founder's walk of 21 September, "5th March 27" was
+    // unreadable while "5/3/27" read 2027-03-05. A TWO-DIGIT year after a month name now reads AS THE SLASH FORM READS IT, the
+    // same century rule (2000 plus the two digits), no new one; the 1900 to 2100 floor and every direction guard apply after it.
+    const YEAR = (t) => (t.length === 2 ? 2000 + Number(t) : Number(t));
     // 18 september [2026] · 18th of sept
-    if ((m = new RegExp(`^${DAY}(?: of)? ([a-z.]+)(?: (\\d{4}))?$`).exec(s))) {
+    if ((m = new RegExp(`^${DAY}(?: of)? ([a-z.]+)(?: (\\d{2}|\\d{4}))?$`).exec(s))) {
       const d = Number(m[1]); const mo = monthOf(m[2]);
       if (!mo) return { ok: false, reason: 'unreadable' };
-      if (m[3]) { const y = Number(m[3]); return real(y, mo, d) ? { ok: true, iso: iso(y, mo, d) } : { ok: false, reason: 'unreadable' }; }
+      if (m[3]) { const y = YEAR(m[3]); return real(y, mo, d) ? { ok: true, iso: iso(y, mo, d) } : { ok: false, reason: 'unreadable' }; }
       const c = pickYear(today, mo, d, direction);
       return c ? { ok: true, iso: c } : { ok: false, reason: 'unreadable' };
     }
     // september 18 [2026]
-    if ((m = new RegExp(`^([a-z.]+) ${DAY}(?: (\\d{4}))?$`).exec(s))) {
+    if ((m = new RegExp(`^([a-z.]+) ${DAY}(?: (\\d{2}|\\d{4}))?$`).exec(s))) {
       const mo = monthOf(m[1]); const d = Number(m[2]);
       if (!mo) return { ok: false, reason: 'unreadable' };
-      if (m[3]) { const y = Number(m[3]); return real(y, mo, d) ? { ok: true, iso: iso(y, mo, d) } : { ok: false, reason: 'unreadable' }; }
+      if (m[3]) { const y = YEAR(m[3]); return real(y, mo, d) ? { ok: true, iso: iso(y, mo, d) } : { ok: false, reason: 'unreadable' }; }
       const c = pickYear(today, mo, d, direction);
       return c ? { ok: true, iso: c } : { ok: false, reason: 'unreadable' };
     }

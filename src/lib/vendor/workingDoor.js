@@ -71,6 +71,18 @@
 // below is the mechanism (the listener's prompt sentence is the other half, and prose is not a mechanism): a
 // `book_event` whose client AND date both repeat a `lead` act in the same request is not a second job and is dropped
 // before the covered check. NOTHING ELSE IS DROPPED. meta.listener.request keeps what was HEARD, both acts.
+//
+// LCV-10 PART B-1 (F-44.104, F-44.112; the chair's rulings of 21 September): THE DOOR KEEPS ITS OWN NOTE OF A DATE IT ASKED FOR.
+// WITNESSED twice on his own screen: "5 June 2027" answered to B26 was heard as NO ACT (P6a-2's walk, turns 10 and 21), and
+// "5 march" answered to B7's "Say it like 5 December" was heard as NO ACT and met LEFTOVER (Part A's walk, turn 5). The carry
+// those answers rested on was the MODEL's. FIVE lines ask her for a date: B6, B7, B21, B26 and B28. When a turn ends in exactly
+// ONE of them, the door saves the act that is waiting for the date on ITS OWN assistant row, meta.listener.note, beside the
+// marks that are already there (asked, asked_name: untouched). On the next turn, if that row is the last assistant row of the
+// working thread, the door reads HER WHOLE MESSAGE ITSELF as the date and runs the saved act through the SAME plans as any
+// turn. A closed NO word answers B3. A message the door cannot read as a date is fresh ONLY when the listener heard an act
+// OTHER than the noted one (the ONE place the listener's record decides such a turn); otherwise it is answered as any unreadable
+// date is, ONCE, and the next such answer is B3. THE NOTE NEVER WRITES MONEY: a money act it carries is planned afresh from
+// the rows as they stand and STAGED exactly as today; only her YES applies it. A live staged row wins over any note.
 
 const DL = require('./doorLines');
 const PMA = require('./pendingMoneyActs');
@@ -164,6 +176,31 @@ function withoutEchoedEvents(request, nowMs) {
     const acts = request.acts.filter((a) => !echoed(a));
     return acts.length === request.acts.length ? request : { ...request, acts };
   } catch (_e) { return request; }
+}
+
+// ── F-44.112 · THE DOOR'S OWN NOTE OF A DATE IT ASKED FOR (LCV-10 Part B-1) ─────────────────────────
+const DATE_ASKS = Object.freeze(['B6', 'B7', 'B21', 'B26', 'B28']);
+const NOTE_SLOTS = Object.freeze(['act', 'client_as_spoken', 'package_as_spoken', 'date_as_spoken', 'milestone']);
+const directionOf = (act) => (act === 'advance_paid' || act === 'milestone_paid' ? 'past' : 'future');
+// One act as the note keeps it: the slots the door reads, strings only, nothing else. null when it is no covered act.
+function noteAct(a) {
+  try {
+    if (!a || typeof a !== 'object' || typeof a.act !== 'string' || !COVERED.includes(a.act)) return null;
+    const out = {};
+    for (const k of NOTE_SLOTS) if (typeof a[k] === 'string' && a[k].trim()) out[k] = a[k].trim();
+    return out;
+  } catch (_e) { return null; }
+}
+// A note as read back from meta: well-formed or NOTHING. acts[0] is the act waiting for its date; the rest are acts of the
+// same message that did not run because of it. Every act must pass the covered check as any heard request must.
+function validNote(n) {
+  try {
+    if (!n || typeof n !== 'object' || !DATE_ASKS.includes(n.asked) || !Array.isArray(n.acts) || !n.acts.length || n.acts.length > 4) return null;
+    const acts = n.acts.map(noteAct);
+    if (acts.some((a) => !a) || !allCovered({ route: 'task', acts })) return null;
+    const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
+    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null };
+  } catch (_e) { return null; }
 }
 
 // ── reads ─────────────────────────────────────────────────────────────────────────────────────────
@@ -507,6 +544,39 @@ async function lastWasDoorNameQuestion(supabase, agentId) {
     return !!l && l.door === true && l.asked_name === 'B18';
   } catch (_e) { return false; }
 }
+// F-44.112: the door's own note, read from the LAST assistant row of the working thread and from nowhere else: its OWN key on
+// the door's meta (meta.listener.note), never the text of the row. null when there is none, or it is not well-formed.
+async function lastDoorNote(supabase, agentId) {
+  try {
+    const conv = await activeConversation(supabase, agentId);
+    if (!conv) return null;
+    const { data, error } = await supabase.schema('engine').from('messages').select('id, role, meta, created_at')
+      .eq('conversation_id', conv).eq('role', 'assistant').order('created_at', { ascending: false }).limit(1);
+    if (error || !Array.isArray(data) || !data[0]) return null;
+    const l = data[0].meta && data[0].meta.listener;
+    return l && l.door === true ? validNote(l.note) : null;
+  } catch (_e) { return null; }
+}
+// The act a fresh note keeps, with the names FROM THE ROWS where the door can resolve them (so what she misspelt or the
+// listener shortened cannot matter on the next turn, F-44.105) and the ids beside them for the record. Read-only. TOTAL.
+async function noteFor(supabase, vendor, asked, act, rest, tries, L) {
+  try {
+    const first = noteAct(act);
+    if (!first || !DATE_ASKS.includes(asked)) return null;
+    delete first.date_as_spoken; // the date is what is being asked for
+    const note = { asked, acts: [first, ...(Array.isArray(rest) ? rest : []).map(noteAct).filter(Boolean)], tries: Number.isInteger(tries) ? tries : 0, direction: directionOf(first.act) };
+    if (first.act !== 'lead' && first.client_as_spoken) {
+      const found = await L.lifecycle.resolveLead(supabase, vendor.id, first.client_as_spoken, false);
+      if (found && found.ok && found.lead) { note.lead_id = found.lead.id; const n = String(found.lead.name || '').trim(); if (n) first.client_as_spoken = n; }
+    }
+    if (first.act === 'attach_package' && first.package_as_spoken) {
+      const pkgs = await packagesOf(supabase, vendor.id);
+      const hits = (pkgs || []).filter((p) => p && key(p.name) === key(first.package_as_spoken));
+      if (hits.length === 1) { note.package_id = hits[0].id; const n = String(hits[0].name || '').trim(); if (n) first.package_as_spoken = n; }
+    }
+    return validNote(note) ? note : null;
+  } catch (_e) { return null; }
+}
 
 // ── the one entry ─────────────────────────────────────────────────────────────────────────────────
 // Returns { door: false, ear } for the chain, or { door: true, reply, toolCalls, toolNames, refresh,
@@ -553,11 +623,11 @@ function doorAnswer(st, why) {
   // The glitch byte is read lazily from its one home (b90 14.1 proves it loads cold in both orders); B3 is the
   // last resort only if that home cannot load at all.
   if (!reply) reply = st.fallback || glitchLine() || DL.LINES.B3;
-  return { door: true, reply, keys: st.keys, toolCalls: st.toolCalls, toolNames: st.toolCalls.map((t) => t.name), refresh: st.refresh, documents: st.documents, skipHarvest: st.skipHarvest, ear: st.ear, ...(why ? { why } : {}) };
+  return { door: true, reply, keys: st.keys, toolCalls: st.toolCalls, toolNames: st.toolCalls.map((t) => t.name), refresh: st.refresh, documents: st.documents, skipHarvest: st.skipHarvest, ear: st.ear, ...(st.note ? { note: st.note } : {}), ...(st.answered ? { answered: st.answered } : {}), ...(why ? { why } : {}) };
 }
 
 async function preTurn(args, depsIn) {
-  const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null };
+  const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null, note: null, answered: null, dateAsks: [] };
   try {
     // e-16's lesson: the arguments are taken INSIDE the guard, so a hostile argument cannot throw past it.
     const { supabase, vendor, agentId, route, message, lane, conversationId } = (args && typeof args === 'object') ? args : {};
@@ -588,7 +658,13 @@ async function preTurn(args, depsIn) {
       return doorAnswer(st);
     }
     if (live && said === null) await pma.markExpired(supabase, live); // a stamp, not an act: the row is not live either way
-    if (!live && said !== null) {
+    // F-44.112: THE DOOR'S OWN NOTE, read AFTER the live-row handling (a yes or a no belongs to the money question first) and
+    // ABOVE the bare yes-or-no exit, so her "No" to a date question meets the note and reads B3, never LEFTOVER.
+    const note = await lastDoorNote(supabase, agentId);
+    if (note && said === 'no') {
+      return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, answered: note.asked, why: 'note_declined' };
+    }
+    if (!note && !live && said !== null) {
       // F-44.58 (the chair's rule, cured in P5): if the LAST assistant row of the working thread is the door's own
       // confirmation question (B1 or B2, known from the door's meta on that row, never by matching text), her bare
       // yes or no answers THAT question, which has lapsed: the door answers and the chain is not called, so Victor
@@ -606,12 +682,27 @@ async function preTurn(args, depsIn) {
     const threadId = conversationId || await activeConversation(supabase, agentId);
     st.ear = await L.listener.hear({ supabase, route, message, conversationId: threadId, excludeId: null },
       { ...(deps.llmCreate ? { llmCreate: deps.llmCreate } : {}), timeoutMs: Number.isFinite(deps.hearMs) ? deps.hearMs : HEAR_BEFORE_REPLY_MS });
+    // F-44.112: a turn that answers the door's own date question. THE DOOR'S OWN READ DECIDES FIRST: if her whole message
+    // resolves as a date in the noted act's direction it IS the answer, whatever the listener heard (it was still heard, for
+    // the record). If it does not, the listener's record decides ONE thing: an act OTHER than the noted one means she has
+    // moved on, the note LAPSES and her message is handled fresh below. Otherwise the saved act runs with her words as its
+    // date and the plans answer as they answer any unreadable date.
+    let fromNote = null;
+    if (note) {
+      const own = resolveSpokenDate(message.trim(), { direction: note.direction, nowMs });
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      const movedOn = heardActs.some((a) => a && typeof a.act === 'string' && a.act !== note.acts[0].act);
+      if (own.ok || !movedOn) fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, date_as_spoken: message.trim() } : { ...a })) };
+    }
+    let heard = fromNote;
+    if (!fromNote) {
     if (!st.ear || !st.ear.request) return CHAIN(st.ear, 'no_request');
     // F-44.110: the door DECIDES on the request with an echoed event dropped; st.ear, which is recorded, keeps what was HEARD.
-    const heard = withoutEchoedEvents(st.ear.request, nowMs);
+    heard = withoutEchoedEvents(st.ear.request, nowMs);
     if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');
     // F-44.96's guard: a lead whose message carries a phone-shaped number goes WHOLE to the chain, which files it.
     if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');
+    } else st.answered = note.asked;
 
     // 3 · resolve every act first, read-only; any act the door cannot say sends the WHOLE message to the chain
     const acts = heard.acts;
@@ -621,6 +712,7 @@ async function preTurn(args, depsIn) {
     if (acts.some((a) => a && a.act === 'lead' && eventOnly(a.client_as_spoken))) answeringB18 = await lastWasDoorNameQuestion(supabase, agentId);
     const leadPlans = [];
     for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs, answeringB18));
+    const leadActs = acts.filter((a) => a.act === 'lead'); // F-44.112: the act behind each plan, by position; the line above is another rung's anchor
     // P6a-2: every attach is PROBED read-only. One the door cannot say, or one naming no lead that this message
     // does not itself file, sends the WHOLE message to the chain before anything is written.
     const attaches = acts.filter((a) => a.act === 'attach_package');
@@ -639,7 +731,7 @@ async function preTurn(args, depsIn) {
 
     // 4 · act: leads first, then attaches, then invoices, then the one money act is staged and asked
     for (const lp of leadPlans) {
-      if (lp.speak) { st.lines.push(lp.speak); st.keys.push(lp.key); if (lp.skipHarvest) st.skipHarvest = true; continue; }
+      if (lp.speak) { st.lines.push(lp.speak); st.keys.push(lp.key); if (lp.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(lp.key)) st.dateAsks.push({ key: lp.key, act: leadActs[leadPlans.indexOf(lp)] }); continue; }
       st.wrote = true; // a lead may land inside the call even if the call then throws
       if (!st.fallback) st.fallback = DL.LINES.B20;
       const f = await fileLead(supabase, vendor, lane, lp, L);
@@ -655,11 +747,11 @@ async function preTurn(args, depsIn) {
         if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');
         st.lines.push(DL.LINES.B30); st.keys.push('B30'); attachMissed = true; continue;
       }
-      if (ap.speak) { st.lines.push(ap.speak); st.keys.push(ap.key); if (ap.skipHarvest) st.skipHarvest = true; attachMissed = true; continue; }
+      if (ap.speak) { st.lines.push(ap.speak); st.keys.push(ap.key); if (ap.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(ap.key)) st.dateAsks.push({ key: ap.key, act: a }); attachMissed = true; continue; }
       st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws
       if (!st.fallback) st.fallback = DL.LINES.B30;
       const f = await fileAttach(supabase, vendor, ap, L);
-      if (f.line) { st.lines.push(f.line); st.keys.push(f.key); }
+      if (f.line) { st.lines.push(f.line); st.keys.push(f.key); if (DATE_ASKS.includes(f.key)) st.dateAsks.push({ key: f.key, act: a }); }
       st.toolCalls.push(f.call);
       if (f.skipHarvest) st.skipHarvest = true;
       if (f.landed) { st.refresh = true; if (!f.line) st.fallback = glitchLine(); } else attachMissed = true;
@@ -680,6 +772,7 @@ async function preTurn(args, depsIn) {
     // THE MONEY PLAN IS REBUILT AFTER THE LEAD AND ATTACH PASSES (the plan above was only the probe): it reads the
     // rows as they now stand, so B2 speaks the package just attached. An attach that did NOT land asks NO B2 and
     // stages NO row: the door has said what landed and what did not.
+    const silenced = (moneyPlan && attachMissed) ? [money[0]] : []; // F-44.112: the money act a missed attach silences rides that attach's note
     if (moneyPlan && (leadPlans.length || attaches.length)) {
       if (attachMissed) moneyPlan = null;
       else {
@@ -702,10 +795,23 @@ async function preTurn(args, depsIn) {
         }
         if (!row) { st.lines.push(L.lifecycle.LINES[refusal]); st.keys.push(refusal); }
         else { st.lines.push(moneyPlan.speak); st.keys.push(moneyPlan.key); }
-      } else { st.lines.push(moneyPlan.speak); st.keys.push(moneyPlan.key); if (moneyPlan.skipHarvest) st.skipHarvest = true; }
+      } else { st.lines.push(moneyPlan.speak); st.keys.push(moneyPlan.key); if (moneyPlan.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(moneyPlan.key)) st.dateAsks.push({ key: moneyPlan.key, act: money[0] }); }
       if (money.length > 1) { st.lines.push(DL.LINES.B12); st.keys.push('B12'); }
     }
     if (!st.lines.filter(Boolean).length && !st.wrote) return CHAIN(st.ear, 'empty');
+    // F-44.112: a turn that ends in exactly ONE date question keeps its note. ONE RE-ASK, THEN B3: a note turn that ends in a
+    // date question AGAIN keeps a note once more (tries 1); the next, having written nothing, answers B3 and keeps none. A turn
+    // that wrote something is never answered "Nothing was changed": it says what it did and simply keeps no further note.
+    if (st.dateAsks.length === 1) {
+      const tries = fromNote ? note.tries + 1 : 0;
+      if (tries > 1) {
+        if (!st.wrote && !st.toolCalls.length) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+      } else {
+        const waiting = st.dateAsks[0];
+        const rest = waiting.act && waiting.act.act === 'attach_package' ? silenced : [];
+        st.note = await noteFor(supabase, vendor, waiting.key, waiting.act, rest, tries, L);
+      }
+    }
     return doorAnswer(st);
   } catch (e) {
     try { console.warn('[door:preTurn]', e && e.message); } catch (_e) { /* */ }
@@ -828,7 +934,7 @@ async function persistDoorTurn(args, depsIn) {
     const ear = out && out.ear;
     const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null; // F-44.58's mark
     const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null; // F-44.100's mark, its OWN key
-    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(ear && ear.error ? { error: ear.error } : {}) };
+    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}) };
     res.assistantId = await memory.saveMessage(conversationId, 'assistant', out.reply, (out.toolCalls && out.toolCalls.length) ? out.toolCalls : undefined, { listener });
     if (res.assistantId) {
       try { await supabase.schema('engine').from('messages').update({ room: 'business' }).eq('id', res.assistantId); } catch (e) { console.warn('[door:room]', e && e.message); }
@@ -839,4 +945,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
