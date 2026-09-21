@@ -126,6 +126,13 @@ const LANE_FLAGS = {
   // them. The founder ruled BOTH DOORS on 2026-08-20 with both population
   // counts on his glass.
   'onboarding.gate_enabled': false,
+
+  // CE-44 LC-Victor, LCV-9 PART ONE (R-44.37, the founder, 21 September 2026: the chain leaves the working rooms
+  // NOW). OFF IS CHAIN OUT: in the business room on the pwa and on the vendor WhatsApp lane only code speaks.
+  // ONLY JSON true puts the chain back, and the four sites then behave as at 10d5d99; an absent key, a junk value
+  // and a FAILED READ all resolve OFF, which is this file's fail-closed doctrine doing exactly what he ruled.
+  // Read in ONE place: src/lib/vendor/workingDoor.js standIn(). The Advisor room never reads it.
+  'vendor.working_chain_enabled': false,
 };
 
 function _resetLaneFlagCache() { cache.clear(); }

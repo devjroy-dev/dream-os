@@ -156,7 +156,9 @@ async function main() {
   };
   for (const k of Object.keys(RULED)) T(`1.1 ${k} is his byte verbatim and its hash is the literal pinned here`, DL.LINES[k] === RULED[k] && DL.LINE_HASHES[k] === HASHES[k] && sha(RULED[k]) === HASHES[k]);
   // RE-PINNED (CE-44 LCV-8, P6a-2): B22 to B30 have arrived and are pinned in §11. B15 stays free, as it was.
-  T('1.2 B15 is not minted (owed by the last packet; its key stays free)', !('B15' in DL.LINES));
+  // 1.2 RE-PINNED (CE-44 LCV-9 PART ONE): it asserted B15's key FREE, "owed by the last packet". The chair ruled that packet is
+  // the one in which the chain leaves (R-44.37), and B15 (R-44.27, his) rides it. The cell now pins the byte and its hash.
+  T('1.2 B15 IS minted by the cut in which the chain leaves (R-44.27, his, verbatim), hash-carried', DL.LINES.B15 === 'Could not make the invoice. No client called {name}.' && DL.LINE_HASHES.B15 === 'f5a96043bb86272066b085f699a88d0aa4adbeb04871d6b95ea59e7f56db5ab0');
   T('1.3 B17 renders the long date with its year', DL.render('B17', { client: 'Sharma', date: '3 January 2027' }) === 'Lead added: Sharma · 3 January 2027.');
   T('1.4 the door holds no literal of any lead byte: every one is read from its one home', !Object.values(RULED).some((l) => src('src/lib/vendor/workingDoor.js').includes(l.split('{')[0].trim()) && l.split('{')[0].trim().length > 12));
 
@@ -494,7 +496,10 @@ async function main() {
   for (const k of Object.keys(RULED2)) T(`11.1 ${k} is his byte verbatim and its hash is the literal pinned here`, DL.LINES[k] === RULED2[k] && DL.LINE_HASHES[k] === HASHES2[k] && sha(RULED2[k]) === HASHES2[k]);
   const close = src('docs/handovers/TDW_CE44_LCV6_SEAT_CLOSE.md');
   T('11.2 B22 to B28 are byte-identical to the LCV-6 seat close §4, the record of his word', ['B22', 'B23', 'B24', 'B25', 'B26', 'B27', 'B28'].every((k) => close.includes(`  ${k}  ${RULED2[k]}\n`)));
-  T('11.3 B31 and B32 are WITH THE FOUNDER: their keys are free and nothing is built on them', !('B31' in DL.LINES) && !('B32' in DL.LINES) && !/DL\.LINES\.B3[12]|'B3[12]'/.test(src('src/lib/vendor/workingDoor.js')));
+  // 11.3 RE-PINNED (CE-44 LCV-9 PART ONE): it asserted B31 and B32 free while his word was pending. His word came at R-44.36
+  // ("yes to your open earlirr questions"). B32 rides Part One (the chair's ruling) and is spoken ONLY by the stand-in, chain
+  // out; planAttach still returns noLead and preTurn still answers door false, so 14.16 stands. B31 enters with Part Two.
+  T('11.3 B32 is HIS and present, hash-carried, and spoken only through standIn; B31 is still free and nothing is built on it (Part Two)', DL.LINES.B32 === 'Could not attach the package. No lead called {name}. Add the lead first.' && DL.LINE_HASHES.B32 === '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704' && !('B31' in DL.LINES) && !/DL\.LINES\.B31|'B31'/.test(src('src/lib/vendor/workingDoor.js')) && (src('src/lib/vendor/workingDoor.js').match(/'B32'/g) || []).length === 2);
   T('11.4 byte 24 renders by position for exactly two, byte 23 lists her own names with " · "', DL.twoPackages('bridal', [{ name: 'Bridal', total: '80,000' }, { name: 'bridal', total: '1,20,000' }]) === 'Two packages are called bridal: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.'
     && DL.twoPackages('x', [{ name: 'a', total: '1' }]) === null && DL.twoPackages('x', [{ name: 'a', total: null }, { name: 'b', total: '1' }]) === null
     && DL.noSuchPackage('Gold', ['A', ' ', null, 'B']) === 'You have no package called Gold. Yours are: A · B.' && DL.noSuchPackage('Gold', []) === null);
@@ -764,13 +769,15 @@ async function main() {
   await mut('20.14 N14 a refused attach no longer silencing the money act: B2 is asked over the OLD package and a row is staged (reddens 16.4)', WDf,
     [['      if (attachMissed) moneyPlan = null;\n      else {', '      {']], [],
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Gold'), { act: 'booking_confirmed', client_as_spoken: 'Walk P7 Dated' }], null, (d) => d.tables['public.lead_packages'].push(lpRow({ id: 'lp-old', lead_id: 'l-dated', package_id: 'p-otd', total: 40000, snapshot: { name: 'Photographs only', delivery_basis: 'on_the_day' } }))), (x) => x.r.keys.join() === 'B23,B2' && x.staged.length === 1);
+  // ANCHORS RE-AIMED (CE-44 LCV-9 PART ONE): the probe's no-lead line gained its `say` ({ name }) so the stand-in can speak B32
+  // chain out; the line's verdict is unchanged. N15a and N15 carry the new bytes of the same line; what they prove is unchanged.
   // TWO GUARDS HOLD 14.16, and the cell says so: with the probe's line alone removed the rebuild still sends an unwritten
   // turn to the chain (run here as N15a, which must NOT redden); it takes both removed for the door to answer B30.
   await mut('20.15a N15a the probe\'s no-lead line ALONE removed: the rebuild\'s own guard still sends the unwritten turn to the chain', WDf,
-    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead');\n", '']], [],
+    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead', { name: probe.name });\n", '']], [],
     async (rq) => attCase(rq, 'x', [att('Nobody Here', 'Photographs and film')]), (x) => x.r.door === false && x.r.why === 'attach_unsayable');
   await mut('20.15 N15 BOTH guards removed: an attach naming no lead is answered by the door instead of going WHOLE to the chain (reddens 14.16)', WDf,
-    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead');\n", ''], ["        if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');\n", '']], [],
+    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead', { name: probe.name });\n", ''], ["        if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');\n", '']], [],
     async (rq) => attCase(rq, 'x', [att('Nobody Here', 'Photographs and film')]), (x) => x.r.door === true && x.r.keys.join() === 'B30');
   await mut('20.16 N16 the write mark AND fileAttach\'s guard removed: a throwing attachPackage falls to the chain after a possible write (reddens 14.20)', WDf,
     [['      st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws\n', ''], ["  } catch (_e) { return B30('refused:exception'); }", '  } finally { /* guard removed */ }']], [],

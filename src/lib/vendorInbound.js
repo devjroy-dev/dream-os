@@ -1759,6 +1759,19 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     let doorOut = null;
     try { doorOut = await require('./vendor/workingDoor').preTurn({ supabase, vendor, agentId, route: llmWiring && llmWiring.route, message: body, lane: 'whatsapp' }); }
     catch (e) { console.warn('[door:wa]', e && e.message); }
+    // LCV-9 PART ONE (R-44.37): THE CHAIN HAS LEFT THIS LANE. Where the door did not take the turn, its stand-in speaks
+    // (workingDoor.standIn reads the one switch, `vendor.working_chain_enabled`; only JSON true returns null and lets
+    // this turn fall to the chain as at 10d5d99). If even the stand-in is unreachable the founder's glitch line
+    // speaks from its one home: a failure here never calls the chain.
+    if (!(doorOut && doorOut.door)) {
+      try { const stood = await require('./vendor/workingDoor').standIn({ supabase, out: doorOut }); if (stood) doorOut = stood; }
+      catch (e) {
+        console.error('[door:wa stand-in]', e && e.message);
+        let glitch = null; try { glitch = require('../api/vendor-engine/chat').STAGE2_LINE_MUTATION || null; } catch (_e) { glitch = null; }
+        if (!glitch) { console.error('[door:wa stand-in] no line could be loaded; nothing sent, the chain NOT called (R-44.37)'); return; }
+        doorOut = { door: true, reply: glitch, keys: ['GLITCH'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, why: 'unreachable', stood: true };
+      }
+    }
     if (doorOut && doorOut.door) {
       try {
         const d = await require('./vendor/workingDoor').speakOnWhatsApp({ supabase, agentId, phone, convoId: convo.id, message: body, out: doorOut, sendWhatsApp });

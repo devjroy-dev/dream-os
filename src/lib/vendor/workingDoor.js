@@ -53,6 +53,16 @@
 // then REBUILT after the writes before them, reading the rows as they then stand, and only the rebuilt plan is
 // spoken or staged. An attach that did not land means NO money question and NO staged row.
 // F-44.100 rides this cut: a lead "name" made only of event words is no name (B18), except as the answer to B18.
+//
+// LCV-9 PART ONE (R-44.37, the founder, 21 September 2026: "why dont we shift victor out and then allow the code to
+// work"; R-44.38; the chair's ruling on the fourteen exits): THE CHAIN LEAVES THE WORKING ROOMS. preTurn() is
+// UNCHANGED in what it decides: it still answers { door: false, why } where the door does not take the turn. What
+// changed is what the lanes do with that verdict: they hand it to standIn(), which reads ONE switch
+// (admin_config `vendor.working_chain_enabled` through laneFlags.readLaneFlag, 60 s cache; ONLY JSON true is chain
+// in; absent, junk or a FAILED READ is CHAIN OUT) and, chain out, SPEAKS FOR THE DOOR so the chain is never called:
+// no act heard is LEFTOVER with two covered examples; an act the door does not cover is B34; a glitch is the
+// founder's vetoed glitch line; and the exits that know more say more (B32, B15, B30, F29 or D8). Chain in, standIn
+// returns null and the four sites behave as at 10d5d99. NOTHING IS WRITTEN on a stand-in turn.
 
 const DL = require('./doorLines');
 const PMA = require('./pendingMoneyActs');
@@ -74,7 +84,10 @@ const HANDS = Object.freeze({
   attach_package: 'attach_package',
 });
 
-const CHAIN = (ear, why) => ({ door: false, ear: ear || null, why });
+// `say` is what an exit KNOWS beyond its reason (the name that is no lead, the name that is no client, the money act);
+// the chain never reads it; standIn() does.
+const CHAIN = (ear, why, say) => ({ door: false, ear: ear || null, why, ...(say ? { say } : {}) });
+const CHAIN_FLAG = 'vendor.working_chain_enabled';
 const key = (s) => String(s == null ? '' : s).trim().toLowerCase();
 const digits = (n) => { const r = rupees(n); return r ? r.replace(/^Rs /, '') : null; };
 
@@ -220,7 +233,7 @@ async function planInvoice(supabase, vendor, agentId, act) {
     .eq('agent_id', agentId).eq('hidden', false);
   if (error || !Array.isArray(data)) return null;
   const hits = data.filter((b) => key(b.client) === key(name));
-  if (!hits.length) return null; // F-44.57: no binder, no byte; the whole message goes to the chain
+  if (!hits.length) return { noBinder: true, name }; // F-44.57, superseded by R-44.27: no binder is B15's, spoken by standIn(); chain in, the whole message still goes to the chain
   if (hits.length > 1) { const line = sameName(name, hits, (b) => b.date); return line ? { speak: line, key: 'B8', skipHarvest: true } : null; }
   const binder = hits[0];
   const client = String(binder.client || '').trim();
@@ -573,14 +586,14 @@ async function preTurn(args, depsIn) {
     for (const a of attaches) {
       const probe = await planAttach(supabase, vendor, a, nowMs, L);
       if (!probe) return CHAIN(st.ear, 'attach_unsayable');
-      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead');
+      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead', { name: probe.name });
     }
     const plans = [];
     for (const a of acts) {
-      if (a.act === 'invoice') { const p = await planInvoice(supabase, vendor, agentId, a); if (!p) return CHAIN(st.ear, 'invoice_unresolved'); plans.push({ act: a, plan: p }); }
+      if (a.act === 'invoice') { const p = await planInvoice(supabase, vendor, agentId, a); if (!p || p.noBinder) return CHAIN(st.ear, 'invoice_unresolved', p && p.noBinder ? { name: p.name } : null); plans.push({ act: a, plan: p }); }
     }
     let moneyPlan = null;
-    if (money.length) { moneyPlan = await planMoney(supabase, vendor, money[0], L); if (!moneyPlan) return CHAIN(st.ear, 'money_unsayable'); }
+    if (money.length) { moneyPlan = await planMoney(supabase, vendor, money[0], L); if (!moneyPlan) return CHAIN(st.ear, 'money_unsayable', { act: money[0].act }); }
 
     // 4 · act: leads first, then attaches, then invoices, then the one money act is staged and asked
     for (const lp of leadPlans) {
@@ -665,6 +678,59 @@ async function preTurn(args, depsIn) {
   }
 }
 
+// ── LCV-9 PART ONE · THE STAND-IN: what the door says when it did NOT take the turn and the chain is OUT ─────────
+// Called by both lanes with preTurn's verdict (or null when preTurn itself was unreachable). Returns null ONLY when
+// the switch reads JSON true (chain in: the lane falls to the chain as at 10d5d99). Otherwise a door answer, decided
+// from the verdict's reason and the listener's request, NEVER from her text:
+//   yes_no_nothing_waiting, or a request holding no act ......................... LEFTOVER + two covered examples
+//   a request holding ANY act outside COVERED (a mixed message included), lead_phone  B34
+//   every act covered but one names no client ...... LEFTOVER (the chair's ruling; B35 is with the founder)
+//   attach_no_lead B32 · invoice_unresolved with no binder B15 · attach_unsayable B30 · money_unsayable F29 or D8
+//   everything else (no seat, no request, a failed read, empty, an exception, no input) ... the glitch line
+// TOTAL: never throws; anything unexpected, chain out, is the glitch line. THE ONE READ of the switch and the ONE
+// read of the leftover builder in the estate are here.
+function standKey(out, L) {
+  try { return standKeyOf(out, L); } catch (_e) { return { key: 'GLITCH' }; }
+}
+function standKeyOf(out, L) {
+  const why = out && typeof out.why === 'string' ? out.why : null;
+  const say = out && out.say && typeof out.say === 'object' ? out.say : {};
+  const request = out && out.ear && out.ear.request && typeof out.ear.request === 'object' ? out.ear.request : null;
+  const acts = request && Array.isArray(request.acts) ? request.acts : null;
+  if (why === 'yes_no_nothing_waiting') return { key: 'LEFTOVER' };
+  if (why === 'lead_phone') return { key: 'B34' };
+  if (why === 'uncovered' && acts) {
+    if (!acts.length) return { key: 'LEFTOVER' };
+    if (acts.some((a) => !a || !COVERED.includes(a.act))) return { key: 'B34' };
+    return { key: 'LEFTOVER' };
+  }
+  if (why === 'attach_no_lead') { const line = DL.render('B32', { name: say.name }); return line ? { key: 'B32', line } : { key: 'B30' }; }
+  if (why === 'attach_unsayable') return { key: 'B30' };
+  if (why === 'invoice_unresolved' && typeof say.name === 'string') { const line = DL.render('B15', { name: say.name }); if (line) return { key: 'B15', line }; }
+  if (why === 'money_unsayable') { const k = say.act === 'milestone_paid' ? 'D8' : 'F29'; const line = L.lifecycle.LINES[k]; if (typeof line === 'string' && line) return { key: k, line }; }
+  return { key: 'GLITCH' };
+}
+async function standIn(args, depsIn) {
+  let chainIn = false;
+  const answer = (key, line, out) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: (out && out.ear) || null, why: (out && out.why) || 'unreachable', stood: true });
+  try {
+    const { supabase, out } = (args && typeof args === 'object') ? args : {};
+    const deps = (depsIn && typeof depsIn === 'object') ? depsIn : {};
+    try { chainIn = (await (deps.readLaneFlag || require('../laneFlags').readLaneFlag)(supabase, CHAIN_FLAG)) === true; } catch (_e) { chainIn = false; }
+    if (chainIn) return null;
+    if (out && out.door === true) return out;
+    const k = standKey(out, lazy(deps));
+    if (k.key === 'LEFTOVER') return answer('LEFTOVER', DL.leftover(COVERED, deps.rand), out);
+    if (k.key === 'GLITCH') return answer('GLITCH', glitchLine() || DL.LINES.B3, out);
+    return answer(k.key, k.line || DL.LINES[k.key], out);
+  } catch (e) {
+    try { console.warn('[door:standIn]', e && e.message); } catch (_e) { /* */ }
+    if (chainIn) return null;
+    let line = null; try { line = glitchLine(); } catch (_e) { line = null; }
+    return answer('GLITCH', line || DL.LINES.B3, null);
+  }
+}
+
 // THE WHATSAPP DOOR'S DELIVERY, ONE HOME. Called only once preTurn answered door: true. Every step runs in
 // its OWN guard and the function never throws, so the lane can RETURN after it and never reach the chain:
 // a failed send is a failed send, as it is on the chain today, never a second handler.
@@ -730,4 +796,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

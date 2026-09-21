@@ -1639,7 +1639,13 @@ await t('§13.11 R-29.34(a) — the DOOR\'S REAL HANDLER reaches the seat', asyn
   // THE FIXTURE IS DERIVED BY RUNNING THE DOOR AND READING WHERE IT STOPS —
   // three times, each barrier named by the instrumented dead-letter above. That
   // iteration IS the reachability work; six walks were lost to never doing it.
-  const world = { ...openWorld(),
+  // R-44.37 PLANT (CE-44 LCV-9 PART ONE; the chair's ruling of 21 September 2026, "THE OLD BENCHES"): this cell drives the
+  // REAL WhatsApp lane to prove the relay seat is reached, and the seat's only entrance on that lane is the chain, which
+  // from this cut answers a working-room turn ONLY when admin_config `vendor.working_chain_enabled` is JSON true. The
+  // plant is that ONE real row in this cell's own world; this double filters for real, so laneFlags reads it as
+  // production does. NO ASSERTION IS CHANGED. Chain OUT, "send a message to my client" speaks B34 (b93 3.1, 11.5) until
+  // P6b routes relay from the door.
+  const world = { admin_config: [{ key: 'vendor.working_chain_enabled', value: 'true' }], ...openWorld(),
     vendors: [{ id: 'v1', phone: '+919888294440', business_name: 'S', tier: 'prestige',
                 user_id: 'u1', category: 'mua' }],
     users: [{ id: 'u1', phone: '+919888294440', name: 'Dev', vendor_id: 'v1' }],

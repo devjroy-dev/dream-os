@@ -3543,7 +3543,15 @@ async function doorTurn(req, llmWiring, message, roomAssert) {
   let out = null;
   try {
     out = await require('../../lib/vendor/workingDoor').preTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId, route: llmWiring && llmWiring.route, message, lane: 'pwa' });
-  } catch (e) { console.warn('[door:pwa]', e && e.message); return null; }
+  } catch (e) { console.warn('[door:pwa]', e && e.message); out = null; }
+  // LCV-9 PART ONE (R-44.37): THE CHAIN HAS LEFT THIS ROOM. Where the door did not take the turn, its stand-in speaks
+  // (workingDoor.standIn: the one switch, `vendor.working_chain_enabled`, is read THERE; only JSON true returns null
+  // and lets this turn fall to the chain as at 10d5d99). If even the stand-in is unreachable the founder's glitch
+  // line speaks: a failure here never calls the chain.
+  if (!(out && out.door)) {
+    try { const stood = await require('../../lib/vendor/workingDoor').standIn({ supabase: req.app.locals.supabase, out }); if (stood) out = stood; }
+    catch (e) { console.error('[door:pwa stand-in]', e && e.message); out = { door: true, reply: STAGE2_LINE_MUTATION, keys: ['GLITCH'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, why: 'unreachable', stood: true }; }
+  }
   // Once the door has answered, the turn is the door's to the end: a failed persist is logged, never a chain turn.
   if (out && out.door) {
     try { await require('../../lib/vendor/workingDoor').persistDoorTurn({ supabase: req.app.locals.supabase, agentId: req.agentId, message, out, lane: 'pwa' }); }

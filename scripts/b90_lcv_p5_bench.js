@@ -177,6 +177,11 @@ async function main() {
     B28: 'That delivery date cannot be right. Say it like 5 December 2027.',
     B29: 'This couple is booked. The package is fixed on their invoice.',
     B30: 'Could not attach the package.',
+    // RE-PINNED (CE-44 LCV-9 PART ONE, R-44.37): the cut in which the chain leaves brings B15 (R-44.27, his; "owed by the
+    // last packet" meant this one, the chair's ruling), B32 (R-44.36, his) and B34 (R-44.38, his "yes"). B31 and B33 are Part Two's.
+    B15: 'Could not make the invoice. No client called {name}.',
+    B32: 'Could not attach the package. No lead called {name}. Add the lead first.',
+    B34: 'I cannot do that by message yet. Use the app for it.',
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -196,6 +201,9 @@ async function main() {
     B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
     B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986', B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
     B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
+    B15: 'f5a96043bb86272066b085f699a88d0aa4adbeb04871d6b95ea59e7f56db5ab0',
+    B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
+    B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };
@@ -203,7 +211,10 @@ async function main() {
   T('1.2 no byte beyond the ruled set lives in the home', Object.keys(DL.LINES).sort().join() === Object.keys(RULED).sort().join());
   T('1.3 F-44.54: the first example is "The Sharma booking is confirmed"; the withdrawn wording is gone', DL.EXAMPLES[0] === 'The Sharma booking is confirmed' && !src('src/lib/vendor/doorLines.js').includes("'The Sharma wedding is confirmed for 5 December, fee 60,000'") && DL.EXAMPLES.length === 12);
   T('1.4 the twelve examples are hash-pinned one by one', DL.EXAMPLES.every((e, i) => DL.EXAMPLE_HASHES[i] === sha(e)));
-  T('1.5 the leftover line and its examples are CARRIED UNUSED (R-44.21 (a)): nothing in the door reads them', !/LEFTOVER|EXAMPLES/.test(src('src/lib/vendor/workingDoor.js')) && !/LEFTOVER|EXAMPLES/.test(src('src/api/vendor-engine/chat.js')) && !/LEFTOVER|EXAMPLES/.test(src('src/lib/vendorInbound.js')));
+  // 1.5 REVERSED (CE-44 LCV-9 PART ONE; R-44.37, the founder, 21 September 2026: the chain leaves the working rooms NOW, so
+  // R-44.21 (a)'s "carried unused" is superseded). It asserted that NOTHING read the leftover line; it now pins that it is
+  // read in exactly ONE place: workingDoor.js calls the one builder ONCE and names neither constant; the lanes name nothing.
+  T('1.5 the leftover line and its examples are LIVE and read in exactly ONE place (R-44.37): workingDoor.js calls DL.leftover( once; chat.js and vendorInbound.js never name LEFTOVER or EXAMPLES', (src('src/lib/vendor/workingDoor.js').match(/DL\.leftover\(/g) || []).length === 1 && !/DL\.EXAMPLES|DL\.LINES\.LEFTOVER/.test(src('src/lib/vendor/workingDoor.js')) && !/LEFTOVER|EXAMPLES/.test(src('src/api/vendor-engine/chat.js')) && !/LEFTOVER|EXAMPLES/.test(src('src/lib/vendorInbound.js')));
   T('1.6 byte 13 with a client is V1 exactly', DL.invoiceReady('TDW/DEV440/11', 'Tandon') === 'Invoice TDW/DEV440/11 for Tandon is ready. Find it in the invoices list.');
   T('1.7 byte 13 with no client is V1_NOCLIENT exactly (the conditional kept)', DL.invoiceReady('TDW/DEV440/11', null) === 'Invoice TDW/DEV440/11 is ready. Find it in the invoices list.');
   T('1.8 a template with a missing slot renders null, never a half sentence', DL.render('B2', { client: 'Meera' }) === null && DL.render('B99', {}) === null);
@@ -664,9 +675,14 @@ async function main() {
   L1 = await lapsed('no', ASKED);
   T('13.2 a LAPSED NO: the door answers B14, runTurn NOT called', L1.w2.turns === 0 && L1.w2.sent.some((x) => x.text === DL.LINES.B14));
   L1 = await lapsed('yes', { listener: { door: true, lane: 'whatsapp' } });
-  T('13.3 a yes after a DECLINE (the last row is the door\'s B3, not a question): the chain answers, as ruled', L1.w2.turns === 1);
+  // 13.3 AND 13.4 REVERSED (CE-44 LCV-9 PART ONE; R-44.37 and the chair's ruling on the fourteen exits: a bare yes or no with
+  // nothing waiting is case (i)). They asserted the CHAIN answered (turns === 1); the chain has left this lane, so the door's
+  // stand-in answers with the founder's leftover line and runTurn is called ZERO times. The strength is kept: same drive,
+  // same real lane, same spy, and the line she is sent is now pinned too.
+  const leftoverSent = (x) => x.w2.turns === 0 && x.w2.sent.length === 1 && x.w2.sent[0].text.split('\n')[0] === DL.LINES.LEFTOVER && x.w2.sent[0].text.split('\n').length === 3;
+  T('13.3 a yes after a DECLINE (the last row is the door\'s B3, not a question): the door answers LEFTOVER with two examples, runTurn NOT called (R-44.37)', leftoverSent(L1));
   L1 = await lapsed('yes', null);
-  T('13.4 a yes where a CHAIN turn came between (the last row is Victor\'s): the chain answers, as ruled', L1.w2.turns === 1);
+  T('13.4 a yes where another turn came between (the last row is not the door\'s question): the door answers LEFTOVER, runTurn NOT called (R-44.37)', leftoverSent(L1));
   T('13.5 the door\'s question is known from its OWN meta: persistDoorTurn marks asked only on B1 or B2', /const asked = \(Array\.isArray\(out\.keys\) \? out\.keys : \[\]\)\.find\(\(k\) => k === 'B1' \|\| k === 'B2'\)/.test(src('src/lib/vendor/workingDoor.js')));
   m = await withMutated('src/lib/vendor/workingDoor.js', [['    return !!l && l.door === true && (l.asked === \'B1\' || l.asked === \'B2\');', '    return false;']], [], async (rq) => {
     const d = makeDb(world()); lastRow(d, ASKED);

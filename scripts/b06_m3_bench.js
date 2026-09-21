@@ -147,6 +147,31 @@ H('§2 — F-06.17 + F-06.29: THE FIREWALL ON THE REAL WIRE');
 
 // A stub estate: chainable, table-keyed, deliberately dumb. It answers the door's queries
 // and nothing more.
+// ── R-44.37 PLANT (CE-44 LCV-9 PART ONE; the chair's ruling of 21 September 2026, "THE OLD BENCHES") ─────────────────
+// This bench drives the REAL vendor WhatsApp lane to test machinery that STAYS: the chain, which still serves the
+// Advisor room and the switch's other position. From this cut the chain answers a working-room turn ONLY when
+// admin_config `vendor.working_chain_enabled` is JSON true (src/lib/laneFlags.js; read in workingDoor.standIn). The
+// plant is that ONE row in THIS bench's own admin_config double, every other key answered as before. NO ASSERTION
+// IS CHANGED OR WEAKENED. The default position (key absent, junk, read failing: chain OUT) is b93's to prove.
+function plantChainIn(sb) {
+  const realFrom = sb.from;
+  sb.from = function plantedFrom(table, ...rest) {
+    const real = realFrom.call(sb, table, ...rest);
+    if (table !== 'admin_config') return real;
+    // every other read of admin_config (another key, an .in() list) goes to the double exactly as before
+    const realSelect = real.select;
+    real.select = function plantedSelect(...cols) {
+      const q = realSelect.apply(real, cols); const realEq = q.eq;
+      q.eq = function plantedEq(col, key) {
+        if (col === 'key' && key === 'vendor.working_chain_enabled') return { maybeSingle: async () => ({ data: { value: 'true' }, error: null }) };
+        q.eq = realEq; return realEq.call(q, col, key);
+      };
+      return q;
+    };
+    return real;
+  };
+  return sb;
+}
 function stubEstate() {
   const sent = [];
   const rows = {
@@ -163,7 +188,7 @@ function stubEstate() {
     api.then = (res) => res({ data: rows[table] ? [rows[table]] : [], error: null });
     return api;
   };
-  return { sent, supabase: { from: chain, schema: () => ({ from: chain }) } };
+  return { sent, supabase: plantChainIn({ from: chain, schema: () => ({ from: chain }) }) }; // R-44.37 PLANT, labelled above
 }
 
 function doorDeps({ reply, sent, supabase }) {

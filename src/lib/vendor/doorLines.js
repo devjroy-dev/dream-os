@@ -20,8 +20,12 @@
 // Byte 13's no-client form is DERIVED here by dropping " for {client}", exactly as the WhatsApp
 // lane's conditional has always rendered it (b80 V1_NOCLIENT), so both lanes speak one sentence.
 //
-// THE LEFTOVER LINE AND ITS TWELVE EXAMPLES ARE CARRIED, PINNED AND UNUSED (R-44.21 (a), the chair's
-// amendment): they switch on the day the chain leaves the working rooms, not before.
+// THE LEFTOVER LINE AND ITS EXAMPLES WENT LIVE AT LCV-9 PART ONE (R-44.37, the founder, 21 September 2026: the chain
+// leaves the working rooms NOW; R-44.21 (a)'s "carried unused" is superseded). They are read through ONE builder,
+// leftover() below, and the door calls it in ONE place. AN EXAMPLE IS SHOWN ONLY WHEN THE DOOR COVERS ITS ACT:
+// EXAMPLE_ACTS carries example → act, so each later packet switches its example on by covering its act.
+// B15 (R-44.27, his; owed by the packet in which the chain leaves, which is this one), B32 (R-44.36) and B34
+// (R-44.38, his "yes" to the chair's proposal) entered with the same cut. B31 and B33 enter with Part Two.
 //
 // TOTAL: render() and every line builder below never throw; a slot that cannot be filled yields null
 // and the caller speaks nothing from it (the door then stands aside to the chain).
@@ -57,6 +61,9 @@ const LINES = Object.freeze({
   B13: "Invoice {number} for {client} is ready. Find it in the invoices list.",
   // a bare yes or no answering the door's OWN question after it lapsed (F-44.58; R-44.22 (a), his, verbatim)
   B14: "That request timed out. Nothing was changed. Say it again.",
+  // an invoice asked for a name no client carries (R-44.27, his, verbatim; F-44.57's ruling superseded). No-hits ONLY:
+  // a read that failed is not a name that does not exist.
+  B15: "Could not make the invoice. No client called {name}.",
   // P6a-1 · a lead filed by the door, no date (R-44.34)
   B16: "Lead added: {client}.",
   // a lead filed by the door with its wedding date
@@ -91,12 +98,16 @@ const LINES = Object.freeze({
   // REUSE, not a new veto (the chair's ruling, 21 September): bytes IDENTICAL to dreamos-pwa lib/worklist/packages.ts:73
   // (attachFailed; that file's header records his veto of 2026-09-17 on every string in the LC-2 read-first). Spoken for
   // attachPackage's 500, bad_package, no_fee and invalid, and for any throw.
-  // B31 (the which-package question) and B32 (no lead called {name}, for an attach) are WITH THE FOUNDER; their keys stay
-  // free until his word comes back verbatim. Nothing is built on them.
+  // B31 (the which-package question, his at R-44.36) and B33 enter with LCV-9 Part Two; their keys stay free until then.
   B30: "Could not attach the package.",
+  // an attach whose client is no lead of hers (R-44.36, HIS, verbatim: "yes to your open earlirr questions")
+  B32: "Could not attach the package. No lead called {name}. Add the lead first.",
+  // an act HEARD that the door does not cover yet, a mixed message holding one, or a lead carrying a phone-shaped
+  // number (R-44.38, HIS: the chair proposed the byte and his word was "yes"). Nothing is written on such a turn.
+  B34: "I cannot do that by message yet. Use the app for it.",
   // a booking made (vetoed CE-43, TDW_CE43_LC2_P3_HANDOVER.md:173; homeless until P5)
   D1: "Booked: {client}. Client, event and invoice {number} are ready.",
-  // R-44.18; CARRIED UNUSED until the chain leaves the working rooms (R-44.21 (a))
+  // R-44.18; LIVE since LCV-9 Part One (R-44.37): spoken when NO ACT was heard, followed by two covered examples
   LEFTOVER: "I didn't catch a task in that. You can say things like:",
 });
 
@@ -117,6 +128,13 @@ const EXAMPLES = Object.freeze([
   "Assign Harsh to the 14 February shoot",
 ]);
 
+// EXAMPLE → ACT, BY POSITION (LCV-9 Part One, the chair's kickoff): the listener's act each example asks for. An example
+// is shown only when the door COVERS its act today. attach_package has no example until he approves one.
+const EXAMPLE_ACTS = Object.freeze([
+  'booking_confirmed', 'advance_paid', 'date', 'block_date', 'edit_event', 'invoice',
+  'find', 'whatsdue', 'lead', 'relay', 'assign_crew', 'assign_crew',
+]);
+
 const LINE_HASHES = Object.freeze({
   B1: '1fb5297d3c1193543d8385e514fe42b1856be16deb6cabf2e83cf036169ed4ba',
   B2: 'cd29bd0dfbde4e0dba9cf4df73e12bc7b69880aea0337562e77d96228e8259eb',
@@ -132,6 +150,7 @@ const LINE_HASHES = Object.freeze({
   B12: '7723dc04452784fe3c6e7b1e9d145fa1323048aaa39da70a9d52aeae2c22ee09',
   B13: '45f9284524fc2546d8ca5a34ae51d036efc1a887f2104a35a473e283dda9658c',
   B14: '68dbaf45c2129785ac3e0644f30973d1ee8a8d3838313a6069b3417b8a4b2249',
+  B15: 'f5a96043bb86272066b085f699a88d0aa4adbeb04871d6b95ea59e7f56db5ab0',
   B16: 'a7fe91f49891ed319667b750d32ddcd55dabda117f328f7f0712f685c20b3830',
   B17: 'b332f4de8e4698181a5d67735814f183a25319abdfa568c3e56b4040f24e8927',
   B18: 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0',
@@ -147,6 +166,8 @@ const LINE_HASHES = Object.freeze({
   B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
   B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
   B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
+  B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
+  B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });
@@ -173,6 +194,7 @@ function assertLineHashes() {
   if (Object.keys(LINE_HASHES).length !== Object.keys(LINES).length) drift.push('key set');
   EXAMPLES.forEach((e, i) => { if (EXAMPLE_HASHES[i] !== sha256(e)) drift.push(`EXAMPLE ${i + 1}`); });
   if (EXAMPLE_HASHES.length !== EXAMPLES.length) drift.push('example count');
+  if (EXAMPLE_ACTS.length !== EXAMPLES.length) drift.push('example acts');
   if (drift.length) throw new Error('doorLines.js: APPROVED COPY DRIFT (R-44.21, hash-carried). An edit to a founder byte is a FRESH VETO: ' + drift.join(', '));
   return true;
 }
@@ -262,7 +284,21 @@ function invoiceNumbers(client, numbers) {
   } catch (_e) { return null; }
 }
 
+// THE LEFTOVER REPLY, ONE BUILDER (R-44.37): the founder's line, then TWO of his examples chosen at random, each on
+// its own line, ONLY from examples whose act is in `covered`. One covered example shows one; none shows the line
+// alone. `rand` is a seam for the bench (a function returning [0, 1)). TOTAL: anything hostile yields the line alone.
+function leftover(covered, rand) {
+  try {
+    const cov = Array.isArray(covered) ? covered : [];
+    const pool = EXAMPLES.filter((_e, i) => cov.includes(EXAMPLE_ACTS[i]));
+    const r = () => { try { const x = typeof rand === 'function' ? rand() : Math.random(); return (typeof x === 'number' && x >= 0 && x < 1) ? x : 0; } catch (_e) { return 0; } };
+    const picked = [];
+    while (picked.length < 2 && pool.length) picked.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+    return [LINES.LEFTOVER, ...picked].join('\n');
+  } catch (_e) { return LINES.LEFTOVER; }
+}
+
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
