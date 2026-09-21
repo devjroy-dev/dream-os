@@ -6,7 +6,9 @@
 // except no. 3"); D1 his from the CE-43 veto record (TDW_CE43_LC2_P3_HANDOVER.md:173), homeless in
 // code until now; B14 his at R-44.22 (a) (F-44.58); B1 and B2 end "Reply YES or NO." by his word at R-44.24; the leftover line and its twelve examples R-44.18's, the first reworded by his
 // yes at R-44.21 (e) (F-44.54). D3 to D8 and F29 are NOT here: they keep their one home in
-// lifecycleHands.js LINES and the door reads them from there.
+// lifecycleHands.js LINES and the door reads them from there. B16 to B21 (P6a-1, the lead half) his at
+// R-44.34 ("yes to all", 21 September 2026), carried verbatim from TDW_CE44_LCV6_SEAT_CLOSE.md §4.
+// B15's key is owed by the last packet and stays free. B22 to B29 arrive with P6a-2.
 //
 // HASH-CARRIED, AS victorLines.js IS (CE-207): each template is frozen as bytes; LINE_HASHES pins the
 // sha256 of each as a literal; assertLineHashes() runs AT LOAD, so a process that requires this file
@@ -54,6 +56,18 @@ const LINES = Object.freeze({
   B13: "Invoice {number} for {client} is ready. Find it in the invoices list.",
   // a bare yes or no answering the door's OWN question after it lapsed (F-44.58; R-44.22 (a), his, verbatim)
   B14: "That request timed out. Nothing was changed. Say it again.",
+  // P6a-1 · a lead filed by the door, no date (R-44.34)
+  B16: "Lead added: {client}.",
+  // a lead filed by the door with its wedding date
+  B17: "Lead added: {client} · {date}.",
+  // a lead act with no name
+  B18: "Who is the lead? Say the name.",
+  // createLead answered deduped: the number is on a lead already ({client} from the RETURNED row)
+  B19: "That number is already on {client}. Nothing new was added.",
+  // createLead refused, or the write failed
+  B20: "Could not add the lead.",
+  // a wedding date in the past, or outside this year through five years on (F-44.66)
+  B21: "That wedding date cannot be right. Say it like 5 December 2027.",
   // a booking made (vetoed CE-43, TDW_CE43_LC2_P3_HANDOVER.md:173; homeless until P5)
   D1: "Booked: {client}. Client, event and invoice {number} are ready.",
   // R-44.18; CARRIED UNUSED until the chain leaves the working rooms (R-44.21 (a))
@@ -92,6 +106,12 @@ const LINE_HASHES = Object.freeze({
   B12: '7723dc04452784fe3c6e7b1e9d145fa1323048aaa39da70a9d52aeae2c22ee09',
   B13: '45f9284524fc2546d8ca5a34ae51d036efc1a887f2104a35a473e283dda9658c',
   B14: '68dbaf45c2129785ac3e0644f30973d1ee8a8d3838313a6069b3417b8a4b2249',
+  B16: 'a7fe91f49891ed319667b750d32ddcd55dabda117f328f7f0712f685c20b3830',
+  B17: 'b332f4de8e4698181a5d67735814f183a25319abdfa568c3e56b4040f24e8927',
+  B18: 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0',
+  B19: 'ec10d50e073b11a83206a1c89c276be61f0e476bee762671d383820d74ecfaf8',
+  B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653',
+  B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });

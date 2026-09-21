@@ -15,7 +15,9 @@
 // It REUSES witnessLine's istDay idea only through its own IST arithmetic, and renders nothing.
 //
 // TOTAL: resolveSpokenDate never throws. It answers { ok: true, iso } or { ok: false, reason } where
-// reason is 'none' (nothing was said: the door asks B6) or 'unreadable' (the door says B7).
+// reason is 'none' (nothing was said: the door asks B6), 'unreadable' (the door says B7), or, since F-44.98,
+// 'year' (read, but the year lies outside 1900 to 2100). The MONEY paths map every reason but 'none' to B7, as
+// before; the LEAD path maps 'year' to B21.
 
 const IST_MS = 5.5 * 60 * 60 * 1000;
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
@@ -26,7 +28,13 @@ function todayIstIso(nowMs) {
 }
 
 function pad(n) { return String(n).padStart(2, '0'); }
-function iso(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
+// F-44.98 (CE-44 LCV-7, P6a-1 r3): the YEAR is padded to four digits too. Before this, a year typed "0227" was
+// parsed as 227 and left this file as "227-03-15", a malformed date that no reader could order or range-check.
+function iso(y, m, d) { return `${String(y).padStart(4, '0')}-${pad(m)}-${pad(d)}`; }
+// F-44.98: the resolved year must lie in 1900 to 2100, in EVERY direction. A day and month read cleanly with an
+// absurd year is not "unreadable": it was read, and it is wrong, so it answers its OWN reason, 'year'.
+const YEAR_MIN = 1900;
+const YEAR_MAX = 2100;
 function real(y, m, d) {
   if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return false;
   if (m < 1 || m > 12 || d < 1 || d > 31) return false;
@@ -75,6 +83,12 @@ function pickMonth(today, d, direction) {
 function resolveSpokenDate(spoken, opts) {
   const r = resolveRaw(spoken, opts);
   try {
+    if (r.ok) {
+      const ym = /^(\d{4})-\d{2}-\d{2}$/.exec(typeof r.iso === 'string' ? r.iso : '');
+      if (!ym) return { ok: false, reason: 'unreadable' };
+      const year = Number(ym[1]);
+      if (year < YEAR_MIN || year > YEAR_MAX) return { ok: false, reason: 'year' };
+    }
     const past = !!opts && typeof opts === 'object' && opts.direction === 'past';
     if (r.ok && past) {
       const o = opts;
@@ -88,6 +102,10 @@ function resolveSpokenDate(spoken, opts) {
 function resolveRaw(spoken, opts) {
   try {
     const o = (opts && typeof opts === 'object') ? opts : {};
+    // F-44.64 (CE-44 LCV-7, P6a-1): a direction is EXACTLY 'past' or 'future'. Absent, it is 'future' (F-44.46's
+    // default, as this file's header has always said). Present and anything else, it is refused to byte 7: a typo
+    // such as 'Past' or 'backward' must never quietly resolve forward. The line below it is left byte-identical.
+    if (o.direction !== undefined && o.direction !== 'past' && o.direction !== 'future') return { ok: false, reason: 'unreadable' };
     const direction = o.direction === 'past' ? 'past' : 'future';
     const today = (typeof o.todayIso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.todayIso)) ? o.todayIso : todayIstIso(o.nowMs);
     if (spoken === undefined || spoken === null) return { ok: false, reason: 'none' };

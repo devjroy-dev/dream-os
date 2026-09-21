@@ -30,15 +30,26 @@
 //
 // TOTAL: preTurn() never throws. Anything unexpected is { door: false }: the chain answers her,
 // byte-identical to the estate before P5.
+//
+// P6a-1 (CE-44 LCV-7, the lead half; design accepted at the LCV-6 seat close §5, the chair's rulings of
+// 21 September): the door learns `lead`. It calls createLead (leads.js) AS IT STANDS; no new writer, and
+// the recorded tool call keeps the name donna_lead (the P6a read-first §1.2, ruled). Source by lane: 'self'
+// on the pwa, 'whatsapp' on WhatsApp. wedding_date_precision 'day' is passed ONLY beside a resolved date
+// (leads.js :335 to :339). A lead act with no name asks B18; what else she said rides the thread the
+// listener already reads (listenerDoor.js threadText, meta.listener.request). ORDER: leads, then invoices,
+// then the ONE money act; every act is resolved read-only before the first write.
+// THE PHONE GUARD (F-44.96, the chair's ruling): the listener hears no phone, so a lead message carrying a
+// phone-shaped number is NOT the door's; the WHOLE message goes to the chain, which files the number as
+// today. Owed before the chain leaves: EAR_TOOL gains phone_as_spoken and this guard goes in that cut.
 
 const DL = require('./doorLines');
 const PMA = require('./pendingMoneyActs');
-const { resolveSpokenDate } = require('./spokenDate');
+const { resolveSpokenDate, todayIstIso } = require('./spokenDate');
 const { longDateYear, istDay, rupees } = require('../witnessLine');
 
 const HEAR_BEFORE_REPLY_MS = 4000;
 const MONEY_ACTS = Object.freeze(['booking_confirmed', 'advance_paid', 'milestone_paid']);
-const COVERED = Object.freeze([...MONEY_ACTS, 'invoice']);
+const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead']);
 // THE ACT TABLE'S IMAGE: every hand the door can run, and nothing else. b90 pins that it never holds
 // donna_client, donna_stage, donna_money or donna_money_edit (item 1, option (i)).
 const HANDS = Object.freeze({
@@ -46,6 +57,7 @@ const HANDS = Object.freeze({
   advance_paid: 'donna_booking',
   milestone_paid: 'donna_milestone_paid',
   invoice: 'donna_invoice_pdf',
+  lead: 'donna_lead',
 });
 
 const CHAIN = (ear, why) => ({ door: false, ear: ear || null, why });
@@ -54,6 +66,7 @@ const digits = (n) => { const r = rupees(n); return r ? r.replace(/^Rs /, '') : 
 
 function lazy(deps) {
   return {
+    createLead: deps.createLead || ((...a) => require('./leads').createLead(...a)),
     lifecycle: deps.lifecycle || require('./lifecycleHands'),
     listener: deps.listener || require('./listenerDoor'),
     generateInvoiceForBinder: deps.generateInvoiceForBinder || ((...a) => require('../../api/vendor/invoices').generateInvoiceForBinder(...a)),
@@ -66,8 +79,23 @@ function lazy(deps) {
 function allCovered(request) {
   try {
     if (!request || typeof request !== 'object' || !Array.isArray(request.acts) || !request.acts.length) return false;
+    // P6a-1, THE LEAD EXCEPTION, a branch ABOVE the untouched return: a `lead` act may name no one (the door
+    // asks B18); every other act beside it still needs its client, exactly as the return below demands.
+    if (request.acts.some((a) => a && a.act === 'lead')) {
+      return request.acts.every((a) => a && COVERED.includes(a.act) && (a.act === 'lead' || (typeof a.client_as_spoken === 'string' && !!a.client_as_spoken.trim())));
+    }
     return request.acts.every((a) => a && COVERED.includes(a.act) && typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim());
   } catch (_e) { return false; }
+}
+
+// ── THE PHONE GUARD (F-44.96) ─────────────────────────────────────────────────────────────────────
+// Phone-shaped: ten digits beginning 6 to 9, optionally after +91, 91 or 0, written whole or in the usual
+// groups (5 5, 3 3 4, 4 3 3) with one space or hyphen between groups. Not preceded or followed by a letter,
+// digit or '/', so an invoice number (TDW/DEV440/24), a date (2026-09-21, 21/09/2026), a year or an amount
+// in Indian grouping (Rs 1,20,000) does not trip it. TOTAL: anything that is not a string is false.
+const PHONE_RE = /(?<![A-Za-z0-9/+])(?:\+91[\s-]?|91[\s-]?|0)?(?:[6-9]\d{9}|[6-9]\d{4}[\s-]\d{5}|[6-9]\d{2}[\s-]\d{3}[\s-]\d{4}|[6-9]\d{3}[\s-]\d{3}[\s-]\d{3})(?![A-Za-z0-9/])/;
+function phoneShaped(text) {
+  try { return typeof text === 'string' && PHONE_RE.test(text); } catch (_e) { return false; }
 }
 
 // ── reads ─────────────────────────────────────────────────────────────────────────────────────────
@@ -188,6 +216,56 @@ async function planInvoice(supabase, vendor, agentId, act) {
   const live = invs.filter((i) => i.state !== 'cancelled' && i.invoice_number);
   if (live.length > 1) { const line = DL.invoiceNumbers(client, live.map((i) => i.invoice_number)); return line ? { speak: line, key: 'B10' } : null; }
   return { invoice: { binder, client } };
+}
+
+// ── P6a-1 · a lead: resolved read-only to a PLAN; written only after every act has resolved ─────────
+// { speak, key } for B18, B7 or B21, or { lead: { name, wedding_date|null } } to be filed.
+// F-44.66: a wedding date strictly before today in IST, or in a year outside today's IST year through
+// today's plus five, is B21. An unreadable one is B7. Direction 'future' (F-44.46).
+// TOTAL (the chair's ruling on r2): a non-object act, or one whose reads throw, answers B20, which is truthful.
+const LEAD_ISO = /^(\d{4})-\d{2}-\d{2}$/;
+function planLead(act, nowMs) {
+  try {
+    if (!act || typeof act !== 'object') return { speak: DL.LINES.B20, key: 'B20' };
+    const name = typeof act.client_as_spoken === 'string' ? act.client_as_spoken.trim() : '';
+    // B18 skips harvest, as B8 does: the door asked WHO, so nothing she said may be patched onto another draft.
+    if (!name) return { speak: DL.LINES.B18, key: 'B18', skipHarvest: true };
+    if (typeof act.date_as_spoken !== 'string' || !act.date_as_spoken.trim()) return { lead: { name, wedding_date: null } };
+    const d = resolveSpokenDate(act.date_as_spoken, { direction: 'future', nowMs });
+    // F-44.98: a date read with an absurd year ("15 March 0227", his own walk of 20 September) is B21, not B7.
+    if (!d.ok) return d.reason === 'year' ? { speak: DL.LINES.B21, key: 'B21' } : { speak: DL.LINES.B7, key: 'B7' };
+    // The year is parsed STRICTLY; a date that does not match is B21, never passable (a NaN compares false).
+    const m = LEAD_ISO.exec(typeof d.iso === 'string' ? d.iso : '');
+    const t = LEAD_ISO.exec(todayIstIso(nowMs));
+    if (!m || !t) return { speak: DL.LINES.B21, key: 'B21' };
+    const y = Number(m[1]); const y0 = Number(t[1]);
+    if (d.iso < t[0] || y < y0 || y > y0 + 5) return { speak: DL.LINES.B21, key: 'B21' };
+    return { lead: { name, wedding_date: d.iso } };
+  } catch (_e) { return { speak: DL.LINES.B20, key: 'B20' }; }
+}
+
+// File one planned lead through createLead AS IT STANDS. Every name and date she reads comes from the
+// ROW createLead returned (B19's {client} above all: the lead that holds the number, not what she said).
+// TOTAL (the chair's ruling on r2): anything thrown, createLead's own throw included, answers B20 and is recorded
+// refused:exception (a code handResult.js already holds for donna_lead). The door has already marked the turn as
+// written before calling this, so B20 is the door's to the end either way.
+async function fileLead(supabase, vendor, lane, plan, L) {
+  let input = null;
+  try {
+    const p = plan.lead;
+    input = { name: p.name, source: lane === 'pwa' ? 'self' : 'whatsapp', ...(p.wedding_date ? { wedding_date: p.wedding_date, wedding_date_precision: 'day' } : {}) };
+    const out = await L.createLead(supabase, vendor.id, input);
+    const row = out && out.lead && typeof out.lead === 'object' ? out.lead : null;
+    const client = row && typeof row.name === 'string' && row.name.trim() ? row.name.trim() : null;
+    if (!out || out.ok !== true || !row || !client) return { line: DL.LINES.B20, key: 'B20', call: { name: HANDS.lead, input, result: 'refused:write_failed' }, landed: false };
+    if (out.deduped === true) {
+      const line = DL.render('B19', { client });
+      return { line: line || DL.LINES.B20, key: line ? 'B19' : 'B20', call: { name: HANDS.lead, input, result: 'unchanged' }, landed: false };
+    }
+    // B17 only when the returned row carries a date the door can say; otherwise B16. Both render from the row.
+    const dated = row.wedding_date ? DL.render('B17', { client, date: longDateYear(row.wedding_date) }) : null;
+    return { line: dated || DL.render('B16', { client }), key: dated ? 'B17' : 'B16', call: { name: HANDS.lead, input, result: 'lead_created' }, landed: true };
+  } catch (_e) { return { line: DL.LINES.B20, key: 'B20', call: { name: HANDS.lead, input, result: 'refused:exception' }, landed: false }; }
 }
 
 // ── apply a live row on her yes, through lifecycleHands' one helper ────────────────────────────────
@@ -330,10 +408,14 @@ async function preTurn(args, depsIn) {
       { ...(deps.llmCreate ? { llmCreate: deps.llmCreate } : {}), timeoutMs: Number.isFinite(deps.hearMs) ? deps.hearMs : HEAR_BEFORE_REPLY_MS });
     if (!st.ear || !st.ear.request) return CHAIN(st.ear, 'no_request');
     if (!allCovered(st.ear.request)) return CHAIN(st.ear, 'uncovered');
+    // F-44.96's guard: a lead whose message carries a phone-shaped number goes WHOLE to the chain, which files it.
+    if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');
 
     // 3 · resolve every act first, read-only; any act the door cannot say sends the WHOLE message to the chain
     const acts = st.ear.request.acts;
     const money = acts.filter((a) => MONEY_ACTS.includes(a.act));
+    const leadPlans = [];
+    for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs));
     const plans = [];
     for (const a of acts) {
       if (a.act === 'invoice') { const p = await planInvoice(supabase, vendor, agentId, a); if (!p) return CHAIN(st.ear, 'invoice_unresolved'); plans.push({ act: a, plan: p }); }
@@ -341,7 +423,15 @@ async function preTurn(args, depsIn) {
     let moneyPlan = null;
     if (money.length) { moneyPlan = await planMoney(supabase, vendor, money[0], L); if (!moneyPlan) return CHAIN(st.ear, 'money_unsayable'); }
 
-    // 4 · act: invoices first (they speak first), then the one money act is staged and asked
+    // 4 · act: leads first, then invoices, then the one money act is staged and asked
+    for (const lp of leadPlans) {
+      if (lp.speak) { st.lines.push(lp.speak); st.keys.push(lp.key); if (lp.skipHarvest) st.skipHarvest = true; continue; }
+      st.wrote = true; // a lead may land inside the call even if the call then throws
+      if (!st.fallback) st.fallback = DL.LINES.B20;
+      const f = await fileLead(supabase, vendor, lane, lp, L);
+      st.lines.push(f.line); st.keys.push(f.key); st.toolCalls.push(f.call);
+      if (f.landed) st.refresh = true;
+    }
     for (const { plan } of plans) {
       if (plan.speak) { st.lines.push(plan.speak); st.keys.push(plan.key); if (plan.skipHarvest) st.skipHarvest = true; continue; }
       st.wrote = true; // an invoice may be minted inside the call, even if the call then fails
@@ -452,4 +542,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
