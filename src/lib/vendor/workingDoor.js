@@ -63,6 +63,14 @@
 // no act heard is LEFTOVER with two covered examples; an act the door does not cover is B34; a glitch is the
 // founder's vetoed glitch line; and the exits that know more say more (B32, B15, B30, F29 or D8). Chain in, standIn
 // returns null and the four sites behave as at 10d5d99. NOTHING IS WRITTEN on a stand-in turn.
+//
+// LCV-10 PART A (F-44.110; the chair's ruling of 21 September on the cure's two halves): WITNESSED on Part One's walk,
+// turn 8: "Add a new lead Walk P8 Fresh, wedding on 20 February 2027" was heard as `lead` AND `book_event`, both for
+// Walk P8 Fresh on 20 February 2027; book_event is not covered, the message read MIXED, B34 was spoken and THE LEAD WAS
+// NOT FILED. With the chain gone an act the listener over-hears refuses a job the door can do. withoutEchoedEvents()
+// below is the mechanism (the listener's prompt sentence is the other half, and prose is not a mechanism): a
+// `book_event` whose client AND date both repeat a `lead` act in the same request is not a second job and is dropped
+// before the covered check. NOTHING ELSE IS DROPPED. meta.listener.request keeps what was HEARD, both acts.
 
 const DL = require('./doorLines');
 const PMA = require('./pendingMoneyActs');
@@ -124,6 +132,38 @@ function allCovered(request) {
 const PHONE_RE = /(?<![A-Za-z0-9/+])(?:\+91[\s-]?|91[\s-]?|0)?(?:[6-9]\d{9}|[6-9]\d{4}[\s-]\d{5}|[6-9]\d{2}[\s-]\d{3}[\s-]\d{4}|[6-9]\d{3}[\s-]\d{3}[\s-]\d{3})(?![A-Za-z0-9/])/;
 function phoneShaped(text) {
   try { return typeof text === 'string' && PHONE_RE.test(text); } catch (_e) { return false; }
+}
+
+// ── F-44.110 · THE ECHOED EVENT (LCV-10 Part A) ───────────────────────────────────────────────────
+// A wedding date said with a new lead BELONGS TO THE LEAD. The live listener heard it a second time as `book_event`
+// (TDW_CE44_LCV9_PART1_WALK_RECORD.md §3 turn 8). A book_event is dropped ONLY when ALL of these hold: a `lead` act
+// sits in the same request; both acts name a client and the names are equal under key(); both carry a date, and the
+// dates either BOTH resolve ('future') to the same day or, NEITHER resolving, are the same string once folded. A
+// dateless book_event, another client, another date, one date readable and the other not, or no lead beside it is a
+// genuine second job and stays: the message is then uncovered and speaks B34 as before.
+// It returns the SAME object when nothing is dropped, and never mutates what was heard: the door records st.ear
+// untouched. TOTAL: anything hostile or thrown returns the request as it came.
+const foldSpoken = (s) => key(s).replace(/\s+/g, ' ');
+const spokenText = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+function sameSpokenDay(a, b, nowMs) {
+  try {
+    const da = resolveSpokenDate(a, { direction: 'future', nowMs });
+    const db = resolveSpokenDate(b, { direction: 'future', nowMs });
+    if (da.ok && db.ok) return typeof da.iso === 'string' && da.iso === db.iso;
+    if (!da.ok && !db.ok) return foldSpoken(a) === foldSpoken(b);
+    return false;
+  } catch (_e) { return false; }
+}
+function withoutEchoedEvents(request, nowMs) {
+  try {
+    if (!request || typeof request !== 'object' || !Array.isArray(request.acts)) return request;
+    const leads = request.acts.filter((a) => a && typeof a === 'object' && a.act === 'lead' && spokenText(a.client_as_spoken) && spokenText(a.date_as_spoken));
+    if (!leads.length) return request;
+    const echoed = (a) => !!a && typeof a === 'object' && a.act === 'book_event' && !!spokenText(a.client_as_spoken) && !!spokenText(a.date_as_spoken)
+      && leads.some((l) => key(l.client_as_spoken) === key(a.client_as_spoken) && sameSpokenDay(l.date_as_spoken, a.date_as_spoken, nowMs));
+    const acts = request.acts.filter((a) => !echoed(a));
+    return acts.length === request.acts.length ? request : { ...request, acts };
+  } catch (_e) { return request; }
 }
 
 // ── reads ─────────────────────────────────────────────────────────────────────────────────────────
@@ -567,12 +607,14 @@ async function preTurn(args, depsIn) {
     st.ear = await L.listener.hear({ supabase, route, message, conversationId: threadId, excludeId: null },
       { ...(deps.llmCreate ? { llmCreate: deps.llmCreate } : {}), timeoutMs: Number.isFinite(deps.hearMs) ? deps.hearMs : HEAR_BEFORE_REPLY_MS });
     if (!st.ear || !st.ear.request) return CHAIN(st.ear, 'no_request');
-    if (!allCovered(st.ear.request)) return CHAIN(st.ear, 'uncovered');
+    // F-44.110: the door DECIDES on the request with an echoed event dropped; st.ear, which is recorded, keeps what was HEARD.
+    const heard = withoutEchoedEvents(st.ear.request, nowMs);
+    if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');
     // F-44.96's guard: a lead whose message carries a phone-shaped number goes WHOLE to the chain, which files it.
     if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');
 
     // 3 · resolve every act first, read-only; any act the door cannot say sends the WHOLE message to the chain
-    const acts = st.ear.request.acts;
+    const acts = heard.acts;
     const money = acts.filter((a) => MONEY_ACTS.includes(a.act));
     // F-44.100: the thread is read ONLY when a lead act's name is made of event words and nothing else.
     let answeringB18 = false;
@@ -689,13 +731,14 @@ async function preTurn(args, depsIn) {
 //   everything else (no seat, no request, a failed read, empty, an exception, no input) ... the glitch line
 // TOTAL: never throws; anything unexpected, chain out, is the glitch line. THE ONE READ of the switch and the ONE
 // read of the leftover builder in the estate are here.
-function standKey(out, L) {
-  try { return standKeyOf(out, L); } catch (_e) { return { key: 'GLITCH' }; }
+function standKey(out, L, nowMs) {
+  try { return standKeyOf(out, L, nowMs); } catch (_e) { return { key: 'GLITCH' }; }
 }
-function standKeyOf(out, L) {
+function standKeyOf(out, L, nowMs) {
   const why = out && typeof out.why === 'string' ? out.why : null;
   const say = out && out.say && typeof out.say === 'object' ? out.say : {};
-  const request = out && out.ear && out.ear.request && typeof out.ear.request === 'object' ? out.ear.request : null;
+  // F-44.110: the stand-in reads the request AS THE DOOR DECIDED ON IT, an echoed event dropped, so the two never disagree.
+  const request = out && out.ear && out.ear.request && typeof out.ear.request === 'object' ? withoutEchoedEvents(out.ear.request, nowMs) : null;
   const acts = request && Array.isArray(request.acts) ? request.acts : null;
   if (why === 'yes_no_nothing_waiting') return { key: 'LEFTOVER' };
   if (why === 'lead_phone') return { key: 'B34' };
@@ -719,7 +762,7 @@ async function standIn(args, depsIn) {
     try { chainIn = (await (deps.readLaneFlag || require('../laneFlags').readLaneFlag)(supabase, CHAIN_FLAG)) === true; } catch (_e) { chainIn = false; }
     if (chainIn) return null;
     if (out && out.door === true) return out;
-    const k = standKey(out, lazy(deps));
+    const k = standKey(out, lazy(deps), Number.isFinite(deps.nowMs) ? deps.nowMs : undefined);
     if (k.key === 'LEFTOVER') return answer('LEFTOVER', DL.leftover(COVERED, deps.rand), out);
     if (k.key === 'GLITCH') return answer('GLITCH', glitchLine() || DL.LINES.B3, out);
     return answer(k.key, k.line || DL.LINES[k.key], out);
@@ -796,4 +839,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

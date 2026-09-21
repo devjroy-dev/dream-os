@@ -38,6 +38,10 @@ const SYSTEM = [
   'ear_request tool. You never reply to her and you never do the work; you only record the request.',
   'Record each client exactly as she said it, each date exactly as she said it, and an amount only',
   'if she said a figure. If the message asks for no task and no lookup, use route none and no acts.',
+  // F-44.110 (CE-44 LCV-10 Part A; the sentence accepted by the chair as worded). WITNESSED on Part One's walk, turn 8: a
+  // wedding date said with a new lead was heard a second time as book_event. It is the listener's prompt byte, not a
+  // founder byte, and PROSE IS NOT A MECHANISM: workingDoor.withoutEchoedEvents is the mechanism; b94 pins both.
+  'A wedding date said with a new lead belongs to that lead: put it in the lead\'s date and record no book_event for it.',
 ].join(' ');
 
 const EAR_TOOL = {
