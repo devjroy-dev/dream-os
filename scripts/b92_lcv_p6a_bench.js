@@ -18,6 +18,10 @@
 //  §8 W-1 NONE and the scope, read from this packet's OWN manifest (C-44.7 (b)).
 //  §9 fuzz in EVERY argument position of every new total function (e-12, e-16).
 //  §10 mutations of production code, each reddening the cell that guards it. A missing anchor FAILS the cell.
+// EXTENDED IN PLACE BY P6a-2 (CE-44 LCV-8; the chair's rulings of 21 September), §11 to §20: B22 to B30; F-44.100's net
+// and its one exception; the listener's prompt bytes (what a client IS; package_as_spoken, c-44.44); the attach through
+// the REAL attachPackage on whole-column doubles; the delivery date; the order and the one-message flow; no chip;
+// W-1 from P6a-2's own manifest; fuzz; twenty mutation cells. Cells 1.2 and 4.5 and M9's anchor are re-pinned, each labelled.
 // THE EXIT CODE IS THE VERDICT.
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'bench-inert';
@@ -151,7 +155,8 @@ async function main() {
     B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653', B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
   };
   for (const k of Object.keys(RULED)) T(`1.1 ${k} is his byte verbatim and its hash is the literal pinned here`, DL.LINES[k] === RULED[k] && DL.LINE_HASHES[k] === HASHES[k] && sha(RULED[k]) === HASHES[k]);
-  T('1.2 B15 is not minted (owed by the last packet; its key stays free); B22 to B29 are not here yet (P6a-2)', !('B15' in DL.LINES) && ['B22', 'B23', 'B24', 'B25', 'B26', 'B27', 'B28', 'B29'].every((k) => !(k in DL.LINES)));
+  // RE-PINNED (CE-44 LCV-8, P6a-2): B22 to B30 have arrived and are pinned in §11. B15 stays free, as it was.
+  T('1.2 B15 is not minted (owed by the last packet; its key stays free)', !('B15' in DL.LINES));
   T('1.3 B17 renders the long date with its year', DL.render('B17', { client: 'Sharma', date: '3 January 2027' }) === 'Lead added: Sharma · 3 January 2027.');
   T('1.4 the door holds no literal of any lead byte: every one is read from its one home', !Object.values(RULED).some((l) => src('src/lib/vendor/workingDoor.js').includes(l.split('{')[0].trim()) && l.split('{')[0].trim().length > 12));
 
@@ -183,7 +188,8 @@ async function main() {
   T('4.2 a lead beside an invoice naming no client is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'invoice' }])) === false);
   T('4.3 a lead beside an invoice naming its client is covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'invoice', client_as_spoken: 'Walk45' }])) === true);
   T('4.4 a lead beside an uncovered act (block_date) is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'block_date', date_as_spoken: '5 December' }])) === false);
-  T('4.5 attach_package is NOT covered at P6a-1', WD.allCovered(req([{ act: 'attach_package', client_as_spoken: 'Sharma' }])) === false);
+  // RE-PINNED (CE-44 LCV-8, P6a-2): attach_package IS covered now (§14); an act the door has not learnt is still not.
+  T('4.5 an act the door has not learnt (relay) is NOT covered', WD.allCovered(req([{ act: 'relay', client_as_spoken: 'Sharma' }])) === false);
   T('4.6 the untouched return is byte-identical (b90 11.2\'s anchor)', src('src/lib/vendor/workingDoor.js').includes("    return request.acts.every((a) => a && COVERED.includes(a.act) && typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim());"));
 
   // ─── §5 preTurn ON A LEAD ─────────────────────────────────────────────────────────────────────
@@ -383,7 +389,7 @@ async function main() {
     [["    if (d.iso < t[0] || y < y0 || y > y0 + 5) return { speak: DL.LINES.B21, key: 'B21' };\n", '']], [],
     async (rq) => leadCase(rq, 'Add Sharma, wedding 5 December 2025', [{ act: 'lead', client_as_spoken: 'Sharma', date_as_spoken: '5 December 2025' }]), (x) => x.ins.length === 1 && x.ins[0].wedding_date === '2025-12-05');
   await mut('10.9 M9 a lead filed DURING resolution, before the invoice resolves: a lead lands and the chain also answers (reddens 5.17)', WDf,
-    [["    for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs));", "    for (const a of acts) if (a.act === 'lead') { const q = planLead(a, nowMs); if (q.lead) await fileLead(supabase, vendor, lane, q, L); leadPlans.push({ speak: null }); }"]], [],
+    [["    for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs, answeringB18));", "    for (const a of acts) if (a.act === 'lead') { const q = planLead(a, nowMs); if (q.lead) await fileLead(supabase, vendor, lane, q, L); leadPlans.push({ speak: null }); }"]], [],
     async (rq) => leadCase(rq, 'x', [{ act: 'lead', client_as_spoken: 'Sharma', date_as_spoken: '3 January' }, { act: 'invoice', client_as_spoken: 'Nobody' }]), (x) => x.r.door === false && x.ins.length === 1);
   await mut('10.10 M10 invoices before leads: the order is lost (reddens 5.16)', WDf,
     [['    for (const lp of leadPlans) {', '    for (const lp of []) {'], ['    if (moneyPlan) {\n      if (moneyPlan.stage) {', "    for (const lp of leadPlans) { if (lp.speak) { st.lines.push(lp.speak); st.keys.push(lp.key); continue; } st.wrote = true; const f = await fileLead(supabase, vendor, lane, lp, L); st.lines.push(f.line); st.keys.push(f.key); st.toolCalls.push(f.call); }\n    if (moneyPlan) {\n      if (moneyPlan.stage) {"]], [],
@@ -419,6 +425,365 @@ async function main() {
   await mut('10.16 M16 fileLead without its guard throws on a hostile position (reddens 9.1)', WDf,
     [["  } catch (_e) { return { line: DL.LINES.B20, key: 'B20', call: { name: HANDS.lead, input, result: 'refused:exception' }, landed: false }; }", '  } finally { /* guard removed */ }']], [],
     async (rq) => { let t = 0; for (const a of hostileActs) { try { await rq(WDf).fileLead(makeDb(world()), V, 'pwa', a, goodL); } catch (_e) { t += 1; } } return t; }, (t) => t > 0);
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // P6a-2 (CE-44 LCV-8): THE DOOR LEARNS attach_package, WITH F-44.100 RIDING. Sections 11 to 20.
+  // EVERY SENTENCE ON THE WALK CARD IS A CELL HERE, his own "Add a new lead, haldi shoot on 3 January" first.
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  const MAN2 = 'scripts/floor-manifest-ce44-lcv8-p6a2.txt';
+  const LP = require(P('src/api/vendor/leadPackages.js'));
+  const LD = require(P('src/lib/vendor/listenerDoor.js'));
+  // public.vendor_packages, ALL 16 columns, and public.lead_packages, ALL 13 (docs/db/PUBLIC_SCHEMA.md), so a planted row is whole.
+  function pkgRow(o) {
+    return Object.assign({ id: null, vendor_id: V.id, name: null, description: '', line_items: [], total: null, deposit_pct: 30, middle_pct: 30,
+      middle_enabled: true, delivery_basis: 'on_the_day', delivery_days: null, is_default: false, seeded_from: null,
+      created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z', deleted_at: null }, o);
+  }
+  function lpRow(o) {
+    return Object.assign({ id: null, vendor_id: V.id, lead_id: null, package_id: null, snapshot: {}, total: null, schedule: [], delivery_on: null,
+      quoted_at: null, quote_draft_id: null, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z', deleted_at: null }, o);
+  }
+  function world2() {
+    const w = world();
+    w['public.leads'] = [
+      leadRow({ id: 'l-dated', name: 'Walk P7 Dated', wedding_date: '2027-02-20', wedding_date_precision: 'day' }),
+      leadRow({ id: 'l-undated', name: 'Walk P6 Undated' }),
+      leadRow({ id: 'l-month', name: 'Walk Month', wedding_date: '2027-02-01', wedding_date_precision: 'month' }),
+      leadRow({ id: 'l-booked', name: 'Walk P5 Book', state: 'booked', binder_id: 'b-book', wedding_date: '2027-03-01', wedding_date_precision: 'day' }),
+      leadRow({ id: 'l-wa', name: 'Walk P6 Dated', wedding_date: '2027-02-14', wedding_date_precision: 'day' }),
+      leadRow({ id: 'l-tw1', name: 'Twin', wedding_date: '2027-04-01', wedding_date_precision: 'day' }),
+      leadRow({ id: 'l-tw2', name: 'twin', wedding_date: '2027-05-02', wedding_date_precision: 'day' }),
+      leadRow({ id: 'l-other', vendor_id: 'v-2', name: 'Walk P7 Dated', wedding_date: '2027-02-20', wedding_date_precision: 'day' }),
+    ];
+    w['public.vendor_packages'] = [
+      pkgRow({ id: 'p-film', name: 'Photographs and film', total: 80000, delivery_basis: 'days', delivery_days: 30, is_default: true }),
+      pkgRow({ id: 'p-hand', name: 'Album handover', total: 25000, delivery_basis: 'handover' }),
+      pkgRow({ id: 'p-otd', name: 'Photographs only', total: 40000, delivery_basis: 'on_the_day' }),
+      pkgRow({ id: 'p-br1', name: 'Bridal', total: 80000, delivery_basis: 'on_the_day' }),
+      pkgRow({ id: 'p-br2', name: ' bridal ', total: 120000, delivery_basis: 'on_the_day' }),
+      pkgRow({ id: 'p-nofee', name: 'No fee yet', total: null, delivery_basis: 'on_the_day' }),
+      pkgRow({ id: 'p-dead', name: 'Retired gold', total: 90000, deleted_at: '2026-09-02T00:00:00Z' }),
+      pkgRow({ id: 'p-theirs', vendor_id: 'v-2', name: 'Photographs and film', total: 99999, delivery_basis: 'on_the_day' }),
+    ];
+    return w;
+  }
+  const lpsIn = (d) => d.log.inserts.filter((i) => i.table === 'public.lead_packages').flatMap((i) => i.rows);
+  const staged = (d) => (d.tables['public.pending_money_acts'] || []);
+  const OWN_LIST = 'Photographs and film · Album handover · Photographs only · Bridal · bridal · No fee yet';
+  const att = (client, pkg, date) => ({ act: 'attach_package', client_as_spoken: client, package_as_spoken: pkg, ...(date ? { date_as_spoken: date } : {}) });
+
+  // ─── §11 THE BYTES ───────────────────────────────────────────────────────────────────────────
+  sec('11 doorLines.js: B22 to B30, verbatim, hash-pinned here');
+  const RULED2 = {
+    B22: 'Package attached: {client} · {package} · Rs {total}.',
+    B23: 'You have no package called {name}. Yours are: {list}.',
+    B24: 'Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.',
+    B25: 'Could not attach the package. {client} has no wedding date yet. Add the date first.',
+    B26: 'When is the delivery date for {client}?',
+    B27: 'Package attached: {client} · {package} · Rs {total} · Delivery {date}.',
+    B28: 'That delivery date cannot be right. Say it like 5 December 2027.',
+    B29: 'This couple is booked. The package is fixed on their invoice.',
+    B30: 'Could not attach the package.',
+  };
+  const HASHES2 = {
+    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c', B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: '54da33cf13d4a3bb0d19333f1f5fa540fbf196af9f1cdd2b2e1b454c8a3f475f', B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d', B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
+    // B29's twin is dreamos-pwa lib/worklist/packages.ts:126 (refusals.already_booked); B30's is :73 (attachFailed). A dream-os
+    // bench cannot read the pwa on his machine, so each pin is the hash literal and the twin is named, not tested.
+    B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d', B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
+  };
+  for (const k of Object.keys(RULED2)) T(`11.1 ${k} is his byte verbatim and its hash is the literal pinned here`, DL.LINES[k] === RULED2[k] && DL.LINE_HASHES[k] === HASHES2[k] && sha(RULED2[k]) === HASHES2[k]);
+  const close = src('docs/handovers/TDW_CE44_LCV6_SEAT_CLOSE.md');
+  T('11.2 B22 to B28 are byte-identical to the LCV-6 seat close §4, the record of his word', ['B22', 'B23', 'B24', 'B25', 'B26', 'B27', 'B28'].every((k) => close.includes(`  ${k}  ${RULED2[k]}\n`)));
+  T('11.3 B31 and B32 are WITH THE FOUNDER: their keys are free and nothing is built on them', !('B31' in DL.LINES) && !('B32' in DL.LINES) && !/DL\.LINES\.B3[12]|'B3[12]'/.test(src('src/lib/vendor/workingDoor.js')));
+  T('11.4 byte 24 renders by position for exactly two, byte 23 lists her own names with " · "', DL.twoPackages('bridal', [{ name: 'Bridal', total: '80,000' }, { name: 'bridal', total: '1,20,000' }]) === 'Two packages are called bridal: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.'
+    && DL.twoPackages('x', [{ name: 'a', total: '1' }]) === null && DL.twoPackages('x', [{ name: 'a', total: null }, { name: 'b', total: '1' }]) === null
+    && DL.noSuchPackage('Gold', ['A', ' ', null, 'B']) === 'You have no package called Gold. Yours are: A · B.' && DL.noSuchPackage('Gold', []) === null);
+
+  // ─── §12 F-44.100 ────────────────────────────────────────────────────────────────────────────
+  sec('12 F-44.100: an event is not a client (the net), and the one exception');
+  const HIS = 'Add a new lead, haldi shoot on 3 January';
+  db = makeDb(world());
+  o = await run(db, HIS, [{ act: 'lead', client_as_spoken: 'haldi shoot', date_as_spoken: '3 January' }]);
+  T('12.1 THE SPECIMEN, his exact sentence with the listener erring as it did on 21 September ("haldi shoot" in the client slot): B18, nothing filed', o.door === true && o.reply === RULED.B18 && o.keys.join() === 'B18' && leadsIn(db).length === 0 && o.skipHarvest === true);
+  db = makeDb(world());
+  o = await run(db, 'Add a lead for Sangeet Sharma', [{ act: 'lead', client_as_spoken: 'Sangeet Sharma' }]);
+  T('12.2 "Sangeet Sharma" is a name: filed', o.reply === 'Lead added: Sangeet Sharma.' && leadsIn(db).length === 1);
+  db = makeDb(world());
+  o = await run(db, 'Add a lead, Sangeet', [{ act: 'lead', client_as_spoken: 'Sangeet' }]);
+  T('12.3 "Sangeet" alone, unasked: B18, nothing filed', o.reply === RULED.B18 && leadsIn(db).length === 0);
+  await quiet(() => WD.persistDoorTurn({ supabase: db, agentId: AG, message: 'Add a lead, Sangeet', out: o, lane: 'pwa' }, { memory, meter }));
+  const b18Row = db.tables['engine.messages'].filter((m) => m.role === 'assistant').slice(-1)[0];
+  T('12.4 the door marks its B18 with its OWN key, meta.listener.asked_name, and never with `asked`', !!b18Row && b18Row.meta.listener.door === true && b18Row.meta.listener.asked_name === 'B18' && !('asked' in b18Row.meta.listener));
+  const o12 = await run(db, 'Sangeet', [{ act: 'lead', client_as_spoken: 'Sangeet' }]);
+  T('12.5 "Sangeet" ANSWERED TO B18 is the name: filed on her second word, so it cannot loop', o12.reply === 'Lead added: Sangeet.' && leadsIn(db).length === 1 && leadsIn(db)[0].name === 'Sangeet');
+  await quiet(() => WD.persistDoorTurn({ supabase: db, agentId: AG, message: 'Sangeet', out: o12, lane: 'pwa' }, { memory, meter }));
+  const o13 = await run(db, 'Add a lead, Mehendi', [{ act: 'lead', client_as_spoken: 'Mehendi' }]);
+  T('12.6 the exception is the LAST row only: after the door\'s "Lead added" row, an event word is asked again', o13.reply === RULED.B18 && leadsIn(db).length === 1);
+  db = makeDb(world());
+  db.tables['engine.messages'].push({ id: 'txt', conversation_id: 'c-1', role: 'assistant', content: RULED.B18, meta: { listener: { door: true } }, created_at: new Date(clock += 1000).toISOString() });
+  o = await run(db, 'Sangeet', [{ act: 'lead', client_as_spoken: 'Sangeet' }]);
+  T('12.7 never by matching text: a row READING B18 without the mark is not the door\'s question', o.reply === RULED.B18 && leadsIn(db).length === 0);
+  T('12.8 the net\'s edges: event words and fillers only is no name; any other word makes a name; other scripts are names; not a string is no verdict',
+    ['haldi shoot', 'Haldi  Shoot', 'a new lead', 'the pre-wedding shoot', 'Sangeet and Mehendi', 'WEDDING', 'mehndi', 'roka ceremony'].every((n) => WD.eventOnly(n) === true)
+    && ['Sangeet Sharma', 'Khanna wedding', 'Haldi for Priya', 'शर्मा', 'haldi शर्मा', 'Personal', '', '   ', '3'].every((n) => WD.eventOnly(n) === false)
+    && [null, undefined, 7, {}, []].every((n) => WD.eventOnly(n) === false));
+  db = makeDb(world2());
+  o = await run(db, 'Attach Photographs and film to haldi shoot', [att('haldi shoot', 'Photographs and film')]);
+  T('12.9 the net is for `lead` ONLY: an event word on an attach resolves to no lead, and (B32 pending) the WHOLE message goes to the chain, nothing written', o.door === false && o.why === 'attach_no_lead' && lpsIn(db).length === 0);
+  db = makeDb(world());
+  o = await run(db, HIS, [{ act: 'lead', date_as_spoken: '3 January' }]);
+  await quiet(() => WD.persistDoorTurn({ supabase: db, agentId: AG, message: HIS, out: o, lane: 'pwa' }, { memory, meter }));
+  const o14 = await run(db, 'Walk P7 Haldi', [{ act: 'lead', client_as_spoken: 'Walk P7 Haldi', date_as_spoken: '3 January' }]);
+  T('12.10 THE CARD\'S TWO STEPS: his sentence heard as the NEW description asks (no name) is B18; then "Walk P7 Haldi" files with the date carried', o.reply === RULED.B18 && o14.reply === 'Lead added: Walk P7 Haldi · 3 January 2027.' && leadsIn(db).length === 1);
+
+  // ─── §13 THE LISTENER'S PROMPT BYTES ─────────────────────────────────────────────────────────
+  sec('13 listenerDoor.js: what a client IS, and the package slot (c-44.44)');
+  const props = LD.EAR_TOOL.input_schema.properties.acts.items.properties;
+  const cd = props.client_as_spoken.description;
+  const descCell = (d) => /NAME of a person, a couple or a family/.test(d) && /kind of event or shoot \(haldi, mehendi, sangeet, wedding, reception, engagement, a shoot\) is NEVER a client/.test(d) && /no name was said it is EMPTY/.test(d) && /her answer IS the name, whatever the word/.test(d);
+  T('13.1 client_as_spoken says: a person, a couple or a family; a kind of event is NEVER a client; EMPTY when no name was said; her answer to the door\'s question IS the name', descCell(cd));
+  T('13.2 package_as_spoken exists, a string, OPTIONAL (required is still act alone), with the ruled description', props.package_as_spoken && props.package_as_spoken.type === 'string' && props.package_as_spoken.description === 'The package exactly as she named it. Empty if none.' && JSON.stringify(LD.EAR_TOOL.input_schema.properties.acts.items.required) === '["act"]');
+  const nr = LD.normaliseRequest({ route: 'task', acts: [{ act: 'attach_package', client_as_spoken: ' Sharma ', package_as_spoken: '  Photographs and film ', nonsense: 1 }, { act: 'attach_package', package_as_spoken: 7 }, { act: 'attach_package', package_as_spoken: '   ' }] });
+  T('13.3 normaliseRequest carries it trimmed, a string or ABSENT, and still drops what the schema does not hold', nr.acts[0].package_as_spoken === 'Photographs and film' && !('nonsense' in nr.acts[0]) && !('package_as_spoken' in nr.acts[1]) && !('package_as_spoken' in nr.acts[2]));
+  T('13.4 every slot the door reads for an act is a slot the listener can fill (the chair\'s standing check from c-44.44)', ['client_as_spoken', 'package_as_spoken', 'date_as_spoken', 'milestone', 'act'].every((k) => k in props));
+
+  // ─── §14 THE ATTACH, THROUGH THE REAL attachPackage ──────────────────────────────────────────
+  sec('14 preTurn() on attach_package, through the real attachPackage and the real resolveLead');
+  T('14.1 COVERED is six and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
+  T('14.2 an attach naming no client is not the door\'s (the untouched return)', WD.allCovered(req([{ act: 'attach_package', package_as_spoken: 'X' }])) === false);
+  db = makeDb(world2());
+  o = await run(db, 'Attach Photographs and film to Walk P7 Dated', [att('walk p7 dated', 'photographs AND film')]);
+  let lp = lpsIn(db);
+  T('14.3 THE CARD: B22 with Rs 80,000, and the recorded call', o.door === true && o.reply === 'Package attached: Walk P7 Dated · Photographs and film · Rs 80,000.' && o.keys.join() === 'B22' && o.toolNames.join() === 'attach_package' && o.toolCalls[0].result === 'attached' && o.refresh === true);
+  T('14.4 it LANDED AT ONCE (R-44.33): one lead_packages row on HER lead from HER package, nothing staged, no question', lp.length === 1 && lp[0].lead_id === 'l-dated' && lp[0].package_id === 'p-film' && lp[0].vendor_id === V.id && staged(db).length === 0 && !/\?/.test(o.reply));
+  T('14.5 the body was EXACTLY { package_id }: the recorded input holds the lead and that one key', JSON.stringify(o.toolCalls[0].input) === JSON.stringify({ lead: 'Walk P7 Dated', package_id: 'p-film' }));
+  const bodies = [];
+  const spy = async (sb, v, leadId, body) => { bodies.push(JSON.parse(JSON.stringify(body))); return LP.attachPackage(sb, v, leadId, body); };
+  db = makeDb(world2());
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film', '5 June 2027')], 'pwa', { attachPackage: spy });
+  T('14.6 on a package that is NOT handover a spoken date is IGNORED: { package_id } alone is sent, and B22 speaks', bodies.length === 1 && JSON.stringify(bodies[0]) === '{"package_id":"p-film"}' && o.keys.join() === 'B22');
+  db = makeDb(world2());
+  o = await run(db, 'Attach Gold to Walk P7 Dated', [att('Walk P7 Dated', 'Gold')]);
+  T('14.7 THE CARD: no package by that name is B23 listing HER OWN live names (not the retired one, not another vendor\'s), nothing written', o.reply === `You have no package called Gold. Yours are: ${OWN_LIST}.` && o.keys.join() === 'B23' && lpsIn(db).length === 0 && o.toolCalls.length === 0);
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photograph and film')]);
+  T('14.8 never fuzzy, never nearest: one letter off is B23', o.keys.join() === 'B23' && lpsIn(db).length === 0);
+  o = await run(db, 'x', [att('Walk P7 Dated', 'BRIDAL')]);
+  T('14.9 two of one name is B24 with each row\'s own name and total; nothing written', o.reply === 'Two packages are called BRIDAL: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.' && o.skipHarvest === true && lpsIn(db).length === 0);
+  o = await run(db, 'Attach Photographs and film to Walk P5 Book', [att('Walk P5 Book', 'Photographs and film')]);
+  T('14.10 THE CARD: a BOOKED lead is B29, from attachPackage\'s own 422 already_booked; nothing written', o.reply === RULED2.B29 && o.toolCalls[0].result === 'refused:already_booked' && lpsIn(db).length === 0);
+  o = await run(db, 'Attach Photographs and film to Walk P6 Undated', [att('Walk P6 Undated', 'Photographs and film')]);
+  T('14.11 THE CARD: an undated lead is B25 with the name from the ROW, from computeSchedule\'s no_wedding_date', o.reply === 'Could not attach the package. Walk P6 Undated has no wedding date yet. Add the date first.' && o.toolCalls[0].result === 'refused:no_wedding_date' && lpsIn(db).length === 0);
+  o = await run(db, 'x', [att('Walk Month', 'Photographs and film')]);
+  T('14.12 a month-precision date is no wedding date (F24): B25', o.keys.join() === 'B25');
+  o = await run(db, 'x', [att('Walk P7 Dated', 'No fee yet')]);
+  T('14.13 attachPackage\'s other refusals (here no_fee) speak B30, recorded refused:write_failed', o.reply === RULED2.B30 && o.toolCalls[0].result === 'refused:write_failed' && lpsIn(db).length === 0);
+  o = await run(db, 'x', [att('Twin', 'Photographs and film')]);
+  T('14.14 two leads of one name reuse B8\'s shape as it stands', o.reply === 'Two clients are called Twin: Twin (1 April 2027) · twin (2 May 2027). Say which one.' && lpsIn(db).length === 0);
+  o = await run(db, 'Attach a package to Walk P7 Dated', [{ act: 'attach_package', client_as_spoken: 'Walk P7 Dated' }]);
+  T('14.15 NO PACKAGE NAMED (B31 pending): before any write the WHOLE message goes to the chain', o.door === false && o.why === 'attach_unsayable' && lpsIn(db).length === 0);
+  o = await run(db, 'x', [att('Nobody Here', 'Photographs and film')]);
+  T('14.16 NO LEAD CALLED {name} (B32 pending): before any write the WHOLE message goes to the chain', o.door === false && o.why === 'attach_no_lead');
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film'), { act: 'note', client_as_spoken: 'Walk P7 Dated' }]);
+  T('14.17 an uncovered act beside it: the WHOLE message to the chain, nothing attached', o.door === false && o.why === 'uncovered' && lpsIn(db).length === 0);
+  db = makeDb(world2());
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film')], 'pwa', { attachPackage: async () => ({ status: 200, body: { ok: true, lead_package: lpRow({ id: 'lp-x', lead_id: 'l-dated', package_id: 'p-film', total: 95000, snapshot: { name: 'The Couple\'s Own Name', delivery_basis: 'days' }, delivery_on: '2027-03-22' }) } }) });
+  T('14.18 THE READ-BACK IS FROM THE ROW: the heard name and the package\'s total differ from the returned row, and the ROW is spoken', o.reply === 'Package attached: Walk P7 Dated · The Couple\'s Own Name · Rs 95,000.');
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film')], 'pwa', { attachPackage: async () => ({ status: 200, body: { ok: true, lead_package: lpRow({ total: 25000, snapshot: { name: 'Album handover', delivery_basis: 'handover' }, delivery_on: '2027-06-05' }) } }) });
+  T('14.19 the ROW decides B22 against B27: a returned handover row speaks B27 though a days package was asked', o.reply === 'Package attached: Walk P7 Dated · Album handover · Rs 25,000 · Delivery 5 June 2027.' && o.keys.join() === 'B27');
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film')], 'pwa', { attachPackage: async () => { throw new Error('boom'); } });
+  T('14.20 a throwing attachPackage: the door answers B30 (never the chain), recorded refused:exception', o.door === true && o.reply === RULED2.B30 && o.toolCalls[0].result === 'refused:exception');
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film')], 'pwa', { attachPackage: async () => ({ status: 500, body: { ok: false, error: 'db down' } }) });
+  T('14.21 a 500 is B30', o.reply === RULED2.B30 && o.toolCalls[0].result === 'refused:write_failed');
+  db = makeDb(world2());
+  await run(db, 'x', [att('Walk P7 Dated', 'Photographs only')]);
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film')]);
+  const liveLp = (db.tables['public.lead_packages'] || []).filter((r) => r.lead_id === 'l-dated' && !r.deleted_at);
+  T('14.22 a second attach is the app\'s "Change package": the old row retired, ONE live row, the new one read back', o.keys.join() === 'B22' && liveLp.length === 1 && liveLp[0].package_id === 'p-film' && lpsIn(db).length === 2);
+  T('14.23 the door never touches pending_money_acts for an attach', staged(db).length === 0 && !db.log.inserts.some((i) => i.table === 'public.pending_money_acts'));
+
+  // ─── §15 THE DELIVERY DATE ───────────────────────────────────────────────────────────────────
+  sec('15 the delivery date (R-44.34 (b), R-44.35, F-44.92)');
+  bodies.length = 0;
+  db = makeDb(world2());
+  o = await run(db, 'Attach Album handover to Walk P7 Dated', [att('Walk P7 Dated', 'Album handover')], 'pwa', { attachPackage: spy });
+  T('15.1 THE CARD: a handover package with no date said asks B26; attachPackage is NOT called', o.reply === 'When is the delivery date for Walk P7 Dated?' && o.keys.join() === 'B26' && bodies.length === 0 && lpsIn(db).length === 0 && o.skipHarvest === true);
+  await quiet(() => WD.persistDoorTurn({ supabase: db, agentId: AG, message: 'Attach Album handover to Walk P7 Dated', out: o, lane: 'pwa' }, { memory, meter }));
+  const seen2 = [];
+  o = await quiet(() => WD.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message: '5 June 2027', lane: 'pwa' }, { llmCreate: ear(req([att('Walk P7 Dated', 'Album handover', '5 June 2027')]), null, seen2), nowMs: NOW, attachPackage: spy }));
+  const prompt2 = seen2[0] ? String(seen2[0].messages[0].content) : '';
+  T('15.2 the carry, the door\'s half: her next message is heard with B26 and the first request on the thread', prompt2.includes('When is the delivery date for Walk P7 Dated?') && prompt2.includes('"package_as_spoken":"Album handover"') && prompt2.endsWith('New message: 5 June 2027'));
+  lp = lpsIn(db);
+  T('15.3 THE CARD: then the date: { package_id, delivery_on } EXACTLY, and B27 with the date from the ROW', JSON.stringify(bodies[0]) === '{"package_id":"p-hand","delivery_on":"2027-06-05"}' && o.reply === 'Package attached: Walk P7 Dated · Album handover · Rs 25,000 · Delivery 5 June 2027.' && lp.length === 1 && lp[0].delivery_on === '2027-06-05');
+  db = makeDb(world2()); bodies.length = 0;
+  o = await run(db, 'Attach Album handover to Walk P7 Dated, delivery 5 January 2026', [att('Walk P7 Dated', 'Album handover', '5 January 2026')], 'pwa', { attachPackage: spy });
+  T('15.4 THE CARD: a delivery date already past is B28, nothing written, never B21', o.reply === RULED2.B28 && bodies.length === 0 && lpsIn(db).length === 0);
+  const dd = async (date) => { const d = makeDb(world2()); const r = await run(d, 'x', [att('Walk P7 Dated', 'Album handover', date)]); return { k: r.keys.join(), n: lpsIn(d).length, on: (lpsIn(d)[0] || {}).delivery_on }; };
+  let r1 = await dd('15 March 0227'); let r2 = await dd('20 September 2026'); let r3 = await dd('21 September 2026'); let r4 = await dd('5 June 2032');
+  T('15.5 THE SPECIMEN first (his "15 March 0227", reason year) then the edges: yesterday in IST is B28; today is passed; 2032 (plus six) is B28', r1.k === 'B28' && r1.n === 0 && r2.k === 'B28' && r3.k === 'B27' && r3.on === '2026-09-21' && r4.k === 'B28');
+  r1 = await dd('5 June 2031'); r2 = await dd('31 February 2027'); r3 = await dd('whenever');
+  T('15.6 plus five is passed; an impossible or unreadable date is B7', r1.k === 'B27' && r1.on === '2031-06-05' && r2.k === 'B7' && r2.n === 0 && r3.k === 'B7');
+  r1 = await dd('20 February 2027');
+  T('15.7 a date EQUAL to the wedding date is treated as misheard: B26, nothing written', r1.k === 'B26' && r1.n === 0);
+  r1 = await dd('1 March 2027'); r2 = await dd('1 February 2027');
+  T('15.8 a delivery date AFTER the wedding is PASSED, and one before it too: the door enforces nothing the estate does not (F-44.94 is LC-3\'s)', r1.k === 'B27' && r1.on === '2027-03-01' && r2.k === 'B27' && r2.on === '2027-02-01');
+  db = makeDb(world2()); bodies.length = 0;
+  o = await run(db, 'x', [att('Walk P5 Book', 'Album handover')], 'pwa', { attachPackage: spy });
+  const o15 = await run(db, 'x', [att('Walk P6 Undated', 'Album handover')], 'pwa', { attachPackage: spy });
+  T('15.9 THE LEAD IS READ BEFORE B26 IS ASKED: a booked lead is B29 and an undated one B25, she is never asked for a date and then refused', o.reply === RULED2.B29 && o15.keys.join() === 'B25' && bodies.length === 0);
+  // the mirror, pinned against attachPackage's OWN answer on the same rows (with a date supplied, so only the lead decides)
+  const own = async (leadId) => (await LP.attachPackage(makeDb(world2()), V, leadId, { package_id: 'p-hand', delivery_on: '2027-06-05' })).body;
+  const ownBooked = await own('l-booked'); const ownUndated = await own('l-undated'); const ownMonth = await own('l-month'); const ownDated = await own('l-dated');
+  const mine = async (name) => { const d = makeDb(world2()); return (await run(d, 'x', [att(name, 'Album handover', '5 June 2027')])).keys.join(); };
+  T('15.10 the mirror agrees with attachPackage on every lead: booked, undated, month-precision, dated', ownBooked.code === 'already_booked' && (await mine('Walk P5 Book')) === 'B29' && ownUndated.code === 'no_wedding_date' && (await mine('Walk P6 Undated')) === 'B25' && ownMonth.code === 'no_wedding_date' && (await mine('Walk Month')) === 'B25' && ownDated.ok === true && (await mine('Walk P7 Dated')) === 'B27');
+  o = await run(makeDb(world2()), 'x', [att('Walk P7 Dated', 'Album handover', '5 June 2027')], 'pwa', { attachPackage: async () => ({ status: 422, body: { ok: false, error: 'refused', code: 'no_handover_date' } }) });
+  T('15.11 attachPackage\'s own no_handover_date is answered with the question, B26', o.reply === 'When is the delivery date for Walk P7 Dated?');
+
+  // ─── §16 THE ORDER, AND THE ONE-MESSAGE FLOW ─────────────────────────────────────────────────
+  sec('16 leads, then attaches, then invoices, then the ONE money act; the money plan REBUILT after the attach pass');
+  const FLOW = 'Add a lead for Walk P7 Flow, wedding 5 December, attach Photographs and film, the advance came in today';
+  const flowActs = (pkg) => [{ act: 'lead', client_as_spoken: 'Walk P7 Flow', date_as_spoken: '5 December' }, att('Walk P7 Flow', pkg), { act: 'advance_paid', client_as_spoken: 'Walk P7 Flow', date_as_spoken: 'today' }];
+  db = makeDb(world2());
+  o = await run(db, FLOW, flowActs('Photographs and film'));
+  T('16.1 THE CARD: one message speaks the lead line, the attach line and B2 ONCE, the package and total from the row just attached', o.reply === 'Lead added: Walk P7 Flow · 5 December 2026.\n\nPackage attached: Walk P7 Flow · Photographs and film · Rs 80,000.\n\nConfirm this booking? Walk P7 Flow · Photographs and film · Rs 80,000. Reply YES or NO.' && o.keys.join() === 'B17,B22,B2');
+  T('16.2 one lead filed, one package attached to THAT lead, ONE row staged, the hands recorded in order', leadsIn(db).length === 1 && lpsIn(db).length === 1 && lpsIn(db)[0].lead_id === leadsIn(db)[0].id && staged(db).length === 1 && staged(db)[0].act === 'advance_paid' && o.toolNames.join() === 'donna_lead,attach_package');
+  db = makeDb(world2());
+  o = await run(db, FLOW, flowActs('Gold'));
+  T('16.3 when the attach REFUSES the door speaks what landed and what did not, asks NO B2 and stages NO row', o.door === true && o.reply === `Lead added: Walk P7 Flow · 5 December 2026.\n\nYou have no package called Gold. Yours are: ${OWN_LIST}.` && staged(db).length === 0 && leadsIn(db).length === 1 && lpsIn(db).length === 0);
+  db = makeDb(world2());
+  db.tables['public.lead_packages'].push(lpRow({ id: 'lp-old', lead_id: 'l-dated', package_id: 'p-otd', total: 40000, snapshot: { name: 'Photographs only', delivery_basis: 'on_the_day' }, schedule: [] }));
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Gold'), { act: 'booking_confirmed', client_as_spoken: 'Walk P7 Dated' }]);
+  T('16.4 a refused attach on a lead that ALREADY holds a package does not ask B2 over the old one', o.keys.join() === 'B23' && staged(db).length === 0);
+  db = makeDb(world2());
+  o = await run(db, FLOW, flowActs('Photographs and film'), 'pwa', { createLead: async () => ({ ok: false }) });
+  T('16.5 the lead failed, so the attach finds no lead AFTER a write: the door keeps the turn and says B20 and B30; no B2, nothing staged', o.door === true && o.keys.join() === 'B20,B30' && staged(db).length === 0 && lpsIn(db).length === 0);
+  db = makeDb(world2());
+  o = await run(db, 'x', [{ act: 'invoice', client_as_spoken: 'Walk45' }, att('Walk P7 Dated', 'Photographs and film')]);
+  T('16.6 attaches before invoices, whatever order she said them in', o.keys.join() === 'B22,B13');
+  db = makeDb(world2());
+  o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film'), { act: 'invoice', client_as_spoken: 'Nobody' }]);
+  T('16.7 every act resolved before the first write: an unresolvable invoice sends the WHOLE message to the chain and NOTHING is attached', o.door === false && lpsIn(db).length === 0);
+  db = makeDb(world2());
+  o = await run(db, 'x', [{ act: 'lead', client_as_spoken: 'Walk P7 Flow' }, { act: 'booking_confirmed', client_as_spoken: 'Walk P7 Flow' }]);
+  T('16.8 the rebuilt plan reads the lead just filed: B5 (no package yet), never "No lead called" beside "Lead added"', o.reply === 'Lead added: Walk P7 Flow.\n\nCould not confirm the booking. Walk P7 Flow has no package yet. Attach a package first.');
+
+  // ─── §17 NO CHIP; THE WHATSAPP LANE ──────────────────────────────────────────────────────────
+  sec('17 no chip on an attach, on both lanes; the WhatsApp step of the card');
+  db = makeDb(world2());
+  o = await run(db, 'Attach Photographs and film to Walk P6 Dated', [att('Walk P6 Dated', 'Photographs and film')], 'whatsapp');
+  T('17.1 the door\'s answer carries exactly the door\'s fields and no document', Object.keys(o).sort().join() === 'documents,door,ear,keys,refresh,reply,skipHarvest,toolCalls,toolNames' && o.documents.length === 0);
+  const sends2 = [];
+  await quiet(() => WD.speakOnWhatsApp({ supabase: db, agentId: AG, phone: '+919888294440', convoId: 'wc-1', message: 'x', out: o, sendWhatsApp: async (ph, body, media) => { sends2.push({ body, media }); return { sid: 's' }; } }, { persistDoorTurn: async () => ({}) }));
+  T('17.2 THE CARD on WhatsApp: ONE send, B22 alone, no media', sends2.length === 1 && sends2[0].body === 'Package attached: Walk P6 Dated · Photographs and film · Rs 80,000.' && sends2[0].media.length === 0);
+  T('17.3 pwa: the door turn\'s wire still holds no chip', sseDoor.length > 100 && !/operator_action|handoff|operator_report/.test(sseDoor));
+
+  // ─── §18 W-1 AND SCOPE, FROM THIS PACKET'S OWN MANIFEST ──────────────────────────────────────
+  sec('18 W-1 NONE, read from P6a-2\'s own manifest');
+  const listed2 = fs.existsSync(P(MAN2)) ? fs.readFileSync(P(MAN2), 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')) : null;
+  T(`18.1 the manifest exists (${MAN2})`, !!listed2 && listed2.length > 0);
+  T('18.2 no engine, soul or lens path; no migration; no pwa path', !!listed2 && !listed2.some((f) => /^src\/engine\/|soul|lens|^db\/migrations\//.test(f)));
+  T('18.3 the manifest is exactly the seven paths of this cut', !!listed2 && listed2.slice().sort().join() === ['docs/handovers/TDW_CE44_LCV8_P6A2_HANDOVER.md', 'scripts/b90_lcv_p5_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/floor-manifest-ce44-lcv8-p6a2.txt', 'src/lib/vendor/doorLines.js', 'src/lib/vendor/listenerDoor.js', 'src/lib/vendor/workingDoor.js'].sort().join());
+  T('18.4 handResult.js is not edited and no donna_ name was invented for the attach', !listed2 || (!listed2.includes('src/lib/vendor/handResult.js') && !/donna_attach/.test(src('src/lib/vendor/workingDoor.js'))));
+
+  // ─── §19 FUZZ ────────────────────────────────────────────────────────────────────────────────
+  sec('19 fuzz: planAttach, fileAttach, eventOnly and the new builders, every position, the act itself hostile');
+  let calls2 = 0; let throws2 = 0;
+  const hit2 = async (fn) => { calls2 += 1; try { await fn(); } catch (_e) { throws2 += 1; } };
+  const realL = { lifecycle: require(P('src/lib/vendor/lifecycleHands.js')), attachPackage: LP.attachPackage };
+  const goodAttach = { attach: { leadId: 'l-dated', client: 'Walk P7 Dated', body: { package_id: 'p-film' } } };
+  for (const a of hostileActs) {
+    await hit2(() => WD.eventOnly(a));
+    await hit2(() => DL.twoPackages(a, a)); await hit2(() => DL.twoPackages('x', [a, a])); await hit2(() => DL.noSuchPackage(a, a)); await hit2(() => DL.noSuchPackage('x', [a]));
+    await hit2(() => quiet(() => WD.planAttach(makeDb(world2()), V, a, NOW, realL)));
+    await hit2(() => quiet(() => WD.planAttach(a, V, att('Walk P7 Dated', 'Album handover', '5 June 2027'), NOW, realL)));
+    await hit2(() => quiet(() => WD.planAttach(makeDb(world2()), a, att('Walk P7 Dated', 'Album handover', '5 June 2027'), NOW, realL)));
+    await hit2(() => quiet(() => WD.planAttach(makeDb(world2()), V, att('Walk P7 Dated', 'Album handover', '5 June 2027'), a, realL)));
+    await hit2(() => quiet(() => WD.planAttach(makeDb(world2()), V, att('Walk P7 Dated', 'Album handover', '5 June 2027'), NOW, a)));
+    for (const field of ['client_as_spoken', 'package_as_spoken', 'date_as_spoken']) {
+      const act = att('Walk P7 Dated', 'Album handover', '5 June 2027'); act[field] = a;
+      await hit2(() => quiet(() => WD.planAttach(makeDb(world2()), V, act, NOW, realL)));
+      await hit2(() => quiet(() => WD.preTurn({ supabase: makeDb(world2()), vendor: V, agentId: AG, route: ROUTE, message: 'x', lane: 'pwa' }, { llmCreate: ear(req([act])), nowMs: NOW })));
+    }
+    await hit2(() => quiet(() => WD.fileAttach(makeDb(world2()), V, a, realL)));
+    await hit2(() => quiet(() => WD.fileAttach(a, V, goodAttach, realL)));
+    await hit2(() => quiet(() => WD.fileAttach(makeDb(world2()), a, goodAttach, realL)));
+    await hit2(() => quiet(() => WD.fileAttach(makeDb(world2()), V, goodAttach, a)));
+    await hit2(() => quiet(() => WD.fileAttach(makeDb(world2()), V, { attach: a }, realL)));
+    await hit2(() => quiet(() => WD.fileAttach(makeDb(world2()), V, goodAttach, { attachPackage: async () => a })));
+    await hit2(() => quiet(() => WD.fileAttach(makeDb(world2()), V, goodAttach, { attachPackage: async () => ({ status: 200, body: { ok: true, lead_package: a } }) })));
+    await hit2(() => quiet(() => WD.fileAttach(makeDb(world2()), V, goodAttach, { attachPackage: async () => ({ status: 200, body: { ok: true, lead_package: { snapshot: a, total: a, delivery_on: a } } }) })));
+    await hit2(() => quiet(() => WD.lastWasDoorNameQuestion(a, a)));
+  }
+  const CALLS2_PINNED = hostileActs.length * 25; // derived for THIS fuzz: 25 calls for each hostile value (5 + 5 + 3 x 2 + 8 + 1)
+  T(`19.1 ${calls2} calls with hostile values in every argument position, the act itself included: zero throws`, throws2 === 0 && calls2 === CALLS2_PINNED && calls2 > 0);
+  const lies = await quiet(() => WD.fileAttach(makeDb(world2()), V, goodAttach, { attachPackage: async () => ({ status: 200, body: { ok: true, lead_package: { snapshot: null, total: null } } }) }));
+  T('19.2 a row that landed but cannot be read back is never spoken as B30 ("could not attach" would be untrue): no line, landed', lies.landed === true && lies.line === null);
+
+  // ─── §20 MUTATIONS ───────────────────────────────────────────────────────────────────────────
+  sec('20 mutations of production code, each reddening its cell');
+  const LDf = 'src/lib/vendor/listenerDoor.js';
+  const attCase = async (rq, message, acts, extra, seedFn) => { const d = makeDb(world2()); if (seedFn) seedFn(d); const r = await quiet(() => rq(WDf).preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message, lane: 'pwa' }, { llmCreate: ear(req(acts)), generateInvoiceForBinder: gen, nowMs: NOW, ...(extra || {}) })); return { r, d, lps: lpsIn(d), leads: leadsIn(d), staged: staged(d) }; };
+  await mut('20.1 N1 the net removed: his sentence files a lead named "haldi shoot" again (reddens 12.1)', WDf,
+    [["    if (answeringB18 !== true && eventOnly(name)) return { speak: DL.LINES.B18, key: 'B18', skipHarvest: true }; // F-44.100\n", '']], [],
+    async (rq) => attCase(rq, HIS, [{ act: 'lead', client_as_spoken: 'haldi shoot', date_as_spoken: '3 January' }]), (x) => x.leads.length === 1 && x.leads[0].name === 'haldi shoot');
+  await mut('20.2 N2 the exception removed: "Sangeet" answered to B18 is asked again, a loop (reddens 12.5)', WDf,
+    [['    return !!l && l.door === true && l.asked_name === \'B18\';', '    return false;']], [],
+    async (rq) => attCase(rq, 'Sangeet', [{ act: 'lead', client_as_spoken: 'Sangeet' }], null, (d) => d.tables['engine.messages'].push({ id: 'q', conversation_id: 'c-1', role: 'assistant', content: 'q', meta: { listener: { door: true, asked_name: 'B18' } }, created_at: new Date(clock += 1000).toISOString() })), (x) => x.r.reply === RULED.B18 && x.leads.length === 0);
+  await mut('20.3 N3 the mark never written: the exception has nothing to read (reddens 12.4)', WDf,
+    [["...(askedName ? { asked_name: askedName } : {}), ", '']], [],
+    async (rq) => { const d = makeDb(world()); const mem = { getOrCreateConversation: async () => ({ conversationId: 'c-1' }), saveMessage: async (cid, role, content, _tc, meta) => { d.tables['engine.messages'].push({ id: `k-${d.tables['engine.messages'].length}`, conversation_id: cid, role, content, meta: meta || null, created_at: new Date(clock += 1000).toISOString() }); return 'k'; } }; await quiet(() => rq(WDf).persistDoorTurn({ supabase: d, agentId: AG, message: 'x', out: { door: true, reply: RULED.B18, keys: ['B18'], toolCalls: [], ear: null }, lane: 'pwa' }, { memory: mem, meter })); return d.tables['engine.messages'].slice(-1)[0]; }, (m) => !!m && !('asked_name' in m.meta.listener));
+  await mut('20.4 N4 today\'s description restored: the listener is no longer told an event is never a client (reddens 13.1)', LDf,
+    [["description: 'The NAME of a person, a couple or a family, exactly as she said it.", "description: 'The client exactly as she said it. Empty if none.' }, x_was: { type: 'string', description: '"]], [],
+    async (rq) => rq(LDf).EAR_TOOL.input_schema.properties.acts.items.properties.client_as_spoken.description, (d) => d === 'The client exactly as she said it. Empty if none.' && descCell(d) === false);
+  await mut('20.5 N5 normaliseRequest dropping the package slot: the door has no name and the attach leaves for the chain (reddens 13.3 and 14.3)', LDf,
+    [["      if (typeof a.package_as_spoken === 'string' && a.package_as_spoken.trim()) out.package_as_spoken = a.package_as_spoken.trim();\n", '']], [],
+    async (rq) => rq(LDf).normaliseRequest({ route: 'task', acts: [att('S', 'P')] }), (q) => !('package_as_spoken' in q.acts[0]));
+  await mut('20.6 N6 a nearest match in the resolver: one letter off attaches (reddens 14.8)', WDf,
+    [['    const hits = pkgs.filter((p) => p && key(p.name) === key(said));', "    const hits = pkgs.filter((p) => p && key(p.name).replace(/s/g, '') === key(said).replace(/s/g, ''));"]], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photograph and film')]), (x) => x.lps.length === 1);
+  await mut('20.7 N7 the vendor filter dropped from the resolver: another vendor\'s package makes two of one name (reddens 14.3)', WDf,
+    [["    .eq('vendor_id', vendorId).is('deleted_at', null);\n  return (error || !Array.isArray(data)) ? null : data;", "    .is('deleted_at', null);\n  return (error || !Array.isArray(data)) ? null : data;"]], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')]), (x) => x.r.door !== true || x.r.keys.join() !== 'B22');
+  await mut('20.8 N8 the read-back from what was HEARD instead of the row (reddens 14.18)', WDf,
+    [['      const vals = { client: a.client, package: snap.name, total: digits(row.total) };', '      const vals = { client: a.client, package: a.heard || \'Photographs and film\', total: digits(80000) };']], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')], { attachPackage: async () => ({ status: 200, body: { ok: true, lead_package: lpRow({ total: 95000, snapshot: { name: 'The Couple\'s Own Name', delivery_basis: 'days' } }) } }) }), (x) => x.r.reply === 'Package attached: Walk P7 Dated · Photographs and film · Rs 80,000.');
+  await mut('20.9 N9 a spoken date sent on a package that is NOT handover (reddens 14.6)', WDf,
+    [["    if (pkg.delivery_basis === 'handover') {", '    if (true) {']], [],
+    async (rq) => { const seenB = []; const x = await attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film', '5 June 2027')], { attachPackage: async (sb, v, id, body) => { seenB.push(body); return LP.attachPackage(sb, v, id, body); } }); return seenB; }, (b) => b.length === 1 && b[0].delivery_on === '2027-06-05');
+  await mut('20.10 N10 the delivery range removed: a past delivery date is attached (reddens 15.4)', WDf,
+    [["      if (d.iso < t[0] || y < y0 || y > y0 + 5) return { speak: DL.LINES.B28, key: 'B28' };\n", '']], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Album handover', '5 January 2026')]), (x) => x.lps.length === 1 && x.lps[0].delivery_on === '2026-01-05');
+  await mut('20.11 N11 the misheard check removed: the wedding date is sent as the delivery date (reddens 15.7)', WDf,
+    [['      if (d.iso === lead.wedding_date) return ask(); // the wedding date heard as the delivery date: misheard, ask\n', '']], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Album handover', '20 February 2027')]), (x) => x.lps.length === 1 && x.lps[0].delivery_on === '2027-02-20');
+  await mut('20.12 N12 the lead\'s own row not read before B26: a booked couple is asked for a delivery date (reddens 15.9)', WDf,
+    [["      if (key(lead.state) === 'booked' || lead.binder_id) return { speak: DL.LINES.B29, key: 'B29' };\n", '']], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P5 Book', 'Album handover')]), (x) => x.r.keys.join() === 'B26');
+  await mut('20.13 N13 THE CHAIR\'S: the money plan NOT rebuilt after the attach pass, the probe spoken instead (reddens 16.1)', WDf,
+    [['        moneyPlan = await planMoney(supabase, vendor, money[0], L);\n        if (!moneyPlan) {', '        if (!moneyPlan) {']], [],
+    async (rq) => attCase(rq, FLOW, flowActs('Photographs and film')), (x) => x.r.keys.join() === 'B17,B22,B4' && x.staged.length === 0);
+  await mut('20.14 N14 a refused attach no longer silencing the money act: B2 is asked over the OLD package and a row is staged (reddens 16.4)', WDf,
+    [['      if (attachMissed) moneyPlan = null;\n      else {', '      {']], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Gold'), { act: 'booking_confirmed', client_as_spoken: 'Walk P7 Dated' }], null, (d) => d.tables['public.lead_packages'].push(lpRow({ id: 'lp-old', lead_id: 'l-dated', package_id: 'p-otd', total: 40000, snapshot: { name: 'Photographs only', delivery_basis: 'on_the_day' } }))), (x) => x.r.keys.join() === 'B23,B2' && x.staged.length === 1);
+  // TWO GUARDS HOLD 14.16, and the cell says so: with the probe's line alone removed the rebuild still sends an unwritten
+  // turn to the chain (run here as N15a, which must NOT redden); it takes both removed for the door to answer B30.
+  await mut('20.15a N15a the probe\'s no-lead line ALONE removed: the rebuild\'s own guard still sends the unwritten turn to the chain', WDf,
+    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead');\n", '']], [],
+    async (rq) => attCase(rq, 'x', [att('Nobody Here', 'Photographs and film')]), (x) => x.r.door === false && x.r.why === 'attach_unsayable');
+  await mut('20.15 N15 BOTH guards removed: an attach naming no lead is answered by the door instead of going WHOLE to the chain (reddens 14.16)', WDf,
+    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead');\n", ''], ["        if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');\n", '']], [],
+    async (rq) => attCase(rq, 'x', [att('Nobody Here', 'Photographs and film')]), (x) => x.r.door === true && x.r.keys.join() === 'B30');
+  await mut('20.16 N16 the write mark AND fileAttach\'s guard removed: a throwing attachPackage falls to the chain after a possible write (reddens 14.20)', WDf,
+    [['      st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws\n', ''], ["  } catch (_e) { return B30('refused:exception'); }", '  } finally { /* guard removed */ }']], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')], { attachPackage: async () => { throw new Error('boom'); } }), (x) => x.r.door === false);
+  await mut('20.17 N17 planAttach without its guard throws on a hostile act (reddens 19.1)', WDf,
+    [['    return { attach: { leadId: found.lead.id, client, body } };\n  } catch (_e) { return null; }', '    return { attach: { leadId: found.lead.id, client, body } };\n  } finally { /* guard removed */ }']], [],
+    async (rq) => { let t = 0; for (const a of hostileActs) { try { await quiet(() => rq(WDf).planAttach(makeDb(world2()), V, a, NOW, realL)); } catch (_e) { t += 1; } } return t; }, (t) => t > 0);
+  await mut('20.18 N18 attach staged into pending_money_acts instead of landing (R-44.33): caught by 14.4 and 14.23', WDf,
+    [['      const f = await fileAttach(supabase, vendor, ap, L);', "      await pma.stage(supabase, { vendorId: vendor.id, act: 'advance_paid', request: {}, lane }); const f = await fileAttach(supabase, vendor, ap, L);"]], [],
+    async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')]), (x) => x.d.log.inserts.some((i) => i.table === 'public.pending_money_acts'));
+  await mut('20.19 N19 b90\'s re-aimed M5 anchor is HANDS\' new last entry, and a forbidden hand after it is still seen', WDf,
+    [["  attach_package: 'attach_package',\n});", "  attach_package: 'attach_package',\n  note: 'donna_money_edit',\n});"]], [],
+    async (rq) => Object.values(rq(WDf).HANDS), (h) => h.includes('donna_money_edit'));
 
   console.log(`\n════════  b92 · ${pass} pass · ${fail} fail  ════════`);
   if (fail) { console.log('FAILED:'); for (const f of failed) console.log(`  · ${f}`); }

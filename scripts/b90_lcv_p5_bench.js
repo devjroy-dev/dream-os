@@ -167,6 +167,16 @@ async function main() {
     B19: 'That number is already on {client}. Nothing new was added.',
     B20: 'Could not add the lead.',
     B21: 'That wedding date cannot be right. Say it like 5 December 2027.',
+    // H1 (CE-44 LCV-8, P6a-2): B22 to B28 his at R-44.34 and R-44.35; B29 and B30 his bytes REUSED from the pwa (twins named in doorLines.js).
+    B22: 'Package attached: {client} · {package} · Rs {total}.',
+    B23: 'You have no package called {name}. Yours are: {list}.',
+    B24: 'Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.',
+    B25: 'Could not attach the package. {client} has no wedding date yet. Add the date first.',
+    B26: 'When is the delivery date for {client}?',
+    B27: 'Package attached: {client} · {package} · Rs {total} · Delivery {date}.',
+    B28: 'That delivery date cannot be right. Say it like 5 December 2027.',
+    B29: 'This couple is booked. The package is fixed on their invoice.',
+    B30: 'Could not attach the package.',
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -181,6 +191,11 @@ async function main() {
     B16: 'a7fe91f49891ed319667b750d32ddcd55dabda117f328f7f0712f685c20b3830', B17: 'b332f4de8e4698181a5d67735814f183a25319abdfa568c3e56b4040f24e8927',
     B18: 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0', B19: 'ec10d50e073b11a83206a1c89c276be61f0e476bee762671d383820d74ecfaf8',
     B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653', B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
+    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c',
+    B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: '54da33cf13d4a3bb0d19333f1f5fa540fbf196af9f1cdd2b2e1b454c8a3f475f',
+    B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
+    B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986', B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
+    B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };
@@ -221,10 +236,11 @@ async function main() {
   sec('4 the act table');
   const FORBIDDEN = ['donna_client', 'donna_stage', 'donna_money', 'donna_money_edit'];
   // H5 (CE-44 LCV-7, P6a-1, the chair's ruling): the ruled set gains exactly donna_lead; FORBIDDEN is unchanged.
-  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead'].includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
-  T('4.1 item 1 (i): the door\'s hands are booking, milestone, invoice and (P6a-1) lead only; never donna_client, donna_stage, donna_money or donna_money_edit', imageOk(WD.HANDS));
-  // H2 (CE-44 LCV-7, P6a-1): COVERED at five; attach_package joins it with P6a-2.
-  T('4.2 covered at P6a-1: booking_confirmed, advance_paid, milestone_paid, invoice, lead; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,booking_confirmed,invoice,lead,milestone_paid');
+  // H5 again (CE-44 LCV-8, P6a-2): it gains exactly attach_package, the recorded name of the attach; FORBIDDEN is unchanged.
+  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead', 'attach_package'].includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
+  T('4.1 item 1 (i): the door\'s hands are booking, milestone, invoice, (P6a-1) lead and (P6a-2) attach_package only; never donna_client, donna_stage, donna_money or donna_money_edit', imageOk(WD.HANDS));
+  // H2 (CE-44 LCV-7, P6a-1): COVERED at five. H2 again (CE-44 LCV-8, P6a-2): at six, attach_package joins it.
+  T('4.2 covered at P6a-2: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,attach_package,booking_confirmed,invoice,lead,milestone_paid');
   T('4.3 the door never names a forbidden hand anywhere in its source', !FORBIDDEN.some((h) => new RegExp(`'${h}'`).test(src('src/lib/vendor/workingDoor.js').replace(/^\s*\/\/.*$/gm, ''))));
 
   // ─── §5 THE DOOR'S DECISIONS ───────────────────────────────────────────────────────────────────
@@ -482,7 +498,7 @@ async function main() {
   });
   T('11.4 M4 the counted id\'s line removed from harvest.js reddens 6.4 (the door turn uncounted)', m === null);
   // H3 (CE-44 LCV-7, P6a-1): re-aimed on HANDS' last entry, which is now lead's.
-  m = await withMutated('src/lib/vendor/workingDoor.js', [["  lead: 'donna_lead',\n});", "  lead: 'donna_lead',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
+  m = await withMutated('src/lib/vendor/workingDoor.js', [["  attach_package: 'attach_package',\n});", "  attach_package: 'attach_package',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
   T('11.5 M5 a table reaching donna_money_edit reddens 4.1', m === false);
   m = await withMutated('src/lib/vendor/pendingMoneyActs.js', [["      else await closeRow(supabase, r, null, { code: 'refused:apply_unstamped', note: 'yes received; apply did not record its result' });", '      else { /* left open */ }']], WDdeps, async (rq) => {
     const d = makeDb(world());

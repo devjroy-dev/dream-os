@@ -41,15 +41,28 @@
 // THE PHONE GUARD (F-44.96, the chair's ruling): the listener hears no phone, so a lead message carrying a
 // phone-shaped number is NOT the door's; the WHOLE message goes to the chain, which files the number as
 // today. Owed before the chain leaves: EAR_TOOL gains phone_as_spoken and this guard goes in that cut.
+//
+// P6a-2 (CE-44 LCV-8, the chair's rulings of 21 September): the door learns `attach_package`. It LANDS AT ONCE
+// (R-44.33): no staging, no question, pending_money_acts untouched. It calls attachPackage (leadPackages.js) AS IT
+// STANDS with EXACTLY { package_id } or, for a handover package, { package_id, delivery_on }. The package is
+// resolved HERE by the door's own key() fold from the name the listener heard (package_as_spoken, c-44.44): one
+// attaches, two is B24, none is B23 with HER OWN names; never fuzzy, never nearest. Every name, total and date she
+// reads comes from the lead_package ROW attachPackage returned, and that row decides B22 against B27.
+// ORDER: leads, then attaches, then invoices, then the ONE money act. Every act is PROBED read-only before the
+// first write (an act the door cannot say sends the WHOLE message to the chain); the attach and money plans are
+// then REBUILT after the writes before them, reading the rows as they then stand, and only the rebuilt plan is
+// spoken or staged. An attach that did not land means NO money question and NO staged row.
+// F-44.100 rides this cut: a lead "name" made only of event words is no name (B18), except as the answer to B18.
 
 const DL = require('./doorLines');
 const PMA = require('./pendingMoneyActs');
 const { resolveSpokenDate, todayIstIso } = require('./spokenDate');
 const { longDateYear, istDay, rupees } = require('../witnessLine');
+const { isDateKey } = require('./packageSchedule');
 
 const HEAR_BEFORE_REPLY_MS = 4000;
 const MONEY_ACTS = Object.freeze(['booking_confirmed', 'advance_paid', 'milestone_paid']);
-const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead']);
+const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package']);
 // THE ACT TABLE'S IMAGE: every hand the door can run, and nothing else. b90 pins that it never holds
 // donna_client, donna_stage, donna_money or donna_money_edit (item 1, option (i)).
 const HANDS = Object.freeze({
@@ -58,6 +71,7 @@ const HANDS = Object.freeze({
   milestone_paid: 'donna_milestone_paid',
   invoice: 'donna_invoice_pdf',
   lead: 'donna_lead',
+  attach_package: 'attach_package',
 });
 
 const CHAIN = (ear, why) => ({ door: false, ear: ear || null, why });
@@ -67,6 +81,7 @@ const digits = (n) => { const r = rupees(n); return r ? r.replace(/^Rs /, '') : 
 function lazy(deps) {
   return {
     createLead: deps.createLead || ((...a) => require('./leads').createLead(...a)),
+    attachPackage: deps.attachPackage || ((...a) => require('../../api/vendor/leadPackages').attachPackage(...a)),
     lifecycle: deps.lifecycle || require('./lifecycleHands'),
     listener: deps.listener || require('./listenerDoor'),
     generateInvoiceForBinder: deps.generateInvoiceForBinder || ((...a) => require('../../api/vendor/invoices').generateInvoiceForBinder(...a)),
@@ -218,18 +233,37 @@ async function planInvoice(supabase, vendor, agentId, act) {
   return { invoice: { binder, client } };
 }
 
+// ── F-44.100 · THE NET: an event is not a client ────────────────────────────────────────────────────
+// WITNESSED on the founder's walk of 21 September: "Add a new lead, haldi shoot on 3 January" filed a lead NAMED
+// "haldi shoot"; the listener had put the event in client_as_spoken. A name made ONLY of these words is NO NAME and
+// B18 is asked. The list is CLOSED and folded to lower case; a name holding any other word ("Sangeet Sharma") is a
+// name. ONE EXCEPTION SO IT CANNOT LOOP: when the last assistant row of the working thread is the door's OWN B18
+// (known from meta.listener.asked_name, never by matching text), whatever she answers IS the name.
+// The net is for `lead` ONLY: on every other act an event word resolves to no lead and the existing bytes refuse it.
+const EVENT_WORDS = Object.freeze(['haldi', 'mehendi', 'mehndi', 'mehandi', 'sangeet', 'shoot', 'photoshoot', 'wedding', 'shaadi',
+  'reception', 'engagement', 'roka', 'cocktail', 'pre', 'prewedding', 'ceremony', 'function', 'event', 'party', 'baraat', 'pheras', 'phera',
+  'a', 'an', 'the', 'new', 'lead', 'and', 'for', 'of']);
+function eventOnly(name) {
+  try {
+    if (typeof name !== 'string') return false;
+    const words = name.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    return words.length > 0 && words.every((w) => EVENT_WORDS.includes(w));
+  } catch (_e) { return false; }
+}
+
 // ── P6a-1 · a lead: resolved read-only to a PLAN; written only after every act has resolved ─────────
 // { speak, key } for B18, B7 or B21, or { lead: { name, wedding_date|null } } to be filed.
 // F-44.66: a wedding date strictly before today in IST, or in a year outside today's IST year through
 // today's plus five, is B21. An unreadable one is B7. Direction 'future' (F-44.46).
 // TOTAL (the chair's ruling on r2): a non-object act, or one whose reads throw, answers B20, which is truthful.
 const LEAD_ISO = /^(\d{4})-\d{2}-\d{2}$/;
-function planLead(act, nowMs) {
+function planLead(act, nowMs, answeringB18) {
   try {
     if (!act || typeof act !== 'object') return { speak: DL.LINES.B20, key: 'B20' };
     const name = typeof act.client_as_spoken === 'string' ? act.client_as_spoken.trim() : '';
     // B18 skips harvest, as B8 does: the door asked WHO, so nothing she said may be patched onto another draft.
     if (!name) return { speak: DL.LINES.B18, key: 'B18', skipHarvest: true };
+    if (answeringB18 !== true && eventOnly(name)) return { speak: DL.LINES.B18, key: 'B18', skipHarvest: true }; // F-44.100
     if (typeof act.date_as_spoken !== 'string' || !act.date_as_spoken.trim()) return { lead: { name, wedding_date: null } };
     const d = resolveSpokenDate(act.date_as_spoken, { direction: 'future', nowMs });
     // F-44.98: a date read with an absurd year ("15 March 0227", his own walk of 20 September) is B21, not B7.
@@ -266,6 +300,105 @@ async function fileLead(supabase, vendor, lane, plan, L) {
     const dated = row.wedding_date ? DL.render('B17', { client, date: longDateYear(row.wedding_date) }) : null;
     return { line: dated || DL.render('B16', { client }), key: dated ? 'B17' : 'B16', call: { name: HANDS.lead, input, result: 'lead_created' }, landed: true };
   } catch (_e) { return { line: DL.LINES.B20, key: 'B20', call: { name: HANDS.lead, input, result: 'refused:exception' }, landed: false }; }
+}
+
+// ── P6a-2 · a package attach: resolved read-only to a PLAN ────────────────────────────────────────────
+// { speak, key } for B23, B24, B8, B29, B25, B26, B28 or B7; { noLead, name } when no lead carries the name (the
+// caller decides: a lead this same message files is resolved after that write; otherwise the WHOLE message goes to
+// the chain, B32's place while his word is pending); { attach: { leadId, client, body } } to be written; or null,
+// which the door cannot say (no package named, B31's place; a failed read; three of one name; anything thrown).
+// FOR A HANDOVER PACKAGE the lead's own row is read FIRST, so she is never asked for a delivery date and then
+// refused: booked is B29 and no day-precision wedding date is B25, MIRRORING leadPackages.js :127 and
+// packageSchedule.js :78 to :79 (b92 pins the mirror against attachPackage's own answer on the same rows).
+// THE DELIVERY DATE (R-44.34 (b), F-44.92): used ONLY for a handover package; resolved 'future'; reason 'year', a
+// day before today in IST, or a year outside today's IST year through plus five is B28; unreadable is B7; none
+// said, or a day EQUAL to the wedding date (misheard), asks B26. A date after the wedding is PASSED, as the app's
+// sheet passes it (F-44.94 is LC-3's). On any other package a spoken date is IGNORED. B21 is never spoken here.
+// TOTAL: never throws.
+async function packagesOf(supabase, vendorId) {
+  const { data, error } = await supabase.from('vendor_packages').select('id, name, total, delivery_basis')
+    .eq('vendor_id', vendorId).is('deleted_at', null);
+  return (error || !Array.isArray(data)) ? null : data;
+}
+async function planAttach(supabase, vendor, act, nowMs, L) {
+  try {
+    if (!act || typeof act !== 'object') return null;
+    const name = typeof act.client_as_spoken === 'string' ? act.client_as_spoken.trim() : '';
+    const said = typeof act.package_as_spoken === 'string' ? act.package_as_spoken.trim() : '';
+    if (!name || !said) return null; // no package named: B31's place (with the founder); until then, not the door's
+    const pkgs = await packagesOf(supabase, vendor.id);
+    if (!pkgs) return null;
+    const hits = pkgs.filter((p) => p && key(p.name) === key(said));
+    if (!hits.length) { const line = DL.noSuchPackage(said, pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B23' } : null; }
+    if (hits.length > 1) {
+      const line = hits.length === 2 ? DL.twoPackages(said, hits.map((p) => ({ name: p.name, total: digits(p.total) }))) : null;
+      return line ? { speak: line, key: 'B24', skipHarvest: true } : null;
+    }
+    const pkg = hits[0];
+    const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);
+    if (!found || !found.ok) {
+      if (found && found.reason === 'not_found') return { noLead: true, name }; // B32's place (with the founder)
+      if (found && found.reason === 'ambiguous') {
+        const rows = await leadsNamed(supabase, vendor.id, name, false);
+        const line = sameName(name, rows, (r) => r.wedding_date);
+        return line ? { speak: line, key: 'B8', skipHarvest: true } : null;
+      }
+      return null;
+    }
+    const client = String(found.lead.name || '').trim();
+    const body = { package_id: pkg.id };
+    if (pkg.delivery_basis === 'handover') {
+      const { data: lead, error } = await supabase.from('leads').select('id, name, state, binder_id, wedding_date, wedding_date_precision')
+        .eq('id', found.lead.id).eq('vendor_id', vendor.id).maybeSingle();
+      if (error || !lead) return null;
+      if (key(lead.state) === 'booked' || lead.binder_id) return { speak: DL.LINES.B29, key: 'B29' };
+      const precision = lead.wedding_date_precision == null ? 'day' : lead.wedding_date_precision;
+      if (!isDateKey(lead.wedding_date) || precision !== 'day') { const line = DL.render('B25', { client }); return line ? { speak: line, key: 'B25' } : null; }
+      const ask = () => { const line = DL.render('B26', { client }); return line ? { speak: line, key: 'B26', skipHarvest: true } : null; };
+      if (typeof act.date_as_spoken !== 'string' || !act.date_as_spoken.trim()) return ask();
+      const d = resolveSpokenDate(act.date_as_spoken, { direction: 'future', nowMs });
+      if (!d.ok) return d.reason === 'none' ? ask() : (d.reason === 'year' ? { speak: DL.LINES.B28, key: 'B28' } : { speak: DL.LINES.B7, key: 'B7' });
+      const m = LEAD_ISO.exec(typeof d.iso === 'string' ? d.iso : '');
+      const t = LEAD_ISO.exec(todayIstIso(nowMs));
+      if (!m || !t) return { speak: DL.LINES.B28, key: 'B28' };
+      const y = Number(m[1]); const y0 = Number(t[1]);
+      if (d.iso < t[0] || y < y0 || y > y0 + 5) return { speak: DL.LINES.B28, key: 'B28' };
+      if (d.iso === lead.wedding_date) return ask(); // the wedding date heard as the delivery date: misheard, ask
+      body.delivery_on = d.iso;
+    }
+    return { attach: { leadId: found.lead.id, client, body } };
+  } catch (_e) { return null; }
+}
+
+// Attach one planned package through attachPackage AS IT STANDS. THE READ-BACK IS FROM THE ROW it returned: the
+// package's name, its total and its delivery date, and the row's own basis decides B22 against B27. Its refusals
+// speak his bytes: already_booked B29, no_wedding_date B25, no_handover_date B26; everything else, and anything
+// thrown, B30 (recorded refused:exception for a throw). TOTAL. The door has already marked the turn as written.
+async function fileAttach(supabase, vendor, plan, L) {
+  let input = null;
+  const B30 = (result) => ({ line: DL.LINES.B30, key: 'B30', call: { name: HANDS.attach_package, input, result }, landed: false });
+  try {
+    const a = plan.attach;
+    input = { lead: a.client, ...a.body };
+    const out = await L.attachPackage(supabase, vendor, a.leadId, a.body);
+    const b = out && out.body && typeof out.body === 'object' ? out.body : null;
+    if (out && out.status === 200 && b && b.ok === true && b.lead_package && typeof b.lead_package === 'object') {
+      const row = b.lead_package;
+      const snap = row.snapshot && typeof row.snapshot === 'object' ? row.snapshot : {};
+      const vals = { client: a.client, package: snap.name, total: digits(row.total) };
+      const dated = snap.delivery_basis === 'handover' && row.delivery_on ? DL.render('B27', { ...vals, date: longDateYear(row.delivery_on) }) : null;
+      const line = dated || DL.render('B22', vals);
+      return { line, key: line ? (dated ? 'B27' : 'B22') : null, call: { name: HANDS.attach_package, input, result: 'attached' }, landed: true };
+    }
+    const code = b && typeof b.code === 'string' ? b.code : null;
+    if (code === 'already_booked') return { line: DL.LINES.B29, key: 'B29', call: { name: HANDS.attach_package, input, result: 'refused:already_booked' }, landed: false };
+    if (code === 'no_wedding_date' || code === 'no_handover_date') {
+      const k = code === 'no_wedding_date' ? 'B25' : 'B26';
+      const line = DL.render(k, { client: a.client });
+      return line ? { line, key: k, call: { name: HANDS.attach_package, input, result: `refused:${code}` }, landed: false, skipHarvest: k === 'B26' } : B30(`refused:${code}`);
+    }
+    return B30('refused:write_failed');
+  } catch (_e) { return B30('refused:exception'); }
 }
 
 // ── apply a live row on her yes, through lifecycleHands' one helper ────────────────────────────────
@@ -305,6 +438,20 @@ async function lastWasDoorQuestion(supabase, agentId) {
     if (error || !Array.isArray(data) || !data[0]) return false;
     const l = data[0].meta && data[0].meta.listener;
     return !!l && l.door === true && (l.asked === 'B1' || l.asked === 'B2');
+  } catch (_e) { return false; }
+}
+// F-44.100's exception: was the LAST assistant row of the working thread the door's own B18? Its OWN key on the
+// door's meta (persistDoorTurn writes meta.listener.asked_name = 'B18'), never the text, and never `asked`, which
+// stays B1 or B2 alone (b90 13.5).
+async function lastWasDoorNameQuestion(supabase, agentId) {
+  try {
+    const conv = await activeConversation(supabase, agentId);
+    if (!conv) return false;
+    const { data, error } = await supabase.schema('engine').from('messages').select('id, role, meta, created_at')
+      .eq('conversation_id', conv).eq('role', 'assistant').order('created_at', { ascending: false }).limit(1);
+    if (error || !Array.isArray(data) || !data[0]) return false;
+    const l = data[0].meta && data[0].meta.listener;
+    return !!l && l.door === true && l.asked_name === 'B18';
   } catch (_e) { return false; }
 }
 
@@ -414,8 +561,20 @@ async function preTurn(args, depsIn) {
     // 3 · resolve every act first, read-only; any act the door cannot say sends the WHOLE message to the chain
     const acts = st.ear.request.acts;
     const money = acts.filter((a) => MONEY_ACTS.includes(a.act));
+    // F-44.100: the thread is read ONLY when a lead act's name is made of event words and nothing else.
+    let answeringB18 = false;
+    if (acts.some((a) => a && a.act === 'lead' && eventOnly(a.client_as_spoken))) answeringB18 = await lastWasDoorNameQuestion(supabase, agentId);
     const leadPlans = [];
-    for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs));
+    for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs, answeringB18));
+    // P6a-2: every attach is PROBED read-only. One the door cannot say, or one naming no lead that this message
+    // does not itself file, sends the WHOLE message to the chain before anything is written.
+    const attaches = acts.filter((a) => a.act === 'attach_package');
+    const willFile = leadPlans.filter((p) => p && p.lead).map((p) => key(p.lead.name));
+    for (const a of attaches) {
+      const probe = await planAttach(supabase, vendor, a, nowMs, L);
+      if (!probe) return CHAIN(st.ear, 'attach_unsayable');
+      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead');
+    }
     const plans = [];
     for (const a of acts) {
       if (a.act === 'invoice') { const p = await planInvoice(supabase, vendor, agentId, a); if (!p) return CHAIN(st.ear, 'invoice_unresolved'); plans.push({ act: a, plan: p }); }
@@ -423,7 +582,7 @@ async function preTurn(args, depsIn) {
     let moneyPlan = null;
     if (money.length) { moneyPlan = await planMoney(supabase, vendor, money[0], L); if (!moneyPlan) return CHAIN(st.ear, 'money_unsayable'); }
 
-    // 4 · act: leads first, then invoices, then the one money act is staged and asked
+    // 4 · act: leads first, then attaches, then invoices, then the one money act is staged and asked
     for (const lp of leadPlans) {
       if (lp.speak) { st.lines.push(lp.speak); st.keys.push(lp.key); if (lp.skipHarvest) st.skipHarvest = true; continue; }
       st.wrote = true; // a lead may land inside the call even if the call then throws
@@ -431,6 +590,24 @@ async function preTurn(args, depsIn) {
       const f = await fileLead(supabase, vendor, lane, lp, L);
       st.lines.push(f.line); st.keys.push(f.key); st.toolCalls.push(f.call);
       if (f.landed) st.refresh = true;
+    }
+    // P6a-2: each attach plan is REBUILT here, reading the rows as they now stand (a lead this message filed exists
+    // now). After a write nothing goes to the chain: what the door cannot say is B30, which is truthful.
+    let attachMissed = false;
+    for (const a of attaches) {
+      const ap = await planAttach(supabase, vendor, a, nowMs, L);
+      if (!ap || ap.noLead) {
+        if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');
+        st.lines.push(DL.LINES.B30); st.keys.push('B30'); attachMissed = true; continue;
+      }
+      if (ap.speak) { st.lines.push(ap.speak); st.keys.push(ap.key); if (ap.skipHarvest) st.skipHarvest = true; attachMissed = true; continue; }
+      st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws
+      if (!st.fallback) st.fallback = DL.LINES.B30;
+      const f = await fileAttach(supabase, vendor, ap, L);
+      if (f.line) { st.lines.push(f.line); st.keys.push(f.key); }
+      st.toolCalls.push(f.call);
+      if (f.skipHarvest) st.skipHarvest = true;
+      if (f.landed) { st.refresh = true; if (!f.line) st.fallback = glitchLine(); } else attachMissed = true;
     }
     for (const { plan } of plans) {
       if (plan.speak) { st.lines.push(plan.speak); st.keys.push(plan.key); if (plan.skipHarvest) st.skipHarvest = true; continue; }
@@ -444,6 +621,16 @@ async function preTurn(args, depsIn) {
       st.documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: plan.invoice.client, binder_id: plan.invoice.binder.id });
       st.toolCalls.push({ name: HANDS.invoice, input: { binder_id: plan.invoice.binder.id }, result: served ? 'served' : 'minted' });
       st.refresh = true;
+    }
+    // THE MONEY PLAN IS REBUILT AFTER THE LEAD AND ATTACH PASSES (the plan above was only the probe): it reads the
+    // rows as they now stand, so B2 speaks the package just attached. An attach that did NOT land asks NO B2 and
+    // stages NO row: the door has said what landed and what did not.
+    if (moneyPlan && (leadPlans.length || attaches.length)) {
+      if (attachMissed) moneyPlan = null;
+      else {
+        moneyPlan = await planMoney(supabase, vendor, money[0], L);
+        if (!moneyPlan) { const r = money[0].act === 'milestone_paid' ? 'D8' : 'F29'; moneyPlan = { speak: L.lifecycle.LINES[r], key: r }; }
+      }
     }
     if (moneyPlan) {
       if (moneyPlan.stage) {
@@ -531,7 +718,8 @@ async function persistDoorTurn(args, depsIn) {
     await memory.saveMessage(conversationId, 'user', message);
     const ear = out && out.ear;
     const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null; // F-44.58's mark
-    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(asked ? { asked } : {}), ...(ear && ear.error ? { error: ear.error } : {}) };
+    const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null; // F-44.100's mark, its OWN key
+    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(ear && ear.error ? { error: ear.error } : {}) };
     res.assistantId = await memory.saveMessage(conversationId, 'assistant', out.reply, (out.toolCalls && out.toolCalls.length) ? out.toolCalls : undefined, { listener });
     if (res.assistantId) {
       try { await supabase.schema('engine').from('messages').update({ room: 'business' }).eq('id', res.assistantId); } catch (e) { console.warn('[door:room]', e && e.message); }
@@ -542,4 +730,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

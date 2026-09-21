@@ -54,7 +54,11 @@ const EAR_TOOL = {
           type: 'object',
           properties: {
             act: { type: 'string', description: 'lead, booking_confirmed, advance_paid, milestone_paid, attach_package, invoice, date, book_event, block_date, unblock_date, edit_event, cancel_event, assign_crew, note, relay, quote_send, find, whatsdue, history, tally' },
-            client_as_spoken: { type: 'string', description: 'The client exactly as she said it. Empty if none.' },
+            // F-44.100 (CE-44 LCV-8): the listener put "haldi shoot" here and the door filed a lead of that name. The
+            // description now says what a client IS. It is the listener's prompt byte, not a founder byte; b92 pins it.
+            client_as_spoken: { type: 'string', description: 'The NAME of a person, a couple or a family, exactly as she said it. A kind of event or shoot (haldi, mehendi, sangeet, wedding, reception, engagement, a shoot) is NEVER a client. When she is answering the assistant\'s question about who the lead is, her answer IS the name, whatever the word. When no name was said it is EMPTY.' },
+            // P6a-2 (the chair's ruling on c-44.44): the package she named, so the door has a name to resolve. OPTIONAL.
+            package_as_spoken: { type: 'string', description: 'The package exactly as she named it. Empty if none.' },
             amount_rupees: { type: 'integer', minimum: 1, description: 'Whole rupees, only if she said a figure. Omit otherwise.' },
             date_as_spoken: { type: 'string', description: 'The date in her own words, returned verbatim and never converted. A word that places the day relative to now IS a date: "today", "yesterday", "this morning", "last Friday" are dates, exactly like "5th December". When she says when money came in, however she says it, put those words here. Empty only if she gave no date at all.' },
             milestone: { type: 'string', description: 'The payment as she named it. Empty if none.' },
@@ -85,6 +89,7 @@ function normaliseRequest(raw) {
     .map((a) => {
       const out = { act: a.act.trim() };
       if (typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim()) out.client_as_spoken = a.client_as_spoken.trim();
+      if (typeof a.package_as_spoken === 'string' && a.package_as_spoken.trim()) out.package_as_spoken = a.package_as_spoken.trim();
       if (Number.isInteger(a.amount_rupees) && a.amount_rupees >= 1) out.amount_rupees = a.amount_rupees;
       if (typeof a.date_as_spoken === 'string' && a.date_as_spoken.trim()) out.date_as_spoken = a.date_as_spoken.trim();
       if (typeof a.milestone === 'string' && a.milestone.trim()) out.milestone = a.milestone.trim();

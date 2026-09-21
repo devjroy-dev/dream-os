@@ -8,7 +8,8 @@
 // yes at R-44.21 (e) (F-44.54). D3 to D8 and F29 are NOT here: they keep their one home in
 // lifecycleHands.js LINES and the door reads them from there. B16 to B21 (P6a-1, the lead half) his at
 // R-44.34 ("yes to all", 21 September 2026), carried verbatim from TDW_CE44_LCV6_SEAT_CLOSE.md §4.
-// B15's key is owed by the last packet and stays free. B22 to B29 arrive with P6a-2.
+// B15's key is owed by the last packet and stays free. B22 to B28 (P6a-2, CE-44 LCV-8) his at R-44.34 and R-44.35,
+// carried verbatim from the same §4; B29 and B30 are his bytes REUSED from the pwa, each named at its line below.
 //
 // HASH-CARRIED, AS victorLines.js IS (CE-207): each template is frozen as bytes; LINE_HASHES pins the
 // sha256 of each as a literal; assertLineHashes() runs AT LOAD, so a process that requires this file
@@ -68,6 +69,31 @@ const LINES = Object.freeze({
   B20: "Could not add the lead.",
   // a wedding date in the past, or outside this year through five years on (F-44.66)
   B21: "That wedding date cannot be right. Say it like 5 December 2027.",
+  // P6a-2 · a package attached by the door; every slot from the lead_package ROW attachPackage returned (R-44.33, R-44.34)
+  B22: "Package attached: {client} · {package} · Rs {total}.",
+  // no package of hers by that name; {list} is HER OWN live names joined with " · "
+  B23: "You have no package called {name}. Yours are: {list}.",
+  // two of her packages share the name (rendered by position, as B8 is)
+  B24: "Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.",
+  // the lead has no day-precision wedding date (computeSchedule's no_wedding_date)
+  B25: "Could not attach the package. {client} has no wedding date yet. Add the date first.",
+  // a handover package and no delivery date said, or one equal to the wedding date (R-44.34 (b), R-44.35, F-44.92)
+  B26: "When is the delivery date for {client}?",
+  // a handover package attached; the delivery date from the ROW
+  B27: "Package attached: {client} · {package} · Rs {total} · Delivery {date}.",
+  // a delivery date in the past or outside this year through five years on. Provenance, in the chair's terms (LCV-6 seat
+  // close §4): proposed by the chair as B21's twin "in whichever word he picked"; he answered B and changed nothing;
+  // recorded as his on that basis; he may still reword it.
+  B28: "That delivery date cannot be right. Say it like 5 December 2027.",
+  // R-44.12's sentence, HIS, REUSE and not a new veto: bytes IDENTICAL to dreamos-pwa lib/worklist/packages.ts:126
+  // (refusals.already_booked). A dream-os bench cannot read the pwa on his machine, so the pin is the hash literal.
+  B29: "This couple is booked. The package is fixed on their invoice.",
+  // REUSE, not a new veto (the chair's ruling, 21 September): bytes IDENTICAL to dreamos-pwa lib/worklist/packages.ts:73
+  // (attachFailed; that file's header records his veto of 2026-09-17 on every string in the LC-2 read-first). Spoken for
+  // attachPackage's 500, bad_package, no_fee and invalid, and for any throw.
+  // B31 (the which-package question) and B32 (no lead called {name}, for an attach) are WITH THE FOUNDER; their keys stay
+  // free until his word comes back verbatim. Nothing is built on them.
+  B30: "Could not attach the package.",
   // a booking made (vetoed CE-43, TDW_CE43_LC2_P3_HANDOVER.md:173; homeless until P5)
   D1: "Booked: {client}. Client, event and invoice {number} are ready.",
   // R-44.18; CARRIED UNUSED until the chain leaves the working rooms (R-44.21 (a))
@@ -112,6 +138,15 @@ const LINE_HASHES = Object.freeze({
   B19: 'ec10d50e073b11a83206a1c89c276be61f0e476bee762671d383820d74ecfaf8',
   B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653',
   B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
+  B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c',
+  B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c',
+  B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a',
+  B25: '54da33cf13d4a3bb0d19333f1f5fa540fbf196af9f1cdd2b2e1b454c8a3f475f',
+  B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484',
+  B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
+  B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
+  B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
+  B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });
@@ -193,6 +228,30 @@ function twoClients(name, candidates) {
   } catch (_e) { return null; }
 }
 
+// Byte 24 has repeated slots, as byte 8 has: the name she used, then exactly TWO packages, each its own name and
+// its total in Indian grouping WITHOUT the letters (the template carries "Rs"). Anything else is null.
+function twoPackages(name, candidates) {
+  try {
+    const n = slot(name);
+    if (n === null || !Array.isArray(candidates) || candidates.length !== 2) return null;
+    const parts = candidates.map((x) => [slot(x && x.name), slot(x && x.total)]);
+    if (parts.some(([a, b]) => a === null || b === null)) return null;
+    const fill = [n, parts[0][0], parts[0][1], parts[1][0], parts[1][1]];
+    let i = 0;
+    return LINES.B24.replace(/\{(name|total)\}/g, () => fill[i++]);
+  } catch (_e) { return null; }
+}
+
+// Byte 23's {list}: HER OWN package names joined with " · ". No usable name at all is null.
+function noSuchPackage(name, names) {
+  try {
+    if (!Array.isArray(names)) return null;
+    const list = names.map(slot).filter((x) => x !== null);
+    if (!list.length) return null;
+    return render('B23', { name, list: list.join(' · ') });
+  } catch (_e) { return null; }
+}
+
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
 function invoiceNumbers(client, numbers) {
   try {
@@ -206,4 +265,4 @@ function invoiceNumbers(client, numbers) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, invoiceNumbers };
+module.exports = { LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

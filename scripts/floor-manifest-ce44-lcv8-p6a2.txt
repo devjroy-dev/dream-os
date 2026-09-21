@@ -1,0 +1,8 @@
+# CE-44 LCV-8 LC-Victor P6a-2 · the declared dirt of this delivery, one path per line
+src/lib/vendor/workingDoor.js
+src/lib/vendor/doorLines.js
+src/lib/vendor/listenerDoor.js
+scripts/b92_lcv_p6a_bench.js
+scripts/b90_lcv_p5_bench.js
+docs/handovers/TDW_CE44_LCV8_P6A2_HANDOVER.md
+scripts/floor-manifest-ce44-lcv8-p6a2.txt
