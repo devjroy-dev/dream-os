@@ -1,0 +1,3 @@
+# CE-44 LCV-9 · Part One walk record and seat close · DOCS-ONLY (C-44.1) · the declared dirt, one path per line
+docs/handovers/TDW_CE44_LCV9_PART1_WALK_RECORD.md
+scripts/floor-manifest-ce44-lcv9-walkrecord.txt
