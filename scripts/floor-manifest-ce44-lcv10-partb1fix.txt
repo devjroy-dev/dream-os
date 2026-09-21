@@ -1,0 +1,6 @@
+# CE-44 LCV-10 PART B-1 FIX FORWARD · F-44.114 stray punctuation around a date; F-44.115 the note no longer swallows a restated job (F-44.113 folded in) · the declared dirt of this delivery, one path per line · base 14bc61d60c46101941894212352a06e6fd86314f
+docs/handovers/TDW_CE44_LCV10_PARTB1_FIX_HANDOVER.md
+scripts/floor-manifest-ce44-lcv10-partb1fix.txt
+scripts/b96_lcv10_fix_bench.js
+src/lib/vendor/spokenDate.js
+src/lib/vendor/workingDoor.js

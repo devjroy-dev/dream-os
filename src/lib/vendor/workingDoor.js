@@ -79,9 +79,10 @@
 // ONE of them, the door saves the act that is waiting for the date on ITS OWN assistant row, meta.listener.note, beside the
 // marks that are already there (asked, asked_name: untouched). On the next turn, if that row is the last assistant row of the
 // working thread, the door reads HER WHOLE MESSAGE ITSELF as the date and runs the saved act through the SAME plans as any
-// turn. A closed NO word answers B3. A message the door cannot read as a date is fresh ONLY when the listener heard an act
-// OTHER than the noted one (the ONE place the listener's record decides such a turn); otherwise it is answered as any unreadable
-// date is, ONCE, and the next such answer is B3. THE NOTE NEVER WRITES MONEY: a money act it carries is planned afresh from
+// turn. A closed NO word answers B3. A message the door cannot read as a date is handled FRESH when the listener heard that she
+// has MOVED ON (F-44.115: another act, the noted act for another client, or the noted act with a date of its own, which is a
+// restated job; the ONE place the listener's record decides such a turn); otherwise it is answered as any unreadable date is,
+// ONCE, and the next such answer is B3. THE NOTE NEVER WRITES MONEY: a money act it carries is planned afresh from
 // the rows as they stand and STAGED exactly as today; only her YES applies it. A live staged row wins over any note.
 
 const DL = require('./doorLines');
@@ -691,7 +692,17 @@ async function preTurn(args, depsIn) {
     if (note) {
       const own = resolveSpokenDate(message.trim(), { direction: note.direction, nowMs });
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
-      const movedOn = heardActs.some((a) => a && typeof a.act === 'string' && a.act !== note.acts[0].act);
+      // F-44.115 (the chair's ruling of 22 September, superseding "only an act OTHER than the noted one lapses the note", which was too
+      // narrow; F-44.113 is folded in, the two being one rule). WITNESSED on his walk of 22 September: refused a date, he RETYPED THE WHOLE
+      // SENTENCE; the listener heard the NOTED act for the SAME client, the note stood, his sentence was read as a date: B7, then B3. At
+      // 6456690 the same retype filed (Part A's walk, turn 6). SHE HAS MOVED ON when the heard request holds ANY of: an act other than the
+      // noted one; the noted act naming a DIFFERENT client under key(); THE NOTED ACT CARRYING A date_as_spoken OF ITS OWN, since she has
+      // then restated the job. The re-ask remains ONLY for no act heard, or the noted act heard with no date. A job handled fresh that is
+      // refused again writes a NEW note at tries 0: she may retype as often as she likes and is never told "Nothing was changed" for it.
+      const noted = note.acts[0];
+      const restated = (a) => a.act === noted.act && (!!spokenText(a.date_as_spoken)
+        || (!!spokenText(a.client_as_spoken) && !!spokenText(noted.client_as_spoken) && key(a.client_as_spoken) !== key(noted.client_as_spoken)));
+      const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && (a.act !== noted.act || restated(a)));
       if (own.ok || !movedOn) fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, date_as_spoken: message.trim() } : { ...a })) };
     }
     let heard = fromNote;

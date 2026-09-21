@@ -99,6 +99,23 @@ function resolveSpokenDate(spoken, opts) {
   } catch (_e) { return { ok: false, reason: 'unreadable' }; }
 }
 
+// F-44.114 (CE-44 LCV-10; the chair's cure, widened on the founder's own question "what if its with a comma??"): STRAY PUNCTUATION
+// AROUND A DATE DOES NOT COUNT. WITNESSED on his walk of 22 September: "Wedding on 5th March 27." was refused for its full stop. Before
+// the forms are tried, any run of THESE marks, and the whitespace between them, is stripped from BOTH ENDS and from nowhere else. IT IS A
+// CLOSED SET IN ONE CONSTANT, never a \W sweep, so nothing surprising is ever eaten: sentence punctuation . ! ? ; : , the dashes - – —,
+// brackets of every kind ( ) [ ] { } < >, and straight and curly quotes " ' “ ” ‘ ’. NOTHING IS STRIPPED FROM INSIDE: the separators of
+// "5/3/27", "5.3.27" and "5-3-27" and the apostrophe of "'27" are the date and stay. A WORD IS NOT PUNCTUATION ("5th march 27, evening"
+// stays refused): dropping it would be guessing, and the door never guesses.
+const STRAY_MARKS = '.!?;:,-\u2013\u2014()[]{}<>"\'\u201C\u201D\u2018\u2019';
+const SPOKEN_MAX = 200; // nothing she can mean as a date is longer; it also bounds every pattern below on a hostile string
+function unwrapSpoken(str) {
+  let a = 0; let b = str.length;
+  const stray = (ch) => STRAY_MARKS.includes(ch) || /\s/.test(ch);
+  while (a < b && stray(str[a])) a += 1;
+  while (b > a && stray(str[b - 1])) b -= 1;
+  return str.slice(a, b);
+}
+
 function resolveRaw(spoken, opts) {
   try {
     const o = (opts && typeof opts === 'object') ? opts : {};
@@ -110,7 +127,13 @@ function resolveRaw(spoken, opts) {
     const today = (typeof o.todayIso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.todayIso)) ? o.todayIso : todayIstIso(o.nowMs);
     if (spoken === undefined || spoken === null) return { ok: false, reason: 'none' };
     if (typeof spoken !== 'string') return { ok: false, reason: 'unreadable' };
-    const s = spoken.toLowerCase().replace(/[,]/g, ' ').replace(/\s+/g, ' ').trim()
+    if (spoken.length > SPOKEN_MAX) return { ok: false, reason: spoken.trim() ? 'unreadable' : 'none' };
+    // A YEAR ALONE IS NO DATE: "'27" is an apostrophe-year with no day or month. Unwrapped it would be the bare "27", which reads as the 27th of
+    // this month: a guess. It is refused before the unwrap. (A bare "27", or a quoted one, reads as the day it always did.)
+    if (/^\s*['\u2019]\d{2}\s*$/.test(spoken)) return { ok: false, reason: 'unreadable' };
+    // F-44.114: the ends are unwrapped first; then an APOSTROPHE before a closing two-digit year ("5 march'27", "5th Mar '27") reads as
+    // that year under F-44.111's rule, with or without a space before it. The line below it is as it was.
+    const s = unwrapSpoken(spoken.toLowerCase()).replace(/ ?['\u2019](\d{2})$/, ' $1').replace(/[,]/g, ' ').replace(/\s+/g, ' ').trim()
       .replace(/^(on|by|of)\s+/, '').replace(/^the\s+/, '');
     if (!s) return { ok: false, reason: 'none' };
     // F-44.60 (P5-h1): words that place the day relative to now ARE dates, resolved here in IST.
@@ -177,4 +200,4 @@ function resolveRaw(spoken, opts) {
   } catch (_e) { return { ok: false, reason: 'unreadable' }; }
 }
 
-module.exports = { resolveSpokenDate, todayIstIso };
+module.exports = { resolveSpokenDate, todayIstIso, STRAY_MARKS, SPOKEN_MAX };
