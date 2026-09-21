@@ -1,0 +1,3 @@
+# CE-44 LCV-8 · P6a-2 walk record and seat close · DOCS-ONLY (C-44.1) · the declared dirt, one path per line
+docs/handovers/TDW_CE44_LCV8_P6A2_WALK_RECORD.md
+scripts/floor-manifest-ce44-lcv8-walkrecord.txt
