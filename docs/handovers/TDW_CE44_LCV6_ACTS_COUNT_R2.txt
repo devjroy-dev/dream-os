@@ -1,0 +1,279 @@
+CONFIRMED BY THE CHAIR FOR THE FOUNDER, 21 SEPTEMBER 2026, AND RUN ONCE. FILED AS TEXT. NOT TO BE RE-RUN WITHOUT THE CHAIR.
+# repo: dream-os @ fb0335ac459a35f8f40d057625b1fc2d1f3e14a3 · dreamos-pwa @ 320ad7e39f7e70e0fb4be6b37b84b4299a3c8307
+# TDW · CE-44 · SEAT LCV-6 · THE ACTS COUNT r2, REHEARSED · AND F-44.92's THREE DERIVATIONS AS DESIGN
+# 2026-09-21 IST. Three read-only SELECTs below. NOTHING IN THIS FILE IS TO BE RUN UNTIL THE CHAIR CONFIRMS IT.
+
+## §1 · TWO CORRECTIONS OWNED FIRST
+
+**e-42.** The chair is right and I was wrong on the citation. Re-derived by command at this tip:
+`threadText` opens at listenerDoor.js:117, and the `[understood then: …]` annotation is ONE line,
+**:122**. I wrote ":128 to :137", which is neither the line nor the function's true span. CAUSE: the
+span was carried from a read taken earlier in the session and typed out at the moment of writing
+rather than re-derived at that moment. That is the protocol's own verify-at-origin rule broken in
+the smallest possible way, and it is the same shape as e-41: the file had been read whole, and
+reading it is not the same as re-deriving from it. Every other line I cited in the P6a read-first
+was re-derived today; this one was not, and I did not mark it as different.
+
+**Recorded, not an error:** the chair's five verifications at fb0335a all match, including F-44.64's
+defect in one line, `resolveRaw` mapping anything that is not 'past' to future (spokenDate.js:91).
+
+## §2 · R-44.34, RECORDED WITH THE CHAIR'S LIST BEFORE IT
+
+The chair put to the founder one list of twelve proposed bytes, and with it the question ASK against
+REFUSE for a package that needs a handover date, with its own lean of ASK. THE FOUNDER, verbatim,
+2026-09-21: *"yes to all."* and then, of the question byte: *"When/what is the delivery date for
+Sharma?"*
+
+R-44.34 (a): bytes 1 to 10 are his, verbatim, keys B16 to B25 as the chair allocated them, into
+doorLines.js, hash-carried, ONE home. B19's `{client}` is the existing row's name; B21 serves both
+the out-of-range year and a date already past; B22's package and total come from the row
+`attachPackage` returned; B23's `{list}` is her own package names joined with " · ". Reused as they
+stand: R-44.12's booked line, B7, B8's shape. B15 stays owed by the last packet and keeps its key.
+
+R-44.34 (b): THE DOOR ASKS FOR THE HANDOVER DATE. By writing the question himself he ruled ASK.
+
+R-44.34 (c): B26 and B27 ARE NOT HIS YET. His words carry a slash and the word "delivery" where his
+own app's field reads "Handover date". THE SEAT BUILDS NOTHING ON B26 OR B27 until his word comes
+back verbatim, and builds the rest.
+
+## §3 · F-44.92: THE THREE DERIVATIONS, NOW DESIGN
+
+### (a) NOTHING IN THE ESTATE ENFORCES THAT A HANDOVER DATE FALLS BEFORE THE WEDDING
+
+Derived at this tip, read line by line. `computeSchedule` (packageSchedule.js:89 to :91) does exactly
+two things with a handover package: it tests `isDateKey(delivery_on)` and, passing, assigns
+`deliveryOn = delivery_on` verbatim. `isDateKey` (:32 to :36) tests ONLY that the string is a real
+`YYYY-MM-DD` that round-trips. The route's own check (leadPackages.js:149) is the same `isDateKey`
+and nothing more. There is no comparison against `wedding_date` anywhere on either path.
+
+SO: a handover date in 1999, or fifty years out, or after the wedding, is accepted and written today,
+by the app's own sheet as much as by anything else. The seed copy calls it *"the handover date,
+before the wedding"* (`packageSeedParse.js:86`), so BEFORE is the product's intent and the estate
+holds no mechanism for it. That gap is the app's, not the door's.
+
+WHAT THE DOOR DOES: **the door enforces nothing the estate does not.** It passes what she said and
+refuses only what `resolveSpokenDate` refuses, plus the one door rule already ruled for the wedding
+date. Concretely: `resolveSpokenDate(date_as_spoken, { direction: 'future' })`, FUTURE because a
+handover is ahead of today; an unreadable date takes B7; a resolved date strictly before today in
+IST or outside F-44.66's year range takes B21, which is his and already covers "a date that cannot
+be right". A handover date AFTER the wedding is NOT refused by the door, because refusing it would
+make the door stricter than the sheet she would otherwise use, and R-43.16's estate-wide shape is
+that one fact behaves one way on every surface. **Named for the chair as a candidate the seat does
+NOT allocate to itself: the handover date is unbounded against the wedding date on every surface.**
+The consequence is real and worth his knowing: the final instalment's `due_on` IS the handover date
+(packageSchedule.js:105), so a handover date before the deposit's own day produces a schedule whose
+last payment is due before its first.
+
+### (b) WAY (iii)'s RULE, MADE MECHANICAL, AND WHETHER IT HOLDS AGAINST THE EAR'S ONE DATE SLOT
+
+The rule, as the chair set it: a date on the ATTACH act is used as the handover date ONLY when the
+lead's package is a handover package AND that date differs from the lead's wedding date; a date equal
+to the wedding date is treated as misheard and the question is asked.
+
+IT HOLDS, and here is why, derived from the schema. `EAR_TOOL`'s `date_as_spoken` is a property of
+EACH ACT in `acts[]`, not of the request (listenerDoor.js, the act item's properties). So a lead act
+and an attach act in one message each carry their own slot, and `normaliseRequest` keeps both
+independently. "Add a lead for Sharma, wedding 5 December, attach the bridal lehenga, handover on
+20 November" gives the lead act "5 December" and the attach act "20 November", and nothing in the
+door has to guess which is which.
+
+THE FAILURE MODE THE RULE IS FOR, and it is a real one: the listener has been seen copying the
+wrong thing into a per-act slot (P1's table: C2 returned "Khanna wedding" into `client_as_spoken`
+for Khanna, and row 23 put "Personal" there for a blocked day). So the attach act's date may simply
+be the wedding date repeated. The equality test catches exactly that case and costs one comparison.
+
+SO THE DESIGN, under R-44.34 (b), is ASK with a pre-check that avoids asking when she already said
+it: if the package resolves to `delivery_basis = 'handover'`, and the attach act carries a
+`date_as_spoken` that resolves, and the resolved day is NOT equal to the lead's `wedding_date`, the
+door passes it as `delivery_on`. Otherwise the door asks B26 once and carries the rest of the message
+across on the thread, exactly as §1.3(a)'s nameless lead does. A cell pins the equality branch: an
+attach act whose date equals the wedding date must ASK, never attach, and a mutation removing the
+equality test must red it.
+
+### (c) THE READ-BACK CARRIES THE HANDOVER DATE, FROM THE ROW
+
+B27's date comes from `lead_package.delivery_on` on the row `attachPackage` RETURNED, rendered in
+full month through `longDateYear` (R-42.13). `delivery_on` is in `LEAD_PACKAGE_SELECT`
+(leadPackages.js:43 to :44) and the insert writes `sched.delivery_on` (:182), so the returned row
+carries the value the schedule actually used, not the value the door sent and not the words the ear
+heard. Same rule as B22's package and total. The pwa's own attached line reads `Delivery · ${date}`
+(dreamos-pwa lib/worklist/packages.ts:99), which is the form the chair has put to him for B27.
+
+### THE SEED'S SIZE, DERIVED FROM THE TREE
+
+`db/seeds/package_seeds.json` carries eleven categories. By `delivery_basis`, read from the file:
+`on_the_day` seven (planning, makeup, hairstylist, decor, venue_catering, performer, other) ·
+`days` two (photography at 45, content_creator at 14) · `handover` two, **designer** and
+**jewellery**. So the chair's reading is confirmed from the seed itself: for those two trades every
+seeded default package is a handover package, and under a refuse-only design the door could attach
+nothing for either trade, ever. The count on HER live estate rides BLOCK 3 below.
+
+## §4 · THE STATEMENTS · NOT TO BE RUN UNTIL THE CHAIR CONFIRMS
+
+Three blocks, read-only, one statement per paste block. BLOCK 0 is the schema witness and BLOCK 1 is
+the control: **both are read before BLOCK 2 means anything.** Every column below was witnessed in
+docs/db/ENGINE_SCHEMA.md or docs/db/PUBLIC_SCHEMA.md before it was written; none was composed from
+memory (e-31).
+
+```sql
+-- BLOCK 0 · SCHEMA WITNESS. EXPECT one row per column named below, 25 rows on the estate as the
+-- plant has it. engine.messages.room was added by 0159 and is ABSENT from the engine doc, which is
+-- a FLOOR at ladder 0129 (F-44.51, F-43.13): this block TESTS for it rather than assuming it.
+-- If a column you expect is missing here, BLOCKS 1 to 3 are not evidence.
+select table_schema, table_name, column_name
+from information_schema.columns
+where (table_schema, table_name) in
+      (('engine','messages'),('engine','conversations'),('engine','agents'),('engine','users'),
+       ('public','users'),('public','vendors'),('public','vendor_packages'))
+  and column_name in ('id','conversation_id','role','meta','room','agent_id','user_id','auth_user_id',
+       'phone','tier','vendor_id','delivery_basis','delivery_days','seeded_from','deleted_at')
+order by 1, 2, 3;
+```
+
+```sql
+-- BLOCK 1 · THE CONTROL. Read this BEFORE block 2.
+-- heard_rows is every row carrying meta.listener. joined_rows is the same rows after the identity
+-- join. IF joined_rows > heard_rows THE JOIN FANNED OUT (a user carrying more than one vendor row)
+-- and block 2's split is NOT evidence. tier_resolved + tier_unresolved must equal heard_rows exactly.
+with heard as (
+  select m.id, c.agent_id
+  from engine.messages m
+  join engine.conversations c on c.id = m.conversation_id
+  where m.meta ? 'listener'
+),
+tiered as (
+  select h.id, v.tier
+  from heard h
+  left join engine.agents  a  on a.id = h.agent_id
+  left join engine.users   eu on eu.id = a.user_id
+  left join public.users   pu on pu.auth_user_id = eu.auth_user_id
+  left join public.vendors v  on v.user_id = pu.id
+)
+select (select count(*) from heard)                                    as heard_rows,
+       (select count(*) from tiered)                                   as joined_rows,
+       (select count(*) from tiered where tier is not null)            as tier_resolved,
+       (select count(*) from tiered where tier is null)                as tier_unresolved,
+       (select count(*) from engine.messages where role = 'assistant') as assistant_rows_all;
+```
+
+```sql
+-- BLOCK 2 · THE ACTS COUNT. Every act the listener heard, split by act, route, lane, model and the
+-- vendor's tier TODAY. The identity join is vendorIdentity.ts's, in reverse:
+-- engine.agents.user_id -> engine.users -> auth_user_id -> public.users -> public.vendors.
+-- A heard row whose request carried NO acts (route 'none') appears as act '(no acts)', so these rows
+-- sum to the acts heard PLUS the empty requests, never to heard_rows.
+with heard as (
+  select m.id,
+         m.meta->'listener'                                as l,
+         m.meta->'listener'->>'lane'                       as lane,
+         m.meta->'listener'->>'model'                      as model,
+         m.meta->'listener'->'request'->>'route'           as route,
+         c.agent_id
+  from engine.messages m
+  join engine.conversations c on c.id = m.conversation_id
+  where m.meta ? 'listener'
+),
+tiered as (
+  select h.*, v.tier as tier_today
+  from heard h
+  left join engine.agents  a  on a.id = h.agent_id
+  left join engine.users   eu on eu.id = a.user_id
+  left join public.users   pu on pu.auth_user_id = eu.auth_user_id
+  left join public.vendors v  on v.user_id = pu.id
+)
+select coalesce(act.value->>'act', '(no acts)')  as act,
+       coalesce(t.route, '(no route)')           as route,
+       coalesce(t.lane, '(no lane)')             as lane,
+       coalesce(t.model, '(no model)')           as model,
+       coalesce(t.tier_today, '(unresolved)')    as tier_today,
+       count(*)                                  as turns
+from tiered t
+left join lateral jsonb_array_elements(
+       case when jsonb_typeof(t.l->'request'->'acts') = 'array'
+            then t.l->'request'->'acts' else '[]'::jsonb end) as act(value) on true
+group by 1, 2, 3, 4, 5
+order by 6 desc, 1, 2, 3, 4, 5;
+```
+
+```sql
+-- BLOCK 3 · HER PACKAGES BY DELIVERY BASIS (F-44.92's size on the live estate).
+-- live_rows counts packages a vendor can still attach; vendors_with counts how many vendors hold at
+-- least one. all_rows is the control: live_rows + retired_rows must equal all_rows on every line,
+-- or the filter is wrong and this block is not evidence.
+select coalesce(delivery_basis, '(null)')                                    as delivery_basis,
+       count(*) filter (where deleted_at is null)                            as live_rows,
+       count(*) filter (where deleted_at is not null)                        as retired_rows,
+       count(*)                                                              as all_rows,
+       count(distinct vendor_id) filter (where deleted_at is null)           as vendors_with,
+       count(*) filter (where deleted_at is null and seeded_from is not null) as live_seeded
+from public.vendor_packages
+group by 1
+order by 2 desc, 1;
+```
+
+## §5 · THE REHEARSAL, AS IT RAN
+
+Postgres 16.15 installed in this container and run as an unprivileged user. Schema built from the
+column blocks of docs/db/ENGINE_SCHEMA.md and docs/db/PUBLIC_SCHEMA.md for EXACTLY the seven tables
+the statements read, nothing else, no column invented. `engine.messages.room` planted although the
+engine doc does not carry it, because 0159 added it and the doc is a floor.
+
+**THE IDS ARE PLANTED AS PRODUCTION HAS THEM.** A different uuid in every plane; the only value
+shared across the two planes is `auth_user_id`. A plant that reused one uuid for the agent, the
+engine user and the public user would let a wrong join pass, which is C-44.3's class applied to ids,
+and three findings this sitting were doubles that lied.
+
+**THE ROLE IS PRODUCTION'S EDITOR**, not the bootstrap superuser: `tdw_editor`, `rolsuper` **false**,
+`rolbypassrls` **true**, not a member of any platform role. Witnessed in the run:
+`postgres t t · tdw_editor f t`. All three blocks were run as `tdw_editor`.
+
+**THE EMPTY-DATABASE CONTROL, run first.** BLOCK 0 returned `(0 rows)`; BLOCKS 1, 2 and 3 each
+ERRORED with `relation "engine.messages" does not exist` and `relation "public.vendor_packages" does
+not exist`. So an empty answer and a broken answer do NOT look alike here: a missing table is loud.
+
+**AGAINST THE PLANT** — five heard rows across three agents, one of them with a deliberately broken
+chain to a vendor, plus two rows that must NOT be counted (a `user` row and an assistant row whose
+meta carries no `listener` key), and four packages including one retired:
+
+    BLOCK 0   25 rows, every column named present, room included
+    BLOCK 1   heard_rows 5 · joined_rows 5 · tier_resolved 4 · tier_unresolved 1 · assistant_rows_all 6
+    BLOCK 2   6 rows:
+              (no acts)          none   whatsapp haiku    prestige     1
+              advance_paid       task   pwa      haiku    signature    1
+              booking_confirmed  task   pwa      haiku    signature    1
+              invoice            task   pwa      haiku    signature    1
+              lead               task   whatsapp haiku    (unresolved) 1
+              whatsdue           search whatsapp deepseek prestige     1
+    BLOCK 3   days 1/0/1 · handover 1/1/2 · on_the_day 1/0/1
+
+Read against the plant, every number is the one the plant put there. `assistant_rows_all` 6 beside
+`heard_rows` 5 witnesses that the assistant row with no listener key was excluded. The two-act
+message split into two rows, `invoice` and `advance_paid`. The route-`none` row appears as
+`(no acts)` rather than vanishing. `tier_unresolved` is 1 and it is the broken-chain agent, so the
+control counted something real rather than proving nothing with a zero. `handover` shows
+live 1, retired 1, all 2, so the retired package is excluded from `live_rows` and still reconciles.
+
+**THE CONTROL IS NOT VACUOUS, PROVEN BY PLANT.** A second `public.vendors` row was inserted against
+one user inside a transaction and BLOCK 1 re-run: `heard_rows 5 · joined_rows 7 · tier_resolved 6`.
+The guard fires exactly as its comment says it will, and the transaction was rolled back. Without
+this, "joined_rows equals heard_rows" would be a sentence nobody had tested.
+
+**WHAT THE REHEARSAL DOES NOT PROVE.** It proves the statements parse, join and count correctly
+against rows SHAPED like his. It proves nothing about what his estate actually contains, and it
+cannot: the plant's numbers are the plant's. His result is the evidence of record, and it is read
+BLOCK 0 then BLOCK 1 then BLOCK 2 then BLOCK 3, in that order, with BLOCKS 2 and 3 disregarded if
+either of the first two disagrees with itself.
+
+## §6 · WHAT THE SEAT ASKS
+
+  1. The chair's confirm on these four blocks, so they carry their provenance line to the founder.
+  2. Then the slot, once B26 and B27 are his.
+
+The build that is already unblocked and not yet started: bytes B16 to B25 into doorLines.js
+hash-carried, the two new passes in `preTurn`'s order, the package resolver beside `leadsNamed` and
+`sameName`, `allCovered`'s lead exception written as a branch ABOVE the untouched return so
+b90:452's anchor holds, F-44.64 riding the cut, and b90's four hits re-pinned in the same cut. None
+of it starts before the whole read of b80, b88 and b90 at the head of the cut, by the differential.
+
+---
+A PROSE INSTRUCTION IS NOT A MECHANISM. Trust evidence over narrative, including this file.
