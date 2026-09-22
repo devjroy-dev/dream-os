@@ -1,0 +1,3 @@
+# CE-45 LCV-11 · SEAT CLOSE · docs-only (C-44.1) · the declared dirt of this delivery, one path per line · base 190868627e9ac9a7cac94768e1b50ea828389b33
+docs/handovers/TDW_CE45_LCV11_SEAT_CLOSE_HANDOVER.md
+scripts/floor-manifest-lcv11-close.txt
