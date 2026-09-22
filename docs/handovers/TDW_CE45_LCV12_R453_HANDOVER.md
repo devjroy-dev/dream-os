@@ -1,4 +1,4 @@
-# repo: dream-os @ 541f14552ffac295296fe40b16dab411ced484c0 · dreamos-pwa @ 320ad7e39f7e70e0fb4be6b37b84b4299a3c8307 (untouched by this cut)
+# repo: dream-os @ a423825 (cut one landed; this docs-only cut writes §7) · base of the cut 541f14552ffac295296fe40b16dab411ced484c0 · dreamos-pwa @ 320ad7e39f7e70e0fb4be6b37b84b4299a3c8307 (untouched by this cut)
 # TDW · CE-45 · SEAT LCV-12 · LC-VICTOR P7, CUT ONE · R-45.3 THE COLD SECOND HEARING · rung b103 · 2026-09-22 IST
 # Delivery version: the walk record (§7) is written in by script from the founder's export after the walk, never retyped. Line numbers were
 # derived by command at the moment of cutting; re-derive before citing. No byte a vendor reads changes in this cut.
@@ -80,9 +80,154 @@ stopped, the base file restored by git checkout, both output folders deleted, an
 figures above are from the clean re-run only. The lesson is in the seat close: a detached runner is started with setsid, and git status is
 read on BOTH trees before any floor figure is written.
 
-## 7 · THE WALK RECORD
-Written in by script from the founder's export after the walk (the card's closing export carries m.meta->'listener'->'heard' and
-m.meta->'listener'->>'reheard').
+## 7 · THE WALK RECORD · WRITTEN BY SCRIPT FROM THE FOUNDER'S EXPORTS OF 23 SEPTEMBER 2026 (00:40 TO 00:45 IST), NEVER RETYPED
+  thread 46 rows, engine.messages with meta.listener (first_hearing, reheard, rehear_error), sha256 a6d0c47b1bb23f90e2c0a4c38bf04b3f7d5e75644da29978fe3eabe7f26c0bee
+  drafts 4 rows, public.pending_couple_drafts, sha256 699c6c7e85d62eaf492c60d710d3c45ea761d54ab193d5bf1f494fb1176794d6
+  Times are UTC. HE is his message; DOOR is the reply and its lane; HEARD is meta.listener.request (what the door decided on); FIRST is meta.listener.heard where a
+  second hearing ran; REHEARD is meta.listener.reheard; NOTE is the question the door kept. Fixture as his SELECT returned it: DEV440 1 · the switch row 0 · live
+  lead Sarah +919625759924 booked · open drafts 0 · leads named Walk Sixteen% 0. Deployed a423825 (Railway ACTIVE 00:39 IST).
+
+### 7.1 the thread
+1. 19:10:07 HE: Who are my new leads?
+   19:10:07 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"find"}],"route":"search"}
+   REHEARD: absent
+
+2. 19:10:18 HE: Am I free on 14 February?
+   19:10:18 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"whatsdue","date_as_spoken":"14 February"}],"route":"search"}
+   REHEARD: absent
+
+3. 19:10:23 HE: What's due this week?
+   19:10:23 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"whatsdue","date_as_spoken":"this week"}],"route":"search"}
+   REHEARD: absent
+
+4. 19:10:29 HE: Refresh
+   19:10:29 DOOR · lane pwa: I didn't catch a task in that. You can say things like: ⏎ The advance came in today for the Kapoor booking ⏎ Add a new lead, haldi shoot on 3 January
+   HEARD: {"acts":[],"route":"none"}
+   REHEARD: absent
+
+5. 19:10:40 HE: Who are my new leads?
+   19:10:40 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"find"}],"route":"search"}
+   REHEARD: absent
+
+6. 19:10:47 HE: Am I free on 14 February?
+   19:10:47 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"whatsdue","date_as_spoken":"14 February"}],"route":"search"}
+   REHEARD: absent
+
+7. 19:10:55 HE: What's due this week?
+   19:10:55 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"whatsdue","date_as_spoken":"this week"}],"route":"search"}
+   REHEARD: absent
+
+8. 19:11:04 HE: Refresh
+   19:11:04 DOOR · lane pwa: I didn't catch a task in that. You can say things like: ⏎ The advance came in today for the Kapoor booking ⏎ Send a message to my client asking for the advance
+   HEARD: {"acts":[],"route":"none"}
+   REHEARD: absent
+
+9. 19:11:43 HE: Tell Sarah we are free on 22nd
+   19:11:43 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"relay","date_as_spoken":"22nd","client_as_spoken":"Sarah"}],"route":"task"}
+   REHEARD: absent
+
+10. 19:12:20 HE: Tell Sarah we are free on 22nd
+   19:12:21 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah, just wanted to let you know we are free on 22nd. Looking forward to working with you!" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","date_as_spoken":"22nd","client_as_spoken":"Sarah"}],"route":"task"}
+   REHEARD: absent
+   NOTE: B37
+
+11. 19:12:31 HE: No
+   19:12:31 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to Sarah. Tell me when you want to write to her again.
+   HEARD: null
+   REHEARD: absent
+
+12. 19:12:45 HE: Tell Sara thank you
+   19:12:45 DOOR · lane whatsapp: Did you mean Sarah? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sara"}],"route":"task"}
+   REHEARD: absent
+   NOTE: B36
+
+13. 19:13:00 HE: Yes
+   19:13:00 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Thank you, Sarah!" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sarah"}],"route":"task"}
+   REHEARD: absent
+   NOTE: B37
+
+14. 19:13:11 HE: No
+   19:13:11 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to Sarah. Tell me when you want to write to her again.
+   HEARD: null
+   REHEARD: absent
+
+15. 19:13:25 HE: Tell Sarah hi
+   19:13:25 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah!" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sarah"}],"route":"task"}
+   REHEARD: absent
+   NOTE: B37
+
+16. 19:13:34 HE: No
+   19:13:34 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to Sarah. Tell me when you want to write to her again.
+   HEARD: null
+   REHEARD: absent
+
+17. 19:13:59 HE: Tell me who owes me money
+   19:14:00 DOOR · lane whatsapp: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"whatsdue"}],"route":"search"}
+   REHEARD: absent
+
+18. 19:14:17 HE: Tell walk sixteen nobody hello
+   19:14:18 DOOR · lane whatsapp: Could not send the message. No client called Walk Sixteen.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Walk Sixteen"}],"route":"task"}
+   REHEARD: absent
+
+19. 19:14:28 HE: Yes
+   19:14:28 DOOR · lane whatsapp: I didn't catch a task in that. You can say things like: ⏎ Add a new lead, haldi shoot on 3 January ⏎ Send a message to my client asking for the advance
+   HEARD: null
+   REHEARD: absent
+
+20. 19:14:49 HE: Send a message to my client asking for the advance
+   19:14:49 DOOR · lane whatsapp: Which client? Say the name.
+   HEARD: {"acts":[{"act":"relay"}],"route":"task"}
+   REHEARD: absent
+   NOTE: B35
+
+21. 19:14:59 HE: Sarah
+   19:14:59 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah, I hope you're doing well! I'm writing to follow up on the advance payment for your wedding photography. Could you let me know when you'd be able to send that over? Thanks!" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sarah"}],"route":"task"}
+   REHEARD: absent
+   NOTE: B37
+
+22. 19:15:25 HE: Nono
+   19:15:25 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah, I hope you're doing well! I'm writing to follow up on the advance payment for your wedding photography. Could you let me know when you'd be able to send that over? Thanks!" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[],"route":"none"}
+   REHEARD: absent
+   NOTE: B37
+
+23. 19:15:36 HE: No
+   19:15:37 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to Sarah. Tell me when you want to write to her again.
+   HEARD: null
+   REHEARD: absent
+
+### 7.2 the drafts the door stored (public.pending_couple_drafts)
+  19:12:20 refused · +919625759924 · reason vendor_declined · resolved 19:12:31 · "Hi Sarah, just wanted to let you know we are free on 22nd. Looking forward to working with you!"
+  19:12:59 refused · +919625759924 · reason vendor_declined · resolved 19:13:10 · "Thank you, Sarah!"
+  19:13:25 refused · +919625759924 · reason vendor_declined · resolved 19:13:34 · "Hi Sarah!"
+  19:14:59 refused · +919625759924 · reason vendor_declined · resolved 19:15:36 · "Hi Sarah, I hope you're doing well! I'm writing to follow up on the advance payment for your wedding photography. Could you let me know when you'd be able to send that over? Thanks!"
+
+### 7.3 what the record shows, read by the seat and ruled by the chair
+REHEARD ABSENT ON EVERY ROW (0 of 46 carry it): every relay sentence was heard on the FIRST hearing, so R-45.3's second hearing never ran; the cure
+stands proven by b103 and NOT WITNESSED LIVE on this walk (the chair, 23 September). The next walk carrying a long thread of relays is where it may be seen.
+GREEN AGAINST THE CARD: the eight lookup turns read B34 (find, whatsdue) or LEFTOVER (Refresh), nothing written; the frame for Sarah three times on WhatsApp
+(19:12:20; 19:13:00 after B36 "Did you mean Sarah?" on his "Tell Sara" and his Yes; 19:13:25), each declined by his No with the seat's declined line naming
+Sarah; the control "Tell me who owes me money" heard whatsdue and read B34, reheard absent; a bare Yes read LEFTOVER; B35 on the nameless relay, the frame on
+"Sarah", "Nono" re-showed the frame once (tries 1), No declined. 19:11:43 "Tell Sarah we are free on 22nd" on the pwa lane read B34 (exit relay_pwa, by design
+until the app-side cut). Four drafts stored, four refused vendor_declined, NOTHING SENT to the test couple. Leads, attaches and money rows in the window: none.
+F-44.127 (the chair, CLOSED on F-44.119's ruling, will-not-fix): 19:14:17 "Tell walk sixteen nobody hello" heard as client_as_spoken "Walk Sixteen" (the word
+"nobody" dropped by the listener); B38 named exactly what the door was handed, no defect of the door. e-82 (this seat): "nobody" is a word of meaning and the
+card's fresh-name rule was the seat's to keep. e-81 (this seat): two founder-bound SELECTs refused by Postgres in front of him, an ambiguous created_at and a
+column `reason` composed from memory where docs/db/PUBLIC_SCHEMA.md :1159 holds refusal_reason (e-31's class); the third statement was derived from the doc.
 
 ## 8 · OPEN, CARRIED
 R-45.8 (the founder, 22 September): saving calendar events from a screenshot is its own packet AFTER P7 lands, within LC-Victor. F-44.126
@@ -92,7 +237,7 @@ September sits unresolved; Q2 stands (cut 2a drops the preview's "save all" line
 "skip N" as a note of its own kind holding the proposal id, writing through the calendar writer cut 2a uses, with B46 and B47 as its bytes.
 The eleven rungs sharing the old lookup double (LCV-11 seat close §3), not repaired. The rig scripts/p7_ear_check.js (the read-first's (ii),
 confirmed in shape by the chair) comes to the chair after this cut's attach.
-Next free: finding F-44.127, migration 0171, bench b104, errors e-81, corrections c-45.10.
+Next free: finding F-44.128, migration 0171, bench b104, errors e-83, corrections c-45.10.
 
 ---
 A PROSE INSTRUCTION IS NOT A MECHANISM. Trust evidence over narrative, including this file. LCV-12 holds at 541f14552ffac295296fe40b16dab411ced484c0.
