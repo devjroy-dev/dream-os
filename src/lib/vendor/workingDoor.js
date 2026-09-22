@@ -208,6 +208,13 @@ function nearestName(said, rows) {
     return close.length === 1 ? close[0] : null;
   } catch (_e) { return null; }
 }
+// the binder names of engine.records for the "Did you mean" home (the invoices cut): id and client, live rows only
+async function bindersOf(supabase, agentId) {
+  try {
+    const { data, error } = await supabase.schema('engine').from('records').select('id, client').eq('agent_id', agentId).eq('hidden', false);
+    return (error || !Array.isArray(data)) ? null : data.filter((b) => b && typeof b.client === 'string').map((b) => ({ id: b.id, name: b.client }));
+  } catch (_e) { return null; }
+}
 async function leadsOf(supabase, vendorId) {
   try {
     const { data, error } = await supabase.from('leads').select('id, name').eq('vendor_id', vendorId).is('deleted_at', null);
@@ -889,7 +896,14 @@ async function preTurn(args, depsIn) {
     }
     const plans = [];
     for (const a of acts) {
-      if (a.act === 'invoice') { const p = await planInvoice(supabase, vendor, agentId, a); if (!p || p.noBinder) return CHAIN(st.ear, 'invoice_unresolved', p && p.noBinder ? { name: p.name } : null); plans.push({ act: a, plan: p }); }
+      if (a.act === 'invoice') {
+        const p = await planInvoice(supabase, vendor, agentId, a);
+        // R-44.40, the invoices cut: the binder names of engine.records join the ONE home; a misspelt client on an invoice is OFFERED, never B15'd, under
+        // the same distance and the same refusals; YES runs planInvoice with the candidate's own binder name through the same plan.
+        if (p && p.noBinder && !liveAtStart && !fromNote) { const offer = await offerFor(a, 'client', p.name, await bindersOf(supabase, agentId)); if (offer) return offer; }
+        if (!p || p.noBinder) return CHAIN(st.ear, 'invoice_unresolved', p && p.noBinder ? { name: p.name } : null);
+        plans.push({ act: a, plan: p });
+      }
     }
     let moneyPlan = null;
     if (money.length) {

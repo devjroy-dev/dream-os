@@ -24,6 +24,34 @@ TWO DEFECTS, ALLOCATED BY THE CHAIR:
     as a date: B7, then B3. At 6456690 the same retype FILED (Part A's walk, turn 6). CORRECTION OF THE B-1 HANDOVER, as the chair
     asked: it said a fresh job of the same kind "waits one turn". THAT WAS WRONG. It was REFUSED TWICE AND THEN DROPPED.
 
+## 1b · CORRECTION (e-74; the chair's c-44.50), WITH THE 21st's RECORD WRITTEN IN BY SCRIPT (his export, 8 rows, sha256 5254fb7c5df417b1…, received 22 September)
+
+§1 above says the hearing of his three messages was INFERRED, the date with his full stop kept. THE RECORD SAYS OTHERWISE, and §1's inference is
+withdrawn: turn 1 reached the server GARBLED UPSTREAM ("Tara walk tension. E reing on 5th March 371"), his phone's doing, and B7 was right for what
+arrived; turns 2 and 3 arrived clean and the ear STRIPPED THE STOP ITSELF, hearing "5th March 27", refused by the four-digit year form as it stood
+at 14bc61d (F-44.111's ground, not F-44.114's); turn 3, the retype, read B3 at tries 1, F-44.115 exactly as allocated. F-44.114's cure stands on
+the chair's plants and on the fix walk's "5th June 2027." (08:04:05), and its supposed live witness from the 21st was never there. UTC.
+
+ 1. 20:03:17 HE: Add new lead. Tara walk tension. E reing on 5th March 371
+    20:03:17 door · lane whatsapp: I could not read that date. Say it like 5 December.
+    HEARD: {"acts":[{"act":"lead","date_as_spoken":"5th March 371","client_as_spoken":"Tara walk tension"}],"route":"task"}
+    TOOL CALLS: NONE (tool_calls is null)
+
+ 2. 20:03:50 HE: Add a new lead. Tara walk ten. Wedding on 5th March 27.
+    20:03:50 door · lane whatsapp: I could not read that date. Say it like 5 December.
+    HEARD: {"acts":[{"act":"lead","date_as_spoken":"5th March 27","client_as_spoken":"Tara walk ten"}],"route":"task"}
+    TOOL CALLS: NONE (tool_calls is null)
+
+ 3. 20:04:16 HE: Add a new lead. Tara walk ten. Wedding on 5th March 27.
+    20:04:16 door · lane whatsapp: Okay. Nothing was changed.
+    HEARD: {"acts":[{"act":"lead","date_as_spoken":"5th March 27","client_as_spoken":"Tara walk ten"}],"route":"task"}
+    TOOL CALLS: NONE (tool_calls is null)
+
+ 4. 20:04:54 HE: Add a new lead Arjun Walk Ten, wedding on 31 February 2027
+    20:04:54 door · lane pwa: I could not read that date. Say it like 5 December.
+    HEARD: {"acts":[{"act":"lead","date_as_spoken":"31 February 2027","client_as_spoken":"Arjun Walk Ten"}],"route":"task"}
+    TOOL CALLS: NONE (tool_calls is null)
+
 ## 2 · WHAT WAS BUILT
 
 F-44.114, src/lib/vendor/spokenDate.js. STRAY PUNCTUATION AROUND A DATE DOES NOT COUNT. unwrapSpoken (:111) strips, from BOTH ENDS and
