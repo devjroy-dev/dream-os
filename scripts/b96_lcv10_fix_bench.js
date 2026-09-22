@@ -170,7 +170,7 @@ const NONE_JSON = '{"acts":[],"route":"none"}';
 // The Tara walk ten sentence of the 21st has no export yet; its hearing is still owed. S1_CONSTRUCTED below is what 3.3 uses ON PURPOSE, labelled.
 const S1_SAID = 'Add new lead. Nisha walk eleven. Wedding on 5th March 27.';
 const S1_JSON = '{"acts":[{"act":"lead","date_as_spoken":"5th March 27","client_as_spoken":"Nisha walk eleven"}],"route":"task"}';
-const S1_INFERRED = { route: 'task', acts: [{ act: 'lead', client_as_spoken: 'Tara walk ten', date_as_spoken: '5th March 27.' }] }; // A CONSTRUCTION, not a record: the ear keeping the stop
+const S1_INFERRED = { route: 'task', acts: [{ act: 'lead', client_as_spoken: 'Nisha walk eleven', date_as_spoken: '5th March 27.' }] }; // A CONSTRUCTION, not a record: the ear keeping the stop
 const B3 = 'Okay. Nothing was changed.';
 const B6 = 'When did the payment come in?';
 const B7 = 'I could not read that date. Say it like 5 December.';
@@ -247,7 +247,7 @@ async function main() {
   T('1.8 the apostrophe reads only before a CLOSING two-digit year: "\'27" ALONE is a year and no date and is refused (unwrapped it would be a guess at the 27th), while a bare or quoted "27" reads as it always did; "5 march \'2027" and "5 march \'7" stay refused; F-44.98 holds ("15 March 0227." is reason year)', R("'27").ok === false && R("\u201927 ").ok === false && R('27').ok === R('"27"').ok && R("5 march '2027").ok === false && R("5 march '7").ok === false && R('15 March 0227.').reason === 'year');
   T('1.9 every row of the chair\'s READS list that read at 14bc61d is in the table (the cure cannot have broken one unseen)', READ_AT_BASE.every((s) => TABLE.some((r) => r[0] === s && r[1] !== null)));
   { const t0 = Date.now(); const big = R(`5 March 2027${'.'.repeat(5000)}`); const ms = Date.now() - t0;
-  T(`1.10 (b), ratified by the chair: a value over 200 characters is refused AT ONCE, never scanned: a 5,000-character string refused in ${ms} ms (a fact about this machine, bounded here at 50); 200 is the bound, 150 stray marks still read`, SD.SPOKEN_MAX === 200 && R(`${' '.repeat(250)}'27`).ok === false && R(`5 March 2027${'.'.repeat(150)}`).iso === D && big.ok === false && ms < 50); }
+  T(`1.10 (b), ratified by the chair: a value over 200 characters is refused AT ONCE, never scanned: a 5,000-character string refused under the 50 ms bound (the reading is a fact about this machine and is NOT printed, e-72); 200 is the bound, 150 stray marks still read`, SD.SPOKEN_MAX === 200 && R(`${' '.repeat(250)}'27`).ok === false && R(`5 March 2027${'.'.repeat(150)}`).iso === D && big.ok === false && ms < 50); }
 
   // ─── §2 F-44.115 ───────────────────────────────────────────────────────────────────────────
   sec('2 F-44.115 (F-44.113 folded in): when the door cannot read her message as the answer, what lapses the note and what does not');
@@ -274,7 +274,8 @@ async function main() {
   T('2.5 NO ACT HEARD does not lapse it: B7 once, then B3: the re-ask stands exactly where the ruling left it', r.reply === B7 && r3.reply === B3);
   db = seeded();
   await turn(db, ASK[0], ASK[1]);
-  r = await turn(db, 'Please deliver it by the 5th of June 2027, thank you', req([att('Nisha Walk Eleven', 'Walk P7 Album', '5 June 2027')]));
+  // RE-PINNED (the third B-2 cut, F-44.118): the driver now names the client in her sentence, as she would; a carried name absent from her words is unsaid.
+  r = await turn(db, 'Please deliver it for Nisha Walk Eleven by the 5th of June 2027, thank you', req([att('Nisha Walk Eleven', 'Walk P7 Album', '5 June 2027')]));
   T('2.6 INVENTED: an answer wrapped in WORDS the door cannot read, which the listener heard as the noted act WITH its date: handled fresh from what was heard, and it attaches (B27). Before this cut it read B7', r.keys === 'B27' && lpsIn(db).length === 1 && lpsIn(db)[0].delivery_on === '2027-06-05');
   db = seeded();
   await turn(db, ASK[0], ASK[1]);
@@ -406,7 +407,7 @@ async function main() {
   const HS = [undefined, null, 0, NaN, '', ' ', '.', '....', "'", "''27", "'27'", '\u2019', '(((', ')))', '-', '\u2014\u2014', '5 March 2027'.padEnd(199, '.'), 'x'.repeat(100000), `${' '.repeat(100000)}'27`, '.'.repeat(100000), trap, {}, [], () => {}, 10n, Symbol('s'), { toString: boom }, '5\u0000March', '\uD800', '٥ مارس ٢٠٢٧', '5 मार्च 2027'];
   let t6 = 0; let c6n = 0; const t0 = Date.now();
   for (const a of HS) for (const b of HS) { c6n += 1; try { const v = SD.resolveSpokenDate(a, { direction: b, nowMs: b, todayIso: b }); if (!v || typeof v.ok !== 'boolean') t6 += 1; } catch (_e) { t6 += 1; } try { SD.resolveSpokenDate(a, b); } catch (_e) { t6 += 1; } }
-  T(`6.1 resolveSpokenDate: ${c6n} hostile pairs, the spoken value and the options both hostile, 100,000-character strings among them: ZERO throws, always a verdict, under two seconds (${Date.now() - t0} ms is a fact about this machine)`, t6 === 0 && (Date.now() - t0) < 2000);
+  T(`6.1 resolveSpokenDate: ${c6n} hostile pairs, the spoken value and the options both hostile, 100,000-character strings among them: ZERO throws, always a verdict, under the two-second bound (the reading is a fact about this machine and is NOT printed, e-72)`, t6 === 0 && (Date.now() - t0) < 2000);
   let t7 = 0; let c7n = 0;
   const hostileActs = [null, 7, 'x', trap, {}, { act: 7 }, { act: 'lead', client_as_spoken: trap }, { act: 'lead', date_as_spoken: { toString: boom } }, { act: 'attach_package', client_as_spoken: 7, date_as_spoken: [] }];
   for (const a of hostileActs) { c7n += 1; const d = seeded(); await turn(d, ASK[0], ASK[1]); try { const o = await quiet(() => WD.preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message: 'whenever', lane: 'pwa' }, { llmCreate: async () => ({ content: [{ type: 'tool_use', name: 'ear_request', input: { route: 'task', acts: [a] } }], usage: {} }), nowMs: NOW })); if (!o || typeof o.door !== 'boolean') t7 += 1; if (lpsIn(d).length) t7 += 1; } catch (_e) { t7 += 1; } }

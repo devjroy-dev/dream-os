@@ -575,7 +575,8 @@ async function main() {
   o = await run(db, 'Attach Gold to Walk P7 Dated', [att('Walk P7 Dated', 'Gold')]);
   T('14.7 THE CARD: no package by that name is B23 listing HER OWN live names (not the retired one, not another vendor\'s), nothing written', o.reply === `You have no package called Gold. Yours are: ${OWN_LIST}.` && o.keys.join() === 'B23' && lpsIn(db).length === 0 && o.toolCalls.length === 0);
   o = await run(db, 'x', [att('Walk P7 Dated', 'Photograph and film')]);
-  T('14.8 never fuzzy, never nearest: one letter off is B23', o.keys.join() === 'B23' && lpsIn(db).length === 0);
+  // 14.8 RE-PINNED (CE-44 LCV-10, the third B-2 cut): R-44.40, THE FOUNDER'S, SUPERSEDES never-nearest FOR ONE SLIP (a Damerau distance of 1 or the same words reordered); the resolver itself is still exact, so the door OFFERS the one near package as a QUESTION, B36, and still attaches NOTHING.
+  T('14.8 never fuzzy in the RESOLVER, but one letter off now ASKS "Did you mean Photographs and film? Reply YES or NO." (R-44.40) and attaches nothing', o.keys.join() === 'B36' && o.reply === 'Did you mean Photographs and film? Reply YES or NO.' && lpsIn(db).length === 0);
   o = await run(db, 'x', [att('Walk P7 Dated', 'BRIDAL')]);
   T('14.9 two of one name is B24 with each row\'s own name and total; nothing written', o.reply === 'Two packages are called BRIDAL: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.' && o.skipHarvest === true && lpsIn(db).length === 0);
   o = await run(db, 'Attach Photographs and film to Walk P5 Book', [att('Walk P5 Book', 'Photographs and film')]);
@@ -779,11 +780,12 @@ async function main() {
   // chain out; the line's verdict is unchanged. N15a and N15 carry the new bytes of the same line; what they prove is unchanged.
   // TWO GUARDS HOLD 14.16, and the cell says so: with the probe's line alone removed the rebuild still sends an unwritten
   // turn to the chain (run here as N15a, which must NOT redden); it takes both removed for the door to answer B30.
+  // ANCHORS RE-AIMED (the third B-2 cut): the no-lead line grew R-44.40's offer around it; what N15a and N15 prove is unchanged.
   await mut('20.15a N15a the probe\'s no-lead line ALONE removed: the rebuild\'s own guard still sends the unwritten turn to the chain', WDf,
-    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead', { name: probe.name });\n", '']], [],
+    [["      if (probe.noLead && !willFile.includes(key(probe.name))) {\n        const offer = !liveAtStart && !fromNote ? await offerFor(a, 'client', probe.name, await leadsOf(supabase, vendor.id)) : null;\n        if (offer) return offer;\n        return CHAIN(st.ear, 'attach_no_lead', { name: probe.name });\n      }\n", '']], [],
     async (rq) => attCase(rq, 'x', [att('Nobody Here', 'Photographs and film')]), (x) => x.r.door === false && x.r.why === 'attach_unsayable');
   await mut('20.15 N15 BOTH guards removed: an attach naming no lead is answered by the door instead of going WHOLE to the chain (reddens 14.16)', WDf,
-    [["      if (probe.noLead && !willFile.includes(key(probe.name))) return CHAIN(st.ear, 'attach_no_lead', { name: probe.name });\n", ''], ["        if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');\n", '']], [],
+    [["      if (probe.noLead && !willFile.includes(key(probe.name))) {\n        const offer = !liveAtStart && !fromNote ? await offerFor(a, 'client', probe.name, await leadsOf(supabase, vendor.id)) : null;\n        if (offer) return offer;\n        return CHAIN(st.ear, 'attach_no_lead', { name: probe.name });\n      }\n", ''], ["        if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');\n", '']], [],
     async (rq) => attCase(rq, 'x', [att('Nobody Here', 'Photographs and film')]), (x) => x.r.door === true && x.r.keys.join() === 'B30');
   await mut('20.16 N16 the write mark AND fileAttach\'s guard removed: a throwing attachPackage falls to the chain after a possible write (reddens 14.20)', WDf,
     [['      st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws\n', ''], ["  } catch (_e) { return B30('refused:exception'); }", '  } finally { /* guard removed */ }']], [],

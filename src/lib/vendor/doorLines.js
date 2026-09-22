@@ -107,6 +107,9 @@ const LINES = Object.freeze({
   // REUSE (F-44.102): his own byte from dreamos-pwa lib/worklist/packages.ts:116, `no_fee: 'Set the fee first.'`, in place of the general
   // B30 when the attach refuses because the package has no fee.
   B33: "Set the fee first.",
+  // R-44.40 (the founder, 22 September: "Did you mean {name}? Reply YES or NO." is GREEN, HIS): when a client or package she named matches
+  // no row of hers and EXACTLY ONE of her rows sits within the pinned distance, the door asks this and ACTS ON NOTHING until her YES.
+  B36: "Did you mean {name}? Reply YES or NO.",
   // an attach whose client is no lead of hers (R-44.36, HIS, verbatim: "yes to your open earlirr questions")
   B32: "Could not attach the package. No lead called {name}. Add the lead first.",
   // an act HEARD that the door does not cover yet, a mixed message holding one, or a lead carrying a phone-shaped
@@ -181,6 +184,7 @@ const LINE_HASHES = Object.freeze({
   B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
   B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
   B33: '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34',
+  B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });

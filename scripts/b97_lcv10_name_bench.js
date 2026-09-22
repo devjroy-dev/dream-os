@@ -299,7 +299,7 @@ async function main() {
   const w2 = await turn(db, W_SAID, JSON.parse(NONE_JSON));
   T('5.1 TURN 7 AS RECORDED: "whenever" heard as the attach WITH date "whenever" is B7 with the note kept at tries 1 (his walk read a NEW note at tries 0); the next "whenever", no act, is B3. Twice, as the card said, not three times', w1.reply === B7 && tw1 === 1 && w2.reply === B3 && lpsIn(db).length === 0);
   db = seeded(); await turn(db, 'Attach Walk P7 Album to Asha Walk Twelve', req([att('Asha Walk Twelve', 'Walk P7 Album')]));
-  r = await turn(db, 'deliver it by 5 June 2027 please', req([att('Asha Walk Twelve', 'Walk P7 Album', '5 June 2027')]));
+  r = await turn(db, 'deliver it for Asha Walk Twelve by 5 June 2027 please', req([att('Asha Walk Twelve', 'Walk P7 Album', '5 June 2027')])); // re-pinned for F-44.118: the name in her words
   T('5.2 a GENUINE restatement (the heard date differs from her message) still lapses and is handled fresh: attached with 5 June 2027', r.keys === 'B27' && lpsIn(db)[0].delivery_on === '2027-06-05');
 
   // ─── §6 THE CARD ───────────────────────────────────────────────────────────────────────────
@@ -373,7 +373,7 @@ async function main() {
   const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : [];
   T('7.1 W-1 NONE: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
   T('7.2 the manifest names exactly the eleven paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([FIXWALK, MAN, 'scripts/b97_lcv10_name_bench.js', 'scripts/b96_lcv10_fix_bench.js', 'scripts/b94_lcv10_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b90_lcv_p5_bench.js', 'src/lib/vendor/doorLines.js', 'src/lib/vendor/listenerDoor.js', WDf].sort()));
-  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 37 && // 37 since B-2's second cut (B31, B33)
+  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 38 && // 38 since the third B-2 cut (B36)
      DL.LINE_HASHES.B34 === '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb' && DL.LINE_HASHES.B18 === 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0');
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────
