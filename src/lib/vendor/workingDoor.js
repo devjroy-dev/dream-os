@@ -96,6 +96,11 @@
 // own date_as_spoken is IGNORED: the date is part of the message, never a job. The phone guard (F-44.96) LEAVES: EAR_TOOL now
 // hears phone_as_spoken (measured 22 September, table sha256 311fda220b8f…), the door folds it (relayToCouple.asPhone) and hands
 // it to createLead as `phone`. quote_send and the pwa lane's send are the SECOND cut's; B39 is carried, unspoken.
+//
+// R-45.3, THE COLD SECOND HEARING (CE-45 LCV-12, P7's first cut; the chair's ruling of 22 September on the read-first's fork (a)): when the
+// ear hears no task inside a long thread but her message names one of her live leads, the door hears the same message once more with no
+// thread and decides on that (heardNothing, namesLiveLead, rehear below; the call sits after the first hearing in preTurn). Both hearings
+// are recorded on the row (meta.listener.request the second, .heard the first, .reheard true) and metered as one row. Never a third.
 const DL = require('./doorLines');
 const PMA = require('./pendingMoneyActs');
 const { resolveSpokenDate, todayIstIso } = require('./spokenDate');
@@ -256,6 +261,41 @@ async function leadsOf(supabase, vendorId) {
     const { data, error } = await supabase.from('leads').select('id, name').eq('vendor_id', vendorId).is('deleted_at', null);
     return (error || !Array.isArray(data)) ? null : data;
   } catch (_e) { return null; }
+}
+// ── R-45.3 · THE COLD SECOND HEARING'S THREE READS (CE-45 LCV-12, cut one). TOTAL: anything hostile is false / the first hearing. ──
+// the ear returned a request holding no task and no lookup (route none, acts empty): the only shape that is re-heard
+function heardNothing(ear) {
+  try { return !!ear && !!ear.request && ear.request.route === 'none' && Array.isArray(ear.request.acts) && ear.request.acts.length === 0; } catch (_e) { return false; }
+}
+// her message under key() contains the name of one of her LIVE leads, never a name under three characters (a two-letter name is in
+// too many sentences to mean anything). A failed read of her leads is NOT a name found: no second hearing then.
+const REHEAR_MIN_NAME = 3;
+async function namesLiveLead(supabase, vendorId, message) {
+  try {
+    const said = key(message);
+    if (!said) return false;
+    const rows = await leadsOf(supabase, vendorId);
+    if (!Array.isArray(rows)) return false;
+    return rows.some((r) => { const k = key(r && r.name); return k.length >= REHEAR_MIN_NAME && said.includes(k); });
+  } catch (_e) { return false; }
+}
+// both hearings on one record: request is the SECOND (a second returning nothing keeps the first's, which was none), heard is the FIRST,
+// reheard is true, usage is the sum of both calls' counted fields so the one usage row carries both; a second hearing's error is kept
+// under rehear_error and the first's own error stays where it was.
+function sumUsage(a, b) {
+  try {
+    const out = {};
+    for (const u of [a, b]) if (u && typeof u === 'object') for (const k of Object.keys(u)) if (Number.isFinite(u[k])) out[k] = (out[k] || 0) + u[k];
+    return Object.keys(out).length ? out : (a || b || null);
+  } catch (_e) { return a || null; }
+}
+function rehear(first, second) {
+  try {
+    if (!first || typeof first !== 'object') return first;
+    const s = second && typeof second === 'object' ? second : {};
+    const took = !!s.request && !s.error;
+    return { ...first, request: took ? s.request : first.request, usage: sumUsage(first.usage, s.usage), heard: first.request, reheard: true, ...(s.error ? { rehear_error: s.error } : {}) };
+  } catch (_e) { return first; }
 }
 
 // ── F-44.112 · THE DOOR'S OWN NOTE OF A DATE IT ASKED FOR (LCV-10 Part B-1) ─────────────────────────
@@ -884,6 +924,25 @@ async function preTurn(args, depsIn) {
     const threadId = conversationId || await activeConversation(supabase, agentId);
     st.ear = await L.listener.hear({ supabase, route, message, conversationId: threadId, excludeId: null },
       { ...(deps.llmCreate ? { llmCreate: deps.llmCreate } : {}), timeoutMs: Number.isFinite(deps.hearMs) ? deps.hearMs : HEAR_BEFORE_REPLY_MS });
+    // R-45.3 (CE-45 LCV-12, cut one; the founder, 22 September 2026: "yes to the code 2nd hearing. i feel that can cure a lot of issues."):
+    // THE COLD SECOND HEARING. WITNESSED on the P6b walk of 22 September: three of seven "Tell Sarah ..." sentences were heard as NO TASK
+    // inside a long thread (16:01:48, 16:02:25, 16:12:58, each {"acts":[],"route":"none"}, each read LEFTOVER), while cold, with no thread,
+    // the same shape was heard nine times in ten (F-44.122). THE MECHANISM, as the chair ruled it: on a turn answering NO note (a note turn
+    // is decided by the note branches below on what was heard), meeting no live money row (a live row's yes or no returned above; anything
+    // else expired it), when the ear returned route none with no acts, and her message under key() contains the name of one of her LIVE
+    // leads (leadsOf; never a name under three characters), the door hears the SAME message ONCE MORE with the thread stripped
+    // (conversationId null: readThread returns [] and threadText is empty; the same seat, tool and bound, the second call getting ITS OWN
+    // bound since a squeezed hearing is a miss with no record), and the second hearing is what the door decides on through every floor,
+    // note and question below. A second hearing returning nothing, or an error, leaves the request as it was and reads LEFTOVER as before;
+    // NEVER a third. st.ear carries both for the record (request = the second, heard = the first, reheard = true) and its usage is the SUM
+    // of both calls, so one message stays one message (R-44.21 (b)) with one usage row. No word-list (the names are her own live rows),
+    // no prompt byte, no engine touch. His control, "tell me who owes me money", holds no lead name and never triggers it.
+    if (!note && heardNothing(st.ear) && await namesLiveLead(supabase, vendor.id, message)) {
+      const first = st.ear;
+      const second = await L.listener.hear({ supabase, route, message, conversationId: null, excludeId: null },
+        { ...(deps.llmCreate ? { llmCreate: deps.llmCreate } : {}), timeoutMs: Number.isFinite(deps.hearMs) ? deps.hearMs : HEAR_BEFORE_REPLY_MS });
+      st.ear = rehear(first, second);
+    }
     // F-44.112: a turn that answers the door's own date question. THE DOOR'S OWN READ DECIDES FIRST: if her whole message
     // resolves as a date in the noted act's direction it IS the answer, whatever the listener heard (it was still heard, for
     // the record). If it does not, the listener's record decides ONE thing: an act OTHER than the noted one means she has
@@ -1316,7 +1375,7 @@ async function persistDoorTurn(args, depsIn) {
     const ear = out && out.ear;
     const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null; // F-44.58's mark
     const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null; // F-44.100's mark, its OWN key
-    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}) };
+    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}) };
     res.assistantId = await memory.saveMessage(conversationId, 'assistant', out.reply, (out.toolCalls && out.toolCalls.length) ? out.toolCalls : undefined, { listener });
     if (res.assistantId) {
       try { await supabase.schema('engine').from('messages').update({ room: 'business' }).eq('id', res.assistantId); } catch (e) { console.warn('[door:room]', e && e.message); }
@@ -1327,4 +1386,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

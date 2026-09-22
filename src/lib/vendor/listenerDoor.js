@@ -210,6 +210,8 @@ async function recordListening({ supabase, agentId, route, message, result, lane
     const listener = {
       lane, provider: ear.seat && ear.seat.provider, model: ear.seat && ear.seat.model,
       request: ear.request, ...(ear.error ? { error: ear.error } : {}),
+      // R-45.3 (CE-45 LCV-12): a request the door heard TWICE (workingDoor.rehear) records both here too, chain in as chain out
+      ...(ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}),
     };
     const { error } = await eng.from('messages').update({ meta: { ...prior, listener } }).eq('id', id);
     if (error) console.warn('[listener:meta]', error.message);
