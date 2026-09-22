@@ -7,6 +7,8 @@
 // cut replaced the L-format and left the call undefined, which would have thrown on the
 // 8am cron rather than at any bench. Caught by reading the header, not by running.
 const { formatRs } = require('../lib/format');
+// F-44.63 (CE-45 LCV-12, P7 cut 2a): the brief's dates in full month (R-42.13, his standing rule), through the estate's one home; the words unchanged.
+const { longDateYear } = require('../lib/witnessLine');
 
 async function buildBriefing({ vendor, user, supabase }) {
   const vendorId = vendor.id;
@@ -152,7 +154,7 @@ async function buildBriefing({ vendor, user, supabase }) {
 
   // Shoots this week (excluding today)
   if (shootsThisWeek && shootsThisWeek.length > 0) {
-    const shootNames = shootsThisWeek.map(s => `${s.title} (${s.event_date})`).join(', ');
+    const shootNames = shootsThisWeek.map(s => `${s.title} (${longDateYear(s.event_date)})`).join(', ');
     parts.push(`This week: ${shootNames}.`);
   }
 
@@ -171,7 +173,7 @@ async function buildBriefing({ vendor, user, supabase }) {
   if (overdueInvoices && overdueInvoices.length > 0) {
     const names = overdueInvoices.map(i => {
       const balance = i.amount_total - i.amount_paid;
-      return `${i.client_name} (${i.invoice_number}, Rs ${formatRs(balance)} due ${i.due_date})`;
+      return `${i.client_name} (${i.invoice_number}, Rs ${formatRs(balance)} due ${longDateYear(i.due_date)})`;
     }).join(', ');
     const count = overdueInvoices.length;
     parts.push(`${count} overdue invoice${count === 1 ? '' : 's'}: ${names}.`);
@@ -179,7 +181,7 @@ async function buildBriefing({ vendor, user, supabase }) {
 
   // Upcoming non-shoot events
   if (upcomingEvents && upcomingEvents.length > 0) {
-    const eventNames = upcomingEvents.map(e => `${e.title} (${e.event_date})`).join(', ');
+    const eventNames = upcomingEvents.map(e => `${e.title} (${longDateYear(e.event_date)})`).join(', ');
     parts.push(`Upcoming: ${eventNames}.`);
   }
 

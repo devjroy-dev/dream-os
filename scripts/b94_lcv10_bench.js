@@ -224,14 +224,21 @@ async function main() {
     ['a block_date repeating the lead\'s client and date', 'x', [lead('Meera Walk Nine', '20 February 2027'), { act: 'block_date', client_as_spoken: 'Meera Walk Nine', date_as_spoken: '20 February 2027' }]],
     ['an echo AND a genuine second job', 'x', [lead('Meera Walk Nine', '20 February 2027'), event('Meera Walk Nine', '20 February 2027'), { act: 'block_date', date_as_spoken: '20 March' }]],
   ];
+  // RE-PINNED (CE-45 LCV-12, P7 cut 2a): block_date and book_event are the DOOR'S now, so a genuine second job is no longer B34: it RUNS beside the lead
+  // (ruling (b)'s order: the lead first, then the calendar) or, for a booking naming a client that is no lead and not filed this message, the whole
+  // message reads B76 (his) before any write. What 2.4 proves is unchanged: the second job is KEPT by withoutEchoedEvents (never dropped as an echo).
+  const secondNow = { 'another client': { door: false, why: 'book_no_lead', keys: 'B76', leads: 0 }, 'another date': { door: true, keys: 'B17,B46', leads: 1 }, 'no date on the event': { door: true, keys: 'B17,B54', leads: 1 },
+    'THE CARD\'S STEP: a blocked date beside a lead': { door: true, keys: 'B16,B40', leads: 1 }, 'a block_date repeating the lead\'s client and date': { door: true, keys: 'B17,B40', leads: 1 }, 'an echo AND a genuine second job': { door: true, keys: 'B17,B40', leads: 1 } };
   for (const [label, message, a] of second) {
     db = makeDb(world());
     r = await turn(db, message, req(a));
-    T(`2.4 INVENTED, a genuine second job (${label}): still uncovered, the stand-in speaks B34, and NOTHING is filed`, r.out.door === false && r.out.why === 'uncovered' && r.said.reply === B34 && J(r.said.keys) === 'B34' && leadsIn(db).length === 0 && r.said.toolCalls.length === 0);
+    const want = secondNow[label];
+    console.log('        (2.4 ' + label + ': door=' + r.out.door + ' why=' + r.out.why + ' keys=' + J(r.said.keys) + ' leads=' + leadsIn(db).length + ')');
+    T(`2.4 INVENTED, a genuine second job (${label}): KEPT beside the lead and, since P7 2a, run by the door (${want.keys}), never dropped as an echo`, r.out.door === want.door && (want.why ? r.out.why === want.why : true) && J(r.said.keys) === want.keys && leadsIn(db).length === want.leads);
   }
   db = makeDb(world());
   r = await turn(db, 'Book Meera Walk Nine on 20 February 2027', req([event('Meera Walk Nine', '20 February 2027')]));
-  T('2.5 INVENTED: a book_event with NO lead beside it is B34, as before', r.out.door === false && r.said.reply === B34 && leadsIn(db).length === 0);
+  T('2.5 INVENTED: a book_event with NO lead beside it, for a name that is no lead of hers, reads B76 since P7 2a (his), nothing filed', r.out.door === false && r.out.why === 'book_no_lead' && J(r.said.keys) === 'B76' && leadsIn(db).length === 0);
   db = makeDb(world());
   r = await turn(db, 'Add a new lead Meera Walk Nine, wedding on 20 February 2027', req([lead('Meera Walk Nine', '20 February 2027')]));
   T('2.6 BESIDE the specimen, the tidier hearing (`lead` alone, as the morning of 21 September heard this shape, and as the new prompt sentence asks): filed the same', r.out.reply === 'Lead added: Meera Walk Nine · 20 February 2027.' && leadsIn(db).length === 1);
@@ -246,7 +253,7 @@ async function main() {
   r = await turn(db, 'x', mixedNameless);
   // 3.1 RE-PINNED (CE-44 LCV-10 PART B-2, first cut; R-44.39): the covered act naming no client is now asked B35 by the DOOR, and the echo is still dropped on the way (the request read as covered, not B34). Nothing filed.
   T('3.1 INVENTED: an echo beside a covered act naming NO client: the echo is dropped, the request reads covered, and the door asks B35 (never B34); nothing filed', r.out.door === true && J(r.said.keys) === 'B35' && leadsIn(db).length === 0);
-  T('3.2 standKey alone, turn 8 as heard under the reason `uncovered`: never B34 (every act left is covered and named)', WD.standKey({ door: false, why: 'uncovered', ear: { request: turn8() } }, { lifecycle: LH }, NOW).key === 'LEFTOVER' && WD.standKey({ door: false, why: 'uncovered', ear: { request: req([lead('A', '20 February 2027'), event('B', '20 February 2027')]) } }, { lifecycle: LH }, NOW).key === 'B34');
+  T('3.2 standKey alone, turn 8 as heard under the reason `uncovered`: never B34 (every act left is covered and named)', WD.standKey({ door: false, why: 'uncovered', ear: { request: turn8() } }, { lifecycle: LH }, NOW).key === 'LEFTOVER' && WD.standKey({ door: false, why: 'uncovered', ear: { request: req([lead('A', '20 February 2027'), { act: 'assign_crew', member_as_spoken: 'B' }]) } }, { lifecycle: LH }, NOW).key === 'B34'); // P7 2a re-aim: the uncovered specimen is assign_crew (book_event is covered now)
   db = makeDb(world());
   r = await turn(db, 'Add a new lead Meera Walk Nine 9876543210, wedding on 20 February 2027', req([lead('Meera Walk Nine', '20 February 2027'), event('Meera Walk Nine', '20 February 2027')]));
   // RE-PINNED (CE-45 LCV-11, P6b first cut; F-44.96 closed): the guard is gone. The drop still applies (one lead, the echoed event gone) and the lead
@@ -311,7 +318,7 @@ async function main() {
   T('5.2 persisted ONCE as a door turn on this lane, the heard request whole (both acts) in the door\'s own note', (() => { const rows = db.tables['engine.messages'].filter((m) => m.role === 'assistant'); return rows.length === 1 && rows[0].meta.listener.lane === 'whatsapp' && rows[0].meta.listener.door === true && isTurn8(rows[0].meta.listener.request); })());
   db = makeDb(world());
   w = await driveWA({ db, message: 'Add a new lead Kabir Walk Nine and block 20 March', request: req([lead('Kabir Walk Nine'), { act: 'block_date', date_as_spoken: '20 March' }]) });
-  T('5.3 INVENTED: a genuine second job on the real lane is B34, zero chain turns, nothing filed', one(w) === B34 && leadsIn(db).length === 0);
+  T('5.3 INVENTED: a genuine second job on the real lane RUNS since P7 2a: the lead filed and the day blocked, two lines, zero chain turns', one(w) === 'Lead added: Kabir Walk Nine.\n\nBlocked: 20 March 2027.' && leadsIn(db).length === 1);
 
   // ─── §6 THE CARD'S OWN WORDS ───────────────────────────────────────────────────────────────
   sec('6 every SAY line on Part A\'s walk card, in ONE thread and one database, the REAL createLead, resolveLead and attachPackage');
@@ -326,13 +333,14 @@ async function main() {
     T('6.2 SAY "Attach Photographs and film to Meera Walk Nine" (heard in the shape of Part One\'s turn 10): "Package attached: Meera Walk Nine · Photographs and film · Rs 80,000.", on THE LEAD STEP 1 FILED, from the row', s2.said.reply === 'Package attached: Meera Walk Nine · Photographs and film · Rs 80,000.' && J(s2.said.keys) === 'B22' && lp.length === 1 && lp[0].lead_id === leadsIn(d)[0].id && lp[0].package_id === 'p-film' && Number(lp[0].total) === 80000);
     const before = leadsIn(d).length;
     const s3 = await turn(d, 'Add a new lead Kabir Walk Nine and block 20 March', req([lead('Kabir Walk Nine'), { act: 'block_date', date_as_spoken: '20 March' }]));
-    T('6.3 SAY "Add a new lead Kabir Walk Nine and block 20 March" (INVENTED hearing: lead AND block_date): "I cannot do that by message yet. Use the app for it.", and Kabir Walk Nine is NOT filed', s3.said.reply === B34 && leadsIn(d).length === before);
+    // RE-PINNED (CE-45 LCV-12, P7 2a): block_date is the door's; the card's step now files the lead AND blocks the day (the same sentence LCV-10 Part B-1's walk turn 3 read B34 on).
+    T('6.3 SAY "Add a new lead Kabir Walk Nine and block 20 March" (INVENTED hearing: lead AND block_date): "Lead added: Kabir Walk Nine." then "Blocked: 20 March 2027." (P7 2a), Kabir Walk Nine filed', s3.said.reply === 'Lead added: Kabir Walk Nine.\n\nBlocked: 20 March 2027.' && leadsIn(d).length === before + 1);
     const w4 = await driveWA({ db: d, message: 'Add a new lead Kabir Walk Nine, wedding on 5 March 2027', request: req([lead('Kabir Walk Nine', '5 March 2027'), event('Kabir Walk Nine', '5 March 2027')]) });
-    T('6.4 ON WHATSAPP, SAY "Add a new lead Kabir Walk Nine, wedding on 5 March 2027", heard in turn 8\'s shape: "Lead added: Kabir Walk Nine · 5 March 2027.", the chain never called', one(w4) === 'Lead added: Kabir Walk Nine · 5 March 2027.' && leadsIn(d).length === before + 1 && leadsIn(d).slice(-1)[0].source === 'whatsapp');
+    T('6.4 ON WHATSAPP, SAY "Add a new lead Kabir Walk Nine, wedding on 5 March 2027", heard in turn 8\'s shape: "Lead added: Kabir Walk Nine · 5 March 2027.", the chain never called', one(w4) === 'Lead added: Kabir Walk Nine · 5 March 2027.' && leadsIn(d).length === before + 2 && leadsIn(d).slice(-1)[0].source === 'whatsapp'); // P7 2a: 6.3 filed one before this
     const rows = d.tables['engine.messages'];
     const door = rows.filter((m) => m.role === 'assistant');
     T('6.5 the thread holds the card: four of his messages, four door rows, every one answered by code, lanes pwa, pwa, pwa, whatsapp, each from the door\'s own note', rows.filter((m) => m.role === 'user').length === 4 && door.length === 4 && door.every((m) => m.meta.listener.door === true) && door.map((m) => m.meta.listener.lane).join() === 'pwa,pwa,pwa,whatsapp');
-    T('6.6 the estate after the card: two leads filed (Meera Walk Nine, Kabir Walk Nine), ONE package attached, nothing staged, no invoice', leadsIn(d).map((l) => l.name).join() === 'Meera Walk Nine,Kabir Walk Nine' && lpsIn(d).length === 1 && d.tables['public.pending_money_acts'].length === 0 && d.tables['public.invoices'].length === 0);
+    T('6.6 the estate after the card: two leads filed (Meera Walk Nine, Kabir Walk Nine), ONE package attached, nothing staged, no invoice', leadsIn(d).map((l) => l.name).join() === 'Meera Walk Nine,Kabir Walk Nine,Kabir Walk Nine' && lpsIn(d).length === 1 /* P7 2a: 6.3 files a dateless Kabir and 6.4 a dated one (the double has no dedupe); the card's estate is three leads */ && d.tables['public.pending_money_acts'].length === 0 && d.tables['public.invoices'].length === 0);
   }
 
   // ─── §7 W-1 AND THE SCOPE ──────────────────────────────────────────────────────────────────
@@ -345,7 +353,7 @@ async function main() {
   // 7.3 RE-PINNED (CE-44 LCV-10 PART B-1): same two places, same order; the first line's bytes changed as M1's note says.
   T('7.3 the drop is applied in exactly TWO places, preTurn before the covered check and standKeyOf (the phone guard\'s line is gone since P6b)', (wdS.match(/withoutEchoedEvents\(/g) || []).length === 3 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') > 0 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') < wdS.indexOf("if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');")); // RE-PINNED (CE-45 LCV-11, P6b): the phone guard's line LEFT the door (F-44.96 closed); the clause that pinned its bytes is dropped, the drop's two places still pinned
   // RE-PINNED (CE-45 LCV-11, P6b): COVERED is seven (relay); this packet's own manifest still holds no doorLines.js; book_event is still never covered.
-  T('7.4 no byte a vendor reads was added BY THIS PACKET: doorLines.js is not in its manifest; COVERED is the six of 627323b plus relay (P6b); book_event never', !man.includes('src/lib/vendor/doorLines.js') && WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay' && !WD.COVERED.includes('book_event'));
+  T('7.4 no byte a vendor reads was added BY THIS PACKET: doorLines.js is not in its manifest; COVERED is the six of 627323b plus relay (P6b); book_event never', !man.includes('src/lib/vendor/doorLines.js') && WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay,block_date,unblock_date,book_event' && WD.COVERED.includes('book_event')); // RE-PINNED (CE-45 LCV-12, P7 2a): book_event, block_date, unblock_date joined; b104 holds them
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────
   sec('8 fuzz: every argument position, the request and its acts themselves hostile');
@@ -386,7 +394,7 @@ async function main() {
   await mut('9.1 M1 THE DROP REMOVED from preTurn: turn 8 as heard reads B34 again and the lead is NOT filed, 21 September\'s walk exactly (reddens 2.1, 5.1, 6.1; and b93 11.6)', WDf,
     // ANCHOR RE-AIMED (CE-44 LCV-10 PART B-1): the line lost its `const` when the door's note gained a second source for `heard`; what it proves is unchanged.
     [['    heard = withoutEchoedEvents(st.ear.request, nowMs);\n', '    heard = st.ear.request;\n']], [],
-    async (rq) => driveM(rq, TURN8_SAID, turn8()), (x) => x.out.door === false && x.out.why === 'uncovered' && x.leads.length === 0);
+    async (rq) => driveM(rq, TURN8_SAID, turn8()), (x) => x.out.door === true && J(x.said.keys) === 'B17,B46' && x.leads.length === 1); // RE-PINNED (CE-45 LCV-12, P7 2a): with book_event covered, the undropped echo is BOOKED beside the lead (a second write for one job), which 2.1 forbids (B17 alone)
   await mut('9.2 M2 the drop no longer comparing the CLIENT: another couple\'s event on the same day is swallowed and the message reads covered (reddens 1.4 and 2.4)', WDf,
     [['leads.some((l) => key(l.client_as_spoken) === key(a.client_as_spoken) && sameSpokenDay(', 'leads.some((l) => sameSpokenDay(']], [],
     async (rq) => driveM(rq, 'x', req([lead('Meera Walk Nine', '20 February 2027'), event('Kabir Walk Nine', '20 February 2027')])), (x) => x.out.door === true && x.leads.length === 1);
@@ -402,9 +410,10 @@ async function main() {
   await mut('9.6 M6 the helper MUTATING what was heard: the record loses the act the listener returned (reddens 1.2 and 2.2)', WDf,
     [['    return acts.length === request.acts.length ? request : { ...request, acts };', '    request.acts = acts; return request;']], [],
     async (rq) => { const x = await driveM(rq, TURN8_SAID, turn8()); return x.out.ear.request.acts.length; }, (n) => n === 1);
-  await mut('9.7 M7 the stand-in NOT reading the request as the door decided on it: it speaks B34 where the door saw only covered acts (reddens 3.1 and 3.2)', WDf,
+  // P7 2a: M7 is a CONTROL now, labelled: with book_event covered, the undropped turn 8 request is all covered either way, so the stand-in reads LEFTOVER on both sides and this mutation reddens nothing here; b93 3.5 keeps the echo's own pin.
+  await mut('9.7 M7 CONTROL (P7 2a, does not redden): the stand-in reading the raw request still reads LEFTOVER for turn 8, both acts being covered now', WDf,
     [["typeof out.ear.request === 'object' ? withoutEchoedEvents(out.ear.request, nowMs) : null;", "typeof out.ear.request === 'object' ? out.ear.request : null;"]], [],
-    async (rq) => rq(WDf).standKey({ door: false, why: 'uncovered', ear: { request: turn8() } }, { lifecycle: LH }, NOW).key, (k) => k === 'B34');
+    async (rq) => rq(WDf).standKey({ door: false, why: 'uncovered', ear: { request: turn8() } }, { lifecycle: LH }, NOW).key, (k) => k === 'LEFTOVER');
   await mut('9.8 M8 withoutEchoedEvents without its guard throws on a hostile request (reddens 8.1)', WDf,
     [['    return acts.length === request.acts.length ? request : { ...request, acts };\n  } catch (_e) { return request; }', '    return acts.length === request.acts.length ? request : { ...request, acts };\n  } finally { /* guard removed */ }']], [],
     async (rq) => { let t = 0; for (const a of HOSTILE) { try { rq(WDf).withoutEchoedEvents(a, NOW); } catch (_e) { t += 1; } } return t; }, (t) => t > 0);

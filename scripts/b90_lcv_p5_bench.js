@@ -194,6 +194,18 @@ async function main() {
     B37: 'Here is the draft:\n\n"{body}"\n\nSend this to {client} ({phone})? Reply YES or NO.',
     B38: 'Could not send the message. No client called {name}.',
     B39: 'Could not send the quote. {client} has no package yet. Attach a package first.',
+    // P7 cut 2a (CE-45 LCV-12): the calendar's eleven, his, ruled 23 September 2026 (B41 to B45 REUSED from blockHands.js :156 to :167; B75 from calendarSignals.js :134)
+    B40: "Blocked: {date} · {reason}.",
+    B41: "{date} was already blocked. Nothing changed.",
+    B42: "Couldn't block {date} — nothing was written. Try again or block it from the calendar.",
+    B43: "Unblocked: {date}. The day's back on your calendar.",
+    B44: "{date} wasn't blocked. Nothing changed.",
+    B45: "Couldn't unblock {date} — nothing was written. Try again or unblock it from the calendar.",
+    B46: "Booked: {client} · shoot · {date}.",
+    B54: "Which day? Say it like 5 December.",
+    B75: "Couldn't put that on the calendar — nothing was changed.",
+    B76: "No lead called {name}. Add the lead first.",
+    B77: "No shoot on {date}.",
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -223,6 +235,17 @@ async function main() {
     B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
     B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
     B39: '1702a3c82a88f751752869986ba88c70a73b0fc6e93d14a8b13cff40442eac76',
+    B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',
+    B41: '6d882045d5fca760cce1f3dd1393bc6b6f3b23cea11f59a810dc910a51ea0b03',
+    B42: 'a41ef8b9fe7281b7cd06c2ad7e99cac57ac6c6a5f85e611915b543560247b651',
+    B43: 'b78f22148ed8f80aa71e2ba0e5311fb8f7d1d8798fd5b8631befb263924db0ad',
+    B44: '2e8457a7173407d2b6166c895ad03188a19a174e3307a008e084996354ede0e5',
+    B45: 'b4363bbbfc3f29c23b913cc26c88f1586c5a8b2b040e15da9b42cd00c8abcf6e',
+    B46: 'e06955310af567757977dc641dd8231d410bc582014e0ea62d4cb67ffbd820f1',
+    B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
+    B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
+    B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
+    B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };
@@ -268,10 +291,12 @@ async function main() {
   // H5 (CE-44 LCV-7, P6a-1, the chair's ruling): the ruled set gains exactly donna_lead; FORBIDDEN is unchanged.
   // H5 again (CE-44 LCV-8, P6a-2): it gains exactly attach_package, the recorded name of the attach; FORBIDDEN is unchanged.
   // H1 again (CE-45 LCV-11, P6b first cut): donna_relay_stage joins the image, a SIGNAL name (relayCouple.ts), never a write hand.
-  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead', 'attach_package', 'donna_relay_stage'].includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
+  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead', 'attach_package', 'donna_relay_stage', 'donna_block_date', 'donna_unblock_date', 'donna_book_event'] /* P7 cut 2a: the §1.5 hands' and the book signal's own names; the door calls blockDate, unblockDate and writeEvent beneath them */.includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
   T('4.1 item 1 (i): the door\'s hands are booking, milestone, invoice, (P6a-1) lead, (P6a-2) attach_package and (P6b) the relay stage signal only; never donna_client, donna_stage, donna_money or donna_money_edit', imageOk(WD.HANDS));
   // H2 (CE-44 LCV-7, P6a-1): COVERED at five. H2 again (CE-44 LCV-8, P6a-2): at six, attach_package joins it. H2 again (CE-45 LCV-11, P6b): at seven, relay joins it.
-  T('4.2 covered at P6b: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package, relay; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,attach_package,booking_confirmed,invoice,lead,milestone_paid,relay');
+  // H2 again (CE-45 LCV-12, P7 cut 2a): at ten, block_date, unblock_date and book_event join it; NEEDS_CLIENT is the table beside it (ruling (g)).
+  T('4.2 covered at P7 2a: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package, relay, block_date, unblock_date, book_event; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,attach_package,block_date,book_event,booking_confirmed,invoice,lead,milestone_paid,relay,unblock_date');
+  T('4.2a NEEDS_CLIENT (P7 2a): the acts that must name a client, and a block or an unblock is not among them', WD.NEEDS_CLIENT.slice().sort().join() === 'advance_paid,attach_package,book_event,booking_confirmed,cancel_event,edit_event,invoice,lead,milestone_paid,payment_reminder,relay' && !WD.NEEDS_CLIENT.includes('block_date') && !WD.NEEDS_CLIENT.includes('unblock_date'));
   T('4.3 the door never names a forbidden hand anywhere in its source', !FORBIDDEN.some((h) => new RegExp(`'${h}'`).test(src('src/lib/vendor/workingDoor.js').replace(/^\s*\/\/.*$/gm, ''))));
 
   // ─── §5 THE DOOR'S DECISIONS ───────────────────────────────────────────────────────────────────
@@ -510,7 +535,7 @@ async function main() {
   const WDdeps = ['src/lib/vendor/workingDoor.js'];
   let m = await withMutated('src/lib/vendor/pendingMoneyActs.js', [["const YES = Object.freeze(['yes', 'yeah', 'yep', 'ok', 'okay', 'haan', 'ha']);", "const YES = Object.freeze(['yes', 'yeah', 'yep', 'ok', 'okay', 'haan', 'ha', 'confirmed', 'send']);"]], WDdeps, async (rq) => rq('src/lib/vendor/pendingMoneyActs.js').decide('confirmed'));
   T('11.1 M1 a yes that hears "confirmed" (the AFFIRM_RE class) reddens 3.2', m === 'yes');
-  m = await withMutated('src/lib/vendor/workingDoor.js', [["return request.acts.every((a) => a && COVERED.includes(a.act) && typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim());", 'return request.acts.every((a) => a && COVERED.includes(a.act));']], [], async (rq) => {
+  m = await withMutated('src/lib/vendor/workingDoor.js', /* P7 2a re-pin: the return reads NEEDS_CLIENT (ruling (g)); the mutation still drops the client test */ [["return request.acts.every((a) => a && COVERED.includes(a.act) && (!NEEDS_CLIENT.includes(a.act) || (typeof a.client_as_spoken === 'string' && !!a.client_as_spoken.trim())));", 'return request.acts.every((a) => a && COVERED.includes(a.act));']], [], async (rq) => {
     const d = makeDb(world());
     const o = await quiet(() => rq('src/lib/vendor/workingDoor.js').preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message: 'the invoice', lane: 'pwa' }, { llmCreate: ear(req([{ act: 'invoice' }])), generateInvoiceForBinder: gen }));
     return o.door === false && o.why === 'uncovered';
@@ -530,7 +555,7 @@ async function main() {
   });
   T('11.4 M4 the counted id\'s line removed from harvest.js reddens 6.4 (the door turn uncounted)', m === null);
   // H3 (CE-44 LCV-7, P6a-1): re-aimed on HANDS' last entry, which is now lead's. Re-aimed again (CE-45 LCV-11, P6b): the last entry is relay's.
-  m = await withMutated('src/lib/vendor/workingDoor.js', [["  relay: 'donna_relay_stage', // P6b: the recorded call keeps the signal's own name, as `lead` keeps donna_lead\n});", "  relay: 'donna_relay_stage',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
+  m = await withMutated('src/lib/vendor/workingDoor.js', /* P7 2a re-pin: HANDS' new last entry is book_event */ [["  book_event: 'donna_book_event', // P7 cut 2a: the signal's own name; the door calls writeEvent as calendarSignals' bookEvents does\n});", "  book_event: 'donna_book_event',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
   T('11.5 M5 a table reaching donna_money_edit reddens 4.1', m === false);
   m = await withMutated('src/lib/vendor/pendingMoneyActs.js', [["      else await closeRow(supabase, r, null, { code: 'refused:apply_unstamped', note: 'yes received; apply did not record its result' });", '      else { /* left open */ }']], WDdeps, async (rq) => {
     const d = makeDb(world());

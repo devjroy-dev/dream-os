@@ -374,7 +374,7 @@ async function main() {
   const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : [];
   T('7.1 W-1 NONE: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
   T('7.2 the manifest names exactly the eleven paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([FIXWALK, MAN, 'scripts/b97_lcv10_name_bench.js', 'scripts/b96_lcv10_fix_bench.js', 'scripts/b94_lcv10_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b90_lcv_p5_bench.js', 'src/lib/vendor/doorLines.js', 'src/lib/vendor/listenerDoor.js', WDf].sort()));
-  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 41 && // 38 since the third B-2 cut (B36); 41 since P6b (B37, B38, B39, his; CE-45 LCV-11)
+  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 52 && // 38 since the third B-2 cut (B36); 41 since P6b (B37, B38, B39); 52 since P7 2a (B40 to B46, B54, B75 to B77, his; CE-45 LCV-12)
      DL.LINE_HASHES.B34 === '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb' && DL.LINE_HASHES.B18 === 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0');
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────
@@ -414,7 +414,7 @@ async function main() {
   await mut('9.7 M7 a name note accepted over an UNCOVERED act (reddens 8.1)', WDf,
     // TWO guards hold it (noteAct's covered test and allKindsCovered); both removed here, as b95 9.13 says of the date note's pair
     [["if (NAME_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) ||", "if (NAME_ASKS.includes(n.asked)) { if (false ||"], ["typeof a.act !== 'string' || !COVERED.includes(a.act)) return null;", "typeof a.act !== 'string') return null;"]], [],
-    async (rq) => rq(WDf).validNote({ asked: 'B35', acts: [{ act: 'block_date' }] }), (v) => v !== null);
+    async (rq) => rq(WDf).validNote({ asked: 'B35', acts: [{ act: 'edit_event' }] }), (v) => v !== null); // P7 2a re-aim: the uncovered act that NEEDS a client is edit_event (2b's); block_date is covered and needs none, assign_crew needs none
   await mut('9.8 M8 the money act APPLIED on the name\'s turn instead of staged (the chair\'s pin, as b95 9.9): reddens 3.4', WDf,
     [['        try { row = await pma.stage(supabase, { vendorId: vendor.id, act: moneyPlan.stage.act, request: moneyPlan.stage.request, lane }); }', "        try { (supabase.tables['public.leads'].find((l) => l.id === moneyPlan.stage.request.lead_id) || {}).state = 'booked'; row = { id: 'applied' }; }"]], [],
     async (rq) => flow(rq, [['x', req([money('booking_confirmed')])], ['Asha Walk Twelve', JSON.parse(NONE_JSON)]]), (x) => staged(x.d).length === 0 && x.d.tables['public.leads'].find((l) => l.id === 'l-asha').state === 'booked');

@@ -189,11 +189,12 @@ async function main() {
   T('4.1 a lead with no name is covered (the door asks B18)', WD.allCovered(req([{ act: 'lead', date_as_spoken: '3 January' }])) === true);
   T('4.2 a lead beside an invoice naming no client is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'invoice' }])) === false);
   T('4.3 a lead beside an invoice naming its client is covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'invoice', client_as_spoken: 'Walk45' }])) === true);
-  T('4.4 a lead beside an uncovered act (block_date) is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'block_date', date_as_spoken: '5 December' }])) === false);
+  T('4.4 a lead beside an uncovered act (assign_crew; block_date joined COVERED at P7 2a) is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'assign_crew', date_as_spoken: '5 December' }])) === false);
+  T('4.4a (P7 2a) a lead beside a block_date naming no client IS covered: a block needs no client (NEEDS_CLIENT)', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'block_date', date_as_spoken: '5 December' }])) === true);
   // RE-PINNED (CE-44 LCV-8, P6a-2): attach_package IS covered now (§14); an act the door has not learnt is still not.
   // RE-PINNED (CE-45 LCV-11, P6b first cut): relay is COVERED since P6b; the act the door has not learnt is now quote_send (the second cut's).
   T('4.5 an act the door has not learnt (quote_send; relay joined at P6b) is NOT covered', WD.allCovered(req([{ act: 'quote_send', client_as_spoken: 'Sharma' }])) === false);
-  T('4.6 the untouched return is byte-identical (b90 11.2\'s anchor)', src('src/lib/vendor/workingDoor.js').includes("    return request.acts.every((a) => a && COVERED.includes(a.act) && typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim());"));
+  T('4.6 the untouched return is byte-identical (b90 11.2\'s anchor)', src('src/lib/vendor/workingDoor.js').includes("    "+"return request.acts.every((a) => a && COVERED.includes(a.act) && (!NEEDS_CLIENT.includes(a.act) || (typeof a.client_as_spoken === 'string' && !!a.client_as_spoken.trim())));") /* P7 2a re-pin: the return reads NEEDS_CLIENT (ruling (g)) */);
 
   // ─── §5 preTurn ON A LEAD ─────────────────────────────────────────────────────────────────────
   sec('5 preTurn() on a lead, through the real createLead');
@@ -567,7 +568,8 @@ async function main() {
   // ─── §14 THE ATTACH, THROUGH THE REAL attachPackage ──────────────────────────────────────────
   sec('14 preTurn() on attach_package, through the real attachPackage and the real resolveLead');
   // RE-PINNED (CE-45 LCV-11, P6b): COVERED is seven, relay joining at P6b.
-  T('14.1 COVERED is seven (relay joined at P6b) and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
+  // RE-PINNED (CE-45 LCV-12, P7 2a): COVERED is ten, block_date, unblock_date and book_event joining.
+  T('14.1 COVERED is ten (the calendar\'s three joined at P7 2a) and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay,block_date,unblock_date,book_event' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
   T('14.2 an attach naming no client is not the door\'s (the untouched return)', WD.allCovered(req([{ act: 'attach_package', package_as_spoken: 'X' }])) === false);
   db = makeDb(world2());
   o = await run(db, 'Attach Photographs and film to Walk P7 Dated', [att('walk p7 dated', 'photographs AND film')]);
@@ -807,7 +809,7 @@ async function main() {
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')]), (x) => x.d.log.inserts.some((i) => i.table === 'public.pending_money_acts'));
   // RE-PINNED (CE-45 LCV-11, P6b): HANDS' last entry is relay's.
   await mut('20.19 N19 b90\'s re-aimed M5 anchor is HANDS\' new last entry (relay, P6b), and a forbidden hand after it is still seen', WDf,
-    [["  relay: 'donna_relay_stage', // P6b: the recorded call keeps the signal's own name, as `lead` keeps donna_lead\n});", "  relay: 'donna_relay_stage',\n  note: 'donna_money_edit',\n});"]], [],
+    /* P7 2a re-pin: HANDS' new last entry is book_event */ [["  book_event: 'donna_book_event', // P7 cut 2a: the signal's own name; the door calls writeEvent as calendarSignals' bookEvents does\n});", "  book_event: 'donna_book_event',\n  note: 'donna_money_edit',\n});"]], [],
     async (rq) => Object.values(rq(WDf).HANDS), (h) => h.includes('donna_money_edit'));
 
   console.log(`\n════════  b92 · ${pass} pass · ${fail} fail  ════════`);

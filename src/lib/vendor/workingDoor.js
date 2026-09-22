@@ -101,6 +101,11 @@
 // ear hears no task inside a long thread but her message names one of her live leads, the door hears the same message once more with no
 // thread and decides on that (heardNothing, namesLiveLead, rehear below; the call sits after the first hearing in preTurn). Both hearings
 // are recorded on the row (meta.listener.request the second, .heard the first, .reheard true) and metered as one row. Never a third.
+//
+// P7 CUT 2a (CE-45 LCV-12; the chair's rulings of 23 September on the designs): THE DOOR LEARNS THE CALENDAR'S FIRST THREE ACTS, block_date,
+// unblock_date and book_event, on availability.blockDate/unblockDate and eventWrite.writeEvent AS THEY STAND, every read-back from the row
+// (B40 to B47, B54, B75, B76, his); NEEDS_CLIENT beside COVERED; the three measured slots (member, reason, kind) on the note; the route-search
+// gate (F-44.128); the order leads, attaches, invoices, calendar, relay, money. A block, an unblock and a booking LAND AT ONCE.
 const DL = require('./doorLines');
 const PMA = require('./pendingMoneyActs');
 const { resolveSpokenDate, todayIstIso } = require('./spokenDate');
@@ -109,7 +114,11 @@ const { isDateKey } = require('./packageSchedule');
 
 const HEAR_BEFORE_REPLY_MS = 4000;
 const MONEY_ACTS = Object.freeze(['booking_confirmed', 'advance_paid', 'milestone_paid']);
-const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay']);
+const CALENDAR_ACTS = Object.freeze(['block_date', 'unblock_date', 'book_event']); // P7 cut 2a; edit_event and cancel_event are 2b's
+const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay', ...CALENDAR_ACTS]);
+// P7 (CE-45 LCV-12, cut 2a; the chair's ruling (g) of 22 September): THE ACTS THAT NAME A CLIENT. allCovered and namelessOf read this table and
+// nothing else: a block, an unblock, an assignment and a lookup name no client, so askName never asks B35 for a day. b90 pins its members.
+const NEEDS_CLIENT = Object.freeze(['lead', 'booking_confirmed', 'advance_paid', 'milestone_paid', 'invoice', 'attach_package', 'relay', 'book_event', 'edit_event', 'cancel_event', 'payment_reminder']); // `lead` names one too: B18 asks for it (the lead exception above the untouched return)
 // THE ACT TABLE'S IMAGE: every hand the door can run, and nothing else. b90 pins that it never holds
 // donna_client, donna_stage, donna_money or donna_money_edit (item 1, option (i)).
 const HANDS = Object.freeze({
@@ -120,6 +129,9 @@ const HANDS = Object.freeze({
   lead: 'donna_lead',
   attach_package: 'attach_package',
   relay: 'donna_relay_stage', // P6b: the recorded call keeps the signal's own name, as `lead` keeps donna_lead
+  block_date: 'donna_block_date', // P7 cut 2a: the §1.5 hands' own names (blockHands.js); the door calls blockDate/unblockDate beneath them
+  unblock_date: 'donna_unblock_date',
+  book_event: 'donna_book_event', // P7 cut 2a: the signal's own name; the door calls writeEvent as calendarSignals' bookEvents does
 });
 
 // `say` is what an exit KNOWS beyond its reason (the name that is no lead, the name that is no client, the money act);
@@ -136,6 +148,11 @@ function lazy(deps) {
     lifecycle: deps.lifecycle || require('./lifecycleHands'),
     listener: deps.listener || require('./listenerDoor'),
     generateInvoiceForBinder: deps.generateInvoiceForBinder || ((...a) => require('../../api/vendor/invoices').generateInvoiceForBinder(...a)),
+    // P7 cut 2a: the calendar's hands AS THEY STAND, each a seam for the bench (production passes nothing)
+    blockDate: deps.blockDate || ((...a) => require('./availability').blockDate(...a)),
+    unblockDate: deps.unblockDate || ((...a) => require('./availability').unblockDate(...a)),
+    writeEvent: deps.writeEvent || ((...a) => require('./eventWrite').writeEvent(...a)),
+    calendarKinds: deps.calendarKinds || require('./eventWrite').CALENDAR_KINDS,
     memory: deps.memory || null,
     meter: deps.meter || null,
     // P6b: the relay's organs, each a seam for the bench. The transport is the estate's ONE sender (src/lib/whatsapp.js sendWhatsApp),
@@ -156,9 +173,10 @@ function allCovered(request) {
     // P6a-1, THE LEAD EXCEPTION, a branch ABOVE the untouched return: a `lead` act may name no one (the door
     // asks B18); every other act beside it still needs its client, exactly as the return below demands.
     if (request.acts.some((a) => a && a.act === 'lead')) {
-      return request.acts.every((a) => a && COVERED.includes(a.act) && (a.act === 'lead' || (typeof a.client_as_spoken === 'string' && !!a.client_as_spoken.trim())));
+      return request.acts.every((a) => a && COVERED.includes(a.act) && (a.act === 'lead' || !NEEDS_CLIENT.includes(a.act) || (typeof a.client_as_spoken === 'string' && !!a.client_as_spoken.trim())));
     }
-    return request.acts.every((a) => a && COVERED.includes(a.act) && typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim());
+    // P7 cut 2a: only an act in NEEDS_CLIENT must name one (a block, an unblock name a day, never a client)
+    return request.acts.every((a) => a && COVERED.includes(a.act) && (!NEEDS_CLIENT.includes(a.act) || (typeof a.client_as_spoken === 'string' && !!a.client_as_spoken.trim())));
   } catch (_e) { return false; }
 }
 
@@ -299,7 +317,7 @@ function rehear(first, second) {
 }
 
 // ── F-44.112 · THE DOOR'S OWN NOTE OF A DATE IT ASKED FOR (LCV-10 Part B-1) ─────────────────────────
-const DATE_ASKS = Object.freeze(['B6', 'B7', 'B21', 'B26', 'B28']);
+const DATE_ASKS = Object.freeze(['B6', 'B7', 'B21', 'B26', 'B28', 'B54']); // P7 cut 2a: B54 "Which day?" is a DATE note of the same kind (the design's 0.4)
 // LCV-10 PART B-2 (first cut; R-44.39, the chair's rulings of 21 and 22 September): THE DOOR KEEPS ITS OWN NOTE OF A NAME IT ASKED FOR TOO.
 // B18 (a lead with no name) and B35 (a booking, payment, invoice or attach with no client). Her WHOLE TRIMMED MESSAGE IS THE NAME,
 // event words and all, whatever the listener made of it (F-44.105's live failures: "Walk P7 Haldi" heard as "Walk P7"). The note lapses
@@ -322,10 +340,10 @@ const OFFER_ASKS = Object.freeze(['B36']);
 // row at stage time); nothing heard re-shows the frame ONCE, then B3 (the row itself lives its 24 hours).
 const RELAY_ASKS = Object.freeze(['B37']);
 const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS]);
-const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && !spokenText(a.client_as_spoken));
+const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && NEEDS_CLIENT.includes(a.act) && !spokenText(a.client_as_spoken)); // P7 cut 2a: NEEDS_CLIENT decides
 const namelessLead = (acts) => (Array.isArray(acts) ? acts : []).some((a) => a && typeof a === 'object' && a.act === 'lead' && !spokenText(a.client_as_spoken));
 const allKindsCovered = (acts) => Array.isArray(acts) && acts.length > 0 && acts.length <= 4 && acts.every((a) => a && typeof a === 'object' && COVERED.includes(a.act));
-const NOTE_SLOTS = Object.freeze(['act', 'client_as_spoken', 'package_as_spoken', 'date_as_spoken', 'milestone', 'phone_as_spoken']);
+const NOTE_SLOTS = Object.freeze(['act', 'client_as_spoken', 'package_as_spoken', 'date_as_spoken', 'milestone', 'phone_as_spoken', 'member_as_spoken', 'reason_as_spoken', 'kind_as_spoken']); // P7 cut 2a: the three measured slots ride a note
 const directionOf = (act) => (act === 'advance_paid' || act === 'milestone_paid' ? 'past' : 'future');
 // One act as the note keeps it: the slots the door reads, strings only, nothing else. null when it is no covered act.
 function noteAct(a) {
@@ -506,6 +524,113 @@ async function planRelay(supabase, vendor, act, L) {
     if (!phone) { const line = L.relay.noNumberLine(client); return typeof line === 'string' && line ? { speak: line, key: 'RELAY_NO_NUMBER', skipHarvest: true } : null; }
     return { relay: { leadId: lead.id, client, phone } };
   } catch (_e) { return null; }
+}
+
+// ── P7 CUT 2a · THE CALENDAR: block, unblock, book (CE-45 LCV-12; the chair's rulings on the designs of 23 September) ───────────────────────
+// Every plan is resolved READ-ONLY to { speak, key } | { block | unblock | book } | { noLead, name } | null, and written only after every act has
+// resolved; every read-back comes from the ROW the writer returned; the hands are availability.blockDate/unblockDate and eventWrite.writeEvent AS
+// THEY STAND. A block, an unblock and a booking LAND AT ONCE (ruling (c)). client_as_spoken on a block is IGNORED, as a relay ignores its date.
+// THE DATE (the design's 0.4): resolveSpokenDate direction 'future'; none said → B54 "Which day? Say it like 5 December." (a DATE note; her next
+// message is the day); unreadable, or an absurd year → B7 (his byte; no calendar twin of B21 is minted). THE KIND (ruling 2): kind_as_spoken folded
+// by key() when it is one of eventWrite's CALENDAR_KINDS, else 'shoot'. TOTAL: never throws.
+function calendarDate(act, nowMs) {
+  const said = spokenText(act && act.date_as_spoken);
+  if (!said) return { speak: DL.LINES.B54, key: 'B54', skipHarvest: true };
+  const d = resolveSpokenDate(said, { direction: 'future', nowMs });
+  if (!d.ok || !LEAD_ISO.test(typeof d.iso === 'string' ? d.iso : '')) return { speak: DL.LINES.B7, key: 'B7' };
+  return { iso: d.iso };
+}
+function calendarKind(act, L) {
+  const k = key(act && act.kind_as_spoken);
+  return k && Array.isArray(L.calendarKinds) && L.calendarKinds.includes(k) ? k : 'shoot';
+}
+function planBlock(act, nowMs) {
+  try {
+    if (!act || typeof act !== 'object') return null;
+    const d = calendarDate(act, nowMs);
+    if (d.speak) return d;
+    return { block: { iso: d.iso, reason: spokenText(act.reason_as_spoken) } };
+  } catch (_e) { return null; }
+}
+function planUnblock(act, nowMs) {
+  try {
+    if (!act || typeof act !== 'object') return null;
+    const d = calendarDate(act, nowMs);
+    if (d.speak) return d;
+    return { unblock: { iso: d.iso } };
+  } catch (_e) { return null; }
+}
+// a booking: the client by the ONE home (resolveLead exact; the caller offers B36 or speaks B76 on noLead); then the day; then the kind
+async function planBook(supabase, vendor, act, nowMs, L) {
+  try {
+    if (!act || typeof act !== 'object') return null;
+    const name = spokenText(act.client_as_spoken);
+    if (!name) return null; // a nameless booking is B35's, asked before any plan (askName)
+    const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);
+    if (!found || !found.ok) {
+      if (found && found.reason === 'not_found') return { noLead: true, name };
+      if (found && found.reason === 'ambiguous') {
+        const rows = await leadsNamed(supabase, vendor.id, name, false);
+        const line = sameName(name, rows, (r) => r.wedding_date);
+        return line ? { speak: line, key: 'B8', skipHarvest: true } : null;
+      }
+      return null;
+    }
+    const d = calendarDate(act, nowMs);
+    if (d.speak) return d;
+    return { book: { leadId: found.lead.id, client: String(found.lead.name || '').trim(), iso: d.iso, kind: calendarKind(act, L) } };
+  } catch (_e) { return null; }
+}
+// THE WRITES. Each returns { line, key, call, landed }. The read-back is the ROW's; a refusal speaks the writer's own sentence where it has one
+// (B42's rule: the writer's sentence verbatim, else his :157 line); a throw speaks his line and is recorded refused:exception.
+async function fileBlock(supabase, vendor, plan, L) {
+  const b = plan.block; const input = { date: b.iso, ...(b.reason ? { reason: b.reason } : {}) };
+  const day = longDateYear(b.iso);
+  const his = (result) => ({ line: DL.render('B42', { date: day }), key: 'B42', call: { name: HANDS.block_date, input, result }, landed: false });
+  try {
+    const r = await L.blockDate(supabase, vendor.id, b.iso, b.reason || null);
+    if (r && r.ok === true && r.block && typeof r.block === 'object') {
+      const line = DL.blockedLine(longDateYear(r.block.blocked_date), r.block.reason);
+      return { line, key: line ? 'B40' : null, call: { name: HANDS.block_date, input, result: 'blocked' }, landed: true };
+    }
+    if (r && r.code === 'ALREADY_BLOCKED' && r.error === 'Already blocked.') return { line: DL.render('B41', { date: day }), key: 'B41', call: { name: HANDS.block_date, input, result: 'refused:already_blocked' }, landed: false };
+    if (r && typeof r.error === 'string' && r.error.trim()) return { line: r.error.trim(), key: 'B42', call: { name: HANDS.block_date, input, result: `refused:${r.code || 'write_failed'}` }, landed: false };
+    return his('refused:write_failed');
+  } catch (_e) { return his('refused:exception'); }
+}
+async function fileUnblock(supabase, vendor, plan, L) {
+  const u = plan.unblock; const input = { date: u.iso }; const day = longDateYear(u.iso);
+  const his = (result) => ({ line: DL.render('B45', { date: day }), key: 'B45', call: { name: HANDS.unblock_date, input, result }, landed: false });
+  try {
+    const r = await L.unblockDate(supabase, vendor.id, { date: u.iso });
+    if (r && r.ok === true) return { line: DL.render('B43', { date: day }), key: 'B43', call: { name: HANDS.unblock_date, input, result: 'unblocked' }, landed: true };
+    // F-44.65, F-44.72 close here: "wasn't blocked" is spoken ONLY on the writer's exact 'Block not found.'
+    if (r && r.error === 'Block not found.') return { line: DL.render('B44', { date: day }), key: 'B44', call: { name: HANDS.unblock_date, input, result: 'not_blocked' }, landed: false };
+    return his('refused:write_failed');
+  } catch (_e) { return his('refused:exception'); }
+}
+// B46 from the returned events row; a kind other than shoot is DERIVED by placing the row's own kind word where the template says "shoot"
+// (disclosed in the handover as B40's no-reason form is; a re-word of nothing she reads, the row's word placed). B47 = conflict.message verbatim.
+function bookedLine(row) {
+  const client = spotless(row && row.title); const date = longDateYear(row && row.event_date); const kind = spotless(row && row.kind);
+  const line = DL.render('B46', { client, date });
+  if (!line) return null;
+  return kind && kind !== 'shoot' ? line.replace(' · shoot · ', ` · ${kind} · `) : line;
+}
+const spotless = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+async function fileBook(supabase, vendor, agentId, lane, plan, L) {
+  const b = plan.book; const input = { lead: b.client, date: b.iso, kind: b.kind };
+  const his = (result) => ({ line: DL.LINES.B75, key: 'B75', call: { name: HANDS.book_event, input, result }, landed: false });
+  try {
+    const r = await L.writeEvent(supabase, { vendorId: vendor.id, agentId, surface: lane === 'pwa' ? 'pwa' : 'whatsapp', source: 'victor', title: b.client, event_date: b.iso, kind: b.kind, linked_lead_id: b.leadId, state: 'upcoming' });
+    if (r && r.ok === true && r.event && typeof r.event === 'object') {
+      const line = bookedLine(r.event);
+      return { line, key: line ? 'B46' : null, call: { name: HANDS.book_event, input, result: r.deduped === true ? 'unchanged' : 'booked' }, landed: r.deduped !== true };
+    }
+    if (r && r.conflict && typeof r.conflict.message === 'string' && r.conflict.message.trim()) return { line: r.conflict.message.trim(), key: 'B47', call: { name: HANDS.book_event, input, result: `refused:${r.conflict.kind || 'conflict'}` }, landed: false };
+    if (r && typeof r.error === 'string' && r.error.trim()) return { line: r.error.trim(), key: 'B75', call: { name: HANDS.book_event, input, result: 'refused:write_failed' }, landed: false };
+    return his('refused:write_failed');
+  } catch (_e) { return his('refused:exception'); }
 }
 
 // ── F-44.100 · THE NET: an event is not a client ────────────────────────────────────────────────────
@@ -1066,6 +1191,11 @@ async function preTurn(args, depsIn) {
     if (!st.ear || !st.ear.request) return CHAIN(st.ear, 'no_request');
     // F-44.110: the door DECIDES on the request with an echoed event dropped; st.ear, which is recorded, keeps what was HEARD.
     heard = withoutEchoedEvents(st.ear.request, nowMs);
+    // F-44.128 (CE-45 LCV-12, cut 2a; the chair's ruling 5 of 23 September): A REQUEST ON ROUTE 'search' IS NEVER A JOB. MEASURED on the P7
+    // table (row 13, C1 both variants): "Who are my new leads?" returned act `lead` with no client on route search, which met askName below and
+    // would have asked B18 (the lead's name question) for a LOOKUP. Its acts are lookups only; until cut four covers them the turn reads
+    // B34 (exit 'lookup', standKey); cut four makes this exit the lookups' door. Never reached on a note turn (fromNote decides above).
+    if (heard && heard.route === 'search') return CHAIN(st.ear, 'lookup');
     // F-44.118 (the chair; kept by the founder's R-44.41 as a SAFETY FLOOR UNDER MONEY and not as a cure for context): on a turn not answering
     // a note, a heard client_as_spoken NOT PRESENT in her message under key() is a name she did not say (the ear carried the thread's last
     // lead onto "The booking is confirmed", 06:32:24 and 08:01:09 on 22 September) and is treated as UNSAID, so B18 or B35 is asked.
@@ -1130,6 +1260,19 @@ async function preTurn(args, depsIn) {
         return { door: true, reply: line || DL.LINES.B3, keys: [line ? 'B38' : 'B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, ...(st.answered ? { answered: st.answered } : {}), why: 'relay_no_lead' };
       }
     }
+    // P7 cut 2a: every CALENDAR act is PROBED read-only here (a plan the door cannot say → 'calendar_unsayable'; a booking for a name that is no
+    // lead this message does not itself file → B36's offer or B76); the plans are REBUILT after the writes before them (a lead filed this message
+    // exists then) and only the rebuilt plan is written.
+    const calendar = acts.filter((a) => CALENDAR_ACTS.includes(a.act));
+    for (const a of calendar) {
+      const probe = a.act === 'book_event' ? await planBook(supabase, vendor, a, nowMs, L) : a.act === 'block_date' ? planBlock(a, nowMs) : planUnblock(a, nowMs);
+      if (!probe) return CHAIN(st.ear, 'calendar_unsayable');
+      if (probe.noLead && !willFile.includes(key(probe.name))) {
+        const offer = !liveAtStart && !fromNote ? await offerFor(a, 'client', probe.name, await leadsOf(supabase, vendor.id)) : null;
+        if (offer) return offer;
+        return CHAIN(st.ear, 'book_no_lead', { name: probe.name });
+      }
+    }
     let moneyPlan = null;
     if (money.length) {
       moneyPlan = await planMoney(supabase, vendor, money[0], L); if (!moneyPlan) return CHAIN(st.ear, 'money_unsayable', { act: money[0].act });
@@ -1175,6 +1318,22 @@ async function preTurn(args, depsIn) {
       st.documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: plan.invoice.client, binder_id: plan.invoice.binder.id });
       st.toolCalls.push({ name: HANDS.invoice, input: { binder_id: plan.invoice.binder.id }, result: served ? 'served' : 'minted' });
       st.refresh = true;
+    }
+    // P7 cut 2a: THE CALENDAR, after leads, attaches and invoices and before the relay and the money act (ruling (b)), in message order. Each
+    // plan is rebuilt here from the rows as they now stand. After a write nothing goes to the chain: what the door cannot say is B75.
+    for (const a of calendar) {
+      const cp = a.act === 'book_event' ? await planBook(supabase, vendor, a, nowMs, L) : a.act === 'block_date' ? planBlock(a, nowMs) : planUnblock(a, nowMs);
+      if (!cp || cp.noLead) {
+        if (!st.wrote) return CHAIN(st.ear, cp && cp.noLead ? 'book_no_lead' : 'calendar_unsayable', cp && cp.noLead ? { name: cp.name } : null);
+        st.lines.push(DL.LINES.B75); st.keys.push('B75'); continue;
+      }
+      if (cp.speak) { st.lines.push(cp.speak); st.keys.push(cp.key); if (cp.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(cp.key)) st.dateAsks.push({ key: cp.key, act: a }); continue; }
+      st.wrote = true; // a row may land inside a call that then throws
+      if (!st.fallback) st.fallback = a.act === 'book_event' ? DL.LINES.B75 : DL.render(a.act === 'block_date' ? 'B42' : 'B45', { date: longDateYear((cp.block || cp.unblock).iso) });
+      const f = cp.block ? await fileBlock(supabase, vendor, cp, L) : cp.unblock ? await fileUnblock(supabase, vendor, cp, L) : await fileBook(supabase, vendor, agentId, lane, cp, L);
+      if (f.line) { st.lines.push(f.line); st.keys.push(f.key); }
+      st.toolCalls.push(f.call);
+      if (f.landed) st.refresh = true;
     }
     // P6b: the relay is composed and STAGED after the writes before it, and the frame is asked. A money act in the same message
     // is NOT staged this turn (one question at a time): it rides the frame's note and is planned afresh after her answer.
@@ -1294,6 +1453,8 @@ function standKeyOf(out, L, nowMs) {
     if (acts.some((a) => !a || !COVERED.includes(a.act))) return { key: 'B34' };
     return { key: 'LEFTOVER' };
   }
+  if (why === 'lookup') return { key: 'B34' }; // F-44.128 (P7 cut 2a): a lookup, until cut four covers it
+  if (why === 'book_no_lead') { const line = DL.render('B76', { name: say.name }); if (line) return { key: 'B76', line }; } // P7 cut 2a, his B76
   if (why === 'attach_no_lead') { const line = DL.render('B32', { name: say.name }); return line ? { key: 'B32', line } : { key: 'B30' }; }
   if (why === 'attach_unsayable') return { key: 'B30' };
   if (why === 'invoice_unresolved' && typeof say.name === 'string') { const line = DL.render('B15', { name: say.name }); if (line) return { key: 'B15', line }; }
@@ -1386,4 +1547,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

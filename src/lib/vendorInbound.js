@@ -456,8 +456,10 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         });
         const previewMsg =
           `I found ${proposals.length} event${proposals.length === 1 ? '' : 's'} in this image:\n\n` +
-          lines.join('\n') +
-          `\n\nReply "save all" to add them all, or tell me which to skip (e.g. "skip 2 and 4") or edit.`;
+          lines.join('\n');
+        // F-44.109, Q2 (the founder, 22 September 2026; CE-45 LCV-12, P7 cut 2a): the line that asked her to reply "save all" is DROPPED: no hand reads
+        // that reply since the door took every turn (F-44.126; the packet after P7 teaches the door "save all" and "skip N", R-45.8). The preview ends
+        // after its list; a sentence no mechanism answers is not spoken.
 
         const sent = await sendWhatsApp(phone, previewMsg);
 

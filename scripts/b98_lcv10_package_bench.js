@@ -344,7 +344,7 @@ async function main() {
   T('6.1 W-1 NONE: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
   T('6.2 the manifest names exactly the nine paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([WALK_B, MAN, 'scripts/b98_lcv10_package_bench.js', 'scripts/b97_lcv10_name_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b90_lcv_p5_bench.js', 'src/lib/vendor/doorLines.js', WDf].sort()));
   // 6.3 RE-PINNED (the third B-2 cut): F-44.118's floor is IN the tree now (R-44.41), and B36 joined LINES; b99 holds both.
-  T('6.3 LINES holds 41 (B31, B33 from this cut, B36 from the third; B37 to B39 from P6b, CE-45 LCV-11, his); F-44.118\'s floor is present, scoped by R-44.41 (b99 holds it)', Object.keys(DL.LINES).length === 41 && /saidKey\.includes/.test(src(WDf)));
+  T('6.3 LINES holds 41 (B31, B33 from this cut, B36 from the third; B37 to B39 from P6b, CE-45 LCV-11, his); F-44.118\'s floor is present, scoped by R-44.41 (b99 holds it)', Object.keys(DL.LINES).length === 52 /* P7 2a: 52 since B40 to B46, B54, B75 to B77 */ && /saidKey\.includes/.test(src(WDf)));
 
   // ─── §7 FUZZ ───────────────────────────────────────────────────────────────────────────────
   sec('7 fuzz');

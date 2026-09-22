@@ -127,6 +127,30 @@ const LINES = Object.freeze({
   B38: "Could not send the message. No client called {name}.",
   // a quote asked for a lead with no live package (his, 22 September 2026, "ok"). CARRIED in this cut, spoken when quote_send is covered.
   B39: "Could not send the quote. {client} has no package yet. Attach a package first.",
+  // ── P7 (CE-45 LCV-12), THE CALENDAR'S BYTES, all his, ruled 23 September 2026 ("All proposed lines accepted", "yes to all", "ok"). B47 is NOT a byte here: it is
+  // the checker's own clash sentence, conflict.message, spoken verbatim (his by B4's blessing). B48 to B53 are 2b's, B56 to B62 cut three's, B67 to B74 cut four's.
+  // P7 cut 2a · a day blocked by the door (his, 23 September 2026, "All proposed lines accepted"); {date} full month, {reason} the RETURNED row's own; no reason drops " · {reason}" through blockedLine() below, as byte 13 drops " for {client}"
+  B40: "Blocked: {date} · {reason}.",
+  // REUSE: his chain-era line, blockHands.js :156 (CE-blessed 2026-07-15; the month in full since F-44.62). Spoken ONLY on blockDate's exact 'Already blocked.'
+  B41: "{date} was already blocked. Nothing changed.",
+  // REUSE: his blockHands.js :157, spoken when the writer refused with NO sentence of its own (a throw); a writer's own refusal sentence is spoken verbatim instead
+  B42: "Couldn't block {date} — nothing was written. Try again or block it from the calendar.",
+  // REUSE: his blockHands.js :165
+  B43: "Unblocked: {date}. The day's back on your calendar.",
+  // REUSE: his blockHands.js :166. Spoken ONLY on unblockDate's exact 'Block not found.' (F-44.65 and F-44.72 close on this row)
+  B44: "{date} wasn't blocked. Nothing changed.",
+  // REUSE: his blockHands.js :167
+  B45: "Couldn't unblock {date} — nothing was written. Try again or unblock it from the calendar.",
+  // a shoot booked by the door; every slot from the events ROW writeEvent returned (his, 23 September 2026)
+  B46: "Booked: {client} · shoot · {date}.",
+  // a calendar act with no date (his, 23 September 2026; B7's register). A DATE note of the door's own kind: her whole next message is the day
+  B54: "Which day? Say it like 5 December.",
+  // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
+  B75: "Couldn't put that on the calendar — nothing was changed.",
+  // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
+  B76: "No lead called {name}. Add the lead first.",
+  // an assignment by date alone with no shoot on that day (his "ok", 23 September 2026). CARRIED in 2a, spoken from cut three
+  B77: "No shoot on {date}.",
   // a booking made (vetoed CE-43, TDW_CE43_LC2_P3_HANDOVER.md:173; homeless until P5)
   D1: "Booked: {client}. Client, event and invoice {number} are ready.",
   // R-44.18; LIVE since LCV-9 Part One (R-44.37): spoken when NO ACT was heard, followed by two covered examples
@@ -197,6 +221,17 @@ const LINE_HASHES = Object.freeze({
   B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
   B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
   B39: '1702a3c82a88f751752869986ba88c70a73b0fc6e93d14a8b13cff40442eac76',
+  B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',
+  B41: '6d882045d5fca760cce1f3dd1393bc6b6f3b23cea11f59a810dc910a51ea0b03',
+  B42: 'a41ef8b9fe7281b7cd06c2ad7e99cac57ac6c6a5f85e611915b543560247b651',
+  B43: 'b78f22148ed8f80aa71e2ba0e5311fb8f7d1d8798fd5b8631befb263924db0ad',
+  B44: '2e8457a7173407d2b6166c895ad03188a19a174e3307a008e084996354ede0e5',
+  B45: 'b4363bbbfc3f29c23b913cc26c88f1586c5a8b2b040e15da9b42cd00c8abcf6e',
+  B46: 'e06955310af567757977dc641dd8231d410bc582014e0ea62d4cb67ffbd820f1',
+  B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
+  B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
+  B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
+  B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });
@@ -322,6 +357,17 @@ function showFrame(body, client, phone) {
   } catch (_e) { return null; }
 }
 
+// Byte 40, the block read-back: {date} and, when the ROW carries a reason, " · {reason}"; no reason drops that part, as byte 13 drops " for {client}".
+function blockedLine(date, reason) {
+  try {
+    const d = slot(date);
+    if (d === null) return null;
+    const r = slot(reason);
+    if (r === null) return LINES.B40.replace(' · {reason}', '').replace('{date}', d);
+    return render('B40', { date: d, reason: r });
+  } catch (_e) { return null; }
+}
+
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
 function invoiceNumbers(client, numbers) {
   try {
@@ -349,4 +395,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

@@ -132,11 +132,15 @@ function exits(DL, LH, GLITCH) {
     { why: 'no_request', message: 'Block 20 March, personal', ear: earFails, is: (r) => r === GLITCH, byte: 'GLITCH', label: 'the listener FAILED' },
     { why: 'no_request', message: 'Block 20 March, personal', ear: earNoCall, is: (r) => r === GLITCH, byte: 'GLITCH', label: 'the listener returned no tool call' },
     { why: 'uncovered', message: 'Hello', ear: earOf(req([], 'none')), is: isLeft, byte: 'LEFTOVER', label: 'NO ACT heard (a greeting)' },
-    { why: 'uncovered', message: 'Block 20 March, personal', ear: earOf(req([{ act: 'block_date', date_as_spoken: '20 March' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'an act the door does not cover' },
-    { why: 'uncovered', message: "What's due this week?", ear: earOf(req([{ act: 'whatsdue' }], 'search')), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a lookup the door does not cover' },
+    // ROWS RE-AIMED (CE-45 LCV-12, P7 cut 2a): block_date is the DOOR'S since 2a (b104 holds it); the act the door has not learnt is assign_crew, cut three's;
+    // a lookup on route 'search' now exits 'lookup' (F-44.128) and reads B34 until cut four; two exits join: book_no_lead (B76, his) and calendar_unsayable (GLITCH).
+    { why: 'uncovered', message: 'Assign Walk P8 Crew to the 20 March shoot', ear: earOf(req([{ act: 'assign_crew', member_as_spoken: 'Walk P8 Crew', date_as_spoken: '20 March' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'an act the door does not cover' },
+    { why: 'lookup', message: "What's due this week?", ear: earOf(req([{ act: 'whatsdue' }], 'search')), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a lookup on route search (F-44.128), until cut four' },
+    { why: 'book_no_lead', message: 'Book the Walk P8 Nolead shoot on 20 March 2027', ear: earOf(req([{ act: 'book_event', client_as_spoken: 'Walk P8 Nolead', date_as_spoken: '20 March 2027' }])), is: (r) => r === 'No lead called Walk P8 Nolead. Add the lead first.', byte: 'B76', label: 'a booking for a name that is no lead (B76, his)' },
+    { why: 'calendar_unsayable', message: 'Book the Walk P8 Dated shoot on 20 March 2027', ear: earOf(req([{ act: 'book_event', client_as_spoken: 'Walk P8 Dated', date_as_spoken: '20 March 2027' }])), deps: { lifecycle: { ...LH, resolveLead: async () => { throw new Error('read failed'); } } }, is: (r) => r === GLITCH, byte: 'GLITCH', label: 'a calendar act the door cannot read (the leads read throws)' },
     // ROW RE-AIMED (CE-45 LCV-11, P6b first cut): relay is the DOOR'S since P6b (b101 holds it); the act the door has not learnt is quote_send, the second cut's.
     { why: 'uncovered', message: 'Send Walk P8 Dated a quote', ear: earOf(req([{ act: 'quote_send', client_as_spoken: 'Walk P8 Dated' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'quote_send (the second P6b cut; relay is covered since the first)' },
-    { why: 'uncovered', message: 'Add a lead Walk P8 Mixed and block 20 March', ear: earOf(req([{ act: 'lead', client_as_spoken: 'Walk P8 Mixed' }, { act: 'block_date', date_as_spoken: '20 March' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a MIXED message: a covered act beside an uncovered one' },
+    { why: 'uncovered', message: 'Add a lead Walk P8 Mixed and assign Walk P8 Crew', ear: earOf(req([{ act: 'lead', client_as_spoken: 'Walk P8 Mixed' }, { act: 'assign_crew', member_as_spoken: 'Walk P8 Crew' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a MIXED message: a covered act beside an uncovered one' },
     // ROW REMOVED (CE-44 LCV-10 PART B-2, first cut): a covered act naming NO client is now the DOOR'S turn (B35, R-44.39), not an exit; b97 §2 holds it, on this lane too.
     // ROW RE-AIMED (CE-45 LCV-11, P6b first cut; F-44.96's second half): one phone-shaped run is read by the door itself and filed; the exit survives ONLY for TWO runs with no slot.
     { why: 'lead_phone', message: 'Add a new lead Walk P8 Phone, 9876543210 or 9876543211', ear: earOf(req([{ act: 'lead', client_as_spoken: 'Walk P8 Phone' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'TWO phone-shaped runs, no slot: the door does not guess' },
@@ -206,7 +210,8 @@ async function main() {
   T('2.1 EXAMPLE_ACTS is one act per example, by position', DL.EXAMPLE_ACTS.length === DL.EXAMPLES.length && DL.EXAMPLE_ACTS.every((a) => typeof a === 'string' && a));
   const coveredEx = DL.EXAMPLES.filter((_e, i) => WD.COVERED.includes(DL.EXAMPLE_ACTS[i]));
   // RE-PINNED (CE-45 LCV-11, P6b first cut): example 10 switched on by covering relay (doorLines.js EXAMPLE_ACTS); five, in the table's order.
-  T('2.2 the examples the door may show TODAY are exactly the five: the chair\'s four and, since P6b, example 10', JSON.stringify(coveredEx) === JSON.stringify(['The Sharma booking is confirmed', 'The advance came in today for the Kapoor booking', 'Raise the invoice for the Bose wedding', 'Add a new lead, haldi shoot on 3 January', 'Send a message to my client asking for the advance']));
+  // RE-PINNED (CE-45 LCV-12, P7 cut 2a): example 4 switched on by covering block_date; six, in the table's order.
+  T('2.2 the examples the door may show TODAY are exactly the six: the chair\'s four, example 10 since P6b and example 4 since P7 2a', JSON.stringify(coveredEx) === JSON.stringify(['The Sharma booking is confirmed', 'The advance came in today for the Kapoor booking', 'Block 20 March, personal', 'Raise the invoice for the Bose wedding', 'Add a new lead, haldi shoot on 3 January', 'Send a message to my client asking for the advance']));
   let okDraws = true; const seenPairs = new Set();
   for (let i = 0; i < 2000; i += 1) {
     const parts = DL.leftover(WD.COVERED).split('\n');
@@ -214,8 +219,8 @@ async function main() {
     seenPairs.add(parts.slice(1).sort().join('|'));
   }
   T('2.3 over 2000 draws: the founder\'s line, then TWO DIFFERENT examples, each from a COVERED act, never another', okDraws);
-  T('2.4 the draw is random: all ten pairs of the five appear (six of four until P6b)', seenPairs.size === 10);
-  T('2.5 covering an act switches its example on: with block_date covered, "Block 20 March, personal" can appear; today it cannot', (() => { let seen = false; for (let i = 0; i < 400; i += 1) if (DL.leftover([...WD.COVERED, 'block_date']).includes('Block 20 March, personal')) seen = true; return seen; })());
+  T('2.4 the draw is random: all fifteen pairs of the six appear (ten of five until P7 2a)', seenPairs.size === 15);
+  T('2.5 covering an act switches its example on: with assign_crew covered, "Assign Harsh to the 14 February shoot" can appear; today it cannot (P7 2a re-aim: block_date is covered now)', (() => { let seen = false; let today = false; for (let i = 0; i < 400; i += 1) { if (DL.leftover([...WD.COVERED, 'assign_crew']).includes('Assign Harsh to the 14 February shoot')) seen = true; if (DL.leftover(WD.COVERED).includes('Assign Harsh')) today = true; } return seen && !today; })());
   T('2.6 one covered example shows one; none shows the line alone', DL.leftover(['lead']) === `${DL.LINES.LEFTOVER}\nAdd a new lead, haldi shoot on 3 January` && DL.leftover([]) === DL.LINES.LEFTOVER);
   T('2.7 no example for attach_package exists until he approves one', !DL.EXAMPLE_ACTS.includes('attach_package'));
 
@@ -233,19 +238,19 @@ async function main() {
       out.door === false && out.why === x.why && stood && stood.door === true && stood.stood === true && x.is(stood.reply) && stood.keys[0] === x.byte && writes(db) === before && stood.skipHarvest === true && stood.toolCalls.length === 0 && stood.documents.length === 0 && stood.refresh === false);
   }
   const srcWhys = new Set((src('src/lib/vendor/workingDoor.js').match(/CHAIN\([^,]+, '([a-z_]+)'/g) || []).map((m) => /'([a-z_]+)'/.exec(m)[1]));
-  T('3.2 the exits driven above are EVERY reason preTurn can return but `empty` (3.3), read from the source', [...srcWhys].filter((w) => w !== 'empty').every((w) => whys.has(w)) && srcWhys.size === 15 && (src('src/lib/vendor/workingDoor.js').match(/return CHAIN\(/g) || []).length === 16); // RE-PINNED (CE-45 LCV-11, P6b): two lead_phone returns left, ONE came back for the two-runs case, relay_unsayable and relay_pwa came: 16 returns, 15 reasons; // 15 since LCV-10 B-2 (first cut): the phone guard is also applied at the name question, same reason lead_phone
+  T('3.2 the exits driven above are EVERY reason preTurn can return but `empty` (3.3), read from the source', [...srcWhys].filter((w) => w !== 'empty').every((w) => whys.has(w)) && srcWhys.size === 18 && (src('src/lib/vendor/workingDoor.js').match(/return CHAIN\(/g) || []).length === 20); // RE-PINNED (CE-45 LCV-12, P7 2a): lookup, book_no_lead, calendar_unsayable join (18 reasons / 20 returns) // RE-PINNED (CE-45 LCV-11, P6b): two lead_phone returns left, ONE came back for the two-runs case, relay_unsayable and relay_pwa came: 16 returns, 15 reasons; // 15 since LCV-10 B-2 (first cut): the phone guard is also applied at the name question, same reason lead_phone
   T('3.3 `empty` (nothing to say and nothing written) and an UNKNOWN reason are the glitch line', WD.standKey({ door: false, why: 'empty', ear: { request: req([{ act: 'lead' }]) } }, { lifecycle: LH }).key === 'GLITCH' && WD.standKey({ door: false, why: 'something_new' }, { lifecycle: LH }).key === 'GLITCH' && WD.standKey(null, { lifecycle: LH }).key === 'GLITCH');
   T('3.4 money_unsayable for a payment is D8, for a booking F29: the byte the rebuild already speaks', WD.standKey({ why: 'money_unsayable', say: { act: 'milestone_paid' } }, { lifecycle: LH }).line === LH.LINES.D8 && WD.standKey({ why: 'money_unsayable', say: { act: 'advance_paid' } }, { lifecycle: LH }).line === LH.LINES.F29);
   // B34 never when no act was heard; LEFTOVER never when an uncovered one was: over every act the listener can name.
   const ACTS = /description: '([^']+)'/.exec(src('src/lib/vendor/listenerDoor.js').split("act: { type: 'string'")[1])[1].split(', ');
-  let never = ACTS.length === 20;
+  let never = ACTS.length === 21; // P7 2a: payment_reminder joins the description (measured, the rig's bytes)
   for (const a of ACTS) {
     const k = WD.standKey({ why: 'uncovered', ear: { request: req([{ act: a, client_as_spoken: 'X' }]) } }, { lifecycle: LH }).key;
     if (WD.COVERED.includes(a) ? k !== 'LEFTOVER' : k !== 'B34') never = false;
     const mixed = WD.standKey({ why: 'uncovered', ear: { request: req([{ act: 'lead', client_as_spoken: 'X' }, { act: a }]) } }, { lifecycle: LH }).key;
     if (!WD.COVERED.includes(a) && mixed !== 'B34') never = false;
   }
-  T('3.5 over all 20 acts the listener can name: an uncovered act, alone or beside a covered one, is ALWAYS B34 and never LEFTOVER', never);
+  T('3.5 over all 21 acts the listener can name: an uncovered act, alone or beside a covered one, is ALWAYS B34 and never LEFTOVER', never);
   T('3.6 B34 is NEVER spoken when no act was heard: no acts, route none, a bare yes', ['uncovered'].every((w) => WD.standKey({ why: w, ear: { request: req([], 'none') } }, { lifecycle: LH }).key === 'LEFTOVER') && WD.standKey({ why: 'yes_no_nothing_waiting' }, { lifecycle: LH }).key === 'LEFTOVER');
   T('3.7 a B32 or B15 whose name cannot be rendered never speaks a broken sentence: B30, the glitch line', WD.standKey({ why: 'attach_no_lead', say: { name: '   ' } }, { lifecycle: LH }).key === 'B30' && WD.standKey({ why: 'invoice_unresolved', say: { name: '  ' } }, { lifecycle: LH }).key === 'GLITCH');
   T('3.8 a verdict that IS the door\'s passes through untouched', await (async () => { const o = { door: true, reply: 'x', keys: ['B3'] }; return (await WD.standIn({ supabase: makeDb(world()), out: o })) === o; })());
@@ -416,7 +421,7 @@ async function main() {
     const meter = { harvestMeterRow: (r, model) => ({ model, ...r.usage }), writeHarvestUsage: async (_s, _a, row) => { usage.push(row); } };
     await quiet(() => WD.persistDoorTurn({ supabase: db, agentId: AG, message: 'Block 20 March, personal', out: stood, lane: 'whatsapp' }, { memory, meter }));
     const l = saved[1] && saved[1].meta && saved[1].meta.listener;
-    T('7.1 her row and the door\'s row join the thread; the door\'s row carries door true, the LANE (e-55: a message-level fact lives here), and what the listener HEARD', saved.length === 2 && saved[1].content === DL.LINES.B34 && l && l.door === true && l.lane === 'whatsapp' && l.request.acts[0].act === 'block_date' && saved[1].tc === undefined);
+    T('7.1 her row and the door\'s row join the thread; the door\'s row carries door true, the LANE (e-55: a message-level fact lives here), and what the listener HEARD', saved.length === 2 && saved[1].content === DL.LINES.B34 && l && l.door === true && l.lane === 'whatsapp' && l.request.acts[0].act === 'assign_crew' && saved[1].tc === undefined); // P7 2a: the B34 specimen is assign_crew now
     T('7.2 ONE counted usage row, carrying the conversation id: a stand-in turn counts once toward her limit, as door turns do', usage.length === 1 && usage[0].conversation_id === 'c-1');
     T('7.3 the stand-in carries no mark of a question: asked and asked_name are absent', l && !('asked' in l) && !('asked_name' in l));
     const cj = src('src/api/vendor-engine/chat.js');
@@ -514,7 +519,12 @@ async function main() {
     // than the live ear and are CORRECTED here to TDW_CE44_LCV9_PART1_WALK_RECORD.md §3, turns 3, 4, 5, 8 and 6, byte for byte. What
     // each cell asserts is unchanged, except 11.6, which was GREEN ON A DOUBLE THAT HID F-44.110 and now holds its cure.
     const HEARD = (json) => JSON.parse(json);
-    T('11.2 SAY "Block 20 March, personal": B34 (heard as turn 3)', one(await say('Block 20 March, personal', HEARD('{"acts":[{"act":"block_date","missing":["year"],"date_as_spoken":"20 March","client_as_spoken":"personal"}],"route":"task"}'))) === 'I cannot do that by message yet. Use the app for it.');
+    // RE-PINNED (CE-45 LCV-12, P7 cut 2a): block_date is the door's. Turn 3's recorded hearing (the reason in client_as_spoken, no reason slot, no year) now
+    // BLOCKS the day: the yearless date resolves future by the door's own read, client_as_spoken is ignored on a block, and with no reason_as_spoken the read-back
+    // is B40's no-reason form from the row. The old B34 was the chain-out estate's; b104 §4 holds the block's own cells.
+    { const r112 = one(await say('Block 20 March, personal', HEARD('{"acts":[{"act":"block_date","missing":["year"],"date_as_spoken":"20 March","client_as_spoken":"personal"}],"route":"task"}')));
+      console.log('        (11.2 said: ' + JSON.stringify(r112) + ')');
+      T('11.2 SAY "Block 20 March, personal" (heard as turn 3): the door blocks the day and reads B40 from the row, "Blocked: 20 March 2027." (P7 2a)', r112 === 'Blocked: 20 March 2027.'); }
     T('11.3 SAY "What\'s due this week?": B34 (heard as turn 4)', one(await say("What's due this week?", HEARD('{"acts":[{"act":"whatsdue","date_as_spoken":"this week"}],"route":"search"}'))) === 'I cannot do that by message yet. Use the app for it.');
     const leadsBefore = db.tables['public.leads'].length;
     // RE-PINNED (CE-45 LCV-11, P6b first cut; F-44.96 closed): the guard is gone, so on turn 5's RECORDED hearing (the OLD ear: "Phone" dropped, the number

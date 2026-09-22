@@ -441,7 +441,7 @@ async function main() {
   T('7.2 the manifest names exactly the six paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([HANDOVER, MAN, 'scripts/b94_lcv10_bench.js', 'scripts/b95_lcv10_note_bench.js', SDf, WDf].sort()));
   const wdS = src(WDf).replace(/^\s*\/\/.*$/gm, '');
   T('7.3 NO MIGRATION AND NO NEW TABLE: the note lives in meta.listener.note, written in ONE place (persistDoorTurn) and read in ONE (lastDoorNote); the marks\' lines are as they were', (wdS.match(/note: out\.note/g) || []).length === 1 && (wdS.match(/validNote\(l\.note\)/g) || []).length === 1 && wdS.includes("const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null;") && wdS.includes("const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null;"));
-  T('7.4 no byte a vendor reads was added: doorLines.js is not in this packet, and the five date lines are exactly the five the chair read there', !man.includes('src/lib/vendor/doorLines.js') && J(WD.DATE_ASKS) === 'B6,B7,B21,B26,B28' && (WD.DATE_ASKS || []).every((k) => /date|payment come in/.test(DL.LINES[k])));
+  T('7.4 no byte a vendor reads was added: doorLines.js is not in this packet, and the five date lines are exactly the five the chair read there', !man.includes('src/lib/vendor/doorLines.js') && J(WD.DATE_ASKS) === 'B6,B7,B21,B26,B28,B54' && (WD.DATE_ASKS || []).every((k) => /date|day|payment come in/.test(DL.LINES[k]))); // RE-PINNED (CE-45 LCV-12, P7 2a): B54 "Which day?" joins the DATE notes, his, hash-carried in b104's cut
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────
   sec('8 fuzz: every argument position, the note itself hostile');
@@ -450,11 +450,11 @@ async function main() {
   const getter = (k) => { const o = {}; Object.defineProperty(o, k, { get: boom, enumerable: true }); return o; };
   const HOSTILE = [undefined, null, 0, -1, NaN, '', 'x', true, [], {}, () => {}, Symbol('s'), 10n, trap, getter('asked'), getter('acts'), getter('tries'),
     { asked: 'B26' }, { asked: 'B26', acts: [] }, { asked: 'B26', acts: 'x' }, { asked: 'B99', acts: [att('A', 'B')] }, { asked: 'B26', acts: [null] }, { asked: 'B26', acts: [trap] }, { asked: 'B26', acts: [getter('act')] },
-    { asked: 'B26', acts: [{ act: 'block_date', client_as_spoken: 'A' }] }, { asked: 'B26', acts: [{ act: 'attach_package' }] }, { asked: 'B26', acts: [att('A', 'B'), att('A', 'B'), att('A', 'B'), att('A', 'B'), att('A', 'B')] },
+    { asked: 'B26', acts: [{ act: 'assign_crew', client_as_spoken: 'A' }] } /* P7 2a re-aim: the uncovered act is assign_crew; block_date is covered */, { asked: 'B26', acts: [{ act: 'attach_package' }] }, { asked: 'B26', acts: [att('A', 'B'), att('A', 'B'), att('A', 'B'), att('A', 'B'), att('A', 'B')] },
     { asked: 'B26', acts: [att('A', 'B')], tries: -5 }, { asked: 'B26', acts: [att('A', 'B')], tries: 'many' }, { asked: 'B6', acts: [{ act: 'advance_paid', client_as_spoken: { toString: boom } }] }];
   let t1 = 0; let c1n = 0; let accepted = 0;
   for (const a of HOSTILE) { c1n += 1; try { const v = (WD.validNote || (() => { throw new Error('no validNote'); }))(a); if (v !== null) { accepted += 1; if (!WD.DATE_ASKS.includes(v.asked) || !WD.allCovered({ route: 'task', acts: v.acts })) t1 += 1; } } catch (_e) { t1 += 1; } }
-  T(`8.1 validNote: ${c1n} hostile notes, ZERO throws; what it accepts (${accepted}) is a date question over covered, named acts and nothing else`, t1 === 0 && accepted === 2);
+  T(`8.1 validNote: ${c1n} hostile notes, ZERO throws; what it accepts (${accepted}) is a date question over covered, named acts and nothing else`, t1 === 0 && accepted === 2); // P7 2a: block_date hostile re-aimed to assign_crew, the count holds
   let t2 = 0; let c2n = 0;
   for (const a of HOSTILE) for (const b of HOSTILE) { c2n += 2; try { await quiet(() => (WD.noteFor || (() => { throw new Error('no noteFor'); }))(a, b, a, b, a, b, { lifecycle: LH })); } catch (_e) { t2 += 1; } try { await quiet(() => (WD.lastDoorNote || (() => { throw new Error('no lastDoorNote'); }))(a, b)); } catch (_e) { t2 += 1; } }
   T(`8.2 noteFor and lastDoorNote: ${c2n} hostile calls in every position, ZERO throws`, t2 === 0);
@@ -510,9 +510,9 @@ async function main() {
     async (rq) => { let t = 0; for (const a of HOSTILE) { try { rq(WDf).validNote(a); } catch (_e) { t += 1; } } return t; }, (t) => t > 0);
   // AN HONEST CONTROL: a note over an uncovered act is refused TWICE, by noteAct's own covered test and by allCovered inside validNote.
   // With noteAct's test ALONE removed the note is STILL refused. It must NOT redden.
-  await mut('9.13 CONTROL: noteAct\'s covered test ALONE removed: a planted note over block_date is still refused, by allCovered', WDf,
+  await mut('9.13 CONTROL: noteAct\'s covered test ALONE removed: a planted note over assign_crew (P7 2a re-aim; block_date is covered) is still refused, by allCovered', WDf,
     [["typeof a.act !== 'string' || !COVERED.includes(a.act)) return null;", "typeof a.act !== 'string') return null;"]], [],
-    async (rq) => rq(WDf).validNote({ asked: 'B26', acts: [{ act: 'block_date', client_as_spoken: 'A' }] }), (v) => v === null);
+    async (rq) => rq(WDf).validNote({ asked: 'B26', acts: [{ act: 'assign_crew', client_as_spoken: 'A' }] }), (v) => v === null);
 
   console.log(`\n════════  b95 · ${pass} pass · ${fail} fail  ════════`);
   if (fail) { console.log('FAILED:'); failed.forEach((f) => console.log(`  · ${f}`)); }

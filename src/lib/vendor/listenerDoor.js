@@ -65,7 +65,7 @@ const EAR_TOOL = {
         items: {
           type: 'object',
           properties: {
-            act: { type: 'string', description: 'lead, booking_confirmed, advance_paid, milestone_paid, attach_package, invoice, date, book_event, block_date, unblock_date, edit_event, cancel_event, assign_crew, note, relay, quote_send, find, whatsdue, history, tally' },
+            act: { type: 'string', description: 'lead, booking_confirmed, advance_paid, milestone_paid, attach_package, invoice, date, book_event, block_date, unblock_date, edit_event, cancel_event, assign_crew, note, relay, quote_send, payment_reminder, find, whatsdue, history, tally' },
             // F-44.100 (CE-44 LCV-8): the listener put "haldi shoot" here and the door filed a lead of that name. The
             // description now says what a client IS. It is the listener's prompt byte, not a founder byte; b92 pins it.
             client_as_spoken: { type: 'string', description: 'The NAME of a person, a couple or a family, exactly as she said it. A kind of event or shoot (haldi, mehendi, sangeet, wedding, reception, engagement, a shoot) is NEVER a client. When she is answering the assistant\'s question about who the lead is, her answer IS the name, whatever the word. When no name was said it is EMPTY. A word with a meaning of its own that sits INSIDE a longer name is part of that name: "Walk P7 Haldi" is the name Walk P7 Haldi and never Walk P7; copy the name WHOLE, as she typed it.' },
@@ -77,6 +77,14 @@ const EAR_TOOL = {
             date_as_spoken: { type: 'string', description: 'The date in her own words, returned verbatim and never converted. A word that places the day relative to now IS a date: "today", "yesterday", "this morning", "last Friday" are dates, exactly like "5th December". When she says when money came in, however she says it, put those words here. Empty only if she gave no date at all.' },
             milestone: { type: 'string', description: 'The payment as she named it. Empty if none.' },
             missing: { type: 'array', items: { type: 'string' } },
+            // P7 (CE-45 LCV-12, cut 2a; the chair's ruling 2 of 23 September): THE THREE SLOTS AND THE ACT NAME, MEASURED BEFORE THEY SHIPPED by the
+            // P7 listening table (scripts/lib/p7_ear_check.js, 18 sentences × 2 seats × 2 variants, sha256 f563b33daa37…): as-is, "Assign Harsh to the
+            // 14 February shoot" carried NO member name on either seat (row 10), a block's reason was dropped or put in an invented key (row 3),
+            // and "Send Sarah a reminder for the payment" was heard as relay (rows 17, 18); with these bytes every one returned. The bytes measured
+            // are the bytes that ship; a reworded description is an unmeasured one. OPTIONAL, all three; placed LAST, after `missing`, exactly where the rig's slotsTool() placed them, so the schema the model reads is byte for byte the measured one.
+            member_as_spoken: { type: 'string', description: 'The name of a team member or crew person she names, exactly as she said it. Empty if none.' },
+            reason_as_spoken: { type: 'string', description: 'The reason she gives for blocking a day, in her own words. Empty if none.' },
+            kind_as_spoken: { type: 'string', description: 'The kind of calendar entry as she named it (shoot, meeting, recce, and so on), exactly as she said it. Empty if none.' },
           },
           required: ['act'],
         },
@@ -105,6 +113,10 @@ function normaliseRequest(raw) {
       if (typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim()) out.client_as_spoken = a.client_as_spoken.trim();
       if (typeof a.package_as_spoken === 'string' && a.package_as_spoken.trim()) out.package_as_spoken = a.package_as_spoken.trim();
       if (typeof a.phone_as_spoken === 'string' && a.phone_as_spoken.trim()) out.phone_as_spoken = a.phone_as_spoken.trim();
+      // P7 cut 2a: the three measured slots kept as trimmed strings; empties dropped as every slot's are (C1 leaks "" under the slots variant)
+      if (typeof a.member_as_spoken === 'string' && a.member_as_spoken.trim()) out.member_as_spoken = a.member_as_spoken.trim();
+      if (typeof a.reason_as_spoken === 'string' && a.reason_as_spoken.trim()) out.reason_as_spoken = a.reason_as_spoken.trim();
+      if (typeof a.kind_as_spoken === 'string' && a.kind_as_spoken.trim()) out.kind_as_spoken = a.kind_as_spoken.trim();
       if (Number.isInteger(a.amount_rupees) && a.amount_rupees >= 1) out.amount_rupees = a.amount_rupees;
       if (typeof a.date_as_spoken === 'string' && a.date_as_spoken.trim()) out.date_as_spoken = a.date_as_spoken.trim();
       if (typeof a.milestone === 'string' && a.milestone.trim()) out.milestone = a.milestone.trim();
