@@ -1,0 +1,3 @@
+# floor manifest · CE-45 LCV-12 · cut 2a walk record (docs-only, C-44.1) · base 9be5ce2
+docs/handovers/TDW_CE45_LCV12_P7_2A_HANDOVER.md
+scripts/floor-manifest-lcv12-p7-2a-walk.txt

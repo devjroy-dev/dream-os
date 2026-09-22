@@ -1,4 +1,4 @@
-# repo: dream-os @ 70fdedac27d83a909db46f207e9e01bda0c3512a · dreamos-pwa @ 320ad7e39f7e70e0fb4be6b37b84b4299a3c8307 (untouched by this cut)
+# repo: dream-os @ 9be5ce2 (cut 2a landed; this docs-only cut writes §8) · base of the cut 70fdedac27d83a909db46f207e9e01bda0c3512a · dreamos-pwa @ 320ad7e39f7e70e0fb4be6b37b84b4299a3c8307 (untouched by this cut)
 # TDW · CE-45 · SEAT LCV-12 · LC-VICTOR P7, CUT 2a · THE SLOTS, BLOCK, UNBLOCK, BOOK, NEEDS_CLIENT, F-44.128, F-44.63, F-44.109 · rung b104 · 2026-09-23 IST
 # Delivery version: the walk record (§8) is written in by script from the founder's export after the walk, never retyped. Line numbers were
 # derived by command at the moment of cutting; re-derive before citing. Every byte a vendor reads below is quoted from doorLines.js with its hash.
@@ -126,8 +126,137 @@ The table's own findings, recorded: no seat ever returned the act `date` (row 1:
 four (F-44.129, closed as a record); "Am I free on 14 February?" was heard live as whatsdue + date twice on his cut-one walk; row 7 C1 asis put two
 dates in one slot ("20 November to 22 November"), 2b's concern.
 
-## 8 · THE WALK RECORD
-Written in by script from the founder's exports after the walk of card 2a.
+## 8 · THE WALK RECORD · WRITTEN BY SCRIPT FROM THE FOUNDER'S EXPORTS OF 23 SEPTEMBER 2026 (02:40 TO 02:45 IST), NEVER RETYPED
+  thread 48 rows, engine.messages with meta.listener, sha256 05661df5564546ce54ece16a952c1cb07c56999157768e9a9929d3b1876d0378
+  events 6 rows, public.events for DEV440 in the window, sha256 72e568d968465afae45c50d4e24ba83a58bd81bb1e44e76e0b07eddbe49cd6eb
+  Times are UTC. HE is his message; DOOR is the reply and its lane; HEARD is meta.listener.request; NOTE is the question the door kept. Fixture as his SELECT
+  returned it: DEV440 1 · the switch row 0 · live blocks in March 2027: 2 (PRE-EXISTING, on 20 and 22 March, from earlier sittings; his word) · live events on 8 and
+  9 January 2027: 0 · leads named Walk Seventeen%: 0. Deployed 9be5ce2 (Railway ACTIVE 02:39 IST). He walked in the APP's ask bar throughout (every row lane pwa).
+
+### 8.1 the thread
+1. 21:10:21 HE: Block 20 March 2027, personal
+   21:10:21 DOOR · lane pwa: 20 March 2027 was already blocked. Nothing changed.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"20 March 2027","reason_as_spoken":"personal"}],"route":"task"}
+
+2. 21:10:40 HE: Block 20 March 2027
+   21:10:40 DOOR · lane pwa: 20 March 2027 was already blocked. Nothing changed.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"20 March 2027"}],"route":"task"}
+
+3. 21:11:29 HE: block 21 march 2027
+   21:11:29 DOOR · lane pwa: Blocked: 21 March 2027.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"21 march 2027"}],"route":"task"}
+
+4. 21:11:43 HE: Unblock 20 March 2027
+   21:11:44 DOOR · lane pwa: Unblocked: 20 March 2027. The day's back on your calendar.
+   HEARD: {"acts":[{"act":"unblock_date","date_as_spoken":"20 March 2027"}],"route":"task"}
+
+5. 21:11:55 HE: Unblock 20 March 2027
+   21:11:55 DOOR · lane pwa: 20 March 2027 wasn't blocked. Nothing changed.
+   HEARD: {"acts":[{"act":"unblock_date","date_as_spoken":"20 March 2027"}],"route":"task"}
+
+6. 21:12:07 HE: Block 20 March
+   21:12:07 DOOR · lane pwa: Blocked: 20 March 2027.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"20 March"}],"route":"task"}
+
+7. 21:12:12 HE: Unblock 20 March
+   21:12:12 DOOR · lane pwa: Unblocked: 20 March 2027. The day's back on your calendar.
+   HEARD: {"acts":[{"act":"unblock_date","date_as_spoken":"20 March"}],"route":"task"}
+
+8. 21:12:18 HE: Add a new lead Walk Seventeen Alpha, wedding on 8 January 2027
+   21:12:18 DOOR · lane pwa: Lead added: Walk Seventeen Alpha · 8 January 2027.
+   HEARD: {"acts":[{"act":"lead","date_as_spoken":"8 January 2027","client_as_spoken":"Walk Seventeen Alpha"}],"route":"task"}
+
+9. 21:12:28 HE: Book the Walk Seventeen Alpha shoot on 8 January 2027
+   21:12:28 DOOR · lane pwa: Booked: Walk Seventeen Alpha · shoot · 8 January 2027.
+   HEARD: {"acts":[{"act":"book_event","date_as_spoken":"8 January 2027","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha"}],"route":"task"}
+
+10. 21:12:38 HE: Block 8 January 2027
+   21:12:38 DOOR · lane pwa: Blocked: 8 January 2027.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"8 January 2027"}],"route":"task"}
+
+11. 21:12:44 HE: Unblock 8 January 2027
+   21:12:44 DOOR · lane pwa: Unblocked: 8 January 2027. The day's back on your calendar.
+   HEARD: {"acts":[{"act":"unblock_date","date_as_spoken":"8 January 2027"}],"route":"task"}
+
+12. 21:12:51 HE: Book the Walk Seventeen Alpha shoot on 8 January 2027
+   21:12:51 DOOR · lane pwa: Booked: Walk Seventeen Alpha · shoot · 8 January 2027.
+   HEARD: {"acts":[{"act":"book_event","date_as_spoken":"8 January 2027","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha"}],"route":"task"}
+
+13. 21:12:57 HE: Block
+   21:12:57 DOOR · lane pwa: I didn't catch a task in that. You can say things like: ⏎ Block 20 March, personal ⏎ The Sharma booking is confirmed
+   HEARD: {"acts":[],"route":"none"}
+
+14. 21:13:23 HE: Block
+   21:13:23 DOOR · lane pwa: I didn't catch a task in that. You can say things like: ⏎ Add a new lead, haldi shoot on 3 January ⏎ The advance came in today for the Kapoor booking
+   HEARD: {"acts":[],"route":"none"}
+
+15. 21:13:36 HE: fresh
+   21:13:37 DOOR · lane pwa: I didn't catch a task in that. You can say things like: ⏎ The advance came in today for the Kapoor booking ⏎ Block 20 March, personal
+   HEARD: {"acts":[],"route":"none"}
+
+16. 21:13:44 HE: block
+   21:13:44 DOOR · lane pwa: I didn't catch a task in that. You can say things like: ⏎ Send a message to my client asking for the advance ⏎ Block 20 March, personal
+   HEARD: {"acts":[],"route":"none"}
+
+17. 21:14:00 HE: Book the Walk Seventeen Zeta shoot on 9 January 2027
+   21:14:00 DOOR · lane pwa: No lead called Walk Seventeen Zeta. Add the lead first.
+   HEARD: {"acts":[{"act":"book_event","date_as_spoken":"9 January 2027","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Zeta"}],"route":"task"}
+
+18. 21:14:07 HE: Book the Walk Seventeen Alpa shoot on 9 January 2027
+   21:14:07 DOOR · lane pwa: Did you mean Walk Seventeen Alpha? Reply YES or NO.
+   HEARD: {"acts":[{"act":"book_event","date_as_spoken":"9 January 2027","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpa"}],"route":"task"}
+   NOTE: B36
+
+19. 21:14:20 HE: Yes
+   21:14:20 DOOR · lane pwa: Booked: Walk Seventeen Alpha · shoot · 9 January 2027.
+   HEARD: {"acts":[],"route":"none"}
+
+20. 21:14:24 HE: Who are my new leads?
+   21:14:24 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"find"}],"route":"search"}
+
+21. 21:14:31 HE: Block 5 match
+   21:14:31 DOOR · lane pwa: I could not read that date. Say it like 5 December.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"5 match"}],"route":"task"}
+   NOTE: B7
+
+22. 21:14:41 HE: Block 22 March 2027
+   21:14:41 DOOR · lane pwa: 22 March 2027 was already blocked. Nothing changed.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"22 March 2027"}],"route":"task"}
+
+23. 21:14:59 HE: block 23ed march
+   21:14:59 DOOR · lane pwa: I could not read that date. Say it like 5 December.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"23ed march"}],"route":"task"}
+   NOTE: B7
+
+24. 21:15:14 HE: block 23rd march
+   21:15:14 DOOR · lane pwa: Blocked: 23 March 2027.
+   HEARD: {"acts":[{"act":"block_date","date_as_spoken":"23rd march"}],"route":"task"}
+
+### 8.2 the calendar rows the door wrote (public.events)
+  21:11:29 Blocked · blocked · 2027-03-21 · full_day · upcoming · notes null · linked_lead_id null · deleted_at 
+  21:12:06 Blocked · blocked · 2027-03-20 · full_day · upcoming · notes null · linked_lead_id null · deleted_at 21:12:12
+  21:12:27 Walk Seventeen Alpha · shoot · 2027-01-08 · full_day · upcoming · notes null · linked_lead_id 27978acb · deleted_at 
+  21:12:38 Blocked · blocked · 2027-01-08 · full_day · upcoming · notes null · linked_lead_id null · deleted_at 21:12:44
+  21:14:19 Walk Seventeen Alpha · shoot · 2027-01-09 · full_day · upcoming · notes null · linked_lead_id 27978acb · deleted_at 
+  21:15:13 Blocked · blocked · 2027-03-23 · full_day · upcoming · notes null · linked_lead_id null · deleted_at 
+
+### 8.3 what the record shows, read by the seat and ruled by the chair
+GREEN AGAINST THE CARD on every step the estate allowed, as the founder read it ("except a bare block, all green"): steps 1 and 2 read B41 "20 March 2027 was
+already blocked. Nothing changed." because a block from an earlier sitting already sat on that day (the fixture's 2), the truthful line, then step 3 B43 unblocked it
+and step 4 B44; step 5 "Block 20 March" (no year) resolved to 20 March 2027 and read B40 with no reason (the ear returned none); step 6 B43; step 7 B17; step 8 B46
+from the row, linked_lead_id set, kind shoot; step 9 B40 beside the shoot (the estate's ruled shape); step 10 B43; step 11 B46 again with ONE row on 8 January 2027
+(the writer deduped); step 13 B76; step 14 B36 then B46 on his Yes (9 January 2027, one row); step 15 "Who are my new leads?" heard find on route search read B34
+and NEVER B18 (the gate held; C2's return, not C1's, so F-44.128's C1 shape was not met live); step 16 B7; step 17 "block 21 march 2027" B40 (walked early,
+21:11:29, in the app; the WhatsApp lane was not walked, so "one door, both lanes" is by cell only, 11.17); his own extras: "Block 22 March 2027" B41 (the second
+pre-existing block), "block 23ed march" B7, "block 23rd march" B40 "Blocked: 23 March 2027." (an ordinal day read by the door's own date read). Step 18 (the
+calendar screenshot) does not appear in the thread export and is proven by cell (8.1) only. Every reason on the walk was absent from the ear's returns: no
+" · {reason}" form was seen live; 4.1 holds it.
+THE ONE MISS, step 12: a bare "Block" (four times: "Block", "Block", "fresh", "block") was heard by the listener as NO ACT ({"acts":[],"route":"none"}) every time,
+so the door's B54 "Which day? Say it like 5 December." was never reached: it is written for a block_date act carrying no date, and the ear returned no act at all.
+NOT a defect of the door (4.7 proves B54 on the act); a LISTENER miss of c-44.44's class, allocated by the chair. The cold second hearing (R-45.3) did not fire,
+rightly: the message holds no lead name. Nothing was written on those four turns.
+Leads, attaches, money rows and drafts in the window: one lead (Walk Seventeen Alpha), nothing else, as the card expects.
 
 ## 9 · OPEN, CARRIED
 B77 carried, spoken from cut three. The kind word in B46 for a non-shoot kind is DERIVED (6.4); a {kind} form of B46 is his to word if he prefers.
