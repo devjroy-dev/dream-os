@@ -296,6 +296,12 @@ function noteAct(a) {
     return out;
   } catch (_e) { return null; }
 }
+// F-44.123 (CE-45 LCV-11, the fix cut): HER ORIGINAL MESSAGE rides a name or offer note that holds a relay, so that when her answer ("Sarah",
+// "Yes") runs the job the composer is handed the message that ASKED for the relay, never the answer. A string, trimmed, at most 2000
+// characters; anything else is absent. The note stays valid without it (an older note), and the composer then falls back as before.
+const SAID_MAX = 2000;
+function saidOf(v) { return typeof v === 'string' && v.trim() && v.length <= SAID_MAX ? v.trim() : null; }
+const holdsRelay = (acts) => Array.isArray(acts) && acts.some((a) => a && a.act === 'relay');
 // A note as read back from meta: well-formed or NOTHING. acts[0] is the act waiting for its date; the rest are acts of the
 // same message that did not run because of it. Every act must pass the covered check as any heard request must.
 function validNote(n) {
@@ -310,7 +316,7 @@ function validNote(n) {
     else if (RELAY_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'relay' || typeof n.draft_id !== 'string' || !n.draft_id) return null; }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}) };
+    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}) };
   } catch (_e) { return null; }
 }
 
@@ -782,7 +788,7 @@ function doorAnswer(st, why) {
 }
 
 async function preTurn(args, depsIn) {
-  const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null, note: null, answered: null, dateAsks: [], pkgAsks: [], relayNote: null };
+  const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null, note: null, answered: null, dateAsks: [], pkgAsks: [], relayNote: null, said: null };
   try {
     // e-16's lesson: the arguments are taken INSIDE the guard, so a hostile argument cannot throw past it.
     const { supabase, vendor, agentId, route, message, lane, conversationId } = (args && typeof args === 'object') ? args : {};
@@ -885,7 +891,7 @@ async function preTurn(args, depsIn) {
     // date and the plans answer as they answer any unreadable date.
     let fromNote = null;
     // A NAME NOTE (B18 or B35): decided before the date-note branch below.
-    const askAgain = (line, key, tries) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries }, answered: key, why: 'note_reasked' });
+    const askAgain = (line, key, tries) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries, ...(note.said ? { said: note.said } : {}) }, answered: key, why: 'note_reasked' });
     if (note && NAME_ASKS.includes(note.asked)) {
       const name = message.trim();
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
@@ -903,19 +909,19 @@ async function preTurn(args, depsIn) {
       }
       if (!movedOn) {
         fromNote = { route: 'task', acts: note.acts.map((a) => ((note.asked === 'B18' ? (a.act === 'lead' && !spokenText(a.client_as_spoken)) : (a.act !== 'lead' && !spokenText(a.client_as_spoken))) ? { ...a, client_as_spoken: name } : { ...a })) };
-        st.answered = note.asked;
+        st.answered = note.asked; st.said = note.said || null; // F-44.123
       }
     } else if (note && OFFER_ASKS.includes(note.asked)) {
       // R-44.40: her YES runs the act with the candidate's own name, through the same plans; NO was answered B3 above; anything else lapses
       // on a heard act of another kind, or re-asks once, then B3. The candidate is never spoken outside the question.
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
-      if (PMA.decide(message) === 'yes') { fromNote = { route: 'task', acts: note.acts.map((a) => ({ ...a })) }; st.answered = 'B36'; }
+      if (PMA.decide(message) === 'yes') { fromNote = { route: 'task', acts: note.acts.map((a) => ({ ...a })) }; st.answered = 'B36'; st.said = note.said || null; } // F-44.123
       else {
         const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && a.act !== note.acts[0].act);
         if (!movedOn) {
           if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: 'B36', why: 'note_exhausted' };
           const line = DL.render('B36', { name: note.acts[0][note.slot === 'package' ? 'package_as_spoken' : 'client_as_spoken'] || '' }) || DL.LINES.B3;
-          return { ...askAgain(line, line === DL.LINES.B3 ? 'B3' : 'B36', note.tries + 1), note: { asked: 'B36', acts: note.acts, tries: note.tries + 1, candidate_id: note.candidate_id, slot: note.slot } };
+          return { ...askAgain(line, line === DL.LINES.B3 ? 'B3' : 'B36', note.tries + 1), note: { asked: 'B36', acts: note.acts, tries: note.tries + 1, candidate_id: note.candidate_id, slot: note.slot, ...(note.said ? { said: note.said } : {}) } };
         }
       }
     } else if (note && RELAY_ASKS.includes(note.asked) && relayLane) {
@@ -981,7 +987,8 @@ async function preTurn(args, depsIn) {
       if (!rq || !allKindsCovered(rq.acts) || !(namelessOf(rq.acts).length || namelessLead(rq.acts))) return null;
       // F-44.96: the phone guard that stood here LEFT with P6b's first cut; the ear hears the phone and the door files it.
       const k = namelessLead(rq.acts) ? 'B18' : 'B35';
-      return { door: true, reply: DL.LINES[k], keys: [k], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: k, acts: rq.acts.map((a) => ({ ...a })), tries }, ...(st.answered ? { answered: st.answered } : {}), why: 'name_asked' };
+      const original = holdsRelay(rq.acts) ? saidOf(st.said || message) : null; // F-44.123: her ORIGINAL message rides the name note
+      return { door: true, reply: DL.LINES[k], keys: [k], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: k, acts: rq.acts.map((a) => ({ ...a })), tries, ...(original ? { said: original } : {}) }, ...(st.answered ? { answered: st.answered } : {}), why: 'name_asked' };
     };
     // R-44.40: the offer. ONE candidate from her rows within the pinned distance, or nothing. A QUESTION with a note; nothing runs.
     const offerFor = async (act, slot, said, rows) => {
@@ -991,7 +998,8 @@ async function preTurn(args, depsIn) {
         const line = DL.render('B36', { name: String(c.name).trim() });
         if (!line) return null;
         const filled = { ...act, [slot === 'package' ? 'package_as_spoken' : 'client_as_spoken']: String(c.name).trim() };
-        return { door: true, reply: line, keys: ['B36'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: 'B36', acts: [filled], tries: 0, candidate_id: String(c.id), slot }, why: 'offer_asked' };
+        const original = act && act.act === 'relay' ? saidOf(st.said || message) : null; // F-44.123: her ORIGINAL message rides the offer note
+        return { door: true, reply: line, keys: ['B36'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: 'B36', acts: [filled], tries: 0, candidate_id: String(c.id), slot, ...(original ? { said: original } : {}) }, why: 'offer_asked' };
       } catch (_e) { return null; }
     };
     if (fromNote) { const ask = askName(fromNote, 0); if (ask) return ask; }
@@ -1114,7 +1122,8 @@ async function preTurn(args, depsIn) {
     let relayAsked = false;
     if (relayPlan && relayPlan.speak) { st.lines.push(relayPlan.speak); st.keys.push(relayPlan.key); if (relayPlan.skipHarvest) st.skipHarvest = true; }
     else if (relayPlan && relayPlan.relay) {
-      const composed = await L.draft.composeDraft({ route, message, client: relayPlan.relay.client, vendorName: (typeof vendor.business_name === 'string' && vendor.business_name) || (typeof vendor.name === 'string' && vendor.name) || null }, { ...(deps.composerCreate ? { llmCreate: deps.composerCreate } : {}), ...(deps.listener ? { listener: deps.listener } : {}) });
+      // F-44.123: the instruction is the message that ASKED for the relay: carried on the note when her answer ran the job, else this turn's.
+      const composed = await L.draft.composeDraft({ route, message: st.said || message, client: relayPlan.relay.client, vendorName: (typeof vendor.business_name === 'string' && vendor.business_name) || (typeof vendor.name === 'string' && vendor.name) || null }, { ...(deps.composerCreate ? { llmCreate: deps.composerCreate } : {}), ...(deps.listener ? { listener: deps.listener } : {}) });
       if (!composed || !composed.body) { st.lines.push(glitchLine() || DL.LINES.B3); st.keys.push('GLITCH'); st.skipHarvest = true; }
       else {
         st.wrote = true; if (!st.fallback) st.fallback = glitchLine();
@@ -1318,4 +1327,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

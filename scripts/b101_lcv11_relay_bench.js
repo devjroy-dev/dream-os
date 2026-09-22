@@ -101,7 +101,9 @@ function makeDb(seed, opts = {}) {
       not() { return b; }, order(k, oo) { orderBy = { k, asc: !(oo && oo.ascending === false) }; return b; }, limit(n) { limitN = n; return b; },
       insert(p) { mode = 'insert'; payload = p; return b; }, update(p) { mode = 'update'; payload = p; return b; }, upsert(p) { mode = 'insert'; payload = p; return b; },
       then(res, rej) { return Promise.resolve().then(run).then(res, rej); },
-      maybeSingle() { const r = run(); return Promise.resolve({ data: r.data ? r.data[0] || null : null, error: r.error }); },
+      // C-44.3 (the chair's ruling on the P6b fix cut, e-77): PostgREST's maybeSingle over MORE THAN ONE row returns NO data and an error
+      // (PGRST116), never the first row. The first cut's double returned the first row, which hid F-44.124 in b102 at the base.
+      maybeSingle() { const r = run(); if (r.data && r.data.length > 1) return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' } }); return Promise.resolve({ data: r.data ? r.data[0] || null : null, error: r.error }); },
       single() { const r = run(); return Promise.resolve({ data: r.data ? r.data[0] || null : null, error: r.error || (r.data && r.data.length ? null : { message: 'no row' }) }); },
     };
     return b;
@@ -273,8 +275,9 @@ async function main() {
   sec('4 a message to a client, routed from the door (the WhatsApp lane)');
   db = makeDb(world()); r = await turn(db, WR11_SAID, rec(WR11_JSON));
   T('4.1 THE RECORD (walk turn 11 replayed verbatim): the frame for Walk Test, the draft STORED, the note keeps the row\'s id, nothing sent', r.keys === 'B37' && r.reply === frame('Walk Test') && draftsIn(db).length === 1 && d0(db).state === 'staged' && d0(db).body === BODY && d0(db).couple_phone === PHONE2 && noteOf(db) && noteIn(db).asked === 'B37' && noteIn(db).draft_id === d0(db).id && sent.length === 0);
-  T('4.2 the composer ran ONCE on the LISTENER\'S seat (R-45.1), with ONE tool, draft_message, forced', composed.length === 1 && composed[0].provider === 'deepseek' && composed[0].model === 'm-listen' && J(composed[0].tools) === 'draft_message' && composed[0].choice === 'draft_message');
-  T('4.2a (r2) the composer is handed the vendor\'s business name from the vendors row, then the client\'s name, then her whole message, as three lines', composed[0].user === `The vendor's business: Walk Studio\nThe client's name: Walk Test\nHer instruction: ${WR11_SAID}`);
+  // e-62's guard (the fix cut): at the base no compose runs, so every read of composed[0] is guarded and reads as a named FAIL, never a crash.
+  T('4.2 the composer ran ONCE on the LISTENER\'S seat (R-45.1), with ONE tool, draft_message, forced', composed.length === 1 && (composed[0] || {}).provider === 'deepseek' && (composed[0] || {}).model === 'm-listen' && J((composed[0] || {}).tools) === 'draft_message' && (composed[0] || {}).choice === 'draft_message');
+  T('4.2a (r2) the composer is handed the vendor\'s business name from the vendors row, then the client\'s name, then her whole message, as three lines', (composed[0] || {}).user === `The vendor's business: Walk Studio\nThe client's name: Walk Test\nHer instruction: ${WR11_SAID}`);
   T('4.3 the recorded call is donna_relay_stage carrying the STORED body and the seat', tc(r).length === 1 && tc0(r).name === 'donna_relay_stage' && tc0(r).input.message === BODY && tc0(r).input.seat === 'deepseek/m-listen' && tc0(r).result === 'staged');
   r = await turn(db, 'YES', NONE);
   T('4.4 THE CARD: her YES sends the STORED bytes to the stored phone from the vendor lane, the row is sent, the seat\'s own ③ speaks', r.reply === `Sent to Walk Test (${PHONE2}).` && sent.length === 1 && sent[0].to === PHONE2 && sent[0].text === BODY && sent[0].from === FROM && d0(db).state === 'sent' && d0(db).twilio_sid === 'wamid.1' && tc0(r).name === 'donna_relay_send' && r.out.answered === 'B37');
@@ -309,7 +312,7 @@ async function main() {
   T('4.17 [record cell, green at the base too: a none hearing was LEFTOVER before] LCT 2/C2/asis replayed (Haiku heard NOTHING, F-44.122): LEFTOVER speaks, nothing stored, nothing composed', r.keys === 'LEFTOVER' && r.reply.startsWith("I didn't catch a task in that.") && draftsIn(db).length === 0);
   await mut('4.18 MUTATION: the door READING a relay\'s date as a date job (B7 from it) reddens 4.15', WDf, [["    const name = spokenText(act && act.client_as_spoken);\n    if (!name) return null; // a nameless relay is B35's", "    if (spokenText(act && act.date_as_spoken)) return { speak: DL.LINES.B7, key: 'B7' };\n    const name = spokenText(act && act.client_as_spoken);\n    if (!name) return null; // a nameless relay is B35's"]], [], async (rq) => { const d = makeDb(world()); d.tables['public.leads'].push(leadRow({ id: 'l-priya', name: 'Priya', phone: PHONE })); const o = await turn(d, S2, LD.normaliseRequest(rec(LCT['2/C1/phone'])), { M: rq(WDf) }); return o.reply; }, (v) => v === 'I could not read that date. Say it like 5 December.');
   db = makeDb(world()); r = await turn(db, 'Send Asha Walk Fifteen a quote', LD.normaliseRequest(rec('{"route":"task","acts":[{"act":"quote_send","client_as_spoken":"Asha Walk Fifteen"}]}')));
-  T('4.16b THE CARD (step 7, LCT row 6 replayed, quote_send on every row): the second cut\'s act reads B34, nothing composed, nothing stored, B39 unspoken', r.reply === B34 && draftsIn(db).length === 0);
+  T('4.16b [boundary, green at the base: quote_send was uncovered there too] THE CARD (step 7, LCT row 6 replayed, quote_send on every row): the second cut\'s act reads B34, nothing composed, nothing stored, B39 unspoken', r.reply === B34 && draftsIn(db).length === 0);
   db = makeDb(world()); r = await turn(db, 'Tell Kiran Walk Fifteen hello', req([relay('Kiran Walk Fifteen')]));
   T('4.19 a lead with no number: the seat\'s own ⑧a speaks, nothing staged, nothing composed', r.keys === 'RELAY_NO_NUMBER' && r.reply.startsWith("I don't have a number on file for Kiran Walk Fifteen") && draftsIn(db).length === 0);
   db = makeDb(world()); const before = composed.length; r = await turn(db, 'Tell Asha Walk Fifteen: "We are free on the 22nd, see you then"', req([relay('Asha Walk Fifteen')]));

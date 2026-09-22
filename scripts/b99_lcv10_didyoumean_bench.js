@@ -369,7 +369,8 @@ async function main() {
     [['    return close.length === 1 ? close[0] : null;', '    return close.length >= 1 ? close[0] : null;']], [],
     async (rq) => (rq(WDf).nearestName || (() => null))('Kbir Walk Fourteen', [...rows, { id: 'e', name: 'Kbir Walk Fourteen' }]), (c) => c !== null);
   await mut('7.3 M3 THE OFFER ACTING INSTEAD OF ASKING: the misspelt booking is staged at once with the candidate (reddens 2.1)', WDf,
-    [["        return { door: true, reply: line, keys: ['B36'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: 'B36', acts: [filled], tries: 0, candidate_id: String(c.id), slot }, why: 'offer_asked' };", '        fromNote = { route: "task", acts: [filled] }; return null;']], [],
+    // ANCHOR RE-AIMED (CE-45 LCV-11, the P6b fix cut, F-44.123): the offer's return line gained her original message; what M3 proves is unchanged.
+    [["        return { door: true, reply: line, keys: ['B36'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: 'B36', acts: [filled], tries: 0, candidate_id: String(c.id), slot, ...(original ? { said: original } : {}) }, why: 'offer_asked' };", '        fromNote = { route: "task", acts: [filled] }; return null;']], [],
     async (rq) => flow(rq, [['x', req([money('booking_confirmed', 'Isha Walk Fourten')])]]), (x) => x.out[0].keys !== 'B36');
   await mut('7.4 M4 YES applying the money instead of staging it (the chair\'s pin, as b95 9.9): reddens 2.2', WDf,
     [['        try { row = await pma.stage(supabase, { vendorId: vendor.id, act: moneyPlan.stage.act, request: moneyPlan.stage.request, lane }); }', "        try { (supabase.tables['public.leads'].find((l) => l.id === moneyPlan.stage.request.lead_id) || {}).state = 'booked'; row = { id: 'applied' }; }"]], [],

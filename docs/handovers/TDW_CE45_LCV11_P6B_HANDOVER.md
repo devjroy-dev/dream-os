@@ -140,7 +140,169 @@ reddened outside the base. Two whole runs stand behind it: the chair's on the ZI
 and the founder's block 2 on his machine. The manifest's declared files were sha256'd before and after: set and contents unmoved; the dirt after
 the run was exactly the declared set.
 
-## 9 · THE WALK RECORD · written in by script from the founder's export after the walk; not yet present.
+## 9 · THE WALK RECORD · WRITTEN BY SCRIPT FROM THE FOUNDER'S EXPORTS OF 22 SEPTEMBER 2026, NEVER RETYPED
+Written by the fix cut's seat (LCV-11) from three CSVs he exported from the Supabase SQL editor after walking 94ce212 on WhatsApp and in the app:
+  thread   60 rows, engine.messages with meta.listener, sha256 6190408b7fa4c61182c9cd57f86c98b9733d84f04870cac45df831a612d735f2
+  drafts   6 rows, public.pending_couple_drafts, sha256 27bbed8e0a280e29f9bf4ecaee3b405a46bb09b612eef3b92748800b32833a7f
+  couple   3 rows, public.messages on the test couple's thread, sha256 55562d935b692051fa9323cc88d40511574c093e0bcc492dd1a750b7e5f13b17
+Times are UTC. HE is his message; DOOR is the reply and its lane; HEARD is meta.listener.request verbatim; NOTE is the question the door kept; ANSWERED is the note his turn answered.
+Fixture as his SELECTs returned it: the test couple's number on seven leads, six deleted, ONE LIVE, Sarah (booked); no open draft; the chain switch absent; packages
+Photographs and film 80000, Pre wedding shoot 50000, Walk P7 Album 25000. So the message steps went to Sarah and the attach steps to a lead filed without a number.
+
+### 9.1 the thread
+1. 15:59:56 HE: Add a new lead Asha Walk Fifteen, 96257 59924
+   15:59:56 DOOR · lane whatsapp: That number is already on Sarah. Nothing new was added.
+   HEARD: {"acts":[{"act":"lead","phone_as_spoken":"96257 59924","client_as_spoken":"Asha Walk Fifteen"}],"route":"task"}
+
+2. 16:01:09 HE: Add a new lead. Asha walk fifteen wedding on 5 match 2027
+   16:01:09 DOOR · lane whatsapp: I could not read that date. Say it like 5 December.
+   HEARD: {"acts":[{"act":"lead","date_as_spoken":"5 match 2027","client_as_spoken":"Asha walk fifteen"}],"route":"task"}
+   NOTE: B7
+
+3. 16:01:28 HE: 5 march 2027
+   16:01:28 DOOR · lane whatsapp: Lead added: Asha walk fifteen · 5 March 2027.
+   HEARD: {"acts":[{"act":"lead","date_as_spoken":"5 march 2027","client_as_spoken":"Asha walk fifteen"}],"route":"task"}
+   ANSWERED: B7
+4. 16:01:48 HE: Tell Sarah we are free on 22nd
+   16:01:48 DOOR · lane whatsapp: I didn't catch a task in that. You can say things like: ⏎ Send a message to my client asking for the advance ⏎ Raise the invoice for the Bose wedding
+   HEARD: {"acts":[],"route":"none"}
+
+5. 16:02:25 HE: Tell Sarah we are free on 22nd
+   16:02:25 DOOR · lane whatsapp: I didn't catch a task in that. You can say things like: ⏎ Send a message to my client asking for the advance ⏎ The advance came in today for the Kapoor booking
+   HEARD: {"acts":[],"route":"none"}
+
+6. 16:03:05 HE: Send message to Sarah we are free on 22nd
+   16:03:05 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah, just wanted to let you know we're free on 22nd! Let me know if that works for you." ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","date_as_spoken":"22nd","client_as_spoken":"Sarah"}],"route":"task"}
+   NOTE: B37
+
+7. 16:03:33 HE: No.
+   16:03:33 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to her. Tell me when you want to write to her again.
+   HEARD: null
+   ANSWERED: B37
+8. 16:04:19 HE: Tell Sarah we are free on 22nd
+   16:04:19 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah, we're free on 22nd! Let me know if that works for you." ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","date_as_spoken":"22nd","client_as_spoken":"Sarah"}],"route":"task"}
+   NOTE: B37
+
+9. 16:04:32 HE: No.
+   16:04:32 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to her. Tell me when you want to write to her again.
+   HEARD: null
+   ANSWERED: B37
+10. 16:04:53 HE: Send a message to Sarah asking for the advance
+   16:04:54 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah! I hope you're excited for your big day. I wanted to follow up with you about the advance for your photography package. Could you let me know when you'd be able to send that over? Looking forward to capturing your special moments!" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sarah"}],"route":"task"}
+   NOTE: B37
+
+11. 16:05:39 HE: Yes
+   16:05:39 DOOR · lane whatsapp: Sent to +919625759924.
+   HEARD: {"acts":[],"route":"none"}
+   ANSWERED: B37
+12. 16:07:01 HE: Tell priya Walk Fifteen hello
+   16:07:01 DOOR · lane whatsapp: Could not send the message. No client called priya Walk Fifteen.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"priya Walk Fifteen"}],"route":"task"}
+
+13. 16:07:45 HE: Send a message to my client asking for the advance
+   16:07:45 DOOR · lane whatsapp: Which client? Say the name.
+   HEARD: {"acts":[{"act":"relay"}],"route":"task"}
+   NOTE: B35
+
+14. 16:07:54 HE: Sarah
+   16:07:54 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah! This is Dev Roy Photography. How can I help you with your wedding photography needs?" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[],"route":"none"}
+   NOTE: B37
+   ANSWERED: B35
+15. 16:08:04 HE: No
+   16:08:04 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to her. Tell me when you want to write to her again.
+   HEARD: null
+   ANSWERED: B37
+16. 16:08:18 HE: Tell Sarah hello
+   16:08:18 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hello Sarah!" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sarah"}],"route":"task"}
+   NOTE: B37
+
+17. 16:08:49 HE: Tell Sara hi
+   16:08:49 DOOR · lane whatsapp: Did you mean Sarah? Reply YES or NO.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sara"}],"route":"task"}
+   NOTE: B36
+
+18. 16:09:00 HE: Yes
+   16:09:00 DOOR · lane whatsapp: Here is the draft: ⏎  ⏎ "Hi Sarah! Yes, all confirmed for your wedding. Looking forward to capturing your special day with Dev Roy Photography. Can't wait! 🎥✨" ⏎  ⏎ Send this to Sarah (+919625759924)? Reply YES or NO.
+   HEARD: {"acts":[],"route":"none"}
+   NOTE: B37
+   ANSWERED: B36
+19. 16:09:09 HE: No
+   16:09:09 DOOR · lane whatsapp: Not sent — I've dropped it. Nothing went to her. Tell me when you want to write to her again.
+   HEARD: null
+   ANSWERED: B37
+20. 16:09:18 HE: Send Sarah a quote
+   16:09:18 DOOR · lane whatsapp: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"quote_send","client_as_spoken":"Sarah"}],"route":"task"}
+
+21. 16:09:49 HE: Add photograph and films to asha walk fifteen
+   16:09:49 DOOR · lane whatsapp: You have no package called photograph and films. Yours are: Photographs and film · Pre wedding shoot · Walk P7 Album.
+   HEARD: {"acts":[{"act":"attach_package","client_as_spoken":"asha walk fifteen","package_as_spoken":"photograph and films"}],"route":"task"}
+
+22. 16:10:06 HE: Photographs and film
+   16:10:06 DOOR · lane whatsapp: I didn't catch a task in that. You can say things like: ⏎ Add a new lead, haldi shoot on 3 January ⏎ Raise the invoice for the Bose wedding
+   HEARD: {"acts":[],"route":"none"}
+
+23. 16:10:38 HE: Add photographs and film to asha walk fifteen
+   16:10:38 DOOR · lane whatsapp: Package attached: Asha walk fifteen · Photographs and film · Rs 80,000.
+   HEARD: {"acts":[{"act":"attach_package","client_as_spoken":"asha walk fifteen","package_as_spoken":"Photographs and film"}],"route":"task"}
+
+24. 16:10:54 HE: The booking is confirmed
+   16:10:54 DOOR · lane whatsapp: Which client? Say the name.
+   HEARD: {"acts":[{"act":"booking_confirmed","client_as_spoken":"asha walk fifteen"}],"route":"task"}
+   NOTE: B35
+
+25. 16:11:01 HE: No
+   16:11:01 DOOR · lane whatsapp: Okay. Nothing was changed.
+   HEARD: null
+   ANSWERED: B35
+26. 16:11:18 HE: Attach walk fifteen kappa to asha walk fifteen
+   16:11:19 DOOR · lane whatsapp: You have no package called walk fifteen kappa. Yours are: Photographs and film · Pre wedding shoot · Walk P7 Album.
+   HEARD: {"acts":[{"act":"attach_package","client_as_spoken":"asha walk fifteen","package_as_spoken":"walk fifteen kappa"}],"route":"task"}
+
+27. 16:12:38 HE: Attach walk fifteen kappa to asha walk fifteen
+   16:12:39 DOOR · lane whatsapp: Set the fee first.
+   HEARD: {"acts":[{"act":"attach_package","client_as_spoken":"asha walk fifteen","package_as_spoken":"walk fifteen kappa"}],"route":"task"}
+
+28. 16:12:47 HE: Yes
+   16:12:47 DOOR · lane whatsapp: I didn't catch a task in that. You can say things like: ⏎ Raise the invoice for the Bose wedding ⏎ Send a message to my client asking for the advance
+   HEARD: null
+
+29. 16:12:58 HE: Tell Sarah thank you
+   16:12:58 DOOR · lane whatsapp: I didn't catch a task in that. You can say things like: ⏎ The Sharma booking is confirmed ⏎ Send a message to my client asking for the advance
+   HEARD: {"acts":[],"route":"none"}
+
+30. 16:13:30 HE: Tell Sarah thank you
+   16:13:30 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"relay","client_as_spoken":"Sarah"}],"route":"task"}
+
+### 9.2 the drafts the door stored (public.pending_couple_drafts)
+  16:03:04 refused · +919625759924 · reason vendor_declined · "Hi Sarah, just wanted to let you know we're free on 22nd! Let me know if that works for you."
+  16:04:19 refused · +919625759924 · reason vendor_declined · "Hi Sarah, we're free on 22nd! Let me know if that works for you."
+  16:04:53 sent · +919625759924 · reason content:wamid.HBgMOTE5NjI1NzU5OTI0FQIAERgSMkY3MzFCMDk5MEU5RjE5RjQ5AA== · "Hi Sarah! I hope you're excited for your big day. I wanted to follow up with you about the advance for your photography package. Could you let me know when you'd be able to send that over? Looking forward to capturing your special moments!"
+  16:07:54 refused · +919625759924 · reason vendor_declined · "Hi Sarah! This is Dev Roy Photography. How can I help you with your wedding photography needs?"
+  16:08:18 expired · +919625759924 · reason superseded:112c0275-3332-446d-9888-b19a061189ff · "Hello Sarah!"
+  16:09:00 refused · +919625759924 · reason vendor_declined · "Hi Sarah! Yes, all confirmed for your wedding. Looking forward to capturing your special day with Dev Roy Photography. Can't wait! 🎥✨"
+
+### 9.3 the test couple's thread (public.messages)
+  16:05:38 outbound · sent_by vendor_relay · delivery read · "Hi Sarah! I hope you're excited for your big day. I wanted to follow up with you about the advance for your photography package. Could you let me know when you'd be able to send that over? Looking forward to capturing your special moments!"
+  16:06:14 inbound · sent_by couple · delivery null · "Reply"
+  16:06:18 outbound · sent_by agent · delivery read · "Hi Sarah! I'm Dev Roy's assistant — before we go further on that, I just want to make sure I have the right details. Is your wedding a single day event, or spread across functions like mehendi, sangeet, wedding, and reception?"
+
+### 9.4 what the record shows, read by the seat and ruled by the chair
+Walked green as the card (as amended for the fixture) says: B19 naming Sarah on the ear's own phone_as_spoken; B7 then B17 on his
+"5 match"; the frame twice, each No refused; YES sent the stored bytes, by the out-of-window content template (her window was closed),
+delivered and READ; B38; B35 on the nameless relay; B36 "Did you mean Sarah?"; quote_send read B34; "Add photographs and film to asha
+walk fifteen" attached at Rs 80,000 (R-45.2 live); F-44.118's floor asked B35 over the ear's pasted name; "Set the fee first." LIVE for
+the first time (B33); a bare yes read LEFTOVER; the pwa lane read B34 for a relay.
+Findings, allocated by the chair: F-44.123 (an answered B35 or B36 drafted from the ANSWER turn: 16:07:54 "Sarah", 16:09:00 "Yes"),
+F-44.124 (the sent and declined lines named no one: six deleted leads on the number made the name read fail). Both cured by the fix
+cut (docs/handovers/TDW_CE45_LCV11_P6B_FIX1_HANDOVER.md). THE "Tell ..." MISSES, 3 of 7 live (16:01:48, 16:02:25, 16:12:58): the
+founder's ruling R-45.3 (the cold second hearing) rides LCV-12; its record is carried in the fix cut's handover.
 
 ## 10 · THIS SEAT'S ERRORS, e-75 and e-76, AND THE CHAIR'S c-45.1 TO c-45.4 (next free: e-77, c-45.5)
 e-75 a base worktree whose node_modules was a SYMLINK: b40's mutation cells copy the tree to /tmp and require chat.js there, the copy did not

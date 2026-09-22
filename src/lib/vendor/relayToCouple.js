@@ -242,14 +242,19 @@ async function relayToCouple(supabase, { vendor, couplePhone, body, sendWhatsApp
 async function coupleDisplayName(supabase, vendorId, couplePhone) {
   if (!supabase || !vendorId || !couplePhone) return null;
   try {
-    const { data } = await supabase
+    // F-44.124 (CE-45 LCV-11, the fix cut): LIVE LEADS ONLY, and never .maybeSingle(). The test couple's number carried six DELETED leads
+    // and one live one; maybeSingle errored on seven rows, the name came back null, and "Sent to +919625759924." named no one while the
+    // frame (rendered from the lead row) said Sarah. A deleted lead is not who she is. Exactly one live named lead is her name; none, or
+    // two live leads with different names on one number, is no name (the phone alone renders, as the seat has always rendered nameless).
+    const { data, error } = await supabase
       .from('leads')
-      .select('name')
+      .select('name, deleted_at')
       .eq('vendor_id', vendorId)
       .eq('phone', couplePhone)
-      .maybeSingle();
-    const name = data && typeof data.name === 'string' ? data.name.trim() : '';
-    return name || null;
+      .is('deleted_at', null);
+    if (error || !Array.isArray(data)) return null;
+    const names = Array.from(new Set(data.map((l) => (l && typeof l.name === 'string' ? l.name.trim() : '')).filter(Boolean)));
+    return names.length === 1 ? names[0] : null;
   } catch (_e) {
     return null;
   }
