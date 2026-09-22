@@ -134,10 +134,17 @@ function exits(DL, LH, GLITCH) {
     { why: 'uncovered', message: 'Hello', ear: earOf(req([], 'none')), is: isLeft, byte: 'LEFTOVER', label: 'NO ACT heard (a greeting)' },
     { why: 'uncovered', message: 'Block 20 March, personal', ear: earOf(req([{ act: 'block_date', date_as_spoken: '20 March' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'an act the door does not cover' },
     { why: 'uncovered', message: "What's due this week?", ear: earOf(req([{ act: 'whatsdue' }], 'search')), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a lookup the door does not cover' },
-    { why: 'uncovered', message: 'Send a message to my client asking for the advance', ear: earOf(req([{ act: 'relay', client_as_spoken: 'Walk P8 Dated' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'relay (the chair: one step on the card shows it)' },
+    // ROW RE-AIMED (CE-45 LCV-11, P6b first cut): relay is the DOOR'S since P6b (b101 holds it); the act the door has not learnt is quote_send, the second cut's.
+    { why: 'uncovered', message: 'Send Walk P8 Dated a quote', ear: earOf(req([{ act: 'quote_send', client_as_spoken: 'Walk P8 Dated' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'quote_send (the second P6b cut; relay is covered since the first)' },
     { why: 'uncovered', message: 'Add a lead Walk P8 Mixed and block 20 March', ear: earOf(req([{ act: 'lead', client_as_spoken: 'Walk P8 Mixed' }, { act: 'block_date', date_as_spoken: '20 March' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a MIXED message: a covered act beside an uncovered one' },
     // ROW REMOVED (CE-44 LCV-10 PART B-2, first cut): a covered act naming NO client is now the DOOR'S turn (B35, R-44.39), not an exit; b97 §2 holds it, on this lane too.
-    { why: 'lead_phone', message: 'Add a new lead Walk P8 Phone, 9876543210', ear: earOf(req([{ act: 'lead', client_as_spoken: 'Walk P8 Phone' }])), is: (r) => r === DL.LINES.B34, byte: 'B34' },
+    // ROW RE-AIMED (CE-45 LCV-11, P6b first cut; F-44.96's second half): one phone-shaped run is read by the door itself and filed; the exit survives ONLY for TWO runs with no slot.
+    { why: 'lead_phone', message: 'Add a new lead Walk P8 Phone, 9876543210 or 9876543211', ear: earOf(req([{ act: 'lead', client_as_spoken: 'Walk P8 Phone' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'TWO phone-shaped runs, no slot: the door does not guess' },
+    // ROW ADDED (CE-45 LCV-11, P6b): relay_unsayable, a relay whose lead rows cannot be read; the glitch line, nothing written.
+    // ROW ADDED (CE-45 LCV-11, P6b first cut): relay_pwa, a relay on the pwa lane, the second cut's; B34 as before, nothing written.
+    // Both relay rows are directOnly: each exists on ONE lane only (relay_pwa on the pwa lane, relay_unsayable on the WhatsApp lane), so §5/§6's both-lanes drive would read a different exit on the other lane.
+    { why: 'relay_pwa', message: 'Tell Walk P8 Dated hello', lane: 'pwa', ear: earOf(req([{ act: 'relay', client_as_spoken: 'Walk P8 Dated' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'the pwa lane, the second cut\'s', directOnly: true },
+    { why: 'relay_unsayable', message: 'Tell Walk P8 Dated hello', lane: 'whatsapp', ear: earOf(req([{ act: 'relay', client_as_spoken: 'Walk P8 Dated' }])), is: (r) => r === GLITCH, byte: 'GLITCH', label: 'the lead rows unreadable', dbOpts: { errorRead: ['public.leads'] }, directOnly: true },
     { why: 'attach_unsayable', message: 'Attach Tri to Walk P8 Dated', ear: earOf(req([{ act: 'attach_package', client_as_spoken: 'Walk P8 Dated', package_as_spoken: 'Tri' }])), is: (r) => r === DL.LINES.B30, byte: 'B30', label: 'three packages of one name' },
     // ROW RE-AIMED (CE-44 LCV-10 PART B-2, second cut): no package named is now the door's B31; this exit is driven by a lead the door cannot resolve with NO package in the rows at all (packagesOf null), still attach_unsayable.
     { why: 'attach_unsayable', message: 'Attach a package to Walk P8 Dated', ear: earOf(req([{ act: 'attach_package', client_as_spoken: 'Walk P8 Dated', package_as_spoken: 'Gold' }])), is: (r) => r === DL.LINES.B30, byte: 'B30', label: 'the package rows unreadable (the resolver returns nothing)', dbOpts: { errorRead: ['public.vendor_packages'] } },
@@ -198,7 +205,8 @@ async function main() {
   sec('2 the example table and the one builder');
   T('2.1 EXAMPLE_ACTS is one act per example, by position', DL.EXAMPLE_ACTS.length === DL.EXAMPLES.length && DL.EXAMPLE_ACTS.every((a) => typeof a === 'string' && a));
   const coveredEx = DL.EXAMPLES.filter((_e, i) => WD.COVERED.includes(DL.EXAMPLE_ACTS[i]));
-  T('2.2 the examples the door may show TODAY are exactly the four the chair named', JSON.stringify(coveredEx) === JSON.stringify(['The Sharma booking is confirmed', 'The advance came in today for the Kapoor booking', 'Raise the invoice for the Bose wedding', 'Add a new lead, haldi shoot on 3 January']));
+  // RE-PINNED (CE-45 LCV-11, P6b first cut): example 10 switched on by covering relay (doorLines.js EXAMPLE_ACTS); five, in the table's order.
+  T('2.2 the examples the door may show TODAY are exactly the five: the chair\'s four and, since P6b, example 10', JSON.stringify(coveredEx) === JSON.stringify(['The Sharma booking is confirmed', 'The advance came in today for the Kapoor booking', 'Raise the invoice for the Bose wedding', 'Add a new lead, haldi shoot on 3 January', 'Send a message to my client asking for the advance']));
   let okDraws = true; const seenPairs = new Set();
   for (let i = 0; i < 2000; i += 1) {
     const parts = DL.leftover(WD.COVERED).split('\n');
@@ -206,7 +214,7 @@ async function main() {
     seenPairs.add(parts.slice(1).sort().join('|'));
   }
   T('2.3 over 2000 draws: the founder\'s line, then TWO DIFFERENT examples, each from a COVERED act, never another', okDraws);
-  T('2.4 the draw is random: all six pairs of the four appear', seenPairs.size === 6);
+  T('2.4 the draw is random: all ten pairs of the five appear (six of four until P6b)', seenPairs.size === 10);
   T('2.5 covering an act switches its example on: with block_date covered, "Block 20 March, personal" can appear; today it cannot', (() => { let seen = false; for (let i = 0; i < 400; i += 1) if (DL.leftover([...WD.COVERED, 'block_date']).includes('Block 20 March, personal')) seen = true; return seen; })());
   T('2.6 one covered example shows one; none shows the line alone', DL.leftover(['lead']) === `${DL.LINES.LEFTOVER}\nAdd a new lead, haldi shoot on 3 January` && DL.leftover([]) === DL.LINES.LEFTOVER);
   T('2.7 no example for attach_package exists until he approves one', !DL.EXAMPLE_ACTS.includes('attach_package'));
@@ -225,7 +233,7 @@ async function main() {
       out.door === false && out.why === x.why && stood && stood.door === true && stood.stood === true && x.is(stood.reply) && stood.keys[0] === x.byte && writes(db) === before && stood.skipHarvest === true && stood.toolCalls.length === 0 && stood.documents.length === 0 && stood.refresh === false);
   }
   const srcWhys = new Set((src('src/lib/vendor/workingDoor.js').match(/CHAIN\([^,]+, '([a-z_]+)'/g) || []).map((m) => /'([a-z_]+)'/.exec(m)[1]));
-  T('3.2 the exits driven above are EVERY reason preTurn can return but `empty` (3.3), read from the source', [...srcWhys].filter((w) => w !== 'empty').every((w) => whys.has(w)) && srcWhys.size === 13 && (src('src/lib/vendor/workingDoor.js').match(/return CHAIN\(/g) || []).length === 15); // 15 since LCV-10 B-2 (first cut): the phone guard is also applied at the name question, same reason lead_phone
+  T('3.2 the exits driven above are EVERY reason preTurn can return but `empty` (3.3), read from the source', [...srcWhys].filter((w) => w !== 'empty').every((w) => whys.has(w)) && srcWhys.size === 15 && (src('src/lib/vendor/workingDoor.js').match(/return CHAIN\(/g) || []).length === 16); // RE-PINNED (CE-45 LCV-11, P6b): two lead_phone returns left, ONE came back for the two-runs case, relay_unsayable and relay_pwa came: 16 returns, 15 reasons; // 15 since LCV-10 B-2 (first cut): the phone guard is also applied at the name question, same reason lead_phone
   T('3.3 `empty` (nothing to say and nothing written) and an UNKNOWN reason are the glitch line', WD.standKey({ door: false, why: 'empty', ear: { request: req([{ act: 'lead' }]) } }, { lifecycle: LH }).key === 'GLITCH' && WD.standKey({ door: false, why: 'something_new' }, { lifecycle: LH }).key === 'GLITCH' && WD.standKey(null, { lifecycle: LH }).key === 'GLITCH');
   T('3.4 money_unsayable for a payment is D8, for a booking F29: the byte the rebuild already speaks', WD.standKey({ why: 'money_unsayable', say: { act: 'milestone_paid' } }, { lifecycle: LH }).line === LH.LINES.D8 && WD.standKey({ why: 'money_unsayable', say: { act: 'advance_paid' } }, { lifecycle: LH }).line === LH.LINES.F29);
   // B34 never when no act was heard; LEFTOVER never when an uncovered one was: over every act the listener can name.
@@ -494,7 +502,8 @@ async function main() {
   sec('11 every SAY line on Part One\'s walk card, on the real WhatsApp lane, in one thread (one database)');
   {
     const db = makeDb(world());
-    const createLead = async (_s, _v, input) => { const row = leadRow({ id: `l-${input.name}`, name: input.name, wedding_date: input.wedding_date || null, wedding_date_precision: input.wedding_date_precision || null }); db.tables['public.leads'].push(row); return { ok: true, lead: row }; };
+    // C-44.3 (amended CE-45 LCV-11, P6b): the double keeps the phone the door passes, as createLead's own row would.
+    const createLead = async (_s, _v, input) => { const row = leadRow({ id: `l-${input.name}`, name: input.name, phone: input.phone || null, wedding_date: input.wedding_date || null, wedding_date_precision: input.wedding_date_precision || null }); db.tables['public.leads'].push(row); return { ok: true, lead: row }; };
     const say = async (message, request, extra) => driveWA({ db, message, ear: request === 'FAIL' ? earFails : earOf(request), deps: { createLead, ...(extra || {}) } });
     const one = (r) => (r.turns === 0 && r.sent.length === 1 ? r.sent[0].text : `turns=${r.turns} sent=${r.sent.length}`);
     let r = await say('Hello', req([], 'none'));
@@ -508,8 +517,13 @@ async function main() {
     T('11.2 SAY "Block 20 March, personal": B34 (heard as turn 3)', one(await say('Block 20 March, personal', HEARD('{"acts":[{"act":"block_date","missing":["year"],"date_as_spoken":"20 March","client_as_spoken":"personal"}],"route":"task"}'))) === 'I cannot do that by message yet. Use the app for it.');
     T('11.3 SAY "What\'s due this week?": B34 (heard as turn 4)', one(await say("What's due this week?", HEARD('{"acts":[{"act":"whatsdue","date_as_spoken":"this week"}],"route":"search"}'))) === 'I cannot do that by message yet. Use the app for it.');
     const leadsBefore = db.tables['public.leads'].length;
-    T('11.4 SAY "Add a new lead Walk P8 Phone, 9876543210": B34, and the lead is NOT filed (heard as turn 5: "Phone" dropped, the number in amount_rupees)', one(await say('Add a new lead Walk P8 Phone, 9876543210', HEARD('{"acts":[{"act":"lead","amount_rupees":9876543210,"client_as_spoken":"Walk P8"}],"route":"task"}'))) === 'I cannot do that by message yet. Use the app for it.' && db.tables['public.leads'].length === leadsBefore);
-    T('11.5 SAY "Send a message to my client asking for the advance": B34 (relay waits for P6b)', one(await say('Send a message to my client asking for the advance', req([{ act: 'relay' }]))) === 'I cannot do that by message yet. Use the app for it.');
+    // RE-PINNED (CE-45 LCV-11, P6b first cut; F-44.96 closed): the guard is gone, so on turn 5's RECORDED hearing (the OLD ear: "Phone" dropped, the number
+    // in amount_rupees, no phone slot) the door now FILES the lead as heard, "Walk P8", with NO number; the number never reaches the row because that ear
+    // never returned it. The shipped ear returns phone_as_spoken (b101 3.1 replays that record); the shortened name is F-44.119, closed by R-44.41.
+    // RE-PINNED AGAIN (the chair's ruling of 22 September, F-44.96's second half): the door reads her message itself; the ONE phone-shaped run is the phone.
+    T('11.4 SAY "Add a new lead Walk P8 Phone, 9876543210" on turn 5\'s hearing (the number misfiled into amount_rupees): the door reads the run itself and files Walk P8 WITH +919876543210, B16', one(await say('Add a new lead Walk P8 Phone, 9876543210', HEARD('{"acts":[{"act":"lead","amount_rupees":9876543210,"client_as_spoken":"Walk P8"}],"route":"task"}'))) === 'Lead added: Walk P8.' && db.tables['public.leads'].length === leadsBefore + 1 && db.tables['public.leads'][leadsBefore].phone === '+919876543210');
+    // RE-PINNED (CE-45 LCV-11, P6b first cut): relay is the door's; a nameless relay asks B35 (R-44.39). b101 4.11 to 4.14 replay the check's own rows for it.
+    T('11.5 SAY "Send a message to my client asking for the advance": B35, the door\'s own question (relay covered at P6b)', one(await say('Send a message to my client asking for the advance', req([{ act: 'relay' }]))) === 'Which client? Say the name.');
     // 11.6 RE-PINNED (accepted by the chair before the build): its double returned `lead` ALONE; the live ear returned `lead` AND
     // `book_event` (turn 8), the door spoke B34 and filed nothing. Replayed verbatim, it is RED on 627323b and green with the drop.
     T('11.6 SAY "Add a new lead Walk P8 Fresh, wedding on 20 February 2027", HEARD AS TURN 8 (lead AND book_event): the lead is FILED, B17 (F-44.110)', one(await say('Add a new lead Walk P8 Fresh, wedding on 20 February 2027', HEARD('{"acts":[{"act":"lead","date_as_spoken":"20 February 2027","client_as_spoken":"Walk P8 Fresh"},{"act":"book_event","date_as_spoken":"20 February 2027","client_as_spoken":"Walk P8 Fresh"}],"route":"task"}'))) === 'Lead added: Walk P8 Fresh · 20 February 2027.');

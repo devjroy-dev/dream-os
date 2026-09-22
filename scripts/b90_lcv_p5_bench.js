@@ -189,6 +189,11 @@ async function main() {
     B33: 'Set the fee first.',
     // RE-PINNED (CE-44 LCV-10, the third B-2 cut): B36 his at R-44.40, hash-carried.
     B36: 'Did you mean {name}? Reply YES or NO.',
+    // RE-PINNED (CE-45 LCV-11, P6b first cut): B37 the show frame (August, his; its last line ruled 22 September 2026, R-44.24 applied),
+    // B38 (his, "1 is fine") and B39 (his, "ok"; carried, spoken in the second cut), hash-carried.
+    B37: 'Here is the draft:\n\n"{body}"\n\nSend this to {client} ({phone})? Reply YES or NO.',
+    B38: 'Could not send the message. No client called {name}.',
+    B39: 'Could not send the quote. {client} has no package yet. Attach a package first.',
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -215,6 +220,9 @@ async function main() {
     B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
     B33: '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34',
     B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
+    B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
+    B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
+    B39: '1702a3c82a88f751752869986ba88c70a73b0fc6e93d14a8b13cff40442eac76',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };
@@ -259,10 +267,11 @@ async function main() {
   const FORBIDDEN = ['donna_client', 'donna_stage', 'donna_money', 'donna_money_edit'];
   // H5 (CE-44 LCV-7, P6a-1, the chair's ruling): the ruled set gains exactly donna_lead; FORBIDDEN is unchanged.
   // H5 again (CE-44 LCV-8, P6a-2): it gains exactly attach_package, the recorded name of the attach; FORBIDDEN is unchanged.
-  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead', 'attach_package'].includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
-  T('4.1 item 1 (i): the door\'s hands are booking, milestone, invoice, (P6a-1) lead and (P6a-2) attach_package only; never donna_client, donna_stage, donna_money or donna_money_edit', imageOk(WD.HANDS));
-  // H2 (CE-44 LCV-7, P6a-1): COVERED at five. H2 again (CE-44 LCV-8, P6a-2): at six, attach_package joins it.
-  T('4.2 covered at P6a-2: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,attach_package,booking_confirmed,invoice,lead,milestone_paid');
+  // H1 again (CE-45 LCV-11, P6b first cut): donna_relay_stage joins the image, a SIGNAL name (relayCouple.ts), never a write hand.
+  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead', 'attach_package', 'donna_relay_stage'].includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
+  T('4.1 item 1 (i): the door\'s hands are booking, milestone, invoice, (P6a-1) lead, (P6a-2) attach_package and (P6b) the relay stage signal only; never donna_client, donna_stage, donna_money or donna_money_edit', imageOk(WD.HANDS));
+  // H2 (CE-44 LCV-7, P6a-1): COVERED at five. H2 again (CE-44 LCV-8, P6a-2): at six, attach_package joins it. H2 again (CE-45 LCV-11, P6b): at seven, relay joins it.
+  T('4.2 covered at P6b: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package, relay; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,attach_package,booking_confirmed,invoice,lead,milestone_paid,relay');
   T('4.3 the door never names a forbidden hand anywhere in its source', !FORBIDDEN.some((h) => new RegExp(`'${h}'`).test(src('src/lib/vendor/workingDoor.js').replace(/^\s*\/\/.*$/gm, ''))));
 
   // ─── §5 THE DOOR'S DECISIONS ───────────────────────────────────────────────────────────────────
@@ -520,8 +529,8 @@ async function main() {
     return d.log.inserts[0].rows[0].conversation_id;
   });
   T('11.4 M4 the counted id\'s line removed from harvest.js reddens 6.4 (the door turn uncounted)', m === null);
-  // H3 (CE-44 LCV-7, P6a-1): re-aimed on HANDS' last entry, which is now lead's.
-  m = await withMutated('src/lib/vendor/workingDoor.js', [["  attach_package: 'attach_package',\n});", "  attach_package: 'attach_package',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
+  // H3 (CE-44 LCV-7, P6a-1): re-aimed on HANDS' last entry, which is now lead's. Re-aimed again (CE-45 LCV-11, P6b): the last entry is relay's.
+  m = await withMutated('src/lib/vendor/workingDoor.js', [["  relay: 'donna_relay_stage', // P6b: the recorded call keeps the signal's own name, as `lead` keeps donna_lead\n});", "  relay: 'donna_relay_stage',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
   T('11.5 M5 a table reaching donna_money_edit reddens 4.1', m === false);
   m = await withMutated('src/lib/vendor/pendingMoneyActs.js', [["      else await closeRow(supabase, r, null, { code: 'refused:apply_unstamped', note: 'yes received; apply did not record its result' });", '      else { /* left open */ }']], WDdeps, async (rq) => {
     const d = makeDb(world());

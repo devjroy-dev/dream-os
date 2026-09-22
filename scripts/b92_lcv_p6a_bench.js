@@ -191,7 +191,8 @@ async function main() {
   T('4.3 a lead beside an invoice naming its client is covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'invoice', client_as_spoken: 'Walk45' }])) === true);
   T('4.4 a lead beside an uncovered act (block_date) is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'block_date', date_as_spoken: '5 December' }])) === false);
   // RE-PINNED (CE-44 LCV-8, P6a-2): attach_package IS covered now (§14); an act the door has not learnt is still not.
-  T('4.5 an act the door has not learnt (relay) is NOT covered', WD.allCovered(req([{ act: 'relay', client_as_spoken: 'Sharma' }])) === false);
+  // RE-PINNED (CE-45 LCV-11, P6b first cut): relay is COVERED since P6b; the act the door has not learnt is now quote_send (the second cut's).
+  T('4.5 an act the door has not learnt (quote_send; relay joined at P6b) is NOT covered', WD.allCovered(req([{ act: 'quote_send', client_as_spoken: 'Sharma' }])) === false);
   T('4.6 the untouched return is byte-identical (b90 11.2\'s anchor)', src('src/lib/vendor/workingDoor.js').includes("    return request.acts.every((a) => a && COVERED.includes(a.act) && typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim());"));
 
   // ─── §5 preTurn ON A LEAD ─────────────────────────────────────────────────────────────────────
@@ -240,7 +241,10 @@ async function main() {
   T('5.13 createLead THROWS: the turn is the door\'s to the end: door true, B20, recorded refused:exception, never the chain', o.door === true && o.reply === RULED.B20 && o.toolCalls.length === 1 && o.toolCalls[0].result === 'refused:exception');
   db = makeDb(world());
   o = await run(db, 'Add a lead, Sharma, 98765 43210', [{ act: 'lead', client_as_spoken: 'Sharma' }], 'pwa');
-  T('5.14 THE GUARD: a lead message carrying a phone goes WHOLE to the chain (lead_phone), nothing written, the heard request carried', o.door === false && o.why === 'lead_phone' && leadsIn(db).length === 0 && !!o.ear && o.ear.request.acts[0].act === 'lead');
+  // RE-PINNED (CE-45 LCV-11, P6b first cut; F-44.96 closed): THE GUARD LEFT. The ear hears phone_as_spoken and the door files the number
+  // (b101 §3); a lead message whose hearing carries NO phone slot files the lead without one, and never reads lead_phone.
+  // RE-PINNED AGAIN (the chair's ruling of 22 September): the door reads the one phone-shaped run itself (F-44.96's second half) and files it.
+  T('5.14 THE GUARD IS GONE (F-44.96): a lead message carrying ONE phone-shaped number, heard with no phone slot, files the lead WITH that number (the door\'s own read); never lead_phone', o.door === true && o.why !== 'lead_phone' && leadsIn(db).length === 1 && leadsIn(db)[0].phone === '+919876543210');
   db = makeDb(world());
   o = await run(db, 'Raise the invoice for Walk45, number TDW/DEV440/24, Rs 1,20,000', [{ act: 'invoice', client_as_spoken: 'Walk45' }], 'pwa');
   T('5.15 control: the guard is the LEAD\'s only; an invoice message with numbers still reaches the door', o.door === true && o.keys.join() === 'B13');
@@ -366,9 +370,12 @@ async function main() {
   sec('10 mutations, each reddening its cell');
   const WDf = 'src/lib/vendor/workingDoor.js';
   const leadCase = async (rq, message, acts, lane, extra) => { const d = makeDb(world()); const r = await quiet(() => rq(WDf).preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message, lane: lane || 'pwa' }, { llmCreate: ear(req(acts)), generateInvoiceForBinder: gen, nowMs: NOW, ...(extra || {}) })); return { r, ins: leadsIn(d) }; };
-  await mut('10.1 M1 the phone guard removed: a phone-bearing lead reaches the door and is filed WITHOUT its number (reddens 5.14)', WDf,
-    [["    if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');\n", '']], [],
-    async (rq) => leadCase(rq, 'Add a lead, Sharma, 98765 43210', [{ act: 'lead', client_as_spoken: 'Sharma' }]), (x) => x.r.door === true && x.ins.length === 1 && x.ins[0].phone === null);
+  // RE-PINNED (CE-45 LCV-11, P6b): the guard's line no longer exists to remove; M1 now re-aims at the phone fold: with the fold removed a
+  // lead heard WITH phone_as_spoken files without its number (b101 3.6 is the same mutation on the record's row).
+  await mut('10.1 M1 (re-aimed at P6b) the phone fold removed: a lead heard with phone_as_spoken is filed WITHOUT its number', WDf,
+    // RE-AIMED AGAIN (F-44.96's second half): the slot and the door's own read are two paths to one fold; M1 defaces the fold, so both file no number.
+    [["    return require('./relayToCouple').asPhone(d) || null;", "    return null;"]], [],
+    async (rq) => leadCase(rq, 'Add a lead, Sharma, 98765 43210', [{ act: 'lead', client_as_spoken: 'Sharma', phone_as_spoken: '98765 43210' }]), (x) => x.r.door === true && x.ins.length === 1 && x.ins[0].phone === null);
   await mut('10.2 M2 F-44.64\'s refusal removed: "Past" resolves (forward) instead of B7 (reddens 2.3)', 'src/lib/vendor/spokenDate.js',
     [["    if (o.direction !== undefined && o.direction !== 'past' && o.direction !== 'future') return { ok: false, reason: 'unreadable' };\n", '']], [],
     async (rq) => rq('src/lib/vendor/spokenDate.js').resolveSpokenDate('18 September', { todayIso: '2026-09-21', direction: 'Past' }), (r) => r.ok === true);
@@ -393,7 +400,8 @@ async function main() {
     [["    if (d.iso < t[0] || y < y0 || y > y0 + 5) return { speak: DL.LINES.B21, key: 'B21' };\n", '']], [],
     async (rq) => leadCase(rq, 'Add Sharma, wedding 5 December 2025', [{ act: 'lead', client_as_spoken: 'Sharma', date_as_spoken: '5 December 2025' }]), (x) => x.ins.length === 1 && x.ins[0].wedding_date === '2025-12-05');
   await mut('10.9 M9 a lead filed DURING resolution, before the invoice resolves: a lead lands and the chain also answers (reddens 5.17)', WDf,
-    [["    for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs, answeringB18));", "    for (const a of acts) if (a.act === 'lead') { const q = planLead(a, nowMs); if (q.lead) await fileLead(supabase, vendor, lane, q, L); leadPlans.push({ speak: null }); }"]], [],
+    // ANCHOR RE-AIMED (CE-45 LCV-11, P6b): planLead now takes the message (F-44.96's second half); what M9 proves is unchanged.
+    [["    for (const a of acts) if (a.act === 'lead') leadPlans.push(planLead(a, nowMs, answeringB18, message));", "    for (const a of acts) if (a.act === 'lead') { const q = planLead(a, nowMs); if (q.lead) await fileLead(supabase, vendor, lane, q, L); leadPlans.push({ speak: null }); }"]], [],
     async (rq) => leadCase(rq, 'x', [{ act: 'lead', client_as_spoken: 'Sharma', date_as_spoken: '3 January' }, { act: 'invoice', client_as_spoken: 'Nobody' }]), (x) => x.r.door === false && x.ins.length === 1);
   await mut('10.10 M10 invoices before leads: the order is lost (reddens 5.16)', WDf,
     [['    for (const lp of leadPlans) {', '    for (const lp of []) {'], ['    if (moneyPlan) {\n      if (moneyPlan.stage) {', "    for (const lp of leadPlans) { if (lp.speak) { st.lines.push(lp.speak); st.keys.push(lp.key); continue; } st.wrote = true; const f = await fileLead(supabase, vendor, lane, lp, L); st.lines.push(f.line); st.keys.push(f.key); st.toolCalls.push(f.call); }\n    if (moneyPlan) {\n      if (moneyPlan.stage) {"]], [],
@@ -558,7 +566,8 @@ async function main() {
 
   // ─── §14 THE ATTACH, THROUGH THE REAL attachPackage ──────────────────────────────────────────
   sec('14 preTurn() on attach_package, through the real attachPackage and the real resolveLead');
-  T('14.1 COVERED is six and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
+  // RE-PINNED (CE-45 LCV-11, P6b): COVERED is seven, relay joining at P6b.
+  T('14.1 COVERED is seven (relay joined at P6b) and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
   T('14.2 an attach naming no client is not the door\'s (the untouched return)', WD.allCovered(req([{ act: 'attach_package', package_as_spoken: 'X' }])) === false);
   db = makeDb(world2());
   o = await run(db, 'Attach Photographs and film to Walk P7 Dated', [att('walk p7 dated', 'photographs AND film')]);
@@ -796,8 +805,9 @@ async function main() {
   await mut('20.18 N18 attach staged into pending_money_acts instead of landing (R-44.33): caught by 14.4 and 14.23', WDf,
     [['      const f = await fileAttach(supabase, vendor, ap, L);', "      await pma.stage(supabase, { vendorId: vendor.id, act: 'advance_paid', request: {}, lane }); const f = await fileAttach(supabase, vendor, ap, L);"]], [],
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')]), (x) => x.d.log.inserts.some((i) => i.table === 'public.pending_money_acts'));
-  await mut('20.19 N19 b90\'s re-aimed M5 anchor is HANDS\' new last entry, and a forbidden hand after it is still seen', WDf,
-    [["  attach_package: 'attach_package',\n});", "  attach_package: 'attach_package',\n  note: 'donna_money_edit',\n});"]], [],
+  // RE-PINNED (CE-45 LCV-11, P6b): HANDS' last entry is relay's.
+  await mut('20.19 N19 b90\'s re-aimed M5 anchor is HANDS\' new last entry (relay, P6b), and a forbidden hand after it is still seen', WDf,
+    [["  relay: 'donna_relay_stage', // P6b: the recorded call keeps the signal's own name, as `lead` keeps donna_lead\n});", "  relay: 'donna_relay_stage',\n  note: 'donna_money_edit',\n});"]], [],
     async (rq) => Object.values(rq(WDf).HANDS), (h) => h.includes('donna_money_edit'));
 
   console.log(`\n════════  b92 · ${pass} pass · ${fail} fail  ════════`);

@@ -249,7 +249,9 @@ async function main() {
   T('3.2 standKey alone, turn 8 as heard under the reason `uncovered`: never B34 (every act left is covered and named)', WD.standKey({ door: false, why: 'uncovered', ear: { request: turn8() } }, { lifecycle: LH }, NOW).key === 'LEFTOVER' && WD.standKey({ door: false, why: 'uncovered', ear: { request: req([lead('A', '20 February 2027'), event('B', '20 February 2027')]) } }, { lifecycle: LH }, NOW).key === 'B34');
   db = makeDb(world());
   r = await turn(db, 'Add a new lead Meera Walk Nine 9876543210, wedding on 20 February 2027', req([lead('Meera Walk Nine', '20 February 2027'), event('Meera Walk Nine', '20 February 2027')]));
-  T('3.3 INVENTED: an echoed event does not open a way round F-44.96\'s guard: a phone-shaped number is lead_phone, B34, nothing filed', r.out.door === false && r.out.why === 'lead_phone' && r.said.reply === B34 && leadsIn(db).length === 0);
+  // RE-PINNED (CE-45 LCV-11, P6b first cut; F-44.96 closed): the guard is gone. The drop still applies (one lead, the echoed event gone) and the lead
+  // files with its date; the number reaches the row only through phone_as_spoken, which this hearing does not carry, so the row holds no phone.
+  T('3.3 (re-pinned at P6b, F-44.96 both halves) an echoed event beside ONE phone-shaped number: the drop applies, the lead files WITH its date and WITH the number the door read itself', r.out.door === true && r.said.reply === 'Lead added: Meera Walk Nine · 20 February 2027.' && leadsIn(db).length === 1 && leadsIn(db)[0].phone === '+919876543210');
 
   // ─── §4 THE LISTENER'S PROMPT BYTE ─────────────────────────────────────────────────────────
   sec('4 listenerDoor.js: the accepted sentence, verbatim');
@@ -341,8 +343,9 @@ async function main() {
     'docs/handovers/TDW_CE44_LCV10_PARTA_HANDOVER.md', MAN, 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b94_lcv10_bench.js', LDf, WDf].sort()));
   const wdS = src(WDf).replace(/^\s*\/\/.*$/gm, ''); // comments stripped: code alone is counted
   // 7.3 RE-PINNED (CE-44 LCV-10 PART B-1): same two places, same order; the first line's bytes changed as M1's note says.
-  T('7.3 the drop is applied in exactly TWO places, preTurn before the covered check and standKeyOf, and the phone guard\'s line is byte-identical to 627323b (b92 M\'s anchor)', (wdS.match(/withoutEchoedEvents\(/g) || []).length === 3 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') > 0 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') < wdS.indexOf("if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');") && wdS.includes("    if (st.ear.request.acts.some((a) => a && a.act === 'lead') && phoneShaped(message)) return CHAIN(st.ear, 'lead_phone');\n"));
-  T('7.4 no byte a vendor reads was added: doorLines.js is not in this packet and COVERED is the six of 627323b', !man.includes('src/lib/vendor/doorLines.js') && WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package' && !WD.COVERED.includes('book_event'));
+  T('7.3 the drop is applied in exactly TWO places, preTurn before the covered check and standKeyOf (the phone guard\'s line is gone since P6b)', (wdS.match(/withoutEchoedEvents\(/g) || []).length === 3 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') > 0 && wdS.indexOf('    heard = withoutEchoedEvents(st.ear.request, nowMs);') < wdS.indexOf("if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');")); // RE-PINNED (CE-45 LCV-11, P6b): the phone guard's line LEFT the door (F-44.96 closed); the clause that pinned its bytes is dropped, the drop's two places still pinned
+  // RE-PINNED (CE-45 LCV-11, P6b): COVERED is seven (relay); this packet's own manifest still holds no doorLines.js; book_event is still never covered.
+  T('7.4 no byte a vendor reads was added BY THIS PACKET: doorLines.js is not in its manifest; COVERED is the six of 627323b plus relay (P6b); book_event never', !man.includes('src/lib/vendor/doorLines.js') && WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay' && !WD.COVERED.includes('book_event'));
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────
   sec('8 fuzz: every argument position, the request and its acts themselves hostile');

@@ -219,7 +219,8 @@ async function main() {
   db = seeded(); r = await turn(db, 'x', req([money('booking_confirmed'), { act: 'note' }]));
   T('2.6 a nameless act beside an UNCOVERED act is still B34: the name question is asked only of a request the door covers', r.keys === 'B34');
   db = seeded(); r = await turn(db, 'The booking is confirmed 9876543210', req([{ act: 'lead' }, money('booking_confirmed')]));
-  T('2.7 F-44.96 still stands at the name question: a nameless lead with a phone-shaped number reads B34', r.keys === 'B34' && r.out.why === 'lead_phone');
+  // RE-PINNED (CE-45 LCV-11, P6b first cut; F-44.96 closed): the guard at the name question is gone; a nameless lead beside a money act asks B18 as any.
+  T('2.7 (re-pinned at P6b) the guard is gone at the name question too: a nameless lead with a phone-shaped number asks B18', r.keys === 'B18' && r.out.why === 'name_asked');
   { const d1 = seeded(); await turn(d1, 'x', req([money('invoice')])); const a = lastDoor(d1).meta.listener; const d2 = seeded(); await turn(d2, 'x', req([{ act: 'lead' }])); const b = lastDoor(d2).meta.listener;
     T('2.8b (the same, awaited): a B35 row carries no asked_name and no asked; a B18 row carries asked_name B18 beside its note', !('asked_name' in a) && !('asked' in a) && b.asked_name === 'B18' && (b.note || {}).asked === 'B18'); }
 
@@ -373,7 +374,7 @@ async function main() {
   const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : [];
   T('7.1 W-1 NONE: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
   T('7.2 the manifest names exactly the eleven paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([FIXWALK, MAN, 'scripts/b97_lcv10_name_bench.js', 'scripts/b96_lcv10_fix_bench.js', 'scripts/b94_lcv10_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b90_lcv_p5_bench.js', 'src/lib/vendor/doorLines.js', 'src/lib/vendor/listenerDoor.js', WDf].sort()));
-  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 38 && // 38 since the third B-2 cut (B36)
+  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 41 && // 38 since the third B-2 cut (B36); 41 since P6b (B37, B38, B39, his; CE-45 LCV-11)
      DL.LINE_HASHES.B34 === '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb' && DL.LINE_HASHES.B18 === 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0');
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────

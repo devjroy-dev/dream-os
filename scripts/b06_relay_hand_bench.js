@@ -345,7 +345,9 @@ await t('§2.7 the SHOW crosses only after the draft is STORED', async () => {
 });
 
 await t('§2.8 MUTATION — dropping the bytes from the frame turns §2.1 RED', async () => {
-  const m = mutate('src/lib/vendor/relaySeat.js', '"${body}"\\n\\nSend this to', 'Message is ready.\\n\\nSend this to', 'a2frame');
+  // RE-AIMED (CE-45 LCV-11, P6b first cut): the frame is B37 in doorLines.js (hash-carried); showBlock hands the body to showFrame, and the
+  // mutation now swaps the body out at that hand-off, which is the same 08-08 death (a frame without the stored bytes) at the seat's own line.
+  const m = mutate('src/lib/vendor/relaySeat.js', ".showFrame(body, name, phone);", ".showFrame('Message is ready.', name, phone);", 'a2frame');
   assert.ok(m, 'DECLARED FAIL — mutation anchor absent in relaySeat.js');
   const frame = fresh(m).showBlock(BODY, 'Priya', PHONE);
   assert.ok(!frame.includes(BODY), 'the mutation did not bite — the anti-08-08 cell proves nothing');

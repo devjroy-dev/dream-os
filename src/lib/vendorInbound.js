@@ -1757,7 +1757,9 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // did. Only a door that did NOT answer (door: false, or preTurn itself unreachable) falls to the chain.
     let doorEar = null;
     let doorOut = null;
-    try { doorOut = await require('./vendor/workingDoor').preTurn({ supabase, vendor, agentId, route: llmWiring && llmWiring.route, message: body, lane: 'whatsapp' }); }
+    // P6b (CE-45 LCV-11): the door's relay sends through THIS lane's own injected transport (R-29.2), the same symbol the seat at
+    // :2137 was handed; the door resolves the estate's one sender itself when none is passed (the pwa lane, the second cut).
+    try { doorOut = await require('./vendor/workingDoor').preTurn({ supabase, vendor, agentId, route: llmWiring && llmWiring.route, message: body, lane: 'whatsapp' }, { sendWhatsApp, env: process.env }); }
     catch (e) { console.warn('[door:wa]', e && e.message); }
     // LCV-9 PART ONE (R-44.37): THE CHAIN HAS LEFT THIS LANE. Where the door did not take the turn, its stand-in speaks
     // (workingDoor.standIn reads the one switch, `vendor.working_chain_enabled`; only JSON true returns null and lets

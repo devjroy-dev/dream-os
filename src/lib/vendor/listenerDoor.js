@@ -45,6 +45,11 @@ const SYSTEM = [
   // R-44.39 / LCV-10 Part B-2 (the chair's line, c-44.44 applied to what the ear RETURNS): on Part One's walk "The booking is
   // confirmed" was heard as NO ACT, so the door's "Which client? Say the name." was unreachable for the sentence it was written for.
   'A job said without a name is still a job: record it, with client_as_spoken empty.',
+  // F-44.96 (CE-45 LCV-11 P6b, the first cut): THE PHONE. MEASURED BEFORE IT SHIPPED: the listening check of 22 September 2026
+  // (p6b_ear_check, table sha256 311fda220b8f…, row 4) returned phone_as_spoken "98765 43210" verbatim on both seats under exactly
+  // these bytes; a reworded sentence is an unmeasured one. Prose is not the mechanism: the door folds the slot (relayToCouple.asPhone)
+  // and hands it to createLead; b101 pins both.
+  'A phone number said with a lead is recorded in phone_as_spoken exactly as she typed it.',
 ].join(' ');
 
 const EAR_TOOL = {
@@ -66,6 +71,8 @@ const EAR_TOOL = {
             client_as_spoken: { type: 'string', description: 'The NAME of a person, a couple or a family, exactly as she said it. A kind of event or shoot (haldi, mehendi, sangeet, wedding, reception, engagement, a shoot) is NEVER a client. When she is answering the assistant\'s question about who the lead is, her answer IS the name, whatever the word. When no name was said it is EMPTY. A word with a meaning of its own that sits INSIDE a longer name is part of that name: "Walk P7 Haldi" is the name Walk P7 Haldi and never Walk P7; copy the name WHOLE, as she typed it.' },
             // P6a-2 (the chair's ruling on c-44.44): the package she named, so the door has a name to resolve. OPTIONAL.
             package_as_spoken: { type: 'string', description: 'The package exactly as she named it. Empty if none.' },
+            // F-44.96 (P6b): the phone she gave for a lead, the bytes the listening check of 22 September measured. OPTIONAL.
+            phone_as_spoken: { type: 'string', description: 'A phone number she gave, exactly as she typed it, digits and spaces and all. Empty if none.' },
             amount_rupees: { type: 'integer', minimum: 1, description: 'Whole rupees, only if she said a figure. Omit otherwise.' },
             date_as_spoken: { type: 'string', description: 'The date in her own words, returned verbatim and never converted. A word that places the day relative to now IS a date: "today", "yesterday", "this morning", "last Friday" are dates, exactly like "5th December". When she says when money came in, however she says it, put those words here. Empty only if she gave no date at all.' },
             milestone: { type: 'string', description: 'The payment as she named it. Empty if none.' },
@@ -97,6 +104,7 @@ function normaliseRequest(raw) {
       const out = { act: a.act.trim() };
       if (typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim()) out.client_as_spoken = a.client_as_spoken.trim();
       if (typeof a.package_as_spoken === 'string' && a.package_as_spoken.trim()) out.package_as_spoken = a.package_as_spoken.trim();
+      if (typeof a.phone_as_spoken === 'string' && a.phone_as_spoken.trim()) out.phone_as_spoken = a.phone_as_spoken.trim();
       if (Number.isInteger(a.amount_rupees) && a.amount_rupees >= 1) out.amount_rupees = a.amount_rupees;
       if (typeof a.date_as_spoken === 'string' && a.date_as_spoken.trim()) out.date_as_spoken = a.date_as_spoken.trim();
       if (typeof a.milestone === 'string' && a.milestone.trim()) out.milestone = a.milestone.trim();

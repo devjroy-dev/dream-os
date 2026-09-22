@@ -126,7 +126,12 @@ function showBlock(body, name, phone) {
   // WHY THE PHRASE WAS STRUCK, kept here so nobody restores it as a courtesy:
   // equality between what he was shown and what she receives is A1's CELL,
   // proven by the store's own row — never a sentence promising it.
-  return `Here is the draft:\n\n"${body}"\n\nSend this to ${recipientLabel(name, phone)}?`;
+  // ── P6b (CE-45 LCV-11, 22 September 2026): THE FRAME IS THE FOUNDER'S BYTE B37, ONE HOME (doorLines.js, hash-carried) ─
+  // Its last line now reads "Send this to {client} ({phone})? Reply YES or NO." (R-44.24 applied to the frame, his word "this").
+  // The August bytes above it are unchanged; the phone-only shape (F-06.186) is rendered there as recipientLabel renders it.
+  // Required lazily so this module's import order stays as it was (doorLines reaches back for looksLikeThePhone).
+  // ONE frame in the tree: the August string is not kept as a fallback (a retired byte surviving retirement is F-06.185's class).
+  return require('./doorLines').showFrame(body, name, phone);
 }
 
 // ── THE DEED LINES ─────────────────────────────────────────────────────────

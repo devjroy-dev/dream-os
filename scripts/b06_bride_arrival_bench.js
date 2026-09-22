@@ -962,9 +962,11 @@ await t('A12.6 FIXTURE-ABSENT — a REAL name still renders the named form', asy
 });
 
 await t('A12.7 BOTH-WAYS — removing the guard restores the doubled number', async () => {
+  // RE-AIMED (CE-45 LCV-11, P6b first cut): the frame is the founder's B37 rendered by doorLines.showFrame, which asks THIS file's
+  // looksLikeThePhone (the guard's one home); defacing the guard itself now proves the same both-ways fact the old anchor proved.
   await underMutation('src/lib/vendor/relaySeat.js',
-    'if (looksLikeThePhone(name, phone)) return `${phone}`;',
-    '',
+    'function looksLikeThePhone(name, phone) {',
+    'function looksLikeThePhone(name, phone) { return false;',
     async () => {
       const s2 = require(SRC('src/lib/vendor/relaySeat.js'));
       const b = s2.showBlock('BODY', '+918595986978', '+918595986978');

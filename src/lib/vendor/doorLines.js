@@ -118,6 +118,15 @@ const LINES = Object.freeze({
   // a job the door knows (a booking, a payment, an invoice, an attach) that names NO client (R-44.39, HIS: "Yes to your recomendation";
   // LCV-10 Part B-2, first cut). `lead` keeps B18. The door keeps its own note of it (meta.listener.note), as it does for B18.
   B35: "Which client? Say the name.",
+  // P6b (CE-45 LCV-11, the first cut): THE SHOW FRAME, HIS. The August frame (relaySeat.js showBlock, vetoed 2026-08-11) with its last
+  // line ruled on 22 September 2026 (R-44.24 applied to the frame; his word "this"): a question to her ends "Reply YES or NO." {body} is
+  // the STORED draft row's own bytes, read back; {phone} is the stored byte verbatim, never formatted (R-5). A row whose name IS the phone
+  // (F-06.186) renders through showFrame() below, which drops " ({phone})" and places the phone, as recipientLabel has always rendered it.
+  B37: "Here is the draft:\n\n\"{body}\"\n\nSend this to {client} ({phone})? Reply YES or NO.",
+  // a message asked for a name no client of hers carries (his, 22 September 2026, "1 is fine"; B15's shape). No-hits only.
+  B38: "Could not send the message. No client called {name}.",
+  // a quote asked for a lead with no live package (his, 22 September 2026, "ok"). CARRIED in this cut, spoken when quote_send is covered.
+  B39: "Could not send the quote. {client} has no package yet. Attach a package first.",
   // a booking made (vetoed CE-43, TDW_CE43_LC2_P3_HANDOVER.md:173; homeless until P5)
   D1: "Booked: {client}. Client, event and invoice {number} are ready.",
   // R-44.18; LIVE since LCV-9 Part One (R-44.37): spoken when NO ACT was heard, followed by two covered examples
@@ -185,6 +194,9 @@ const LINE_HASHES = Object.freeze({
   B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
   B33: '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34',
   B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
+  B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
+  B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
+  B39: '1702a3c82a88f751752869986ba88c70a73b0fc6e93d14a8b13cff40442eac76',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });
@@ -294,6 +306,22 @@ function whichPackage(names) {
   try { const list = sortedNames(names); return list === null ? null : render('B31', { list }); } catch (_e) { return null; }
 }
 
+// Byte 37, the show frame, rendered from the STORED row: body and phone are the row's bytes, the name is the lead's. A name that is
+// the phone itself (relaySeat.looksLikeThePhone, F-06.186) or no name at all renders the phone alone: " ({phone})" is dropped and the
+// phone placed, exactly as byte 13 drops " for {client}", so both shapes speak one sentence. TOTAL: null when the body or phone is unusable.
+function showFrame(body, client, phone) {
+  try {
+    const b = typeof body === 'string' && body.trim() ? body : null; // the body is placed as stored, untrimmed, never re-worded
+    const p = slot(phone);
+    if (b === null || p === null) return null;
+    const c = slot(client);
+    let phoneOnly = c === null;
+    if (!phoneOnly) { try { phoneOnly = require('./relaySeat').looksLikeThePhone(c, p); } catch (_e) { phoneOnly = false; } }
+    if (phoneOnly) return LINES.B37.replace(' ({phone})', '').replace('{body}', b).replace('{client}', p);
+    return LINES.B37.replace('{body}', b).replace('{client}', c).replace('{phone}', p);
+  } catch (_e) { return null; }
+}
+
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
 function invoiceNumbers(client, numbers) {
   try {
@@ -321,4 +349,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

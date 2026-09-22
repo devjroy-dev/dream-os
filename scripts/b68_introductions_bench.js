@@ -494,8 +494,9 @@ const capDouble = (status) => ({
       const out = await seat.runIntroductionSeat(db, VENDOR, introTurn, { ownerWords: 'x' });
       T('§10.8 the SHOW frame is the relaySeat byte, reused not re-minted',
         /^Here is the draft:/.test(String(out.line)));
+      // RE-PINNED (CE-45 LCV-11, P6b first cut): the frame's last line is the founder's B37, ending "Reply YES or NO." (R-44.24 applied to the frame, 22 September 2026).
       T('§10.8 it names the recipient and the number, as E3 requires',
-        /Send this to Anita Verma \(\+919999000111\)\?$/.test(String(out.line)));
+        /Send this to Anita Verma \(\+919999000111\)\? Reply YES or NO\.$/.test(String(out.line)));
       T('§10.8 the filled body is the FILED template body',
         String(out.line).includes('this is Dev Roy Photography, and we met at the Verma wedding'));
     }
