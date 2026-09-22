@@ -190,7 +190,11 @@ const DATE_ASKS = Object.freeze(['B6', 'B7', 'B21', 'B26', 'B28']);
 // then B3. Where a message holds a nameless lead AND a nameless money act, B18 is asked FIRST and B35 after it, the note carrying the
 // rest, one question at a time. B35's answer fills EVERY nameless act but `lead`. THE NOTE NEVER WRITES MONEY here either.
 const NAME_ASKS = Object.freeze(['B18', 'B35']);
-const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS]);
+// LCV-10 PART B-2 (second cut): THE DOOR KEEPS ITS OWN NOTE OF A PACKAGE IT ASKED FOR TOO, B24 and B31. Her answer is a package by the
+// door's own key() fold FIRST, whatever the listener heard; a heard act whose package_as_spoken is her whole message is her answer heard
+// twice (F-44.116's class); a different kind, or the attach RESTATED with another package, lapses; otherwise B31 once more, then B3.
+const PKG_ASKS = Object.freeze(['B24', 'B31']);
+const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS]);
 const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && !spokenText(a.client_as_spoken));
 const namelessLead = (acts) => (Array.isArray(acts) ? acts : []).some((a) => a && typeof a === 'object' && a.act === 'lead' && !spokenText(a.client_as_spoken));
 const allKindsCovered = (acts) => Array.isArray(acts) && acts.length > 0 && acts.length <= 4 && acts.every((a) => a && typeof a === 'object' && COVERED.includes(a.act));
@@ -214,6 +218,7 @@ function validNote(n) {
     if (acts.some((a) => !a)) return null;
     // a NAME note is a covered request with the one thing missing that was asked for; a DATE note passes the covered check as any request must
     if (NAME_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || !(n.asked === 'B18' ? namelessLead(acts) : namelessOf(acts).length)) return null; }
+    else if (PKG_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'attach_package' || !spokenText(acts[0].client_as_spoken)) return null; }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
     return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null };
@@ -432,16 +437,10 @@ async function planAttach(supabase, vendor, act, nowMs, L) {
     if (!act || typeof act !== 'object') return null;
     const name = typeof act.client_as_spoken === 'string' ? act.client_as_spoken.trim() : '';
     const said = typeof act.package_as_spoken === 'string' ? act.package_as_spoken.trim() : '';
-    if (!name || !said) return null; // no package named: B31's place (with the founder); until then, not the door's
-    const pkgs = await packagesOf(supabase, vendor.id);
-    if (!pkgs) return null;
-    const hits = pkgs.filter((p) => p && key(p.name) === key(said));
-    if (!hits.length) { const line = DL.noSuchPackage(said, pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B23' } : null; }
-    if (hits.length > 1) {
-      const line = hits.length === 2 ? DL.twoPackages(said, hits.map((p) => ({ name: p.name, total: digits(p.total) }))) : null;
-      return line ? { speak: line, key: 'B24', skipHarvest: true } : null;
-    }
-    const pkg = hits[0];
+    if (!name) return null; // a nameless attach is B35's, asked before any plan (askName)
+    // F-44.107: THE LEAD IS RESOLVED BEFORE THE PACKAGE, so a misspelt client meets B32 first and B23 is never reached for a lead
+    // that does not exist. Then the package: none named is B31 (R-44.36), the door never guesses even when she holds exactly one;
+    // no such name is B23; two of one name is B24. Both lists are HER OWN names sorted case-folded (F-44.108).
     const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);
     if (!found || !found.ok) {
       if (found && found.reason === 'not_found') return { noLead: true, name }; // B32's place (with the founder)
@@ -453,6 +452,16 @@ async function planAttach(supabase, vendor, act, nowMs, L) {
       return null;
     }
     const client = String(found.lead.name || '').trim();
+    const pkgs = await packagesOf(supabase, vendor.id);
+    if (!pkgs) return null;
+    if (!said) { const line = DL.whichPackage(pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B31', skipHarvest: true } : null; }
+    const hits = pkgs.filter((p) => p && key(p.name) === key(said));
+    if (!hits.length) { const line = DL.noSuchPackage(said, pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B23' } : null; }
+    if (hits.length > 1) {
+      const line = hits.length === 2 ? DL.twoPackages(said, hits.map((p) => ({ name: p.name, total: digits(p.total) }))) : null;
+      return line ? { speak: line, key: 'B24', skipHarvest: true } : null;
+    }
+    const pkg = hits[0];
     const body = { package_id: pkg.id };
     if (pkg.delivery_basis === 'handover') {
       const { data: lead, error } = await supabase.from('leads').select('id, name, state, binder_id, wedding_date, wedding_date_precision')
@@ -499,6 +508,7 @@ async function fileAttach(supabase, vendor, plan, L) {
     }
     const code = b && typeof b.code === 'string' ? b.code : null;
     if (code === 'already_booked') return { line: DL.LINES.B29, key: 'B29', call: { name: HANDS.attach_package, input, result: 'refused:already_booked' }, landed: false };
+    if (code === 'no_fee') return { line: DL.LINES.B33, key: 'B33', call: { name: HANDS.attach_package, input, result: 'refused:no_fee' }, landed: false }; // F-44.102, his own byte
     if (code === 'no_wedding_date' || code === 'no_handover_date') {
       const k = code === 'no_wedding_date' ? 'B25' : 'B26';
       const line = DL.render(k, { client: a.client });
@@ -644,7 +654,7 @@ function doorAnswer(st, why) {
 }
 
 async function preTurn(args, depsIn) {
-  const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null, note: null, answered: null, dateAsks: [] };
+  const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null, note: null, answered: null, dateAsks: [], pkgAsks: [] };
   try {
     // e-16's lesson: the arguments are taken INSIDE the guard, so a hostile argument cannot throw past it.
     const { supabase, vendor, agentId, route, message, lane, conversationId } = (args && typeof args === 'object') ? args : {};
@@ -713,7 +723,11 @@ async function preTurn(args, depsIn) {
       const kinds = note.acts.map((a) => a.act);
       const carried = note.acts.map((a) => key(a.date_as_spoken)).filter(Boolean);
       const newDate = (a) => !!spokenText(a.date_as_spoken) && key(a.date_as_spoken) !== key(name) && !carried.includes(key(a.date_as_spoken));
-      const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && (!kinds.includes(a.act) || newDate(a)));
+      // F-44.117 (the chair, 22 September): a heard act whose client_as_spoken IS her whole message under key(), or any act on route 'search',
+      // is her answer heard as a lookup (twice it was heard as `find`), not a job of another kind: it does not lapse.
+      const route = st.ear && st.ear.request ? st.ear.request.route : null;
+      const isAnswer = (a) => route === 'search' || key(a.client_as_spoken) === key(name);
+      const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && !isAnswer(a) && (!kinds.includes(a.act) || newDate(a)));
       if (PMA.decide(name) === 'yes') {
         if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
         return askAgain(DL.LINES[note.asked], note.asked, note.tries + 1);
@@ -721,6 +735,21 @@ async function preTurn(args, depsIn) {
       if (!movedOn) {
         fromNote = { route: 'task', acts: note.acts.map((a) => ((note.asked === 'B18' ? (a.act === 'lead' && !spokenText(a.client_as_spoken)) : (a.act !== 'lead' && !spokenText(a.client_as_spoken))) ? { ...a, client_as_spoken: name } : { ...a })) };
         st.answered = note.asked;
+      }
+    } else if (note && PKG_ASKS.includes(note.asked)) {
+      const said = message.trim();
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      const pkgs = (await packagesOf(supabase, vendor.id)) || [];
+      const own = pkgs.filter((p) => p && key(p.name) === key(said));
+      if (own.length === 1) { fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, package_as_spoken: String(own[0].name) } : { ...a })) }; st.answered = note.asked; }
+      else {
+        const echo = (a) => key(a.package_as_spoken) === key(said) || key(a.client_as_spoken) === key(said);
+        const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && !echo(a) && (a.act !== 'attach_package' || (!!spokenText(a.package_as_spoken) && key(a.package_as_spoken) !== key(note.acts[0].package_as_spoken || ''))));
+        if (!movedOn) {
+          if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+          const line = DL.whichPackage(pkgs.map((p) => p && p.name)) || DL.LINES.B3;
+          return { ...askAgain(line, line === DL.LINES.B3 ? 'B3' : 'B31', note.tries + 1), note: { asked: 'B31', acts: note.acts, tries: note.tries + 1 } };
+        }
       }
     } else if (note) {
       const own = resolveSpokenDate(message.trim(), { direction: note.direction, nowMs });
@@ -804,7 +833,7 @@ async function preTurn(args, depsIn) {
         if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');
         st.lines.push(DL.LINES.B30); st.keys.push('B30'); attachMissed = true; continue;
       }
-      if (ap.speak) { st.lines.push(ap.speak); st.keys.push(ap.key); if (ap.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(ap.key)) st.dateAsks.push({ key: ap.key, act: a }); attachMissed = true; continue; }
+      if (ap.speak) { st.lines.push(ap.speak); st.keys.push(ap.key); if (ap.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(ap.key)) st.dateAsks.push({ key: ap.key, act: a }); if (PKG_ASKS.includes(ap.key)) st.pkgAsks.push({ key: ap.key, act: a }); attachMissed = true; continue; }
       st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws
       if (!st.fallback) st.fallback = DL.LINES.B30;
       const f = await fileAttach(supabase, vendor, ap, L);
@@ -863,6 +892,11 @@ async function preTurn(args, depsIn) {
     // that her answer is the name (as the exception always made it), carrying every other act of the message. Nothing was written on such a turn.
     if (!st.wrote && st.keys.length === 1 && st.keys[0] === 'B18') {
       st.note = { asked: 'B18', acts: acts.map((a) => (a.act === 'lead' && eventOnly(a.client_as_spoken) ? (({ client_as_spoken: _c, ...rest }) => rest)(a) : { ...a })), tries: fromNote ? note.tries + 1 : 0 };
+    }
+    if (st.pkgAsks.length === 1 && !st.dateAsks.length) {
+      const w = st.pkgAsks[0]; const tries = fromNote && note && PKG_ASKS.includes(note.asked) ? note.tries + 1 : 0;
+      if (tries > 1 && !st.wrote && !st.toolCalls.length) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+      if (tries <= 1) st.note = { asked: w.key, acts: [(({ package_as_spoken: _p, ...rest }) => rest)(w.act), ...silenced.map((a) => ({ ...a }))], tries };
     }
     if (st.dateAsks.length === 1) {
       const tries = fromNote ? note.tries + 1 : 0;
@@ -1007,4 +1041,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

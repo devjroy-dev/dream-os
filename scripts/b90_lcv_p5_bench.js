@@ -184,6 +184,9 @@ async function main() {
     B34: 'I cannot do that by message yet. Use the app for it.',
     // RE-PINNED (CE-44 LCV-10 PART B-2, first cut): B35 his at R-44.39 ("Yes to your recomendation"), hash-carried; B31 and B33 stay B-2's second cut's.
     B35: 'Which client? Say the name.',
+    // RE-PINNED (CE-44 LCV-10 PART B-2, second cut): B31 (R-44.36) and B33 (F-44.102, REUSE of dreamos-pwa lib/worklist/packages.ts:116), hash-carried.
+    B31: 'Which package? Yours are: {list}.',
+    B33: 'Set the fee first.',
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -207,6 +210,8 @@ async function main() {
     B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
     B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
     B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
+    B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
+    B33: '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };

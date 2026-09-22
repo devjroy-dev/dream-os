@@ -192,7 +192,7 @@ async function main() {
 
   // ─── §1 THE BYTE AND THE LISTENER'S LINES ──────────────────────────────────────────────────
   sec('1 B35, his byte, hash-carried; the listener\'s no-name line and F-44.105\'s wording');
-  T('1.1 B35 is HIS byte verbatim (R-44.39) and its hash is the literal pinned here; B31 and B33 are still free (B-2\'s second cut)', DL.LINES.B35 === B35 && DL.LINE_HASHES.B35 === '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773' && sha(B35) === '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773' && !('B31' in DL.LINES) && !('B33' in DL.LINES));
+  T('1.1 B35 is HIS byte verbatim (R-44.39) and its hash is the literal pinned here; B31 and B33 are still free (B-2\'s second cut)', DL.LINES.B35 === B35 && DL.LINE_HASHES.B35 === '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773' && sha(B35) === '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773' && 'B31' in DL.LINES && 'B33' in DL.LINES); // re-pinned in B-2's second cut: B31 and B33 are his now
   const LINE = 'A job said without a name is still a job: record it, with client_as_spoken empty.';
   T('1.2 SYSTEM holds the no-name line ONCE, verbatim, its hash a literal here, after Part A\'s sentence', LD.SYSTEM.split(LINE).length === 2 && sha(LINE) === sha('A job said without a name is still a job: record it, with client_as_spoken empty.') && LD.SYSTEM.indexOf(LINE) > LD.SYSTEM.indexOf('record no book_event'));
   const cd = LD.EAR_TOOL.input_schema.properties.acts.items.properties.client_as_spoken.description;
@@ -373,7 +373,8 @@ async function main() {
   const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : [];
   T('7.1 W-1 NONE: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
   T('7.2 the manifest names exactly the eleven paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([FIXWALK, MAN, 'scripts/b97_lcv10_name_bench.js', 'scripts/b96_lcv10_fix_bench.js', 'scripts/b94_lcv10_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b90_lcv_p5_bench.js', 'src/lib/vendor/doorLines.js', 'src/lib/vendor/listenerDoor.js', WDf].sort()));
-  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 35 && DL.LINE_HASHES.B34 === '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb' && DL.LINE_HASHES.B18 === 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0');
+  T('7.3 the ONE vendor byte added is B35, his; every other line of doorLines.js LINES is as it was (the hashes of the rest unchanged)', Object.keys(DL.LINES).length === 37 && // 37 since B-2's second cut (B31, B33)
+     DL.LINE_HASHES.B34 === '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb' && DL.LINE_HASHES.B18 === 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0');
 
   // ─── §8 FUZZ ───────────────────────────────────────────────────────────────────────────────
   sec('8 fuzz');

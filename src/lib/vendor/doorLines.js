@@ -26,7 +26,7 @@
 // EXAMPLE_ACTS carries example → act, so each later packet switches its example on by covering its act.
 // B15 (R-44.27, his; owed by the packet in which the chain leaves, which is this one), B32 (R-44.36) and B34
 // (R-44.38, his "yes" to the chair's proposal) entered with the same cut. B35 (R-44.39) entered with LCV-10 Part B-2's first cut; B31 and
-// B33 enter with its second.
+// B33 (R-44.36, F-44.102) with its second.
 //
 // TOTAL: render() and every line builder below never throw; a slot that cannot be filled yields null
 // and the caller speaks nothing from it (the door then stands aside to the chain).
@@ -101,6 +101,12 @@ const LINES = Object.freeze({
   // attachPackage's 500, bad_package, no_fee and invalid, and for any throw.
   // B31 (the which-package question, his at R-44.36) and B33 enter with LCV-9 Part Two; their keys stay free until then.
   B30: "Could not attach the package.",
+  // an attach that names a client and NO package (R-44.36; LCV-10 Part B-2, second cut): the door never guesses, even with one package;
+  // {list} is HER OWN live package names, sorted by name case-folded (F-44.108), joined with " · ". The door keeps its own note of it.
+  B31: "Which package? Yours are: {list}.",
+  // REUSE (F-44.102): his own byte from dreamos-pwa lib/worklist/packages.ts:116, `no_fee: 'Set the fee first.'`, in place of the general
+  // B30 when the attach refuses because the package has no fee.
+  B33: "Set the fee first.",
   // an attach whose client is no lead of hers (R-44.36, HIS, verbatim: "yes to your open earlirr questions")
   B32: "Could not attach the package. No lead called {name}. Add the lead first.",
   // an act HEARD that the door does not cover yet, a mixed message holding one, or a lead carrying a phone-shaped
@@ -173,6 +179,8 @@ const LINE_HASHES = Object.freeze({
   B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
   B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
   B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
+  B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
+  B33: '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
 });
@@ -269,14 +277,17 @@ function twoPackages(name, candidates) {
   } catch (_e) { return null; }
 }
 
-// Byte 23's {list}: HER OWN package names joined with " · ". No usable name at all is null.
+// Byte 23's and byte 31's {list}: HER OWN package names, SORTED BY NAME CASE-FOLDED (F-44.108), joined with " · ". No usable name is null.
+const sortedNames = (names) => {
+  if (!Array.isArray(names)) return null;
+  const list = names.map(slot).filter((x) => x !== null).sort((a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0));
+  return list.length ? list.join(' · ') : null;
+};
 function noSuchPackage(name, names) {
-  try {
-    if (!Array.isArray(names)) return null;
-    const list = names.map(slot).filter((x) => x !== null);
-    if (!list.length) return null;
-    return render('B23', { name, list: list.join(' · ') });
-  } catch (_e) { return null; }
+  try { const list = sortedNames(names); return list === null ? null : render('B23', { name, list }); } catch (_e) { return null; }
+}
+function whichPackage(names) {
+  try { const list = sortedNames(names); return list === null ? null : render('B31', { list }); } catch (_e) { return null; }
 }
 
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
@@ -306,4 +317,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

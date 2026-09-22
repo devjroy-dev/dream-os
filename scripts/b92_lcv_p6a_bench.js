@@ -473,7 +473,8 @@ async function main() {
   }
   const lpsIn = (d) => d.log.inserts.filter((i) => i.table === 'public.lead_packages').flatMap((i) => i.rows);
   const staged = (d) => (d.tables['public.pending_money_acts'] || []);
-  const OWN_LIST = 'Photographs and film · Album handover · Photographs only · Bridal · bridal · No fee yet';
+  // RE-PINNED (CE-44 LCV-10 PART B-2, second cut; F-44.108): {list} is HER OWN names SORTED case-folded, no longer the rows' order.
+  const OWN_LIST = 'Album handover · Bridal · bridal · No fee yet · Photographs and film · Photographs only';
   const att = (client, pkg, date) => ({ act: 'attach_package', client_as_spoken: client, package_as_spoken: pkg, ...(date ? { date_as_spoken: date } : {}) });
 
   // ─── §11 THE BYTES ───────────────────────────────────────────────────────────────────────────
@@ -501,7 +502,8 @@ async function main() {
   // 11.3 RE-PINNED (CE-44 LCV-9 PART ONE): it asserted B31 and B32 free while his word was pending. His word came at R-44.36
   // ("yes to your open earlirr questions"). B32 rides Part One (the chair's ruling) and is spoken ONLY by the stand-in, chain
   // out; planAttach still returns noLead and preTurn still answers door false, so 14.16 stands. B31 enters with Part Two.
-  T('11.3 B32 is HIS and present, hash-carried, and spoken only through standIn; B31 is still free and nothing is built on it (Part Two)', DL.LINES.B32 === 'Could not attach the package. No lead called {name}. Add the lead first.' && DL.LINE_HASHES.B32 === '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704' && !('B31' in DL.LINES) && !/DL\.LINES\.B31|'B31'/.test(src('src/lib/vendor/workingDoor.js')) && (src('src/lib/vendor/workingDoor.js').match(/'B32'/g) || []).length === 2);
+  // 11.3 RE-PINNED (CE-44 LCV-10 PART B-2, second cut): B31 is HIS now (R-44.36) and b98 holds it; this cell keeps B32's pin.
+  T('11.3 B32 is HIS and present, hash-carried, and spoken only through standIn; B31 is present too (b98 holds it)', DL.LINES.B32 === 'Could not attach the package. No lead called {name}. Add the lead first.' && DL.LINE_HASHES.B32 === '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704' && 'B31' in DL.LINES && (src('src/lib/vendor/workingDoor.js').match(/'B32'/g) || []).length === 2);
   T('11.4 byte 24 renders by position for exactly two, byte 23 lists her own names with " · "', DL.twoPackages('bridal', [{ name: 'Bridal', total: '80,000' }, { name: 'bridal', total: '1,20,000' }]) === 'Two packages are called bridal: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.'
     && DL.twoPackages('x', [{ name: 'a', total: '1' }]) === null && DL.twoPackages('x', [{ name: 'a', total: null }, { name: 'b', total: '1' }]) === null
     && DL.noSuchPackage('Gold', ['A', ' ', null, 'B']) === 'You have no package called Gold. Yours are: A · B.' && DL.noSuchPackage('Gold', []) === null);
@@ -583,11 +585,13 @@ async function main() {
   o = await run(db, 'x', [att('Walk Month', 'Photographs and film')]);
   T('14.12 a month-precision date is no wedding date (F24): B25', o.keys.join() === 'B25');
   o = await run(db, 'x', [att('Walk P7 Dated', 'No fee yet')]);
-  T('14.13 attachPackage\'s other refusals (here no_fee) speak B30, recorded refused:write_failed', o.reply === RULED2.B30 && o.toolCalls[0].result === 'refused:write_failed' && lpsIn(db).length === 0);
+  // 14.13 RE-PINNED (CE-44 LCV-10 PART B-2, second cut; F-44.102): no_fee now speaks HIS OWN byte B33, recorded refused:no_fee; every other refusal is still B30 (14.20, 14.21).
+  T('14.13 attachPackage\'s no_fee refusal speaks B33, his own pwa byte, recorded refused:no_fee; nothing written', o.reply === 'Set the fee first.' && o.toolCalls[0].result === 'refused:no_fee' && lpsIn(db).length === 0);
   o = await run(db, 'x', [att('Twin', 'Photographs and film')]);
   T('14.14 two leads of one name reuse B8\'s shape as it stands', o.reply === 'Two clients are called Twin: Twin (1 April 2027) · twin (2 May 2027). Say which one.' && lpsIn(db).length === 0);
   o = await run(db, 'Attach a package to Walk P7 Dated', [{ act: 'attach_package', client_as_spoken: 'Walk P7 Dated' }]);
-  T('14.15 NO PACKAGE NAMED (B31 pending): before any write the WHOLE message goes to the chain', o.door === false && o.why === 'attach_unsayable' && lpsIn(db).length === 0);
+  // 14.15 RE-PINNED (CE-44 LCV-10 PART B-2, second cut; R-44.36): no package named is now the door's B31 with her sorted names, nothing written.
+  T('14.15 NO PACKAGE NAMED is B31, his byte, with HER OWN names sorted; nothing written', o.door === true && o.reply === `Which package? Yours are: ${OWN_LIST}.` && lpsIn(db).length === 0);
   o = await run(db, 'x', [att('Nobody Here', 'Photographs and film')]);
   T('14.16 NO LEAD CALLED {name} (B32 pending): before any write the WHOLE message goes to the chain', o.door === false && o.why === 'attach_no_lead');
   o = await run(db, 'x', [att('Walk P7 Dated', 'Photographs and film'), { act: 'note', client_as_spoken: 'Walk P7 Dated' }]);
