@@ -1,4 +1,4 @@
-# repo: dream-os @ 3af9a01 (base) · dreamos-pwa @ 320ad7e (untouched) · delivery TDW_CE45_LCV13_P7_2B.zip · manifest scripts/floor-manifest-lcv13-p7-2b.txt (21 paths)
+# repo: dream-os @ 3af9a01 (base) · dreamos-pwa @ 320ad7e (untouched) · delivery TDW_CE45_LCV13_P7_2B.zip · manifest scripts/floor-manifest-lcv13-p7-2b.txt (20 paths; "21" corrected, the seat's own error) · pushed e4a5c06 · walk record added by TDW_CE45_LCV13_P7_2B_WALK.zip on e4a5c06
 # TDW · CE-45 · SEAT LCV-13 · LC-VICTOR P7 CUT 2b · MOVE AND CANCEL A SHOOT, ASKED YES OR NO; THE DAY-SHEET RELOCATION · 2026-09-23 IST
 
 Every line number below was derived by command at the cured tree on the day of writing. The design is LCV-12's (its designs file, §2.1 to §2.6,
@@ -79,9 +79,36 @@ Run 1 reached its sentinel: "FLOOR = NAMED BASE, no delta". A comment-only edit 
 standKeyOf); run 2 died with the seat's turn and is not claimed; run 3 is the floor of record: see §7.1.
 7.1 RUN 3, THE FLOOR OF RECORD: reached its sentinel, exit 0: "FLOOR = NAMED BASE, no delta (refusals, not in base: 4)"; 22 RED + 1 ERROR, exactly floor-base.txt; "[F-14.16] declared files unmoved — set and contents both verified." Git status 19 declared paths before and after; base 0 and 0. This handover was placed after run 3: a docs-only path, declared in the manifest, read by no bench.
 
-## 8 · THE WALK RECORD
-[empty: the walk is the card's, after the chair's confirm and Railway ACTIVE]
+## 8 · THE WALK RECORD · 23 September 2026 · DEV440 · e4a5c06 (Railway ACTIVE 12:26 IST, deploy e8e2d83f) · ALL THIRTEEN STEPS GREEN
+Read by script from the founder's exports (sha256 prefixes): thread 7f2b27ccca2d (28 rows), events 37c32451af95 (3 rows), lead 47bfc2b42a9b (1 row), dream-os-marketing
+"forwarded vendor" log b337faa5711d (220 rows). Times UTC; IST is +5:30. Each reply is compared byte for byte with the card.
+Fixture read before step 1: DEV440 1; Walk Seventeen Alpha wedding 2027-01-08; shoots 8 and 9 January 2027 upcoming; Zeta 0; blocks on 2027-03-24 0.
+8.1 Step 1 · 06:59:03 · app · "Move the Walk Seventeen Alpha shoot to 22 November 2027" → B53 "Two shoots for Walk Seventeen Alpha: 8 January 2027 · 9 January 2027. Say the date." · heard {edit_event, 22 November 2027}.
+8.2 Step 2 · 06:59:16 · "8 January 2027" → B48 "Move Walk Seventeen Alpha's shoot to 22 November 2027? Reply YES or NO." · heard {edit_event, date "8 January 2027"}; the SHOOT note picked
+    the 8 January row and the CAL note kept iso 2027-11-22: K4 held live (her answer picked the row, never became the destination).
+8.3 Step 3 · 06:59:23 · "No" → B3 "Okay. Nothing was changed."
+8.4 Steps 4 and 5 · 06:59:35, 06:59:46 · the same two questions again, verbatim.
+8.5 Step 6 · 06:59:58 · "YES" → B49 "Moved: Walk Seventeen Alpha · shoot · 22 November 2027." · donna_edit_event {event_id 627e6acc…, date 2027-11-22} result moved.
+8.6 Off-card · 07:00:11 and 07:00:20 · the step 7 cancel answered "NO" → B50 then B3; nothing cancelled (a second witness of the NO path).
+8.7 Step 11 · 07:00:59 · "Move the Walk Seventeen Zeta shoot to 1 June 2027" → B76 "No lead called Walk Seventeen Zeta. Add the lead first."
+8.8 Step 12 · app screens · the day sheet for 22 November 2027 shows the Walk Seventeen Alpha shoot (his screenshot); lead wedding_date 2027-01-08 (lead export): ruling 3 held.
+8.9 Step 13 · WhatsApp · his words "Block 24 march 2027 personal" (the card wrote "Block 24 March 2027, personal"; the difference is his typing) → B40 "Blocked: 24 March 2027 · personal."
+    at 08:01:46 · heard {block_date, 24 march 2027, reason_as_spoken personal} · donna_block_date result blocked · events row 2027-03-24 kind blocked, notes 'personal', created 08:01:45.97.
+    2a's B40 on the WhatsApp lane, with its reason: the first live witness of the reason slot (2a's walk saw it dropped every time).
+8.10 Steps 7 and 8 · 08:15:43, 08:15:50 · "Cancel the Walk Seventeen Alpha shoot on 9 January 2027" → B50 "Cancel Walk Seventeen Alpha's shoot on 9 January 2027? Reply YES or NO."; "YES" →
+    B51 "Cancelled: Walk Seventeen Alpha · shoot · 9 January 2027." · donna_cancel_event {event_id 937ce48a…, state cancelled} · events row state cancelled, deleted_at empty (cancelled, never deleted).
+8.11 Steps 9 and 10 · 08:16:03, 08:16:11 · "Cancel the Walk Seventeen Alpha shoot" (one left) → B50 "Cancel Walk Seventeen Alpha's shoot on 22 November 2027? Reply YES or NO."; "No" → B3; the 22 November row stands upcoming.
+8.12 END STATE: Walk Seventeen Alpha shoot 2027-11-22 upcoming; the 9 January shoot cancelled; the 24 March 2027 block (personal) live; the lead's wedding date 2027-01-08.
+8.13 F-44.131, THE WAIT ON STEP 13: a Meta-side delivery outage for the vendor PNID 1197664646766743. At dream-os-marketing, the last vendor-PNID event was 03:23:34.357 (08:53 IST);
+    the next was 08:01:42.063 (13:31:42 IST, → 200), carrying the step 13 message; dream-os saved and answered it by 08:01:46. The bride PNID 1193630900506451 kept delivering
+    through the gap (07:26:18 to 07:40:14, → 200). No callback, verify token, subscription, variable or code changed on either side. The control of 07:28:56 (one unsigned POST → 403
+    and one "[webhook:meta] invalid X-Hub-Signature-256" line) proved dream-os live; public.failed_turns held 0 rows for the day. His earlier sends at about 12:35 and 12:40 IST produced no
+    event at the ingress; only one step 13 message reached the thread. Withdrawn suspicions stay withdrawn: the WhatsApp terms that took effect 23 September (no source ties them to
+    delivery) and business-scoped user IDs (no such message reached the receiver). Context only: service messages are billable from 1 October (the founder's to act on in Business Suite).
+    A reading taken in error and corrected: "surface=whatsapp" is printed only on the app lane, so its empty result was no evidence.
+8.14 No miss; no finding from the walk. F-44.131 is Meta's, closed by the chair.
 
 ## 9 · OPEN
+Cut 2b is walked green (§8). F-44.131 closed by the chair as a Meta-side outage (§8.13).
 Cut 3 (the team and the payment reminder) and cut 4 (the lookups) remain; cut 4 goes to LCV-14 from a written state (accepted in advance).
 The 2a handover's blob is 5b21b423553d at 3af9a01, not the kickoff's (c-45.10).
