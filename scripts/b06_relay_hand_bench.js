@@ -62,7 +62,86 @@ const SRC = (p) => path.join(ROOT, p);
 
 let pass = 0, fail = 0;
 const fails = [];
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§7.4 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§7.8 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§8.1 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§8.4 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§8.8 ",
+    "LSP_1: it reads chat.js's IMPERATIVE_STEMS, deleted with the imperative family (R3)"
+  ],
+  [
+    "§9.12 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§10.12 ",
+    "LSP_1: it reads chat.js's CONFIRM_SHAPE_RE, deleted with the chain's tail, its only reader"
+  ],
+  [
+    "§10.13 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§10.14 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§11.1 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§11.2 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§11.3 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§13.10 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§13.11 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§13.12 ",
+    "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
 async function t(name, fn) {
+  if (__retired(name)) return;
   try { await fn(); pass++; console.log(`  ok   ${name}`); }
   catch (e) { fail++; fails.push(name); console.log(`  FAIL ${name} — ${e && e.message}`); }
 }

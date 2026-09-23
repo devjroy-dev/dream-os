@@ -67,31 +67,8 @@ const webhookCore = require('../src/lib/webhookCore.js');
 // ══════════════════════════════════════════════════════════════════════════════════════
 // `seen` is the durable state: it survives the simulated restart exactly as a database
 // does, which is the entire point. Everything else resets per pass.
-// ── R-44.37 PLANT (CE-44 LCV-9 PART ONE; the chair's ruling of 21 September 2026, "THE OLD BENCHES") ─────────────────
-// This bench drives the REAL vendor WhatsApp lane to test machinery that STAYS: the chain, which still serves the
-// Advisor room and the switch's other position. From this cut the chain answers a working-room turn ONLY when
-// admin_config `vendor.working_chain_enabled` is JSON true (src/lib/laneFlags.js; read in workingDoor.standIn). The
-// plant is that ONE row in THIS bench's own admin_config double, every other key answered as before. NO ASSERTION
-// IS CHANGED OR WEAKENED. The default position (key absent, junk, read failing: chain OUT) is b93's to prove.
-function plantChainIn(sb) {
-  const realFrom = sb.from;
-  sb.from = function plantedFrom(table, ...rest) {
-    const real = realFrom.call(sb, table, ...rest);
-    if (table !== 'admin_config') return real;
-    // every other read of admin_config (another key, an .in() list) goes to the double exactly as before
-    const realSelect = real.select;
-    real.select = function plantedSelect(...cols) {
-      const q = realSelect.apply(real, cols); const realEq = q.eq;
-      q.eq = function plantedEq(col, key) {
-        if (col === 'key' && key === 'vendor.working_chain_enabled') return { maybeSingle: async () => ({ data: { value: 'true' }, error: null }) };
-        q.eq = realEq; return realEq.call(q, col, key);
-      };
-      return q;
-    };
-    return real;
-  };
-  return sb;
-}
+// LSP_1 (CE-45 LCV-15): the R-44.37 PLANT (plantChainIn) is RETIRED with the switch `vendor.working_chain_enabled`:
+// no reader of the key remains, and the chain it planted ON is deleted.
 function makeEstate({ vendor, convoId = 'c1', seen = new Set() } = {}) {
   const captured = { messages: [], proposals: [], extractCalls: [], sends: [], order: [] };
 
@@ -140,7 +117,6 @@ function makeEstate({ vendor, convoId = 'c1', seen = new Set() } = {}) {
   }
 
   const supabase = { from: (tbl) => builder(tbl), schema: () => ({ from: (tb) => builder(tb) }), rpc: async () => ({ data: null, error: null }) };
-  plantChainIn(supabase); // R-44.37 PLANT, labelled at the helper
   return { supabase, captured, seen };
 }
 
@@ -437,7 +413,7 @@ const outboundRows = (c) => c.messages.flat().filter((m) => m && m.direction ===
   // ────────────────────────────────────────────────────────────────────────────────────
   H('§7 — SYNTHESIS (§9\'s clause): THE GUARD MEETS THE TEXT PATH IT NOW SHADOWS');
 
-  await t('§7.1 Vision throws WITH a caption -> exactly ONE inbound row survives, and the turn completes', async () => {
+  await t('§7.1 Vision throws WITH a caption -> exactly ONE inbound row survives, and the turn completes (RE-AIMED, LSP_1: the door completes it)', async () => {
     // THE INTERACTION, disclosed rather than discovered. A captioned image whose Vision
     // call throws falls through this branch into the full vendor text path, which inserts
     // its OWN inbound row on the SAME wamid at the file's other inboundRow site. That
@@ -456,7 +432,11 @@ const outboundRows = (c) => c.messages.flat().filter((m) => m && m.direction ===
     assert.strictEqual(ins.length, 1, `exactly one inbound row must survive, got ${ins.length}`);
     assert.strictEqual(ins[0].message_sid, WAMID, 'and it is the guard row, holding the wamid');
     assert.strictEqual(ins[0].media_url, STABLE, 'which the text path\'s row would not have carried');
-    assert.ok(captured.order.includes('runTurn'), 'the vendor still got his turn — the guard shadows a row, never a reply');
+    // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): the vendor's turn is now the DOOR's, never runTurn's (the chain is deleted).
+    // The turn still completes: exactly one line reaches the vendor after the image branch falls through, and runTurn is
+    // never called. The guard still shadows a row and never a reply.
+    assert.ok(!captured.order.includes('runTurn') && captured.sends.length === 1 && typeof captured.sends[0] === 'string' && captured.sends[0].length > 0,
+      `the vendor still got his turn, from the door (sends: ${JSON.stringify(captured.sends)}, order: ${captured.order.join(',')})`);
     assert.ok(captured.order.includes('messages:23505'), 'the text path\'s duplicate was rejected by the index, as designed');
   });
 

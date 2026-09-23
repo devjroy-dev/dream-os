@@ -83,9 +83,11 @@ const FRESH_THREAD_LINE = typeof _mode.FRESH_THREAD_LINE === 'string'
 const {
   abandonActiveThread, fetchCalendarSnapshot: pwaSnapshot,
 } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
-const {
-  fetchCalendarSnapshot: waSnapshot,
-} = require(path.join(ROOT, 'src/lib/vendor/calendarSignals.js'));
+// CE-45 LCV-15 LSP_1 (labelled amendment): calendarSignals.js (the WhatsApp door's copy of the snapshot) is DELETED with
+// the chain (A11), and the switch this bench planted ON is retired. Each cell that read the handset copy is RETIRED at its
+// site with its reason; each "both homes" cell keeps its PWA half; the fence cells are re-aimed at what survives.
+const RETIRED = (label, why) => console.log(`  RETIRED  ${label}  (${why})`);
+const GONE = 'LSP_1: the handset snapshot, calendarSignals.js, is deleted with the WhatsApp chain';
 const { extractStatuses } = require(path.join(ROOT, 'src/lib/metaInbound.js'));
 // F-04.101 (this sitting): the JOINT. The real door and the real transport adapters — the
 // fence lives inside processVendorInbound, so nothing short of driving it proves the wiring.
@@ -161,7 +163,7 @@ function mkJointDeps() {
   const ops = { inserts: [], updates: [], deletes: [], engineUpdates: [], engineDeletes: [], sends: [], turns: 0 };
   const engineConvos = [{ id: 'ec1', agent_id: 'ag1', state: 'active' }];
   const deps = {
-    supabase: plantChainIn(mkJointSupabase(ops, engineConvos)), // R-44.37 PLANT, labelled above
+    supabase: mkJointSupabase(ops, engineConvos), // LSP_1: the R-44.37 plant is RETIRED with the switch (no reader of the key remains)
     anthropic: {},
     sendWhatsApp: async (phone, text, media) => { ops.sends.push({ phone, text, media: media || [] }); return { sid: 'SMout' }; },
     webhookCore,
@@ -208,31 +210,7 @@ const jInputs = {
   meta:   (text) => metaInputsFrom(jMetaMsg(text), { entry: [] }),
 };
 
-// ── R-44.37 PLANT (CE-44 LCV-9 PART ONE; the chair's ruling of 21 September 2026, "THE OLD BENCHES") ─────────────────
-// This bench drives the REAL vendor WhatsApp lane to test machinery that STAYS: the chain, which still serves the
-// Advisor room and the switch's other position. From this cut the chain answers a working-room turn ONLY when
-// admin_config `vendor.working_chain_enabled` is JSON true (src/lib/laneFlags.js; read in workingDoor.standIn). The
-// plant is that ONE row in THIS bench's own admin_config double, every other key answered as before. NO ASSERTION
-// IS CHANGED OR WEAKENED. The default position (key absent, junk, read failing: chain OUT) is b93's to prove.
-function plantChainIn(sb) {
-  const realFrom = sb.from;
-  sb.from = function plantedFrom(table, ...rest) {
-    const real = realFrom.call(sb, table, ...rest);
-    if (table !== 'admin_config') return real;
-    // every other read of admin_config (another key, an .in() list) goes to the double exactly as before
-    const realSelect = real.select;
-    real.select = function plantedSelect(...cols) {
-      const q = realSelect.apply(real, cols); const realEq = q.eq;
-      q.eq = function plantedEq(col, key) {
-        if (col === 'key' && key === 'vendor.working_chain_enabled') return { maybeSingle: async () => ({ data: { value: 'true' }, error: null }) };
-        q.eq = realEq; return realEq.call(q, col, key);
-      };
-      return q;
-    };
-    return real;
-  };
-  return sb;
-}
+// LSP_1: the R-44.37 PLANT (plantChainIn) is RETIRED: the switch `vendor.working_chain_enabled` has no reader left to plant.
 // ── mock supabase: engine.conversations (thread seam) + public.events (snapshots) ──────────
 function mkSupabase(convos, events) {
   const ops = { convoUpdates: [], deletes: [] };
@@ -341,13 +319,11 @@ const SEED = [
   let waSnap = '', pwaSnap = '';
   {
     const sb = mkSupabase([], SEED);
-    waSnap = await waSnapshot(sb, V);
-    T('WA door: the snapshot builds against the seeded estate', waSnap.length > 0);
-    T('WA door: the snapshot DISCLOSES ITS OWN CREW-BLINDNESS and points at the tool', waSnap.includes(BLIND));
-    T('WA door: the F-04.66 referent header survives beside it (no regression)',
-      /Refer to a booking by its name/.test(waSnap));
-    T('WA door: the bookings still render as sayable referents',
-      waSnap.includes('\u00b7 Ananya - recce'));
+    void sb; void waSnap;
+    RETIRED('WA door: the snapshot builds against the seeded estate', GONE);
+    RETIRED('WA door: the snapshot DISCLOSES ITS OWN CREW-BLINDNESS and points at the tool', GONE);
+    RETIRED('WA door: the F-04.66 referent header survives beside it (no regression)', GONE);
+    RETIRED('WA door: the bookings still render as sayable referents', GONE);
   }
   {
     const sb = mkSupabase([], SEED);
@@ -362,10 +338,9 @@ const SEED = [
     // F-04.65 doctrine, asserted: one mind, two surfaces — the disclosure cannot drift by
     // surface. Compare the HEADER LINE of each built snapshot byte-for-byte.
     const headOf = (s) => s.split('\n')[0];
-    T('*** BOTH HOMES CARRY THE HEADER AS VERBATIM IDENTICAL BYTES (F-04.65) ***',
-      headOf(waSnap) === headOf(pwaSnap) && headOf(waSnap).includes(BLIND));
-    T('the disclosure appears exactly ONCE per snapshot (not duplicated into the lines)',
-      (waSnap.match(/Crew assignments are not shown here/g) || []).length === 1 &&
+    RETIRED('*** BOTH HOMES CARRY THE HEADER AS VERBATIM IDENTICAL BYTES (F-04.65) ***', 'LSP_1: one home remains, the app\'s');
+    void headOf;
+    T('the disclosure appears exactly ONCE in the app snapshot (not duplicated into the lines) (RE-AIMED, LSP_1: its handset half is deleted)',
       (pwaSnap.match(/Crew assignments are not shown here/g) || []).length === 1);
   }
   {
@@ -462,8 +437,11 @@ const SEED = [
     {
       const { deps, ops, engineConvos } = mkJointDeps();
       await processVendorInbound(jInputs.meta('start fresh tomorrow'), deps);
-      T('a sentence merely CONTAINING the word falls THROUGH to the engine (runTurn ran)',
-        ops.turns === 1);
+      // LSP_1 RE-AIMED: past the fence the turn now goes to the working door, never the engine (the chain is deleted), so
+      // "the engine ran" became "the engine did NOT run and the fence did not fire". The fence's point survives: CONTAINS
+      // is not the word.
+      T('a sentence merely CONTAINING the word falls THROUGH the fence (RE-AIMED, LSP_1: to the door; the engine never runs)',
+        ops.turns === 0);
       T('…and that turn abandoned nothing — the room is untouched',
         engineConvos[0].state === 'active');
       T('…and no fresh-line row was written on that turn',
@@ -490,14 +468,12 @@ const SEED = [
       + 'assignments are not shown here \u2014 signal donna_assign_crew; the calendar adjudicates. '
       + 'For event_id use the booking\'s name from the lines below, never a note or description.]';
     const bracketOf = (s) => { const m = s.match(/\[Calendar[^\]]*\]/); return m ? m[0] : ''; };
-    const waSb = mkSupabase([], SEED);
-    const wa = bracketOf(await waSnapshot(waSb, V));
     const pwaSb = mkSupabase([], SEED);
     const pwa = bracketOf(await pwaSnapshot({ app: { locals: { supabase: pwaSb } }, vendor: { id: V, tier: 'signature' } }));
-    T('WA door: the built header is the expected bytes, EXACTLY (no drift, no near-miss)', wa === HEADER);
+    RETIRED('WA door: the built header is the expected bytes, EXACTLY (no drift, no near-miss)', GONE);
     T('app door: the built header is the expected bytes, EXACTLY', pwa === HEADER);
-    T('*** THE TWO HOMES ARE BYTE-IDENTICAL ON THE FULL BRACKET (F-04.65, exact witness) ***',
-      wa === pwa && wa.length > 0);
+    RETIRED('*** THE TWO HOMES ARE BYTE-IDENTICAL ON THE FULL BRACKET (F-04.65, exact witness) ***', 'LSP_1: one home remains, the app\'s');
+    const wa = pwa; // LSP_1 RE-AIMED: the clause cells below read the one surviving home
     T('the clause names the PLANE: an event_id is the booking\'s name, never a note or description',
       wa.includes("For event_id use the booking's name from the lines below, never a note or description."));
     T('…and it rides INSIDE the bracket (context the model reads, not a stray trailing line)',

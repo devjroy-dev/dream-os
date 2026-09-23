@@ -37,7 +37,29 @@ const readIf = (rel) => (fs.existsSync(P(rel)) ? fs.readFileSync(P(rel), 'utf8')
 let pass = 0, fail = 0;
 const fails = [];
 const sec = (s) => console.log(`\n── ${s} ──`);
-function ok(c, n) { if (c) { pass++; console.log(`  ok   ${n}`); } else { fail++; fails.push(n); console.log(`  FAIL ${n}`); } }
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§8.4 ",
+    "LSP_1: the vendor lane's fact build fed only the chain's runTurn, deleted (K8)"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+function ok(c, n) { if (__retired(n)) return; if (c) { pass++; console.log(`  ok   ${n}`); } else { fail++; fails.push(n); console.log(`  FAIL ${n}`); } }
 const tryRequire = (rel) => { try { return require(P(rel)); } catch (e) { console.log(`  (require ${rel} failed: ${e.message.split('\n')[0]})`); return null; } };
 const safe = async (fn) => { try { return (await fn()) || {}; } catch (e) { console.log(`  (driver threw: ${String(e && e.message).split('\n')[0]})`); return {}; } };
 const quiet = async (fn) => { const w = console.warn, e = console.error; console.warn = () => {}; console.error = () => {}; try { return await fn(); } finally { console.warn = w; console.error = e; } };
@@ -497,8 +519,10 @@ function payWorld(over = {}) {
     '§8.3 both web routes pass the WHOLE fact, block and ids');
   ok(/buildBookedFacts\(supabase, vendor\.id\)/.test(waSrc) && /bookedFacts: bookedFacts \? \{ block: bookedFacts\.block, binderIds: bookedFacts\.binderIds \} : undefined/.test(waSrc),
     '§8.4 the vendor lane builds and passes the same fact from the same module');
-  ok((chatSrc.match(/runLifecycleSignals\(req\.app\.locals\.supabase/g) || []).length === 2 && /runLifecycleSignals\(supabase, \{ vendor, agentId, result \}\)/.test(waSrc),
-    '§8.5 both lanes act on the signals through the ONE helper');
+  // SPLIT (CE-45 LCV-15 LSP_1, labelled): the vendor lane's half is RETIRED with the chain's tail; on WhatsApp the door
+  // runs the lifecycle hands itself (workingDoor.js, b90 holds it). The web half stands.
+  ok((chatSrc.match(/runLifecycleSignals\(req\.app\.locals\.supabase/g) || []).length === 2,
+    '§8.5 both lanes act on the signals through the ONE helper (SPLIT, LSP_1: the web lane; the chain lane is deleted)');
   ok(/if \(lifecycle && lifecycle\.length\)\s+parts\.push\(scrubText\(lifecycle\.join/.test(chatSrc), '§8.6 the web door\'s lines ride composedTail\'s one ordered list');
 
   // ══ §9 · the gate ══════════════════════════════════════════════════════════

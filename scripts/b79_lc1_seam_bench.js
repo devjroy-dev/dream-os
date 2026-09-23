@@ -35,7 +35,41 @@ const ROOT = path.resolve(__dirname, '..');
 const P = (rel) => path.join(ROOT, rel);
 
 let pass = 0, fail = 0; const fails = [];
-const ok = (c, m) => { c ? (pass++, console.log('  PASS  ' + m)) : (fail++, fails.push(m), console.log('  FAIL  ' + m)); };
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§2.1 ",
+    "LSP_1: calendarSignals.applyCalendarSignals, the WhatsApp door's pass, is deleted with the chain (A11); the seam itself is proven by §1 and the web door by §3"
+  ],
+  [
+    "§2.2 ",
+    "LSP_1: calendarSignals.applyCalendarSignals, the WhatsApp door's pass, is deleted with the chain (A11); the seam itself is proven by §1 and the web door by §3"
+  ],
+  [
+    "§2.3 ",
+    "LSP_1: calendarSignals.applyCalendarSignals, the WhatsApp door's pass, is deleted with the chain (A11); the seam itself is proven by §1 and the web door by §3"
+  ],
+  [
+    "§5 M7 ",
+    "LSP_1: its mutation targets calendarSignals.js, deleted"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+const ok = (c, m) => { if (__retired(m)) return; c ? (pass++, console.log('  PASS  ' + m)) : (fail++, fails.push(m), console.log('  FAIL  ' + m)); };
 const sec = (t) => console.log('\n── ' + t + ' ──');
 
 function tryRequire(rel) {
@@ -225,8 +259,9 @@ async function main() {
     ok(seq.length === 2, `§3.2 both routes call ensureBookingEvents straight after the lockstep (found ${seq.length})`);
     ok((src.match(/refused\.push\(\.\.\.seam\w*\.refused\)/g) || []).length === 2, '§3.3 both routes fold the seam refusals into `refused`');
     ok(!/function\s+ensureBookingEvents/.test(src), '§3.4 no second home of the seam in chat.js');
-    const cs = fs.readFileSync(P('src/lib/vendor/calendarSignals.js'), 'utf8');
-    ok(!/function\s+ensureBookingEvents/.test(cs), '§3.5 no second home of the seam in calendarSignals.js');
+    // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): calendarSignals.js is DELETED (A11), so it can hold no second home; the
+    // cell now pins its absence, and chat.js stays the one home's only caller (3.1 to 3.4).
+    ok(!fs.existsSync(P('src/lib/vendor/calendarSignals.js')), '§3.5 no second home of the seam in calendarSignals.js (RE-AIMED, LSP_1: the file is deleted)');
   }
 
   // §4 — the mint: due_date = the binder's followup_on (F2(a)), captured at createInvoice
@@ -286,9 +321,7 @@ async function main() {
   }
   {
     // M7 — the WA call removed: §2.1 must go red.
-    const r = loadMutated('src/lib/vendor/calendarSignals.js',
-      "const seam = await ensureBookingEvents(supabase, vendor, agentId, result, { surface: S });",
-      "const seam = { refused: [] };");
+    const r = { mod: null }; // LSP_1 (labelled): calendarSignals.js is deleted; M7 is retired by this bench's table and never mutates
     let red = false;
     if (r.mod) {
       const { api, db } = makeDb({ vendor: VEND, records: [dholakia()] });

@@ -1,0 +1,41 @@
+# CE-45 LCV-15 · LC-Victor, the last server packet · LSP_1 (the chain calls, the pre-door reads, the deps and index wiring, the switch, listenAfterWire, the three chat.js exports, A11) · base 89e3a6e
+# Deletions carry '# DELETED' (A-45.1): block 1 removes them by name, block 3 records them with git rm.
+scripts/b0461_p6_bench.js
+scripts/b0498_fresh_crew_rider_bench.js
+scripts/b0498_wa_assign_punct_bench.js # DELETED
+scripts/b05_arc_m5_bench.js
+scripts/b05_f0550_ping_drain_bench.js # DELETED
+scripts/b05_f0555_media_dedupe_bench.js
+scripts/b05_m2_vendor_inbound_bench.js
+scripts/b06_bride_arrival_bench.js
+scripts/b06_forkc_wireguard_bench.js
+scripts/b06_m3_bench.js
+scripts/b06_relay_hand_bench.js
+scripts/b104_lcv12_calendar_bench.js
+scripts/b40_victor_sitting_bench.js
+scripts/b5_wa_door_bench.js # DELETED
+scripts/b5_wa_door_smoke.js # DELETED
+scripts/b65_g1_wa_advisor_off_bench.js
+scripts/b65_mutations.js
+scripts/b68_introductions_bench.js
+scripts/b79_lc1_seam_bench.js
+scripts/b80_lc1b_door_strings_bench.js
+scripts/b84_lc2_p4a_lifecycle_bench.js
+scripts/b85_lc2_p5_bench.js
+scripts/b86_lcv_p2_bench.js
+scripts/b88_lcv_p4a_bench.js
+scripts/b90_lcv_p5_bench.js
+scripts/b93_lcv9_chain_out_bench.js
+scripts/floor-base.txt
+scripts/tdw10_combined_cap_bench.js
+src/api/vendor-engine/chat.js
+src/index.js
+src/lib/laneFlags.js
+src/lib/vendor/calendarSignals.js # DELETED
+src/lib/vendor/introductionSeat.js # DELETED
+src/lib/vendor/leadPings.js # DELETED
+src/lib/vendor/workingDoor.js
+src/lib/vendorInbound.js
+scripts/b110_lcv15_lsp1_bench.js
+scripts/floor-manifest-lcv15-lsp1.txt
+docs/handovers/TDW_CE45_LCV15_LSP_1_HANDOVER.md

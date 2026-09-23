@@ -51,7 +51,33 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ||
 let pass = 0, fail = 0; const fails = [];
 const sec = (t) => console.log(`\n${t}`);
 function ok(name, cond, why) { if (cond) { pass++; console.log(`  ok   ${name}`); } else { fail++; fails.push(name); console.log(`  FAIL ${name}${why ? ' — ' + why : ''}`); } }
-async function cell(name, fn) { try { const r = await fn(); r === true ? ok(name, true) : ok(name, false, typeof r === 'string' ? r : JSON.stringify(r)); } catch (e) { ok(name, false, (e && e.message) || String(e)); } }
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "2.4 ",
+    "LSP_1: the WhatsApp door's runTurn calls, and its import of waLaneMode, are deleted with the chain"
+  ],
+  [
+    "3.3 ",
+    "LSP_1: the WhatsApp door's runTurn calls, and its import of waLaneMode, are deleted with the chain"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+async function cell(name, fn) { if (__retired(name)) return; try { const r = await fn(); r === true ? ok(name, true) : ok(name, false, typeof r === 'string' ? r : JSON.stringify(r)); } catch (e) { ok(name, false, (e && e.message) || String(e)); } }
 
 // ── THE DOUBLE — admin_config + engine.agents, with a READ LOG ───────────────
 // The read log is the instrument for §1.2's claim. "The WhatsApp lane does not
@@ -202,11 +228,11 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
       ? true : `waLaneMode is ${typeof waLaneMode}/${waLaneMode && waLaneMode.length}`;
   });
 
-  await cell('3.2 BOTH readers import it; neither spells the word itself', () => {
+  await cell('3.2 BOTH readers import it; neither spells the word itself (SPLIT, LSP_1: the route half; the WhatsApp door no longer calls runTurn, so it no longer reads the home)', () => {
     const chat = codeOf('src/api/vendor-engine/chat.js');
-    const door = codeOf('src/lib/vendorInbound.js');
+    // LSP_1 SPLIT (CE-45 LCV-15, labelled): the door's half is RETIRED; the WhatsApp lane's runTurn calls are deleted,
+    // and with them its only reason to read waLaneMode(). The route's half stands whole.
     if (!/waLaneMode/.test(chat)) return 'the route does not read the home';
-    if (!/waLaneMode/.test(door)) return 'the door does not read the home';
     // The route's own comparison is against 'advisor' (0080's word), never a
     // literal 'business' standing in for the rule.
     const at = chat.indexOf('async function buildLlmForTurn');

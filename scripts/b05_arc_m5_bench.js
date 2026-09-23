@@ -72,7 +72,7 @@ t('§2.3 the island DECLARES itself, with its revival pointer', () => {
 //      estate; §3.1b asserts where the real reader is, in this same cell, so the two
 //      facts can never again be read apart.
 H('§3 — READER-ZERO IN src/agent, NAMED AT M5 · THE READER SHIPPED AT F-05.50(b) (R-M5-4, amended)');
-t('§3.1 pending_lead_pings: three TEXTUAL writers in src/agent (one DEAD, F-05.56), ZERO readers in THIS sweep world — the drain lives at src/lib/vendor/leadPings.js', () => {
+t('§3.1 pending_lead_pings: three TEXTUAL writers in src/agent (one DEAD, F-05.56), ZERO readers in THIS sweep world — and since LSP_1 none in src at all (the drain is deleted)', () => {
   let readers = 0, writers = 0;
   for (const f of fs.readdirSync(P('src/agent')).filter(x => x.endsWith('.js')))
     for (const l of code('src/agent/' + f).split('\n')) {
@@ -81,13 +81,14 @@ t('§3.1 pending_lead_pings: three TEXTUAL writers in src/agent (one DEAD, F-05.
     }
   assert.strictEqual(readers, 0, `src/agent still holds a reader — the drain's home is lib/vendor, found ${readers}`);
   assert.strictEqual(writers, 3, `expected three textual writers, found ${writers}`);
-  // §3.1b — THE REFERENT, ASSERTED NOT NARRATED (§4.1's own lesson, arc M5 §8).
-  // A "zero" whose scope lives only in a comment is one refactor away from a lie.
+  // 3.1b RE-AIMED (CE-45 LCV-15 LSP_1, labelled, COUNT PRESERVED): the drain at src/lib/vendor/leadPings.js is DELETED with
+  // the WhatsApp chain (A11; F-44.139: it stamped acknowledged_at on turns nothing surfaced). The zero above is now honest
+  // about the WHOLE estate, so the referent this cell asserts is the absence itself, not a home elsewhere.
   const drain = 'src/lib/vendor/leadPings.js';
-  assert.ok(fs.existsSync(P(drain)), `the zero above is only honest because the reader lives at ${drain} — and it does not`);
-  const d = code(drain);
-  assert.ok(/from\('pending_lead_pings'\)/.test(d), 'the drain must actually read the table it drains');
-  assert.ok(/acknowledged_at/.test(d), 'and stamp it (R2/L1) — surfacing is draining');
+  assert.ok(!fs.existsSync(P(drain)), `the drain was deleted in LSP_1 and must stay deleted: ${drain}`);
+  const anyReader = require('child_process').execSync("grep -rl --include=*.js --include=*.ts \"from('pending_lead_pings')\" src || true", { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean)
+    .filter((f) => code(f).split('\n').some((l) => /from\('pending_lead_pings'\)/.test(l) && !/\.insert/.test(l)));
+  assert.deepStrictEqual(anyReader, [], `no reader of pending_lead_pings anywhere in src: ${anyReader.join(', ')}`);
 });
 
 H('§4 — W-1 AND PURITY');

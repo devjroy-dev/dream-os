@@ -48,7 +48,6 @@ const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 const { scrubText, witnessWireScrub } = require('../../lib/vendor/scrub'); // TDW_04 B2 — F-04.38 · witnessWireScrub: TDW_06 M-4 / F-06.36
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
 const { ensureBookingEvents } = require('../../lib/vendor/bookingEvent'); // CE-43 LC-1 F-43.1(a): the booking event seam, one home
-const listenerDoor = require('../../lib/vendor/listenerDoor'); // CE-44 LC-Victor P2: the silent listener
 const { longDateYear } = require('../../lib/witnessLine'); // CE-43 LC-1b F-43.29: the full-month Updated: line
 const { blockDates, unblockDates, blockLines, unblockLines } = require('../../lib/vendor/blockHands'); // TDW_04 B2 §1.5
 
@@ -71,110 +70,9 @@ function actionKind(name) {
   return 'write';
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TDW_06 · F-06.136 — THE OWNER-IMPERATIVE FAMILY (CE-110's last charter, fork F1(a):
-// this vocabulary lives HERE, beside actionKind and the four claim families, because
-// production owns the vocabulary and the rig and the WA seat borrow it. One home.)
-//
-// THE DISEASE (Evening Seven, Card Two lines 2 and 5, the founder's own wire): Victor
-// answered TWO owner-imperatives with a consultative gate and ZERO hands —
-//   L2  owner: "Note on Kunal Dhillon: wants a lakeside baraat start."
-//       Victor: "I need to attach that note to the actual binder once Kunal moves from
-//                lead to booking…"                                    tool_calls: null
-//   L5  owner: "Book a shoot for Kunal Dhillon on 7 March 2027, 9 am."
-//       Victor: "I can't book a shoot for Kunal yet — he's still a lead, not a client.
-//                No contract, no scope, no budget locked."            tool_calls: null
-// That gate is taught NOWHERE. It is the exact inverse of what his own soul teaches.
-//
-// THE SOUL, QUOTED VERBATIM FROM `src/engine/src/core/harveySoul.ts:98` — W-1 SHUT, this
-// is a QUOTE and the soul is not edited by this movement. Re-read it before touching the
-// stems below; if the paragraph ever moves, this comment is the thing that must move too
-// (F-06.85's binding: a mechanism conditioned on a soul sentence NAMES it in-comment so
-// the mechanism's next sitting is forced to re-read the sentence):
-//
-//   "And when the owner's message IS the act — log her, file this, book the date, block
-//    the morning, unblock it, cancel it, move it, note it, update it, or any plain cousin
-//    of those words — you hear it for exactly what it is: work, the moment it is spoken.
-//    … So it goes to Donna in the same turn it arrived — never parked behind a question,
-//    never held for a missing detail. … Asking INSTEAD of handing is a clerk stalling the
-//    work to look careful … Completeness never gates the hand"
-//
-// and `harveySoul.ts:100` closes the ONE exception in the owner's favour:
-//   "And if your owner says log it as it stands, you do, marked for what it lacks; his
-//    word is always the last."
-//
-// THE NINE STEMS ARE THE SOUL'S OWN, AND ONLY THE SOUL'S OWN (fork F4(a), CE-ruled).
-// "any plain cousin of those words" is an instruction to VICTOR, not a machine-derivable
-// list; every cousin added here is a false arm paid for in a duplicated model turn on a
-// turn he may have answered honestly. Cousins wait for evidence from the production row
-// this arm now writes. Narrow first.
-// ── R-29.27's SECOND CLAUSE IS §0.2-BLOCKED AND NOT TAKEN (F-06.161) ────────
-// The ruling ordered `send|message` to join these stems. THEY CANNOT JOIN.
-// THE NINE ARE NOT A LIST — THEY ARE A QUOTATION. `harveySoul.ts:98` names
-// exactly these nine verbs ("log her, file this, book the date, block the
-// morning, unblock it, cancel it, move it, note it, update it"), and
-// `b06_forkc_wireguard_bench` §14.2 asserts the constant IS the soul's nine and
-// never a tenth. A tenth stem is therefore either a sealed-floor RED or a soul
-// byte — and W-1 shuts the soul for this sitting.
-// Filed as F-06.161 and left to the chair. The relay's claim family
-// (RELAY_CLAIM_RE) is independent of this clause and ships whole.
-const IMPERATIVE_STEMS = 'unblock|block|log|file|book|cancel|move|note|update';
-// Tolerated lead-ins. These do not change the mood — "please log her" is "log her".
-const IMPERATIVE_POLITE = '(?:please|pls|plz|kindly|just|can you|could you|would you|can u)';
-//
-// THE FALSE-ARM RISKS, ENUMERATED ON THE PREDICATE'S FACE (F-04.27's precedent — a guard
-// that cannot say what it will get wrong has not been read). Every one of them costs at
-// most ONE duplicated actor run and CANNOT change a byte the vendor sees, because the
-// second-refusal outcome ships Victor's original reply untouched:
-//   (1) THE NOUN-AT-CLAUSE-HEAD. "Note on Kunal: …" reads as a label as easily as an
-//       imperative; so does "Update: they moved the date." Both arm. Accepted knowingly —
-//       L2's specimen is itself this exact shape, and the estate wants it armed.
-//   (2) THE QUOTED OWNER. "She said cancel it" does not arm (not clause-head); "Cancel it,
-//       she said" does. Accepted: the hand test acquits it the instant a hand fires.
-//   (3) THE RHETORICAL. "Book a shoot before there's a contract? No chance." arms. One
-//       retry, then his own words ship. Named, not cured.
-//   (4) WHAT DOES NOT ARM, deliberately: any family verb NOT at a clause head ("should I
-//       block that date?", "can we move things around"), every past/third-person/gerund
-//       form (blocked · books · noting · updated · cancelled · filed), and every cousin.
-// The `\b` after the alternation is what excludes (4)'s second limb by construction: in
-// "blocked", "booking", "noted", "moves", "filed" there is no word boundary after the
-// stem, so the stem cannot match. That is a property of the regex, not a list to maintain.
-const OWNER_IMPERATIVE_RE = new RegExp(
-  '(?:^|[.!?;\\n]\\s*)' +                       // CLAUSE HEAD ONLY — risk (4)'s first limb
-  '(?:' + IMPERATIVE_POLITE + '\\s+){0,2}' +    // "please just log her"
-  '(?:' + IMPERATIVE_STEMS + ')\\b',            // bare stem, never an inflection
-  'i'
-);
-function ownerImperative(message) {
-  return OWNER_IMPERATIVE_RE.test(String(message || ''));
-}
-
-// D-1's fence, reused and NOT re-authored: only NESTED donna_calls are hands, and her
-// voice (listen_harvey_talk) is not one. `actionKind` above decides what a write is —
-// no second authority on that question, exactly as donnaOpenLine and wireGuardClassify
-// read it. A MATCHING hand is a write or a calendar hand; a read hand is not a filing.
-function matchingHands(result) {
-  const hands = [];
-  for (const tc of ((result && result.tool_calls) || [])) {
-    for (const dc of ((tc && tc.donna_calls) || [])) {
-      if (dc && dc.name && dc.name !== 'listen_harvey_talk') hands.push(dc);
-    }
-  }
-  return hands.filter((h) => actionKind(h.name) !== 'read');
-}
-
-// THE PREDICATE. An owner-imperative from the soul's own family with ZERO matching hands
-// in the turn. Mechanical on both legs — verb family on one side, actionKind over the
-// turn's nested hands on the other. No prose reading of Victor's reply happens here AT
-// ALL, and that is deliberate: his refusal may be perfectly lawful (harveySoul:100's
-// establish-it-first distinction), and the arm does not judge it — it re-runs the actor
-// once and then lets his own sentence stand. A lawful refusal costs one turn and ships
-// unchanged; an invented gate gets a second chance to file. That asymmetry is the whole
-// design, and it is why this arm can never ship a lie: it has no sentence of its own.
-function imperativeMiss(message, result) {
-  if (!ownerImperative(message)) return false;
-  return matchingHands(result).length === 0;
-}
+// CE-45 LCV-15 LSP_1: TDW_06 F-06.136's owner-imperative family (OWNER_IMPERATIVE_RE, ownerImperative, matchingHands,
+// imperativeMiss, IMPERATIVE_STEMS) is DELETED with the WhatsApp chain's retry, its only caller. The Advisor room
+// never read it.
 
 // ── TDW_06 WIRE GUARD STAGE 1 — THE CLAIM VOCABULARY, ONE HOME (2026-07-28; CE-98/99
 // chartered, ruled at the Donna cure sitting). These four families MOVED HERE
@@ -1400,27 +1298,7 @@ const RELAY_CLAIM_RE = new RegExp([
 // cannot silently un-blind this class.
 const RELAY_DEED_RE = /^donna_relay_send$/;
 
-// ── TDW_06 F-06.166 (R-29.32 ③) — THE CONFIRM-SHAPE IMITATION ──────────────
-// THE NAMED RED SPECIMEN, founder-witnessed 2026-08-11 09:49:37, ZERO tool
-// calls and ZERO rows minted:
-//   「 Draft ready for approval: / "Are you interested in a pre-wedding shoot
-//     for Rs 50,000? …" / Send this to Priya? 」
-// A near-exact imitation of the door's own founder-vetoed byte ②. It is a
-// costume of a NEW kind — not a claimed deed but a claimed COMMITMENT, and the
-// existing families all speak about deeds. F-06.158's cure is what taught him
-// the shape: door-composed frames patched into the thread read to him as his
-// own speech, so he reproduces them. The cure's cost, priced here.
-//
-// THE ACQUITTAL IS THE STORE, not the words: this shape is honest when a draft
-// was just staged and a costume when none was. The door supplies that fact —
-// this regex only says the shape is present.
-const CONFIRM_SHAPE_RE = new RegExp([
-  "\\bsend\\s+(?:this|it|that)\\s+to\\s+\\S",
-  "\\bdraft\\s+(?:is\\s+)?ready\\b",
-  "\\bready\\s+for\\s+(?:your\\s+)?approval\\b",
-  "\\bapprove\\s+(?:and|it)\\b[^.]{0,40}\\b(?:goes|send)\\b",
-  "\\bhere\\s+is\\s+the\\s+draft\\b",
-].join("|"), "i");
+// CE-45 LCV-15 LSP_1: TDW_06 F-06.166's CONFIRM_SHAPE_RE is DELETED; its only reader was the WhatsApp chain's tail.
 
 // ── TDW_06 R-29.32 ① — THE RELAY-INSTRUCTION FAMILY, ONE HOME ──────────────
 // Four walks proved THE MODEL IS AN UNRELIABLE TRIGGER: every relay turn came
@@ -2561,65 +2439,7 @@ async function stage2RecordDelivery(supabase, runId, delivery) {
   } catch (e) { console.warn('[wire-guard stage2 delivery]', e && e.message); return false; }
 }
 
-// ── TDW_06 F-06.136 · THE IMPERATIVE ARM'S OWN ROW (CE-110, fork F3(b) ruled).
-// WHY A ROW AND NOT A LOG LINE: production opens on the standing instruments, and the
-// weekly precision read is one of them. An arm that fires on a live wire and leaves no
-// trace is an arm nobody is measuring — the empty-log hollow-green this block refused at
-// the WA seat's Stage 1 siting, one layer along. The row answers three questions the
-// console cannot: how often the gate is invented, how often the second run rescues it,
-// and what the arm cost.
-//
-// ZERO DDL, ZERO MIGRATION, and that is derived, not assumed: `run_type: 'production'`
-// is already in recordEval's allowed set, `transcript` is already the jsonb the Stage 1
-// specimen rides (witness: docs/db/ENGINE_SCHEMA.md, engine.evals_runs.transcript), and
-// this writes the SAME two columns the specimen seat beside it writes. It is not a new
-// module and not a new table — it is the existing landing site, one scenario further.
-//
-// FAIL-OPEN, ASSERTED AS A CELL: every path is caught and warns. A measurement that could
-// throw into the reply path would be a measurement that hurts the vendor to watch the
-// model — the same law the Stage 1 writer states at its own site.
-//
-// THE VERDICT WORD IS THE ARM'S, NOT VICTOR'S: `pass` = the second run filed the thing;
-// `fail` = it refused twice and HIS OWN SENTENCE SHIPPED UNTOUCHED. A `fail` here is NOT
-// a lie delivered — nothing was replaced, nothing was fabricated. It is the estate
-// recording that a hand the soul demanded never arrived. Read it that way or not at all.
-async function recordImperativeRetry(supabase, vendorId, agentId, arm, first, retry) {
-  try {
-    const eng = supabase && typeof supabase.schema === 'function' ? supabase.schema('engine') : null;
-    if (!eng) return false;
-    const names = (r) => {
-      const out = [];
-      for (const tc of ((r && r.tool_calls) || [])) {
-        for (const dc of ((tc && tc.donna_calls) || [])) {
-          if (dc && dc.name && dc.name !== 'listen_harvey_talk') out.push(dc.name);
-        }
-      }
-      return out;
-    };
-    const { error } = await eng.from('evals_runs').insert({
-      run_type: 'production',
-      scenario: `imperative_retry:${arm}`,
-      discipline: 'claim_doctrine',
-      verdict: arm === 'imperative_retry_landed' ? 'pass' : 'fail',
-      source_note: 'F-06.136 imperative-miss retry (one extra actor run; nothing replaced, no line of its own)',
-      transcript: {
-        agent_id: agentId || null,
-        vendor_id: vendorId || null,
-        conversation_id: (first && first.conversation_id) || null,
-        assistant_message_id: (first && first.assistant_message_id) || null,
-        first_reply:  (first && first.reply) || '',
-        retry_reply:  (retry && retry.reply) || '',
-        first_hands:  names(first),
-        retry_hands:  names(retry),
-        seat: 'wa',
-        at: new Date().toISOString(),
-      },
-      anonymized: false,
-    });
-    if (error) { console.warn('[imperative-retry]', error.message); return false; }
-    return true;
-  } catch (e) { console.warn('[imperative-retry]', e && e.message); return false; }
-}
+// CE-45 LCV-15 LSP_1: recordImperativeRetry (F-06.136's row) is DELETED with the WhatsApp chain's retry, its only caller.
 
 // The newest DELIVERED witness for this agent inside the window. `delivered` non-null is the
 // whole predicate — a turn whose retry landed the act carries arm `retry_landed` and a null
@@ -3545,9 +3365,9 @@ async function doorTurn(req, llmWiring, message, roomAssert) {
     out = await require('../../lib/vendor/workingDoor').preTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId, route: llmWiring && llmWiring.route, message, lane: 'pwa' });
   } catch (e) { console.warn('[door:pwa]', e && e.message); out = null; }
   // LCV-9 PART ONE (R-44.37): THE CHAIN HAS LEFT THIS ROOM. Where the door did not take the turn, its stand-in speaks
-  // (workingDoor.standIn: the one switch, `vendor.working_chain_enabled`, is read THERE; only JSON true returns null
-  // and lets this turn fall to the chain as at 10d5d99). If even the stand-in is unreachable the founder's glitch
-  // line speaks: a failure here never calls the chain.
+  // (workingDoor.standIn; the switch `vendor.working_chain_enabled` is RETIRED, CE-45 LCV-15 LSP_1, so a business turn
+  // never reaches the chain). If even the stand-in is unreachable the founder's glitch line speaks: a failure here never
+  // calls the chain.
   if (!(out && out.door)) {
     try { const stood = await require('../../lib/vendor/workingDoor').standIn({ supabase: req.app.locals.supabase, out }); if (stood) out = stood; }
     catch (e) { console.error('[door:pwa stand-in]', e && e.message); out = { door: true, reply: STAGE2_LINE_MUTATION, keys: ['GLITCH'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, why: 'unreachable', stood: true }; }
@@ -3571,16 +3391,9 @@ function doorHarvest(req, message, out) {
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
 // handler likewise accepted-and-ignored its `history` field).
-// CE-44 LC-Victor P2 (R-44.14, R-44.15, R-44.17): THE SILENT LISTENER, AFTER THE WIRE CLOSES.
-// Never awaited by the reply: setImmediate runs it only once the response has been handed off.
-// It hears the working room only (the advisor room is Victor's, R-44.18) and writes nothing a
-// vendor reads: meta on the named row, and one uncounted usage row (listenerDoor.js).
-function listenAfterWire(req, llmWiring, message, result, roomAssert) {
-  if (roomAssert === 'advisor' || !result) return;
-  const supabase = req.app.locals.supabase;
-  const route = llmWiring && llmWiring.route;
-  setImmediate(() => { listenerDoor.recordListening({ supabase, agentId: req.agentId, route, message, result, lane: 'pwa', ear: req._lcvEar }); });
-}
+// CE-45 LCV-15 LSP_1: listenAfterWire is DELETED. It returned at once in the Advisor room and ran only on a business
+// turn that reached the chain, which no longer happens (the switch is retired). listenerDoor.recordListening stays
+// in its own file, untouched by law, and is now callerless (disclosed in the handover).
 
 router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) => {
   const body    = req.body || {};
@@ -3650,7 +3463,6 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         doorHarvest(req, message, doorOut);
         return;
       }
-      req._lcvEar = doorOut ? doorOut.ear : null;
       const calendarSnapshot = await fetchCalendarSnapshot(req);
       const scratchpad = await fetchScratchpad(req);
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
@@ -3776,7 +3588,6 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
       res.end();
       fireHarvest(req, message, result); // TDW_02 P4 — after the wire closes
-      listenAfterWire(req, llmWiring, message, result, roomAssert); // CE-44 LC-Victor P2: after the wire closes
     } catch (e) {
       console.error('[vendor-e chat SSE]', e.message);
       send({ type: 'error', message: 'Chat failed.' });
@@ -3801,7 +3612,6 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         documents: doorOut.documents.length ? doorOut.documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
       });
     }
-    req._lcvEar = doorOut ? doorOut.ear : null;
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
@@ -3862,7 +3672,6 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // F-06.130: the delivery witness, recorded before the bytes leave — this route's
       // pre-delivery seam is the resolution point, and nothing intervenes after it.
       await stage2RecordDelivery(req.app.locals.supabase, guardVerdict && guardVerdict.run_id, { arm: 'glitch_line', delivered: s2, seat: 'pwa_json' });
-      listenAfterWire(req, llmWiring, message, result, roomAssert); // CE-44 LC-Victor P2: runs after res.json hands off
       return res.json({
         ok: true, reply: s2, tool_calls: [], refresh: false,
         meta: await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }),
@@ -3883,7 +3692,6 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     if (openLine) reply += '\n\n' + scrubText(openLine);                        // TDW_06 D-6, last
 
     fireHarvest(req, message, result); // TDW_02 P4 — response is fully built; fires post-return
-    listenAfterWire(req, llmWiring, message, result, roomAssert); // CE-44 LC-Victor P2: runs after res.json hands off
     const toolNames = (result.tool_calls || []).map((t) => t.name);
     return res.json({
       ok: true,
@@ -4090,12 +3898,6 @@ module.exports.REPORT_WINDOW_MS         = REPORT_WINDOW_MS;         // FORK 3-B 
 // ── TDW_06 F-06.136 — the imperative arm's seams. Exported on actionKind's own precedent
 // and for its reason: the bench drives the REAL predicate, so a bench green and a live
 // arming can never disagree about what an owner-imperative even is.
-module.exports.imperativeMiss        = imperativeMiss;     // the ONE arming predicate
-module.exports.ownerImperative       = ownerImperative;    // the verb-family leg alone
-module.exports.matchingHands         = matchingHands;      // the D-1-fenced hand leg alone
-module.exports.OWNER_IMPERATIVE_RE   = OWNER_IMPERATIVE_RE;
-module.exports.IMPERATIVE_STEMS      = IMPERATIVE_STEMS;
-module.exports.recordImperativeRetry = recordImperativeRetry;
 module.exports.isDeedOfClass         = isDeedOfClass;      // Fork A' class-match test seam
 module.exports.PRIOR_DEED_LOOKBACK   = PRIOR_DEED_LOOKBACK;
 // ── WIRE GUARD STAGE 1 · THE CLAIM VOCABULARY'S ONE HOME (2026-07-28). Exported on
@@ -4111,7 +3913,6 @@ module.exports.NARRATED_LOOKUP_RE    = NARRATED_LOOKUP_RE;
 // the masking law is honored by construction while the shared four stay byte-identical.
 module.exports.MUTATION_CLAIM_RE     = MUTATION_CLAIM_RE;
 module.exports.RELAY_CLAIM_RE        = RELAY_CLAIM_RE;   // F-06.159 — one home; the rig borrows
-module.exports.CONFIRM_SHAPE_RE      = CONFIRM_SHAPE_RE; // F-06.166 — the imitated commitment
 module.exports.RELAY_VERB_RE         = RELAY_VERB_RE;    // R-29.32 ① — the door's trigger
 module.exports.VERBATIM_RE           = VERBATIM_RE;      // R-29.32 ② — the vendor's own bytes
 module.exports.RELAY_DEED_RE         = RELAY_DEED_RE;

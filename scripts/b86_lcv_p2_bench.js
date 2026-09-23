@@ -33,7 +33,46 @@ const hasCommit = (sha, cwd) => { try { execSync(`git cat-file -e ${sha}^{commit
 const rangeDels = (cwd, from, to, rel) => { const l = execSync(`git diff --numstat ${from} ${to} -- ${rel}`, { cwd }).toString().trim(); return l ? Number(l.split(/\s+/)[1]) : 0; };
 const rangeChanged = (cwd, from, to) => execSync(`git diff --name-only ${from} ${to}`, { cwd }).toString().split('\n').filter(Boolean);
 let pass = 0; let fail = 0; const failed = [];
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§6 chat.js: the listener is called only after",
+    "LSP_1: listenAfterWire is deleted (it ran only on a business turn that reached the chain; the switch is retired)"
+  ],
+  [
+    "§6 chat.js: never awaited",
+    "LSP_1: listenAfterWire is deleted (it ran only on a business turn that reached the chain; the switch is retired)"
+  ],
+  [
+    "§6 chat.js: the advisor room is never heard",
+    "LSP_1: listenAfterWire is deleted (it ran only on a business turn that reached the chain; the switch is retired)"
+  ],
+  [
+    "§6 M1 a listener call moved",
+    "hollow green: with listenAfterWire deleted the order cell is false on any text, so its mutation reddens nothing real"
+  ],
+  [
+    "§6 WhatsApp: the listener is called only after sendWhatsApp",
+    "LSP_1: the WhatsApp chain's tail, where recordListening was called after the send, is deleted"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
 function T(name, cond) {
+  if (__retired(name)) return;
   if (cond) { pass += 1; console.log(`  PASS  ${name}`); }
   else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); }
 }

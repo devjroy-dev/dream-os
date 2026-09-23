@@ -29,9 +29,6 @@ const adminRouter  = require('./admin/router');
 const requireAdmin = require('./api/admin/requireAdmin');
 const apiRouter    = require('./api/router');
 const { resolveAgentForVendor } = require('./api/middleware/agentBridge'); // 5-A
-const { runTurn } = require('./engine/dist/core/loop');                     // 5-A
-const { fetchCalendarSnapshot, fetchScratchpad, applyCalendarSignals } = require('./lib/vendor/calendarSignals'); // 5-A calendar parity
-const { fetchLeadPings } = require('./lib/vendor/leadPings');               // TDW_05 F-05.50(b): the enquiry-ping drain
 const { buildLlmForTurn, abandonActiveThread } = require('./api/vendor-engine/chat'); // TDW_06 P7b: the shared route builder (F-06.1 2nd limb) · TDW_04.5 F-04.98 C3: the fresh-thread seam
 const { matchModeWord, applyModeFlip, MODE_FLIP_LINES, matchFreshWord, FRESH_THREAD_LINE } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words · TDW_04.5 F-04.98 C3: WA fresh word
 const { processVendorInbound, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
@@ -146,12 +143,13 @@ app.get('/', (req, res) => {
 // COUNT CORRECTED AT F-05.50(b), DISCLOSED: this comment read "24" and was already
 // stale at 27 before this micro added the 28th (fetchLeadPings). A count a reader
 // cannot re-derive is the stale-comment class; corrected rather than made worse.
+// CE-45 LCV-15 LSP_1: the chain's five seams (runTurn, fetchCalendarSnapshot, fetchScratchpad,
+// fetchLeadPings, applyCalendarSignals) left with the chain; the list is 23, derived by command.
 const vendorInboundDeps = {
   runCoupleAgenticTurn, sendWhatsApp, generateInvoiceForBinder, enquiryToBinder,
   ensureCoupleRow, captureField, buildDisambiguationQuestion, interpretDisambiguationReply,
-  vendorDisplayName, resolveAgentForVendor, runTurn, fetchCalendarSnapshot, fetchScratchpad,
-  fetchLeadPings, // TDW_05 F-05.50(b)
-  applyCalendarSignals, buildLlmForTurn, matchModeWord, applyModeFlip, MODE_FLIP_LINES,
+  vendorDisplayName, resolveAgentForVendor,
+  buildLlmForTurn, matchModeWord, applyModeFlip, MODE_FLIP_LINES,
   matchFreshWord, FRESH_THREAD_LINE, abandonActiveThread, // TDW_04.5 F-04.98 C3
   checkImageThrottle, markRejectionSent, extractCalendarFromImage, webhookCore, supabase, anthropic,
 };

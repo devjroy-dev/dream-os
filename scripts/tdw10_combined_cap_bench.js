@@ -171,16 +171,16 @@ t('§1.5 the gate sits AFTER all three escape words — glitch (the hatch cannot
     'the cap gate precedes the glitch word — a capped vendor could not report a fabrication');
 });
 
-t('§1.6 the gate sits BEFORE every turn input — calendar, scratchpad, lead-ping drain, llm wiring', () => {
+t('§1.6 the gate sits BEFORE every turn input — calendar, scratchpad, lead-ping drain, llm wiring (RE-AIMED, LSP_1: the llm wiring and the door; the three reads are deleted)', () => {
   const gateAt = waText.indexOf('const capSeam = require(');
   // THE SILENT ZERO, CLOSED. indexOf returns -1 for an ABSENT gate, and -1 is less
   // than every real offset — so the first draft of this cell was GREEN against a tree
   // with no gate in it at all. Caught by the pristine run, not by reasoning.
   assert.ok(gateAt > 0, 'the cap gate is absent — this ordering cell would otherwise pass vacuously');
   for (const marker of [
-    'const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id, vendor.category);',
-    'const scratchpad = await fetchScratchpad(supabase, vendor.id);',
-    'const leadPings = await fetchLeadPings(supabase, vendor.id);',
+    // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): the calendar, scratchpad and lead-ping reads are DELETED with the chain (K8,
+    // F-44.139). What a refused turn must not pay for is now the llm wiring and the door; both markers are asserted.
+    "doorOut = await require('./vendor/workingDoor').preTurn(",
     // c-41.35 (CE-41 seat F): this marker is a TRANSCRIPTION of a production line,
     // and F-41.46 moved that line — the WA door now names its own surface
     // (`surface: 'wa_vendor'`). The cell's SUBJECT is unchanged and still true: the
@@ -195,11 +195,14 @@ t('§1.6 the gate sits BEFORE every turn input — calendar, scratchpad, lead-pi
   }
 });
 
-t('§1.7 the gate sits BEFORE runTurn — the only thing on this path that writes a usage row', () => {
+t('§1.7 the gate sits BEFORE runTurn — the only thing on this path that writes a usage row (RE-AIMED, LSP_1: before the door, whose persist is now that writer)', () => {
   const gateAt = waText.indexOf('const capSeam = require(');
   assert.ok(gateAt > 0, 'the cap gate is absent — the same silent-zero trap as §1.6');
-  const runAt  = waText.indexOf('const result = await runTurn({');
-  assert.ok(runAt > 0 && gateAt < runAt, 'the cap gate does not precede runTurn');
+  // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): runTurn is DELETED from this lane. The only usage writer on the path is now the
+  // door's persistDoorTurn (reached through speakOnWhatsApp), so the gate must precede the door's delivery.
+  const runAt  = waText.indexOf('speakOnWhatsApp({');
+  assert.ok(runAt > 0 && gateAt < runAt, 'the cap gate does not precede the door\'s delivery (persistDoorTurn, the one usage writer)');
+  assert.ok(!/\brunTurn\(/.test(waText.replace(/\/\/.*$/gm, '')), 'runTurn is back on the WhatsApp lane');
 });
 
 t('§1.8 the inbound message row is written BEFORE the gate — her message survives the refusal', () => {

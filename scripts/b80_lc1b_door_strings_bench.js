@@ -42,7 +42,82 @@ const P = (rel) => path.join(ROOT, rel);
 let pass = 0, fail = 0;
 const fails = [];
 const sec = (s) => console.log(`\n── ${s} ──`);
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§2 calendarSignals.js C2a",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§2 calendarSignals.js C2b",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§2 calendarSignals.js C6",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§2 calendarSignals.js C2c",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§2.9 ",
+    "LSP_1: one twin remains; there is nothing to stay byte-identical with"
+  ],
+  [
+    "§3 calendarSignals.js C4",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§3 calendarSignals.js C5",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§4.1 ",
+    "LSP_1: the invoice sentence rode the WhatsApp chain's tail, deleted; the door speaks it from doorLines.js (b88, b90 hold that)"
+  ],
+  [
+    "§4.2 ",
+    "LSP_1: the invoice sentence rode the WhatsApp chain's tail, deleted; the door speaks it from doorLines.js (b88, b90 hold that)"
+  ],
+  [
+    "§4.3 ",
+    "LSP_1: the invoice sentence rode the WhatsApp chain's tail, deleted; the door speaks it from doorLines.js (b88, b90 hold that)"
+  ],
+  [
+    "§6 M2 calendarSignals.js",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§6 M3 calendarSignals.js",
+    "LSP_1: calendarSignals.js, the WhatsApp twin, is deleted (A11); chat.js's cells prove the one surviving home"
+  ],
+  [
+    "§6 M4 ",
+    "LSP_1: the invoice sentence rode the WhatsApp chain's tail, deleted; the door speaks it from doorLines.js (b88, b90 hold that)"
+  ],
+  [
+    "§6 M5 ",
+    "LSP_1: the invoice sentence rode the WhatsApp chain's tail, deleted; the door speaks it from doorLines.js (b88, b90 hold that)"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
 function ok(cond, name) {
+  if (__retired(name)) return;
   if (cond) { pass++; console.log(`  ok   ${name}`); }
   else { fail++; fails.push(name); console.log(`  FAIL ${name}`); }
 }
@@ -187,7 +262,7 @@ const loadMutated = (rel, from, to) => {
 async function main() {
   const wl = tryRequire('src/lib/witnessLine.js');
   const chat = tryRequire('src/api/vendor-engine/chat.js');
-  const cal = tryRequire('src/lib/vendor/calendarSignals.js');
+  const cal = null; // LSP_1 (CE-45 LCV-15, labelled): calendarSignals.js, the WhatsApp twin, is DELETED (A11); its cells retire by this bench's table
   const door = tryRequire('src/lib/vendorInbound.js');
 
   sec('§1 — longDateYear, one home beside longDate (ruled (ii))');
@@ -250,6 +325,7 @@ async function main() {
     ok(!!r.mod && r.mod.longDateYear('2026-09-22') !== '22 September 2026', '§6 M1 year dropped from longDateYear → §1.2 RED');
   }
   for (const [rel, name] of [['src/api/vendor-engine/chat.js', 'chat.js'], ['src/lib/vendor/calendarSignals.js', 'calendarSignals.js']]) {
+    if (!fs.existsSync(P(rel))) { ok(false, `§6 M2 ${name} Updated: back to raw ISO`); ok(false, `§6 M3 ${name} full month creeps onto Cancelled:`); continue; } // LSP_1: a deleted twin is not mutated; both names retire by the table
     const m2 = loadMutated(rel, "`Updated: ${e.title} — ${updWhen}.", "`Updated: ${e.title} — ${when}.");
     const c2 = m2.mod && m2.mod.mutationLines ? updatedCells(m2.mod.mutationLines) : {};
     ok(c2.C2a === false && c2.C6 === false, `§6 M2 ${name} Updated: back to raw ISO → C2a and C6 RED`);
@@ -287,8 +363,7 @@ async function main() {
     })();
     const c4 = m4.cells || {};
     ok(c4.C1a === false && c4.C1b === false, '§6 M4 the PDF promise restored in the sentence\'s one home (doorLines.js) → C1a and C1b RED');
-    const m5 = loadMutated('src/lib/vendorInbound.js',
-      "const mediaMsg = await sendWhatsApp(phone, '', [d.pdf_url]);", "const mediaMsg = null;");
+    const m5 = { mod: null }; // LSP_1 (labelled): the chain tail's media loop is deleted; M5 retires by the table
     const c5 = m5.mod && m5.mod.processVendorInbound ? await doorCells(m5.mod) : {};
     ok(c5.C1media === false, '§6 M5 media attempt removed → §4.3 RED (the pin is not vacuous)');
   }

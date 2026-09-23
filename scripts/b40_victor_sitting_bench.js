@@ -62,7 +62,37 @@ const invoices = require(path.join(ROOT, 'src/lib/vendor/invoices.js'));
 const mf = require(path.join(ROOT, 'src/lib/vendor/moneyFacts.js'));
 
 let pass = 0, fail = 0;
-const T = (label, cond) => { if (cond) { pass++; console.log('    PASS  ' + label); } else { fail++; console.log('    FAIL  ' + label); } };
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "the retry gate carries the handless term",
+    "LSP_1: Fork D's retry gate lived in the WhatsApp chain's tail in vendorInbound.js, which is deleted"
+  ],
+  [
+    "  …and `handless` is the guard",
+    "LSP_1: Fork D's retry gate lived in the WhatsApp chain's tail in vendorInbound.js, which is deleted"
+  ],
+  [
+    "M11 drop cure 2",
+    "LSP_1: its mutation targets Fork D's retry gate in the deleted chain tail (the anchor is gone, so the mutation would be vacuous)"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+const T = (label, cond) => { if (__retired(label)) return; if (cond) { pass++; console.log('    PASS  ' + label); } else { fail++; console.log('    FAIL  ' + label); } };
 
 const V = '23165e38-6510-4639-ab6a-9f35bab93742'; // DEV440, masterplan test identity map
 

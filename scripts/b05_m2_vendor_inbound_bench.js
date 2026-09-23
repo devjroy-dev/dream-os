@@ -53,31 +53,8 @@ async function t(name, fn) {
 }
 
 // ── deterministic in-memory supabase fake (reaches the real branches; not hollow) ────────
-// ── R-44.37 PLANT (CE-44 LCV-9 PART ONE; the chair's ruling of 21 September 2026, "THE OLD BENCHES") ─────────────────
-// This bench drives the REAL vendor WhatsApp lane to test machinery that STAYS: the chain, which still serves the
-// Advisor room and the switch's other position. From this cut the chain answers a working-room turn ONLY when
-// admin_config `vendor.working_chain_enabled` is JSON true (src/lib/laneFlags.js; read in workingDoor.standIn). The
-// plant is that ONE row in THIS bench's own admin_config double, every other key answered as before. NO ASSERTION
-// IS CHANGED OR WEAKENED. The default position (key absent, junk, read failing: chain OUT) is b93's to prove.
-function plantChainIn(sb) {
-  const realFrom = sb.from;
-  sb.from = function plantedFrom(table, ...rest) {
-    const real = realFrom.call(sb, table, ...rest);
-    if (table !== 'admin_config') return real;
-    // every other read of admin_config (another key, an .in() list) goes to the double exactly as before
-    const realSelect = real.select;
-    real.select = function plantedSelect(...cols) {
-      const q = realSelect.apply(real, cols); const realEq = q.eq;
-      q.eq = function plantedEq(col, key) {
-        if (col === 'key' && key === 'vendor.working_chain_enabled') return { maybeSingle: async () => ({ data: { value: 'true' }, error: null }) };
-        q.eq = realEq; return realEq.call(q, col, key);
-      };
-      return q;
-    };
-    return real;
-  };
-  return sb;
-}
+// LSP_1 (CE-45 LCV-15): the R-44.37 PLANT (plantChainIn) is RETIRED with the switch `vendor.working_chain_enabled`: no reader
+// of the key remains, and the chain it planted ON is deleted.
 function makeSupabase(perTable) {
   function builder(table) {
     const b = {
@@ -90,7 +67,7 @@ function makeSupabase(perTable) {
     };
     return b;
   }
-  return plantChainIn({ from: (tbl) => builder(tbl), schema: () => ({ from: (t) => builder(t) }), rpc: () => Promise.resolve({ data: null, error: null }) }); // R-44.37 PLANT, labelled above
+  return ({ from: (tbl) => builder(tbl), schema: () => ({ from: (t) => builder(t) }), rpc: () => Promise.resolve({ data: null, error: null }) }); // R-44.37 PLANT, labelled above
 }
 
 const VUSER   = { id: 'vu1', phone: '', name: 'Vendor Owner' };
@@ -149,20 +126,32 @@ const PHONE = '919812300077';
 function metaMsg(text)   { return { from: PHONE, text, messageId: 'wamid.V', type: 'text', media: [] }; }
 
 (async () => {
-  await t('META WIRING: the vendor-self reply reaches the sender intact', async () => {
+  // ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT, COUNT PRESERVED (2) ─────────────────────────────────────────────
+  // Both cells asserted that the ENGINE's reply reached the sender, which held only while a turn could fall to the chain.
+  // The chain is deleted (R-44.37, R-44.32), so each is RE-AIMED at the same wiring's surviving truth: the Meta path
+  // delivers exactly one reply, it is the DOOR's (a line from doorLines.js's one home, or the founder's glitch line),
+  // and no engine stub can reach the wire. A regression that brought runTurn back onto this lane reddens both.
+  const DL = require('../src/lib/vendor/doorLines.js');
+  const doorOwned = (text) => Object.values(DL.LINES).includes(text) || /^I didn't catch a task in that/.test(text)
+    || text === require('../src/api/vendor-engine/chat.js').STAGE2_LINE_MUTATION;
+  await t('META WIRING (RE-AIMED, LSP_1): the vendor-self turn reaches the sender as ONE door-owned reply; the engine never runs', async () => {
     const text  = 'what did I book this week';
-    const reply = 'You have 2 shoots booked ✦ Sat (Sharma sangeet) and Sun (Verma wedding).';
-    const sends = [];
-    await processVendorInbound(metaInputsFrom(metaMsg(text), { entry: [] }), makeDeps(sends, reply));
-    assert.ok(sends.length >= 1, `meta path produced ${sends.length} sends, expected >=1`);
-    assert.strictEqual(sends[0].text, reply, 'reached the vendor-self reply path');
+    const sends = []; let turns = 0;
+    const deps = makeDeps(sends, 'ENGINE REPLY');
+    deps.runTurn = async () => { turns++; return { reply: 'ENGINE REPLY', tool_calls: [] }; };
+    await processVendorInbound(metaInputsFrom(metaMsg(text), { entry: [] }), deps);
+    assert.strictEqual(sends.length, 1, `meta path produced ${sends.length} sends, expected 1`);
+    assert.ok(doorOwned(sends[0].text), `the send is not a door line: ${JSON.stringify(sends[0].text)}`);
+    assert.strictEqual(turns, 0, 'runTurn was called on the WhatsApp lane');
   });
 
-  await t('NON-VACUOUS: a diverged reply WOULD be caught', async () => {
+  await t('NON-VACUOUS (RE-AIMED, LSP_1): an engine stub cannot steer the wire (AAA and BBB send the same door reply)', async () => {
     const a = [], b = [];
     await processVendorInbound(metaInputsFrom(metaMsg('x'), { entry: [] }), makeDeps(a, 'AAA'));
     await processVendorInbound(metaInputsFrom(metaMsg('x'), { entry: [] }), makeDeps(b, 'BBB'));
-    assert.throws(() => assert.deepStrictEqual(a, b), 'divergent replies must fail the assertion');
+    assert.ok(a.length === 1 && b.length === 1, 'one send each');
+    assert.deepStrictEqual(a.map((x) => x.text), b.map((x) => x.text), 'the engine stub steered the wire');
+    assert.ok(!/AAA|BBB/.test(a[0].text + b[0].text), 'an engine stub reached the wire');
   });
 
   console.log(`\nb05_m2_vendor_inbound_bench: ${pass} passed, ${fail} failed`);

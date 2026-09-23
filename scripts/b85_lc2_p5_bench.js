@@ -29,7 +29,53 @@ const readIf = (rel) => (fs.existsSync(P(rel)) ? fs.readFileSync(P(rel), 'utf8')
 let pass = 0, fail = 0;
 const fails = [];
 const sec = (s) => console.log(`\n── ${s} ──`);
-function ok(c, n) { if (c) { pass++; console.log(`  ok   ${n}`); } else { fail++; fails.push(n); console.log(`  FAIL ${n}`); } }
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§5.1 ",
+    "LSP_1: calendarSignals.js is deleted (A11); chat.js's collector (5.2, 5.3, 5.4) is the one surviving home"
+  ],
+  [
+    "§5.5 ",
+    "hollow green: it asserts no isErr in calendarSignals.js, which is now the empty string"
+  ],
+  [
+    "§5.6 ",
+    "LSP_1: calendarSignals.js is deleted (A11); chat.js's collector (5.2, 5.3, 5.4) is the one surviving home"
+  ],
+  [
+    "§5.7 ",
+    "LSP_1: calendarSignals.js is deleted (A11); chat.js's collector (5.2, 5.3, 5.4) is the one surviving home"
+  ],
+  [
+    "§5.8 ",
+    "hollow green: with calendarSignals.js deleted the lockstep is undefined, so no call is recorded and the cell passes over nothing"
+  ],
+  [
+    "§5.9 ",
+    "hollow green: with calendarSignals.js deleted the lockstep is undefined, so no call is recorded and the cell passes over nothing"
+  ],
+  [
+    "M6 ",
+    "LSP_1: its mutation targets calendarSignals.js, deleted"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+function ok(c, n) { if (__retired(n)) return; if (c) { pass++; console.log(`  ok   ${n}`); } else { fail++; fails.push(n); console.log(`  FAIL ${n}`); } }
 const tryRequire = (rel) => { try { return require(P(rel)); } catch (e) { console.log(`  (require ${rel} failed: ${e.message.split('\n')[0]})`); return null; } };
 const safe = async (fn) => { try { return (await fn()) || {}; } catch (e) { console.log(`  (driver threw: ${String(e && e.message).split('\n')[0]})`); return {}; } };
 const quiet = async (fn) => { const w = console.warn, e = console.error; console.warn = () => {}; console.error = () => {}; try { return await fn(); } finally { console.warn = w; console.error = e; } };
@@ -313,9 +359,10 @@ const world = (leadOver = {}) => ({ leads: [LEAD(leadOver)], vendor_packages: [{
     // is struck, and a cell that greps raw text would convict the explanation.
     const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
     const collectorOf = (src, marker) => { const i = src.indexOf(marker); return i < 0 ? '' : code(src.slice(i, i + 1800)); };
-    ok(!/donna_split/.test(collectorOf(cs, 'async function lockstepBinderToEvent'))
-      && !/donna_split/.test(collectorOf(ch, 'const moves = new Map(); // binder_id')),
-      '§5.3 NEITHER COLLECTOR names donna_split in its own code — the struck half stays struck');
+    // SPLIT (CE-45 LCV-15 LSP_1, labelled): calendarSignals.js is DELETED (A11), so its half would read '' and pass
+    // vacuously; only chat.js's collector is asserted.
+    ok(!/donna_split/.test(collectorOf(ch, 'const moves = new Map(); // binder_id')),
+      '§5.3 NEITHER COLLECTOR names donna_split in its own code (SPLIT, LSP_1: chat.js; the calendarSignals twin is deleted)');
     ok(/if \(isErr\(call\.result\)\) return;/.test(ch),
       '§5.4 chat.js guards the merge with isErr, as it guards its other two hands');
     ok(!/isErr/.test(cs),
@@ -359,7 +406,7 @@ const world = (leadOver = {}) => ({ leads: [LEAD(leadOver)], vendor_packages: [{
   // ══ §7 · mutations ═════════════════════════════════════════════════════════
   sec('§7 · mutations of production code — each must turn its named cell RED');
   let mPass = 0, mFail = 0;
-  const mut = (n, c) => { if (c) { mPass++; console.log(`  ok   ${n}`); } else { mFail++; fails.push(n); console.log(`  FAIL ${n}`); } };
+  const mut = (n, c) => { if (__retired(n)) return; if (c) { mPass++; console.log(`  ok   ${n}`); } else { mFail++; fails.push(n); console.log(`  FAIL ${n}`); } };
 
   {
     const m = loadMutated('src/api/vendor/leadPackages.js',

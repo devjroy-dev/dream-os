@@ -272,7 +272,10 @@ async function lifecycleCell(mod) {
   T('4.6 WhatsApp: the invoice sentence is byte 13 in its one home, hash-pinned, and the lane speaks it only through that home',
     DLN.LINES.B13 === 'Invoice {number} for {client} is ready. Find it in the invoices list.'
     && DLN.LINE_HASHES.B13 === '45f9284524fc2546d8ca5a34ae51d036efc1a887f2104a35a473e283dda9658c'
-    && vi.includes("require('./vendor/doorLines').invoiceReady(d.invoice_number, d.client)")
+    // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): the chain's tail that called invoiceReady on WhatsApp is deleted; the lane now
+    // speaks the sentence only through the door, which reads it from its one home. Neither file holds a copy of the bytes.
+    && /DL\.invoiceReady\(|invoiceReady\(/.test(fs.readFileSync(P('src/lib/vendor/workingDoor.js'), 'utf8'))
+    && !fs.readFileSync(P('src/lib/vendor/workingDoor.js'), 'utf8').includes('is ready. Find it in the invoices list.')
     && !vi.includes('is ready. Find it in the invoices list.'));
 
   sec('5  W-1 and the untouched spine');

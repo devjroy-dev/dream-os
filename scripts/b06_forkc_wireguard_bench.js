@@ -34,7 +34,97 @@ const read = (r) => fs.readFileSync(P(r), 'utf8');
 const stripComments = (x) => String(x).split('\n')
   .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 let pass = 0, fail = 0;
-const t = (n, f) => { try { f(); console.log(`  ok   ${n}`); pass++; } catch (e) { console.log(`  FAIL ${n}\n       ${e.message}`); fail++; } };
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§5.8b ",
+    "LSP_1: the WhatsApp seat lived in the chain's tail in vendorInbound.js, which is deleted"
+  ],
+  [
+    "§5.8c ",
+    "LSP_1: the WhatsApp seat lived in the chain's tail in vendorInbound.js, which is deleted"
+  ],
+  [
+    "§5.8d ",
+    "LSP_1: the WhatsApp seat lived in the chain's tail in vendorInbound.js, which is deleted"
+  ],
+  [
+    "§11.6 ",
+    "LSP_1: the WhatsApp seat lived in the chain's tail in vendorInbound.js, which is deleted"
+  ],
+  [
+    "§12.9 ",
+    "LSP_1: the WhatsApp seat lived in the chain's tail in vendorInbound.js, which is deleted"
+  ],
+  [
+    "§14.1 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.2 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.3 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.4 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.5 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.6 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.7 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.8 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.9 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.10 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.11 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.12 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ],
+  [
+    "§14.13 ",
+    "LSP_1: the owner-imperative family (imperativeMiss, ownerImperative, matchingHands, IMPERATIVE_STEMS, recordImperativeRetry) is deleted with the WhatsApp retry, its only caller"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+const t = (n, f) => { if (__retired(n)) return; try { f(); console.log(`  ok   ${n}`); pass++; } catch (e) { console.log(`  FAIL ${n}\n       ${e.message}`); fail++; } };
 const H = (s) => console.log(`\n${s}`);
 // ── ASYNC CELLS (TDW_06 guard-ladder rework, 2026-07-29 — the executor's own defect,
 // FILED NOT PAPERED). `t` above calls `f()` and never awaits it. An `async` callback
@@ -1402,18 +1492,10 @@ t('§11.4 ARMING CONDITION 2 — every interception is still LOGGED, with the de
   assert.ok(/evals_runs/.test(spec) && /evals_findings/.test(spec), 'interception silenced the specimen log');
 });
 
-t('§11.5 THE SEATS — the two pre-delivery seams intercept, and the SSE seat takes replace-at-done', () => {
+t('§11.5 THE SEATS (SPLIT, LSP_1: the PWA seats; the WA seat is deleted) — the two pre-delivery seams intercept, and the SSE seat takes replace-at-done', () => {
   const cc = read(CHAT);
-  const wa = read('src/lib/vendorInbound.js');
-  // WA: the guard runs, then the line replaces replyText, then sendWhatsApp
-  assert.ok(/stage2Intercept\(verdict, true\)/.test(wa), 'the WA seat does not arm');
-  // THE STATEMENT ITSELF, not merely its presence — the mutation floor caught this cell
-  // passing over `if (false) replyText = s2line;`, which contains the same substring an
-  // indexOf order-check finds. Filed not papered.
-  assert.ok(/\n\s*if \(s2line\) replyText = s2line;/.test(wa),
-    'the WA interception statement is disabled or reshaped — the costume ships');
-  assert.ok(wa.indexOf('if (s2line) replyText = s2line;') < wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText, [])'),
-    'the WA interception happens AFTER the send — the costume reaches the vendor');
+  // LSP_1 SPLIT (CE-45 LCV-15, labelled): the WhatsApp seat's three assertions are RETIRED with the chain's tail in
+  // vendorInbound.js (deleted); the PWA JSON and SSE seats below serve the Advisor room and are KEPT whole.
   // PWA JSON: the interception returns before the reply is assembled
   assert.ok(/const s2 = stage2Intercept\(guardVerdict, false\)/.test(cc), 'the PWA JSON seat does not arm');
   assert.ok(cc.indexOf('const s2 = stage2Intercept(guardVerdict, false)') < cc.indexOf("let reply = witnessWireScrub(req.app.locals.supabase"),
@@ -1620,7 +1702,7 @@ t('\u00a712.7 THE VETOED COPY, BYTE-EXACT \u2014 and F-06.85\u2019s comment bind
 
 t('\u00a712.8 THE WA BRANCH \u2014 pre-engine, no model call, the trio\u2019s own shape (FORK 2 \u2192 2a)', () => {
   const wa = read('src/lib/vendorInbound.js');
-  const i = wa.indexOf('if (matchGlitchWord(body))'), j = wa.indexOf('const calendarSnapshot');
+  const i = wa.indexOf('if (matchGlitchWord(body))'), j = wa.indexOf('THE COMBINED AI CAP. THE WORD TRIO'); // RE-ANCHORED (LSP_1, labelled): its old end, `const calendarSnapshot` (found in a comment that named it), is deleted; the branch now ends at the next block, the cap gate, so it is the branch alone
   assert.ok(i > 0 && i < j, 'the report branch is not sited pre-engine \u2014 the escape hatch would run through the fabricator');
   assert.ok(i > wa.indexOf('if (matchFreshWord(body))'), 'the report branch moved ahead of the fresh word \u2014 the additive siting was ratified');
   const branch = wa.slice(i, j);
@@ -1692,13 +1774,10 @@ t('\u00a712.12 THE CLASSIFICATION ECHO IS DOCUMENTED AS NEVER-A-WITNESS (correct
   assert.ok(/stage2_delivery/.test(lookup) && !/stage2_delivered/.test(lookup), 'the lookup reads the classification echo');
 });
 
-t('\u00a712.13 EVERY SEAT RECORDS WHAT IT DELIVERED \u2014 all three, with its own seat name', () => {
-  const c = read(CHAT), wa = read('src/lib/vendorInbound.js');
+t('\u00a712.13 EVERY SEAT RECORDS WHAT IT DELIVERED (SPLIT, LSP_1: both PWA seats; the WA seat is deleted)', () => {
+  const c = read(CHAT);
   assert.ok(/seat: 'pwa_sse'/.test(c) && /seat: 'pwa_json'/.test(c), 'a PWA seat delivers without recording it');
-  assert.ok(/seat: 'wa'/.test(wa), 'the WA seat delivers without recording it');
-  // the WA record sits at FORK D'S RESOLUTION, after the retry decided and before the send
-  const iRec = wa.indexOf("seat: 'wa'"), iSend = wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText'), iArm = wa.indexOf("s2arm = 'retry_landed'");
-  assert.ok(iArm < iRec && iRec < iSend, 'the WA delivery witness is not at Fork D\u2019s resolution point');
+  // LSP_1 SPLIT (CE-45 LCV-15, labelled): the WA seat's record and its Fork D siting are RETIRED with the chain's tail.
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

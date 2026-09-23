@@ -57,12 +57,13 @@
 // LCV-9 PART ONE (R-44.37, the founder, 21 September 2026: "why dont we shift victor out and then allow the code to
 // work"; R-44.38; the chair's ruling on the fourteen exits): THE CHAIN LEAVES THE WORKING ROOMS. preTurn() is
 // UNCHANGED in what it decides: it still answers { door: false, why } where the door does not take the turn. What
-// changed is what the lanes do with that verdict: they hand it to standIn(), which reads ONE switch
-// (admin_config `vendor.working_chain_enabled` through laneFlags.readLaneFlag, 60 s cache; ONLY JSON true is chain
-// in; absent, junk or a FAILED READ is CHAIN OUT) and, chain out, SPEAKS FOR THE DOOR so the chain is never called:
+// changed is what the lanes do with that verdict: they hand it to standIn(), which SPEAKS FOR THE DOOR so the chain is
+// never called. (It read ONE switch, admin_config `vendor.working_chain_enabled`, until CE-45 LCV-15 LSP_1 RETIRED it
+// on the chair's ruling, Q6: the chain's calls are deleted, so the switch had no other position; standIn never
+// returns null, and an admin_config row of that key, if one exists, is inert.)
 // no act heard is LEFTOVER with two covered examples; an act the door does not cover is B34; a glitch is the
-// founder's vetoed glitch line; and the exits that know more say more (B32, B15, B30, F29 or D8). Chain in, standIn
-// returns null and the four sites behave as at 10d5d99. NOTHING IS WRITTEN on a stand-in turn.
+// founder's vetoed glitch line; and the exits that know more say more (B32, B15, B30, F29 or D8). NOTHING IS WRITTEN
+// on a stand-in turn.
 //
 // LCV-10 PART A (F-44.110; the chair's ruling of 21 September on the cure's two halves): WITNESSED on Part One's walk,
 // turn 8: "Add a new lead Walk P8 Fresh, wedding on 20 February 2027" was heard as `lead` AND `book_event`, both for
@@ -149,7 +150,6 @@ const HANDS = Object.freeze({
 // `say` is what an exit KNOWS beyond its reason (the name that is no lead, the name that is no client, the money act);
 // the chain never reads it; standIn() does.
 const CHAIN = (ear, why, say) => ({ door: false, ear: ear || null, why, ...(say ? { say } : {}) });
-const CHAIN_FLAG = 'vendor.working_chain_enabled';
 const key = (s) => String(s == null ? '' : s).trim().toLowerCase();
 const digits = (n) => { const r = rupees(n); return r ? r.replace(/^Rs /, '') : null; };
 
@@ -2040,13 +2040,10 @@ function standKeyOf(out, L, nowMs) {
   return { key: 'GLITCH' };
 }
 async function standIn(args, depsIn) {
-  let chainIn = false;
   const answer = (key, line, out) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: (out && out.ear) || null, why: (out && out.why) || 'unreachable', stood: true });
   try {
     const { supabase, out } = (args && typeof args === 'object') ? args : {};
     const deps = (depsIn && typeof depsIn === 'object') ? depsIn : {};
-    try { chainIn = (await (deps.readLaneFlag || require('../laneFlags').readLaneFlag)(supabase, CHAIN_FLAG)) === true; } catch (_e) { chainIn = false; }
-    if (chainIn) return null;
     if (out && out.door === true) return out;
     const k = standKey(out, lazy(deps), Number.isFinite(deps.nowMs) ? deps.nowMs : undefined);
     if (k.key === 'LEFTOVER') return answer('LEFTOVER', DL.leftover([...COVERED, ...LOOKUP_ACTS], deps.rand), out); // P7 cut 4: examples 3, 7, 8 on
@@ -2054,7 +2051,6 @@ async function standIn(args, depsIn) {
     return answer(k.key, k.line || DL.LINES[k.key], out);
   } catch (e) {
     try { console.warn('[door:standIn]', e && e.message); } catch (_e) { /* */ }
-    if (chainIn) return null;
     let line = null; try { line = glitchLine(); } catch (_e) { line = null; }
     return answer('GLITCH', line || DL.LINES.B3, null);
   }
@@ -2125,4 +2121,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

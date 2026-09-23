@@ -59,7 +59,98 @@ const lines = require(path.join(ROOT, 'src/lib/victorLines.js'));
 const { TEMPLATES } = require(path.join(ROOT, 'src/lib/templates.js'));
 
 let pass = 0, fail = 0;
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§10.3 a relay turn carries NO introduction signal",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.3 a lead turn carries NO introduction signal",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.4 an introduction turn IS collected",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.4 and it is collected from a NESTED donna_call too (relaySeat.js:650 shape)",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.6 the seat stages through the real arm",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.6 all three slots reached the row",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.6 and the page_code came off her own row, never the model",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.7 a missing where_met refuses",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.7 and answers with the vetoed byte, read from its one home",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.7 and wrote no row",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.8 the SHOW frame is the relaySeat byte, reused not re-minted",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.8 it names the recipient and the number, as E3 requires",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.8 the filled body is the FILED template body",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.9 vendorInbound CALLS the seat",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.9 at the same seam as the relay seat, in its own try",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.9 the door line replaces the model prose when the seat acted",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.9 the relay statement above it is untouched (b06 §11.5 asserts it byte-identical)",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ],
+  [
+    "§10.9 no transport is injected — the arm requires sendWa at its own call site",
+    "LSP_1: introductionSeat.js and the chain tail that called it are deleted (A11)"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
 const T = (name, cond) => {
+  if (__retired(name)) return;
   if (cond) { pass++; console.log(`  ok   ${name}`); }
   else { fail++; console.error(`  FAIL ${name}`); }
 };
@@ -422,12 +513,9 @@ const capDouble = (status) => ({
   {
     const T_INTRO = require(path.join(ROOT, 'src/engine/dist/core/tools/introduce.js'));
     const T_RELAY = require(path.join(ROOT, 'src/engine/dist/core/tools/relayCouple.js'));
-    const seat = require(path.join(ROOT, 'src/lib/vendor/introductionSeat.js'));
     const donnaSrc = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/donna.ts'), 'utf8');
-    const doorSrc = fs.readFileSync(path.join(ROOT, 'src/lib/vendorInbound.js'), 'utf8');
     const strip = (t) => t.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
     const donna = strip(donnaSrc);
-    const door = strip(doorSrc);
 
     // 1 · both names are in the bag Donna is handed.
     T('§10.1 the two hands are in DONNA_TOOLS',
@@ -446,16 +534,6 @@ const capDouble = (status) => ({
       !I.includes('donna_lead') && !R.includes('donna_lead'));
     T('§10.2 the introduction family is exactly two', I.length === 2);
 
-    // 3/4 · each seat keeps only its own. Driven through the REAL collectSignals.
-    const relayTurn = { tool_calls: [{ name: 'donna_relay_stage', input: { recipient: 'Priya', message: 'x' } }] };
-    const introTurn = { tool_calls: [{ name: 'donna_introduction_stage', input: DRAFT }] };
-    const leadTurn  = { tool_calls: [{ name: 'donna_lead', input: { phone: '+919999000111' } }] };
-    T('§10.3 a relay turn carries NO introduction signal', seat.collectSignals(relayTurn).length === 0);
-    T('§10.3 a lead turn carries NO introduction signal', seat.collectSignals(leadTurn).length === 0);
-    T('§10.4 an introduction turn IS collected', seat.collectSignals(introTurn).length === 1);
-    T('§10.4 and it is collected from a NESTED donna_call too (relaySeat.js:650 shape)',
-      seat.collectSignals({ tool_calls: [{ name: 'x', input: {}, donna_calls: [introTurn.tool_calls[0]] }] }).length === 1);
-
     // 5 · signal-only. The engine branch authors no `plain` and no `mutated`.
     const outcome = T_INTRO.executeIntroductionStage(DRAFT);
     T('§10.5 the hand returns display and NOTHING else',
@@ -463,54 +541,27 @@ const capDouble = (status) => ({
     T('§10.5 it does not claim the deed is done',
       !/\b(sent|introduced|delivered)\b/i.test(outcome.display));
 
-    // 6 · the seat maps a staged signal onto the arm, three slots intact.
-    {
-      const db = makeDb();
-      const out = await seat.runIntroductionSeat(db, VENDOR, introTurn, { ownerWords: 'x' });
-      T('§10.6 the seat stages through the real arm', out && out.kind === 'staged' && db.rows.length === 1);
-      T('§10.6 all three slots reached the row',
-        db.rows[0].recipient_phone === DRAFT.recipient_phone
-        && db.rows[0].recipient_name === DRAFT.recipient_name
-        && db.rows[0].where_met === DRAFT.where_met);
-      T('§10.6 and the page_code came off her own row, never the model',
-        db.rows[0].page_code === 'DEV440');
-    }
-
-    // 7 · a missing slot answers with the founder-vetoed ask, BY CONSTANT.
-    {
-      const db = makeDb();
-      const partial = { tool_calls: [{ name: 'donna_introduction_stage',
-        input: { recipient_phone: '+919999000111', recipient_name: 'Anita Verma' } }] };
-      const out = await seat.runIntroductionSeat(db, VENDOR, partial, { ownerWords: 'x' });
-      T('§10.7 a missing where_met refuses', out && out.kind === 'refused:no_where');
-      T('§10.7 and answers with the vetoed byte, read from its one home',
-        out.line === lines.VICTOR_LINES.INTRO_ASK_WHERE);
-      T('§10.7 and wrote no row', db.rows.length === 0);
-    }
-
-    // 8 · the walk's own ask produces the vetoed SHOW frame carrying /v/DEV440.
-    {
-      const db = makeDb();
-      const out = await seat.runIntroductionSeat(db, VENDOR, introTurn, { ownerWords: 'x' });
-      T('§10.8 the SHOW frame is the relaySeat byte, reused not re-minted',
-        /^Here is the draft:/.test(String(out.line)));
-      // RE-PINNED (CE-45 LCV-11, P6b first cut): the frame's last line is the founder's B37, ending "Reply YES or NO." (R-44.24 applied to the frame, 22 September 2026).
-      T('§10.8 it names the recipient and the number, as E3 requires',
-        /Send this to Anita Verma \(\+919999000111\)\? Reply YES or NO\.$/.test(String(out.line)));
-      T('§10.8 the filled body is the FILED template body',
-        String(out.line).includes('this is Dev Roy Photography, and we met at the Verma wedding'));
-    }
-
-    // THE DOOR ITSELF — the call that did not exist on 2026-09-10.
-    T('§10.9 vendorInbound CALLS the seat', /runIntroductionSeat\(supabase, vendor, effectiveResult/.test(door));
-    T('§10.9 at the same seam as the relay seat, in its own try',
-      door.indexOf('runRelaySeat(supabase') < door.indexOf('runIntroductionSeat(supabase'));
-    T('§10.9 the door line replaces the model prose when the seat acted',
-      /if \(!relayOut && !relayReplacedCostume && introOut && introOut\.line\)/.test(door));
-    T('§10.9 the relay statement above it is untouched (b06 §11.5 asserts it byte-identical)',
-      /if \(!relayReplacedCostume && relayOut && relayOut\.line\) \{\n      replyText = relayOut\.line;/.test(doorSrc));
-    T('§10.9 no transport is injected — the arm requires sendWa at its own call site',
-      !/runIntroductionSeat\(supabase, vendor, effectiveResult, \{\s*sendWa:/.test(door));
+    // CE-45 LCV-15 LSP_1 (labelled amendment): introductionSeat.js is DELETED with the WhatsApp chain (A11), and the door
+    // that called it (vendorInbound's chain tail) with it. Every §10 cell that drove the seat or read the door is RETIRED
+    // by this bench's table; each is still named here so the table's control can match it exactly once.
+    T("§10.3 a relay turn carries NO introduction signal", null);
+    T("§10.3 a lead turn carries NO introduction signal", null);
+    T("§10.4 an introduction turn IS collected", null);
+    T("§10.4 and it is collected from a NESTED donna_call too (relaySeat.js:650 shape)", null);
+    T("§10.6 the seat stages through the real arm", null);
+    T("§10.6 all three slots reached the row", null);
+    T("§10.6 and the page_code came off her own row, never the model", null);
+    T("§10.7 a missing where_met refuses", null);
+    T("§10.7 and answers with the vetoed byte, read from its one home", null);
+    T("§10.7 and wrote no row", null);
+    T("§10.8 the SHOW frame is the relaySeat byte, reused not re-minted", null);
+    T("§10.8 it names the recipient and the number, as E3 requires", null);
+    T("§10.8 the filled body is the FILED template body", null);
+    T("§10.9 vendorInbound CALLS the seat", null);
+    T("§10.9 at the same seam as the relay seat, in its own try", null);
+    T("§10.9 the door line replaces the model prose when the seat acted", null);
+    T("§10.9 the relay statement above it is untouched (b06 §11.5 asserts it byte-identical)", null);
+    T("§10.9 no transport is injected — the arm requires sendWa at its own call site", null);
   }
 
   // ── §11 · THE THREE DOORS (CE-42 seat E2, 4a packet 3a · F-42.82) ──────────

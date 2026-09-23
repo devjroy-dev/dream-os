@@ -268,8 +268,43 @@ const BENCH = {
   b65_i1: 'scripts/b65_i1_advisor_room_only_bench.js',
 };
 
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "M4 ",
+    "LSP_1: its anchor is a line of the WhatsApp chain in vendorInbound.js, deleted (a dead anchor)"
+  ],
+  [
+    "M5 ",
+    "LSP_1: its anchor is a line of the WhatsApp chain in vendorInbound.js, deleted (a dead anchor)"
+  ],
+  [
+    "M14 ",
+    "LSP_1: its anchor is a line of the WhatsApp chain in vendorInbound.js, deleted (a dead anchor)"
+  ],
+  [
+    "M21 ",
+    "LSP_1: its anchor is a line of the WhatsApp chain in vendorInbound.js, deleted (a dead anchor)"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
 let bad = 0;
 for (const [id, file, from, to, cellName, benchKey, rebuild] of MUT) {
+  if (__retired(id)) continue;
   const bench = BENCH[benchKey || 'b65_g1'];
   const scratch = fs.mkdtempSync('/tmp/b65m-');
   execSync(`cp -r ${ROOT}/src ${ROOT}/db ${ROOT}/scripts ${ROOT}/package.json ${scratch}/ && ln -s ${ROOT}/node_modules ${scratch}/node_modules`);
@@ -300,5 +335,6 @@ for (const [id, file, from, to, cellName, benchKey, rebuild] of MUT) {
   if (!hit) { bad++; console.log(`         expected RED: ${cellName}`); console.log(`         got: ${line.slice(0, 300)}`); }
   fs.rmSync(scratch, { recursive: true, force: true });
 }
-console.log(`\n  b65_mutations  ${MUT.length - bad}/${MUT.length}`);
+const __nRetired = [...__seen.values()].reduce((a, b) => a + b, 0); // A-45.2: a retired mutation is never credited as a pass
+console.log(`\n  b65_mutations  ${MUT.length - __nRetired - bad}/${MUT.length - __nRetired}  (retired: ${__nRetired})`);
 process.exit(bad ? 1 : 0);

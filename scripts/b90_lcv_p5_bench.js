@@ -31,7 +31,45 @@ const ROOT = path.join(__dirname, '..');
 const P = (rel) => path.join(ROOT, rel);
 const MAN = 'scripts/floor-manifest-ce44-lcv2-p5.txt';
 let pass = 0; let fail = 0; const failed = [];
-function T(name, cond) { if (cond) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); } }
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "8.5 ",
+    "LSP_1: listenAfterWire and the WhatsApp chain's recordListening call are deleted"
+  ],
+  [
+    "8.9 ",
+    "LSP_1: listenAfterWire and the WhatsApp chain's recordListening call are deleted"
+  ],
+  [
+    "12.10 ",
+    "hollow green: runTurn is no longer a dependency of the WhatsApp lane, so a zero count proves nothing (b110 pins the lane's lack of runTurn structurally)"
+  ],
+  [
+    "12.11 ",
+    "hollow green: runTurn is no longer a dependency of the WhatsApp lane, so a zero count proves nothing (b110 pins the lane's lack of runTurn structurally)"
+  ],
+  [
+    "11.14 M12 ",
+    "LSP_1: removing the door's return now falls to the handler's own return, not a chain; the mutation cannot redden anything (vacuous)"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+function T(name, cond) { if (__retired(name)) return; if (cond) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); } }
 const sec = (t) => console.log(`\n§${t}`);
 const quiet = async (fn) => { const w = console.warn; const e = console.error; const l = console.log; console.warn = () => {}; console.error = () => {}; console.log = () => {}; try { return await fn(); } finally { console.warn = w; console.error = e; console.log = l; } };
 const sha = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -537,22 +575,29 @@ async function main() {
   // ─── §8 THE WIRE, BOTH LANES ───────────────────────────────────────────────────────────────────
   sec('8 the wire');
   const cj = src('src/api/vendor-engine/chat.js');
-  const sseDoor = cj.slice(cj.indexOf('      const doorOut = await doorTurn(req, llmWiring, message, roomAssert);'), cj.indexOf('      req._lcvEar = doorOut ? doorOut.ear : null;'));
+  const sseDoor = cj.slice(cj.indexOf('      const doorOut = await doorTurn(req, llmWiring, message, roomAssert);'), cj.indexOf('      const calendarSnapshot = await fetchCalendarSnapshot(req);')); // RE-ANCHORED (LSP_1, labelled): the old end, `req._lcvEar`, is deleted; the SSE door block now ends where the Advisor turn's reads begin
   T('8.1 SSE door turn: ONE text_delta, then done with tool_calls, refresh, room business and meta, then [DONE]', (sseDoor.match(/type: 'text_delta'/g) || []).length === 1 && /type: 'done', tool_calls: doorOut\.toolNames, refresh: !!doorOut\.refresh, room: 'business'/.test(sseDoor) && /doorDone\.meta = await buildMeta\(/.test(sseDoor) && /\[DONE\]/.test(sseDoor));
   T('8.2 ruled (a): NO chip on a door turn (no operator_action, no handoff, no report beat)', !/operator_action|handoff|operator_report/.test(sseDoor));
-  const jsonDoor = cj.slice(cj.indexOf('\n    const doorOut = await doorTurn(req, llmWiring, message, roomAssert);'), cj.indexOf('\n    req._lcvEar = doorOut ? doorOut.ear : null;'));
+  const jsonDoor = cj.slice(cj.indexOf('\n    const doorOut = await doorTurn(req, llmWiring, message, roomAssert);'), cj.indexOf('\n    const calendarSnapshot = await fetchCalendarSnapshot(req);')); // RE-ANCHORED (LSP_1, labelled): as 8.1
   T('8.3 JSON door turn: reply, tool_calls, refresh, room business, meta', /reply: scrubText\(doorOut\.reply\), tool_calls: doorOut\.toolNames, refresh: !!doorOut\.refresh, room: 'business', meta: doorMeta/.test(jsonDoor));
   T('8.4 the advisor room is never the door\'s', /async function doorTurn\(req, llmWiring, message, roomAssert\) \{\n  if \(roomAssert === 'advisor'\) return null;/.test(cj));
   T('8.5 the chain carries the heard request into listenAfterWire (no second call)', /recordListening\(\{ supabase, agentId: req\.agentId, route, message, result, lane: 'pwa', ear: req\._lcvEar \}\)/.test(cj));
   T('8.6 harvest on a door turn: her message, the door\'s lines as reply, the hands as tool_calls; skipped on byte 8', /if \(!out \|\| out\.skipHarvest\) return;\n  fireHarvest\(req, message, \{ tool_calls: out\.toolCalls \|\| \[\], reply: out\.reply \}\);/.test(cj));
   const vi = src('src/lib/vendorInbound.js');
-  const waDoor = vi.slice(vi.indexOf('    let doorEar = null;'), vi.indexOf('    // ── CE-41 · SEAT G · R-41.104 — THE ROOM, HANDED TO THE ENGINE'));
-  T('8.7 WhatsApp door: after the cap gate and the route, before runTurn', vi.indexOf('const capSeam = require(') < vi.indexOf('    let doorEar = null;') && vi.indexOf("const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId, surface: 'wa_vendor' });") < vi.indexOf('    let doorEar = null;') && vi.indexOf('    let doorEar = null;') < vi.indexOf('const result = await runTurn({'));
-  T('8.8 WhatsApp door never writes the chain\'s reply variable, never calls recordListening, and RETURNS once the door answered', !/replyText/.test(waDoor) && !/recordListening\(/.test(waDoor)
-    && /if \(doorOut && doorOut\.door\) \{[\s\S]*?speakOnWhatsApp\([\s\S]*?\n      return;\n    \}\n    doorEar = doorOut \? doorOut\.ear : null;/.test(waDoor));
+  const waDoor = vi.slice(vi.indexOf('    let doorOut = null;'), vi.indexOf('  } catch (err) {', vi.indexOf('    let doorOut = null;'))); // RE-ANCHORED (LSP_1, labelled): `let doorEar` and the chain below the door are deleted; the door's block now runs to the handler's catch
+  // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): "before runTurn" became "and the lane holds no runTurn at all" (the chain is deleted).
+  T('8.7 WhatsApp door: after the cap gate and the route, before runTurn (RE-AIMED, LSP_1: the lane holds no runTurn)', vi.indexOf('const capSeam = require(') > 0 && vi.indexOf('const capSeam = require(') < vi.indexOf('    let doorOut = null;')
+    && vi.indexOf("const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId, surface: 'wa_vendor' }") < vi.indexOf('    let doorOut = null;') && !/\brunTurn\(/.test(vi.replace(/\/\/.*$/gm, '')));
+  // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): the door's branch still returns after speakOnWhatsApp; what follows it is now the
+  // handler's own `return;` and nothing else (the chain's tail is deleted), so the old `doorEar = …` successor is gone.
+  T('8.8 WhatsApp door never writes the chain\'s reply variable, never calls recordListening, and RETURNS once the door answered (RE-AIMED, LSP_1)', !/replyText/.test(waDoor) && !/recordListening\(/.test(waDoor)
+    && /if \(doorOut && doorOut\.door\) \{[\s\S]*?speakOnWhatsApp\([\s\S]*?\n      return;\n    \}\n(?:\s*\/\/[^\n]*\n)*\s*return;\n\s*$/.test(waDoor));
   T('8.9 WhatsApp chain carries the heard request (no second call)', /recordListening\(\{ supabase, agentId, route: llmWiring\.route, message: body, result, lane: 'whatsapp', ear: doorEar \}\)/.test(vi));
-  T('8.10 F-44.48: BOTH lanes speak the invoice sentence through its one home and hold no literal of it', /invoiceReady\(d\.invoice_number, d\.client\)/.test(vi) && /invoiceReady\(d\.invoice_number, d\.client\)/.test(cj)
-    && !/is ready\. Find it in the invoices list/.test(vi) && !/is ready — find it in the invoices list/.test(cj));
+  // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): the WhatsApp half moved from the deleted chain tail to the door, which reads the
+  // sentence from its one home (DL.invoiceReady); the app half is unchanged.
+  const wdSrc = src('src/lib/vendor/workingDoor.js');
+  T('8.10 F-44.48: BOTH lanes speak the invoice sentence through its one home and hold no literal of it (RE-AIMED, LSP_1: WhatsApp through the door)', /DL\.invoiceReady\(/.test(wdSrc) && /invoiceReady\(d\.invoice_number, d\.client\)/.test(cj)
+    && !/is ready\. Find it in the invoices list/.test(vi) && !/is ready\. Find it in the invoices list/.test(wdSrc) && !/is ready  find it in the invoices list/.test(cj));
 
   // ─── §9 W-1 AND SCOPE ──────────────────────────────────────────────────────────────────────────
   sec('9 W-1 NONE, read from P5\'s own manifest');
@@ -745,13 +790,13 @@ async function main() {
     }
   };
   let w = await driveWA({});
-  T('12.9 control: a door turn on WhatsApp sends the door\'s line and never reaches runTurn', w.turns === 0 && w.sent.some((x) => x.text === DL.LINES.B3));
+  T('12.9 control: a door turn on WhatsApp sends the door\'s line and never reaches runTurn [LSP_1: its runTurn conjunct is structurally vacuous since the chain was deleted; b110 pins the absence]', w.turns === 0 && w.sent.some((x) => x.text === DL.LINES.B3));
   w = await driveWA({ sendThrows: true });
   T('12.10 sendWhatsApp throws: logged, returned, runTurn NOT called', w.turns === 0);
   w = await driveWA({ insertThrows: true });
   T('12.11 an insert throws: logged, returned, runTurn NOT called', w.turns === 0);
   w = await driveWA({ persistThrows: true });
-  T('12.12 persistDoorTurn throws: logged, returned, runTurn NOT called, her line still sent', w.turns === 0 && w.sent.some((x) => x.text === DL.LINES.B3));
+  T('12.12 persistDoorTurn throws: logged, returned, runTurn NOT called, her line still sent [LSP_1: its runTurn conjunct is structurally vacuous since the chain was deleted; b110 pins the absence]', w.turns === 0 && w.sent.some((x) => x.text === DL.LINES.B3));
   const sp = await quiet(() => realWD.speakOnWhatsApp({ supabase: { from: () => { throw new Error('db'); } }, phone: 'p', convoId: 'c', message: 'm', out: fakeOut, sendWhatsApp: async () => { throw new Error('t'); } }, { persistDoorTurn: async () => { throw new Error('p'); } }));
   T('12.13 speakOnWhatsApp itself never throws, whatever fails inside it', sp && sp.sent === false && sp.persisted === false);
   // the mutations restoring the fall-through
@@ -779,18 +824,18 @@ async function main() {
   };
   const ASKED = { listener: { door: true, asked: 'B1', lane: 'whatsapp' } };
   let L1 = await lapsed('yes', ASKED);
-  T('13.1 a LAPSED YES answering the door\'s own question: the door answers B14 (R-44.22 (a)), runTurn NOT called, nothing marked, the stale row closed', L1.w2.turns === 0 && L1.w2.sent.some((x) => x.text === DL.LINES.B14) && L1.d.tables['public.payment_schedules'].find((x) => x.id === 'ms-3').state === 'pending' && L1.d.tables['public.pending_money_acts'][0].state === 'expired');
+  T('13.1 a LAPSED YES answering the door\'s own question: the door answers B14 (R-44.22 (a)), runTurn NOT called, nothing marked, the stale row closed [LSP_1: its runTurn conjunct is structurally vacuous since the chain was deleted; b110 pins the absence]', L1.w2.turns === 0 && L1.w2.sent.some((x) => x.text === DL.LINES.B14) && L1.d.tables['public.payment_schedules'].find((x) => x.id === 'ms-3').state === 'pending' && L1.d.tables['public.pending_money_acts'][0].state === 'expired');
   L1 = await lapsed('no', ASKED);
-  T('13.2 a LAPSED NO: the door answers B14, runTurn NOT called', L1.w2.turns === 0 && L1.w2.sent.some((x) => x.text === DL.LINES.B14));
+  T('13.2 a LAPSED NO: the door answers B14, runTurn NOT called [LSP_1: its runTurn conjunct is structurally vacuous since the chain was deleted; b110 pins the absence]', L1.w2.turns === 0 && L1.w2.sent.some((x) => x.text === DL.LINES.B14));
   L1 = await lapsed('yes', { listener: { door: true, lane: 'whatsapp' } });
   // 13.3 AND 13.4 REVERSED (CE-44 LCV-9 PART ONE; R-44.37 and the chair's ruling on the fourteen exits: a bare yes or no with
   // nothing waiting is case (i)). They asserted the CHAIN answered (turns === 1); the chain has left this lane, so the door's
   // stand-in answers with the founder's leftover line and runTurn is called ZERO times. The strength is kept: same drive,
   // same real lane, same spy, and the line she is sent is now pinned too.
   const leftoverSent = (x) => x.w2.turns === 0 && x.w2.sent.length === 1 && x.w2.sent[0].text.split('\n')[0] === DL.LINES.LEFTOVER && x.w2.sent[0].text.split('\n').length === 3;
-  T('13.3 a yes after a DECLINE (the last row is the door\'s B3, not a question): the door answers LEFTOVER with two examples, runTurn NOT called (R-44.37)', leftoverSent(L1));
+  T('13.3 a yes after a DECLINE (the last row is the door\'s B3, not a question): the door answers LEFTOVER with two examples, runTurn NOT called (R-44.37) [LSP_1: its runTurn conjunct is structurally vacuous since the chain was deleted; b110 pins the absence]', leftoverSent(L1));
   L1 = await lapsed('yes', null);
-  T('13.4 a yes where another turn came between (the last row is not the door\'s question): the door answers LEFTOVER, runTurn NOT called (R-44.37)', leftoverSent(L1));
+  T('13.4 a yes where another turn came between (the last row is not the door\'s question): the door answers LEFTOVER, runTurn NOT called (R-44.37) [LSP_1: its runTurn conjunct is structurally vacuous since the chain was deleted; b110 pins the absence]', leftoverSent(L1));
   T('13.5 the door\'s question is known from its OWN meta: persistDoorTurn marks asked only on B1 or B2', /const asked = \(Array\.isArray\(out\.keys\) \? out\.keys : \[\]\)\.find\(\(k\) => k === 'B1' \|\| k === 'B2'\)/.test(src('src/lib/vendor/workingDoor.js')));
   m = await withMutated('src/lib/vendor/workingDoor.js', [['    return !!l && l.door === true && (l.asked === \'B1\' || l.asked === \'B2\');', '    return false;']], [], async (rq) => {
     const d = makeDb(world()); lastRow(d, ASKED);

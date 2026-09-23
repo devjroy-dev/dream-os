@@ -55,7 +55,9 @@ Module._load = function (req) {
 
 const { fetchCrewState } = require(path.join(ROOT, 'src/lib/vendor/crewSnapshot.js'));
 const { fetchCalendarSnapshot: pwaSnapshot } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
-const { fetchCalendarSnapshot: waSnapshot }  = require(path.join(ROOT, 'src/lib/vendor/calendarSignals.js'));
+// CE-45 LCV-15 LSP_1 (labelled amendment): calendarSignals.js, the handset's copy of the snapshot, is DELETED with the
+// WhatsApp chain (A11). The cells that read it are retired at their sites below, each with its reason; the PWA's are kept.
+const RETIRED = (label, why) => console.log(`  RETIRED  ${label}  (${why})`);
 
 let SEQ = 0;
 const uuid = () => `00000000-0000-4000-8000-${String(++SEQ).padStart(12, '0')}`;
@@ -212,17 +214,15 @@ sec('6. BOTH HOMES — C4 PROVEN, not claimed: one fixture, two doors, byte-iden
     team_members: [{ id: SWATI, vendor_id: V, name: 'Swati' }],
     hot_dates: [], leads: [],
   });
-  const a = makeDb(tables()), b = makeDb(tables());
+  const a = makeDb(tables());
   const pwa = await pwaSnapshot({ app: { locals: { supabase: a.supabase } }, vendor: { id: V, category: 'planner' } });
-  const wa  = await waSnapshot(b.supabase, V, 'planner');
 
   const crewLines = (s) => (s.match(/\n\[(?:\d+ functions?|Crew declined)[^\]]*\]/g) || []).join('');
-  const pc = crewLines(pwa), wc = crewLines(wa);
+  const pc = crewLines(pwa);
   ok(pc.length > 0, 'the PWA door renders crew-state lines');
-  ok(wc.length > 0, 'the HANDSET door renders crew-state lines (Fork A: the port landed)');
-  ok(pc === wc, 'THE TWO DOORS RENDER BYTE-IDENTICAL CREW-STATE — one home, so they cannot drift');
-  ok(/Next 30 days:/.test(pwa) && !/Next 30 days:/.test(wa),
-     'the PRESSURE line stayed PWA-only — the unasked sibling did not travel');
+  RETIRED('the HANDSET door renders crew-state lines', 'LSP_1: the handset snapshot, calendarSignals.js, is deleted; the WhatsApp lane holds no chain to hand it to');
+  RETIRED('THE TWO DOORS RENDER BYTE-IDENTICAL CREW-STATE', 'LSP_1: one door remains; there is no second rendering to drift');
+  ok(/Next 30 days:/.test(pwa), 'the PRESSURE line is on the PWA snapshot (RE-AIMED, LSP_1: its handset half is deleted)');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,9 +232,8 @@ sec('7. THE HANDSET SIGNATURE — the both-sides clause, proven on the old shape
     events: [{ id: uuid(), vendor_id: V, title: 'Kapoor mehendi', event_date: plus(9), kind: 'ceremony', state: 'upcoming', deleted_at: null, event_time: null, assigned_member_ids: [] }],
     crew_confirmations: [], team_members: [],
   });
-  const twoArg = await waSnapshot(supabase, V);                 // the PRE-P6 call shape
-  ok(!/no one on/.test(twoArg),
-     'a 2-arg caller (b5_wa_door_bench:181 is one) gets NO crew line — byte-identical to pre-P6');
+  void supabase;
+  RETIRED('a 2-arg caller gets NO crew line', 'LSP_1: the handset signature lived only in calendarSignals.js, deleted');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

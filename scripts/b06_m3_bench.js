@@ -36,7 +36,46 @@ const SCRUB = 'src/lib/vendor/scrub.js';
 
 let pass = 0, fail = 0;
 const H = (s) => console.log(`\n── ${s} ──`);
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "§2.1 ",
+    "LSP_1: the vendor-self reply scrub lived in the WhatsApp chain's tail (deleted); the lane now speaks only door lines"
+  ],
+  [
+    "§2.2 ",
+    "LSP_1: the vendor-self reply scrub lived in the WhatsApp chain's tail (deleted); the lane now speaks only door lines"
+  ],
+  [
+    "§2.3 ",
+    "hollow green: with the chain deleted the lane speaks only door lines, so no model prose (and no raw id) can reach this wire; LSP_1: the vendor-self reply scrub lived in the WhatsApp chain's tail (deleted); the lane now speaks only door lines"
+  ],
+  [
+    "§2.4 ",
+    "LSP_1: the vendor-self reply scrub lived in the WhatsApp chain's tail (deleted); the lane now speaks only door lines"
+  ],
+  [
+    "§5 §2.1 ",
+    "LSP_1: its mutation targets the deleted scrub line in the chain's tail"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
 async function t(name, fn) {
+  if (__retired(name)) return;
   try { await fn(); console.log(`  ok   ${name}`); pass++; }
   catch (e) { console.log(`  FAIL ${name}\n       ${e && e.message}`); fail++; }
 }
@@ -147,31 +186,8 @@ H('§2 — F-06.17 + F-06.29: THE FIREWALL ON THE REAL WIRE');
 
 // A stub estate: chainable, table-keyed, deliberately dumb. It answers the door's queries
 // and nothing more.
-// ── R-44.37 PLANT (CE-44 LCV-9 PART ONE; the chair's ruling of 21 September 2026, "THE OLD BENCHES") ─────────────────
-// This bench drives the REAL vendor WhatsApp lane to test machinery that STAYS: the chain, which still serves the
-// Advisor room and the switch's other position. From this cut the chain answers a working-room turn ONLY when
-// admin_config `vendor.working_chain_enabled` is JSON true (src/lib/laneFlags.js; read in workingDoor.standIn). The
-// plant is that ONE row in THIS bench's own admin_config double, every other key answered as before. NO ASSERTION
-// IS CHANGED OR WEAKENED. The default position (key absent, junk, read failing: chain OUT) is b93's to prove.
-function plantChainIn(sb) {
-  const realFrom = sb.from;
-  sb.from = function plantedFrom(table, ...rest) {
-    const real = realFrom.call(sb, table, ...rest);
-    if (table !== 'admin_config') return real;
-    // every other read of admin_config (another key, an .in() list) goes to the double exactly as before
-    const realSelect = real.select;
-    real.select = function plantedSelect(...cols) {
-      const q = realSelect.apply(real, cols); const realEq = q.eq;
-      q.eq = function plantedEq(col, key) {
-        if (col === 'key' && key === 'vendor.working_chain_enabled') return { maybeSingle: async () => ({ data: { value: 'true' }, error: null }) };
-        q.eq = realEq; return realEq.call(q, col, key);
-      };
-      return q;
-    };
-    return real;
-  };
-  return sb;
-}
+// LSP_1 (CE-45 LCV-15): the R-44.37 PLANT (plantChainIn) is RETIRED with the switch `vendor.working_chain_enabled`:
+// no reader of the key remains, and the chain it planted ON is deleted.
 function stubEstate() {
   const sent = [];
   const rows = {
@@ -188,7 +204,7 @@ function stubEstate() {
     api.then = (res) => res({ data: rows[table] ? [rows[table]] : [], error: null });
     return api;
   };
-  return { sent, supabase: plantChainIn({ from: chain, schema: () => ({ from: chain }) }) }; // R-44.37 PLANT, labelled above
+  return { sent, supabase: { from: chain, schema: () => ({ from: chain }) } }; // LSP_1: the R-44.37 plant is retired
 }
 
 function doorDeps({ reply, sent, supabase }) {
@@ -473,7 +489,7 @@ await t('§4.4 THE FIREWALL\'S REACH IN THIS FILE IS FULLY ACCOUNTED — no scru
   const inventory = {
     'scrubText(s)': 2,                                    // scrubModelFrame's two fail-safe returns
     'scrubText(s.slice(': 2,                              // the frame either side of the quote
-    'scrubText(result.reply)': 1,                         // R2 — the vendor-self reply
+    // 'scrubText(result.reply)' RETIRED (LSP_1, labelled): the vendor-self reply's scrub lived in the chain's tail, deleted
     // LABELED AMENDMENT (TDW_06 M-2, 2026-07-29 — the bench follows the law, CE-80).
     // COUNT PRESERVED; the ledger's MEANING is unchanged and its reach is now complete.
     // Fork D's retry-the-actor leg composes a SECOND reply when a costume's retry lands
@@ -488,7 +504,7 @@ await t('§4.4 THE FIREWALL\'S REACH IN THIS FILE IS FULLY ACCOUNTED — no scru
     // first and must cross the persona firewall exactly as both siblings do. Same class,
     // same argument, MODEL PROSE — never founder-vetoed copy. The arm's OTHER outcome
     // writes nothing at all, which is why this number is 2 and not 3.
-    'scrubText(retry.reply)': 2,                          // M-2 Fork D's landed retry + F-06.136's
+    // 'scrubText(retry.reply)' RETIRED (LSP_1, labelled): both landed-retry scrubs lived in the chain's tail, deleted
     'scrubModelFrame(result.vendorNotification': 4,       // R3 — the four notification sites
     'function scrubModelFrame(': 1,                       // the declaration itself
   };

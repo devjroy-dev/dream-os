@@ -33,7 +33,41 @@ const ROOT = path.join(__dirname, '..');
 const P = (rel) => path.join(ROOT, rel);
 const MAN = 'scripts/floor-manifest-ce44-lcv9-part1.txt';
 let pass = 0; let fail = 0; const failed = [];
-function T(name, cond) { if (cond) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); } }
+// ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
+// Each row names a cell by its id and the reason it retires: the cell read code LSP_1 deleted (the WhatsApp chain's tail,
+// the switch `vendor.working_chain_enabled`, listenAfterWire, the imperative family, calendarSignals.js, leadPings.js,
+// introductionSeat.js). A retired cell is NOT counted as a pass; it prints RETIRED with its reason. CONTROL: at exit every
+// row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
+// by accident or outlive the cell it names.
+const __RETIRE = new Map([
+  [
+    "10.8 M6 ",
+    "LSP_1: its anchor is the retired switch's read (or its census entry), deleted; there is no switch left to mutate"
+  ],
+  [
+    "10.9 M7 ",
+    "LSP_1: its anchor is the retired switch's read (or its census entry), deleted; there is no switch left to mutate"
+  ],
+  [
+    "10.10 M8 ",
+    "LSP_1: it reddened 4.2 through the switch's read of laneFlags; with the switch retired no cell depends on that parse"
+  ],
+  [
+    "10.11 M9 ",
+    "LSP_1: its anchor is the retired switch's read (or its census entry), deleted; there is no switch left to mutate"
+  ]
+]);
+const __seen = new Map();
+function __retired(name) {
+  const n = String(name);
+  for (const [k, why] of __RETIRE) if (n.startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${n}  (${why})`); return true; }
+  return false;
+}
+process.on('exit', () => {
+  const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1);
+  if (bad.length) { console.log(`  FAIL  the retired-cell table does not match exactly one reached cell per row: ${bad.join(' | ')}`); process.exitCode = 1; }
+});
+function T(name, cond) { if (__retired(name)) return; if (cond) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); } }
 const sec = (t) => console.log(`\n§${t}`);
 const quiet = async (fn) => { const w = console.warn; const e = console.error; const l = console.log; console.warn = () => {}; console.error = () => {}; console.log = () => {}; try { return await fn(); } finally { console.warn = w; console.error = e; console.log = l; } };
 const sha = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -271,20 +305,25 @@ async function main() {
 
   // ─── §4 ───────────────────────────────────────────────────────────────────────────────────
   sec('4 the switch: only JSON true is chain in');
+  // CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT, COUNT PRESERVED: the switch `vendor.working_chain_enabled` is RETIRED (Q6). Every
+  // cell below asserted "chain out" as `!== null`, which a switch with no reader makes vacuous, so each is RE-AIMED to prove
+  // the DOOR answered (door true, a non-empty line) whatever the key holds; 4.6 is inverted (JSON true brings nothing back);
+  // 4.8 and 4.9 pin the key's absence from the census and from every turn's reads.
+  const isDoor = (x) => !!x && x.door === true && typeof x.reply === 'string' && x.reply.length > 0;
   const verdict = { door: false, ear: null, why: 'yes_no_nothing_waiting' };
   const position = async (db) => { LF._resetLaneFlagCache(); return quiet(() => WD.standIn({ supabase: db, out: verdict })); };
-  T('4.1 the key ABSENT: chain out', (await position(makeDb(world()))) !== null);
-  for (const junk of ['false', '"true"', '1', 'yes', 'TRUE', '{"on":true}', '', 'not json', 'null']) T(`4.2 the key holding ${JSON.stringify(junk)}: chain out`, (await position(makeDb(world(junk)))) !== null);
-  T('4.3 the key\'s read FAILING (the table throws): chain out', (await position(makeDb(world('true'), { failRead: ['public.admin_config'] }))) !== null);
-  T('4.4 the key\'s read returning an ERROR: chain out', (await position(makeDb(world('true'), { errorRead: ['public.admin_config'] }))) !== null);
-  T('4.5 no database handle at all: chain out', (LF._resetLaneFlagCache(), (await quiet(() => WD.standIn({ supabase: null, out: verdict }))) !== null));
-  T('4.6 the key holding JSON true: CHAIN IN, standIn answers null and the lane falls to the chain', (await position(makeDb(world('true')))) === null);
-  T('4.7 the reader itself throwing: chain out', (await quiet(() => WD.standIn({ supabase: makeDb(world('true')), out: verdict }, { readLaneFlag: async () => { throw new Error('x'); } }))) !== null);
-  T('4.8 the key is in the LANE_FLAGS census, default OFF, and the door names the same key', LF.LANE_FLAGS[FLAG] === false && WD.CHAIN_FLAG === FLAG);
+  T('4.1 the key ABSENT: chain out (RE-AIMED, LSP_1: the switch is retired; standIn answers for the door)', isDoor(await position(makeDb(world()))));
+  for (const junk of ['false', '"true"', '1', 'yes', 'TRUE', '{"on":true}', '', 'not json', 'null']) T(`4.2 the key holding ${JSON.stringify(junk)}: chain out (RE-AIMED, LSP_1: the switch is retired; standIn answers for the door)`, isDoor(await position(makeDb(world(junk)))));
+  T('4.3 the key\'s read FAILING (the table throws): chain out (RE-AIMED, LSP_1: the switch is retired; standIn answers for the door)', isDoor(await position(makeDb(world('true'), { failRead: ['public.admin_config'] }))));
+  T('4.4 the key\'s read returning an ERROR: chain out (RE-AIMED, LSP_1: the switch is retired; standIn answers for the door)', isDoor(await position(makeDb(world('true'), { errorRead: ['public.admin_config'] }))));
+  T('4.5 no database handle at all: chain out (RE-AIMED, LSP_1: the switch is retired; standIn answers for the door)', (LF._resetLaneFlagCache(), isDoor(await quiet(() => WD.standIn({ supabase: null, out: verdict })))));
+  T('4.6 the key holding JSON true: CHAIN IN, standIn answers null and the lane falls to the chain (RE-AIMED AND INVERTED, LSP_1: JSON true brings NOTHING back; standIn answers for the door)', isDoor(await position(makeDb(world('true')))));
+  T('4.7 the reader itself throwing: chain out (RE-AIMED, LSP_1: the switch is retired; standIn answers for the door)', isDoor(await quiet(() => WD.standIn({ supabase: makeDb(world('true')), out: verdict }, { readLaneFlag: async () => { throw new Error('x'); } }))));
+  T('4.8 the key is in the LANE_FLAGS census, default OFF, and the door names the same key (RE-AIMED, LSP_1: the key is ABSENT from the census and the door exports no CHAIN_FLAG)', !(FLAG in LF.LANE_FLAGS) && !('CHAIN_FLAG' in WD));
   LF._resetLaneFlagCache();
   let reads = 0; const counting = makeDb(world()); const realFrom = counting.from; counting.from = (n) => { if (n === 'admin_config') reads += 1; return realFrom(n); };
   for (let i = 0; i < 50; i += 1) await quiet(() => WD.standIn({ supabase: counting, out: verdict }));
-  T('4.9 fifty turns inside one cache window cost ONE read of admin_config, not fifty', reads === 1);
+  T('4.9 fifty turns inside one cache window cost ONE read of admin_config, not fifty (RE-AIMED, LSP_1: fifty stand-in turns cost ZERO reads of admin_config)', reads === 0);
   LF._resetLaneFlagCache();
 
   // ─── §5 THE WHATSAPP LANE ──────────────────────────────────────────────────────────────────
@@ -349,11 +388,16 @@ async function main() {
   const oldLane = () => { const mm = new Module(VIP, module); mm.filename = VIP; mm.paths = Module._nodeModulePaths(path.dirname(VIP)); mm._compile(viSrc0.replace(standBlock, ''), VIP); return mm.exports; };
   let okIn = standBlock.length > 200; const badIn = [];
   for (const x of laneExits) {
-    const a = await driveWA({ message: x.message, ear: x.ear, route: x.route, deps: x.deps, dbOpts: x.dbOpts, flag: 'true' });
-    const b = await driveWA({ message: x.message, ear: x.ear, route: x.route, deps: x.deps, dbOpts: x.dbOpts, mutatedVi: oldLane });
-    if (!(a.turns >= 1 && a.turns === b.turns && a.persisted.length === 0 && JSON.stringify(a.sent) === JSON.stringify(b.sent))) { okIn = false; badIn.push(x.why); }
+    // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): with the switch retired the key's JSON true brings NOTHING back. The lane with
+    // the key true answers turn for turn and line for line as the lane with the key ABSENT: zero chain turns, the door persists
+    // once. (oldLane, the lane without its stand-in block, is no longer the comparison: there is no chain below it to reach.)
+    void oldLane;
+    const seeded = () => { let i = 0; const seq = [0.11, 0.73, 0.37, 0.91, 0.52, 0.05]; return () => seq[i++ % seq.length]; }; // LEFTOVER's examples, the same draw on both sides
+    const a = await driveWA({ message: x.message, ear: x.ear, route: x.route, deps: x.deps, dbOpts: x.dbOpts, flag: 'true', rand: seeded() });
+    const b = await driveWA({ message: x.message, ear: x.ear, route: x.route, deps: x.deps, dbOpts: x.dbOpts, rand: seeded() });
+    if (!(a.turns === 0 && b.turns === 0 && a.persisted.length === 1 && JSON.stringify(a.sent) === JSON.stringify(b.sent))) { okIn = false; badIn.push(x.why); }
   }
-  T(`5.2 WhatsApp, the key JSON true: on every exit the chain IS called, and turn for turn and line for line the lane does what the lane WITHOUT this cut's block does (10d5d99's shape); the door persists nothing${badIn.length ? ` · RED ON ${badIn.join(', ')}` : ''}`, okIn);
+  T(`5.2 WhatsApp, the key JSON true (RE-AIMED, LSP_1: the retired key brings nothing back): on every exit the chain is NOT called, and turn for turn and line for line the lane does what it does with the key ABSENT; the door persists once${badIn.length ? ` · RED ON ${badIn.join(', ')}` : ''}`, okIn);
   let w = await driveWA({ message: 'Hello', ear: earOf(req([], 'none')), preTurnThrows: true });
   T('5.3 WhatsApp, preTurn itself unreachable, chain out: the glitch line, runTurn ZERO', w.turns === 0 && w.sent.length === 1 && w.sent[0].text === GLITCH);
   w = await driveWA({ message: 'Hello', ear: earOf(req([], 'none')), standInThrows: true });
@@ -410,8 +454,8 @@ async function main() {
       T(`6.1 pwa ${sse ? 'SSE' : 'JSON'}, ${label}: on EVERY exit runTurn is called ZERO times, the reply is the ruled byte, room business, no tool name (no chip), no refresh, persisted once${bad.length ? ` · RED ON ${bad.join(', ')}` : ''}`, ok);
     }
     let okIn2 = true;
-    for (const x of laneExits) { const r = await drivePwa({ message: x.message, ear: x.ear, route: x.route, deps: x.deps, dbOpts: x.dbOpts, flag: 'true', sse }); if (!(r.turns === 1 && r.persisted.length === 0)) okIn2 = false; }
-    T(`6.2 pwa ${sse ? 'SSE' : 'JSON'}, the key JSON true: on every exit the chain is called EXACTLY ONCE and the door persists nothing, as at 10d5d99`, okIn2);
+    for (const x of laneExits) { const r = await drivePwa({ message: x.message, ear: x.ear, route: x.route, deps: x.deps, dbOpts: x.dbOpts, flag: 'true', sse }); if (!(r.turns === 0 && x.is(r.text) && r.persisted.length === 1)) okIn2 = false; } // RE-AIMED (LSP_1, labelled): the retired key brings nothing back
+    T(`6.2 pwa ${sse ? 'SSE' : 'JSON'}, the key JSON true (RE-AIMED, LSP_1: the retired key brings nothing back): on every exit the chain is called ZERO times, the reply is the ruled byte, and the door persists once`, okIn2);
     let r = await drivePwa({ message: 'How should I price my package?', room: 'advisor', ear: earOf(req([], 'none')), sse });
     T(`6.3 pwa ${sse ? 'SSE' : 'JSON'}: THE ADVISOR ROOM REACHES THE CHAIN with the chain OUT of the working rooms, asserted advisor, and the door is never asked`, r.turns === 1 && r.rooms[0] === 'advisor' && r.persisted.length === 0);
     r = await drivePwa({ message: 'How should I price my package?', room: 'advisor', ear: earOf(req([], 'none')), flag: 'true', sse });
@@ -446,7 +490,10 @@ async function main() {
   sec('8 the one-read pins and W-1');
   const wdS = src('src/lib/vendor/workingDoor.js'); const cjS = src('src/api/vendor-engine/chat.js'); const viS = src('src/lib/vendorInbound.js');
   T('8.1 the leftover builder is called in exactly ONE place in the estate, inside workingDoor.js; chat.js and vendorInbound.js never name LEFTOVER or EXAMPLES', (wdS.match(/DL\.leftover\(/g) || []).length === 1 && !/DL\.EXAMPLES|DL\.LINES\.LEFTOVER|EXAMPLE_ACTS/.test(wdS) && !/LEFTOVER|EXAMPLES/.test(cjS) && !/LEFTOVER|EXAMPLES/.test(viS));
-  T('8.2 the switch is read in exactly ONE place: workingDoor.js standIn; neither lane names the key outside a comment or reads laneFlags for it', (wdS.match(/readLaneFlag\)\(supabase, CHAIN_FLAG\)/g) || []).length === 1 && !/readLaneFlag\([^)]*working_chain/.test(cjS) && !/readLaneFlag\([^)]*working_chain/.test(viS));
+  // RE-AIMED (CE-45 LCV-15 LSP_1, labelled): the switch is read NOWHERE. No file under src names the key outside a comment.
+  const keyReaders = require('child_process').execSync(`grep -rln --include=*.js --include=*.ts "${FLAG}" src || true`, { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean)
+    .filter((f) => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').some((l) => l.includes(FLAG) && !/^\s*\/\//.test(l) && !/^\s*\*/.test(l)));
+  T('8.2 the switch is read in exactly ONE place: workingDoor.js standIn; neither lane names the key outside a comment or reads laneFlags for it (RE-AIMED, LSP_1: read NOWHERE)', keyReaders.length === 0 && !/readLaneFlag/.test(wdS));
   T('8.3 each lane hands the verdict to standIn ONCE, before its door branch; the Advisor return stays the first line of doorTurn', (cjS.match(/\.standIn\(/g) || []).length === 1 && (viS.match(/\.standIn\(/g) || []).length === 1 && /async function doorTurn\(req, llmWiring, message, roomAssert\) \{\n {2}if \(roomAssert === 'advisor'\) return null;/.test(cjS) && viS.indexOf('.standIn(') < viS.indexOf('    if (doorOut && doorOut.door) {'));
   const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : [];
   T('8.4 W-1 NONE, from this packet\'s own manifest: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
@@ -485,7 +532,7 @@ async function main() {
   const viA = "      try { const stood = await require('./vendor/workingDoor').standIn({ supabase, out: doorOut }); if (stood) doorOut = stood; }";
   T('10.1 the WhatsApp anchor is present', viS.includes(viA));
   w = await driveWA({ ...greet, mutatedVi: compileVi(viS.replace(viA, '      try { /* mutated: the chain call restored */ }')) });
-  T('10.2 M1 the WhatsApp lane with its stand-in removed reaches runTurn: reddens 5.1', w.turns === 1);
+  T('10.2 M1 the WhatsApp lane with its stand-in removed reaches runTurn: reddens 5.1 (RE-AIMED, LSP_1: with no chain below the door the lane falls SILENT, zero lines sent, which 5.1 reds)', w.turns === 0 && w.sent.length === 0);
   const cjA = "    try { const stood = await require('../../lib/vendor/workingDoor').standIn({ supabase: req.app.locals.supabase, out }); if (stood) out = stood; }";
   T('10.3 the pwa anchor is present', cjS.includes(cjA));
   for (const sse of [false, true]) { const r = await drivePwa({ ...greet, sse, mutatedCj: compileCj(cjS.replace(cjA, '    try { /* mutated: the chain call restored */ }')) }); T(`10.4 M2 the pwa ${sse ? 'SSE' : 'JSON'} route with doorTurn's stand-in removed reaches runTurn: reddens 6.1`, r.turns === 1); }
@@ -493,7 +540,7 @@ async function main() {
   { const r = await drivePwa({ message: 'How should I price my package?', room: 'advisor', ear: earOf(req([], 'none')), mutatedCj: compileCj(cjS.replace(cjB, '  let out = null;')) }); T('10.5 M3 doorTurn without its Advisor return takes the Advisor room from the chain: reddens 6.3', cjS.includes(cjB) && r.turns === 0); }
   const viB = "        if (!glitch) { console.error('[door:wa stand-in] no line could be loaded; nothing sent, the chain NOT called (R-44.37)'); return; }\n        doorOut = {";
   w = await driveWA({ ...greet, standInThrows: true, mutatedVi: compileVi(viS.replace(viB, '        if (false) doorOut = {')) });
-  T('10.6 M4 the WhatsApp catch no longer speaking the glitch line falls to the chain: reddens 5.4', viS.includes(viB) && w.turns === 1);
+  T('10.6 M4 the WhatsApp catch no longer speaking the glitch line falls to the chain: reddens 5.4 (RE-AIMED, LSP_1: with no chain below the door the lane falls SILENT, zero lines sent, which 5.4 reds)', viS.includes(viB) && w.turns === 0 && w.sent.length === 0);
   const cjC = "catch (e) { console.error('[door:pwa stand-in]', e && e.message); out = { door: true,";
   { const r = await drivePwa({ ...greet, standInThrows: true, mutatedCj: compileCj(cjS.replace(cjC, "catch (e) { console.error('[door:pwa stand-in]', e && e.message); const _x = { door: true,")) }); T('10.7 M5 the pwa catch no longer speaking the glitch line falls to the chain: reddens 6.6', cjS.includes(cjC) && r.turns === 1); }
   await mut('10.8 M6 a switch that reads a FAILED read as chain in: reddens 4.7', 'src/lib/vendor/workingDoor.js', [['=== true; } catch (_e) { chainIn = false; }', '=== true; } catch (_e) { chainIn = true; }']], [],

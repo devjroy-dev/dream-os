@@ -127,12 +127,8 @@ const LANE_FLAGS = {
   // counts on his glass.
   'onboarding.gate_enabled': false,
 
-  // CE-44 LC-Victor, LCV-9 PART ONE (R-44.37, the founder, 21 September 2026: the chain leaves the working rooms
-  // NOW). OFF IS CHAIN OUT: in the business room on the pwa and on the vendor WhatsApp lane only code speaks.
-  // ONLY JSON true puts the chain back, and the four sites then behave as at 10d5d99; an absent key, a junk value
-  // and a FAILED READ all resolve OFF, which is this file's fail-closed doctrine doing exactly what he ruled.
-  // Read in ONE place: src/lib/vendor/workingDoor.js standIn(). The Advisor room never reads it.
-  'vendor.working_chain_enabled': false,
+  // `vendor.working_chain_enabled` (CE-44 LCV-9, R-44.37) is RETIRED: CE-45 LCV-15 LSP_1 deleted the chain's calls in the
+  // working rooms, so the switch had no other position (the chair's ruling, Q6). Its key is no longer in this census.
 };
 
 function _resetLaneFlagCache() { cache.clear(); }

@@ -1,8 +1,6 @@
 ERROR: b5b_movementb_bench
 RED: b05_arc_m4_bench
 RED: b05_arc_m6_bench
-RED: b05_f0550_ping_drain_bench
-RED: b05_f0555_media_dedupe_bench
 RED: b05_p4_crons_bench
 RED: b06_meter_bench
 RED: b07_f0772_circle_auth_bench
