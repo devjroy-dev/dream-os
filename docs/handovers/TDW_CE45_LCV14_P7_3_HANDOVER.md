@@ -95,18 +95,117 @@ git status read on both trees before (base 0, cured 18) and after (base 0, cured
 base: 4)"; 22 RED and 1 ERROR (b5b_movementb), exactly the 23 lines of scripts/floor-base.txt; refusals b06_gauntlet, b5_wa_door_smoke,
 bf1_bride_tool_fidelity_bench, test-shape; "[F-14.16] declared files unmoved — set and contents both verified."
 
-## 8 · THE WALK RECORD
-Card 3 as confirmed: steps 1 to 12 in his words; step 10 (Sarah) reads B68 on the estate his fixture read (her only invoice paid, nothing pending),
-the dark gate standing on b106 4.4; step 10b (ASK 6, his choice, taken): invoice TDW/DEV440/25 for Walk Seventeen Alpha, created in the app, and
-the lead's phone 8757788550 (his own line). sendOneReminder refuses the gate at :360 BEFORE the phone at :361, so 10b and 11 read :94 whatever the
-phone, provided the fixture shows the invoice linked to the lead (lead_id); unlinked, both read B68. Nothing is sent on this walk: the flag is off.
+## 8 · THE WALK RECORD · 23 September 2026 · DEV440 · 69f4b99 (Railway ACTIVE about 16:00 IST) · WRITTEN BY SCRIPT FROM THE FOUNDER'S EXPORTS, NEVER RETYPED
+  thread (engine.messages with meta.listener, from 15:55 IST) 28 rows, sha256 b02566fba96b68bd99176d32c29db8758445b878505f87c9d08f7f495389b7fb
+  team_members (Walk Seventeen%) 2 rows, sha256 a5f9aec625514c18cd4c309945e30c88bf1370fdbc10d4fef5ec6edd57e7c6ca
+  events (Walk Seventeen Alpha shoots) 2 rows, sha256 e0a546a8d77c98f7c7834f6b9209c84e6e6077d8671bfef3cb21cd972df8727e
+  payment_reminders for DEV440 since 15:55 IST: 0 (his screenshot of the count)
+  The four read-only SELECTs were handed to him BEFORE the chair's confirm, on his direct word ("give sql"); the chair records that a read-only fixture read on
+  his word is not a C-44.10 breach. Times UTC (IST +5:30). Every turn lane pwa, answered by code. Nothing sent; money untouched; the switch off throughout.
+  Fixture read before step 1: DEV440 1 · switch off · Walk Seventeen% 0 · Alpha shoot 2027-11-22 crew 0 · Sarah TDW/DEV440/12 paid, nothing pending ·
+  Alpha lead phone none, booked · TDW/DEV440/25 on Walk Seventeen Alpha, client_phone +918757788550 (his own line), unpaid, three pending · reminders 0 and 0.
+Card 3 as confirmed: steps 1 to 12 and 10b. sendOneReminder refuses the gate at :360 BEFORE the phone at :361, so 10b and 11 read :94 whatever the phone.
 R-43.17's list is unchanged (only 9888294440 and 8595356978 receive a walk's outbound).
-(written in by script from the founder's export after the walk, never retyped)
+
+### 8.1 the thread
+1. step 1 GREEN
+   10:33:07 HE: Add Walk Seventeen Theta to the team
+   10:33:07 DOOR · lane pwa: Added to the team: Walk Seventeen Theta.
+   HEARD: {"acts":[{"act":"assign_crew","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+   CALLS: [{"name":"assign_crew","input":{"member":"Walk Seventeen Theta"},"result":"member_added"}]
+
+2. step 2 GREEN
+   10:33:23 HE: Add Walk Seventeen Theta to the team
+   10:33:23 DOOR · lane pwa: Walk Seventeen Theta is already on your team.
+   HEARD: {"acts":[{"act":"assign_crew","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+
+3. step 3 GREEN
+   10:33:37 HE: Add Walk Seventeen Thta to the team
+   10:33:37 DOOR · lane pwa: Did you mean Walk Seventeen Theta? Reply YES or NO.
+   HEARD: {"acts":[{"act":"assign_crew","member_as_spoken":"Walk Seventeen Thta"}],"route":"task"}
+   NOTE: {"acts":[{"act":"assign_crew","member_as_spoken":"Walk Seventeen Theta"}],"slot":"member","asked":"B36","tries":0,"candidate_id":"ab47e7a0-6454-4a85-a398-5cec2d47001f"}
+
+4. step 4 GREEN
+   10:33:46 HE: no
+   10:33:46 DOOR · lane pwa: Okay. Nothing was changed.
+   HEARD: null
+
+5. step 5 MISS · F-44.133
+   10:34:00 HE: Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot
+   10:34:00 DOOR · lane pwa: Walk Seventeen Theta is already on your team.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"Walk Seventeen Alpha shoot","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+
+6. step 6 MISS · F-44.133
+   10:34:12 HE: Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot
+   10:34:12 DOOR · lane pwa: Walk Seventeen Theta is already on your team.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"Walk Seventeen Alpha shoot","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+
+7. step 7 MISS · F-44.133
+   10:34:30 HE: Assign Walk Seventeen Kappa to the Walk Seventeen Alpha shoot
+   10:34:30 DOOR · lane pwa: Added to the team: Walk Seventeen Kappa.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"Walk Seventeen Alpha shoot","member_as_spoken":"Walk Seventeen Kappa"}],"route":"task"}
+   CALLS: [{"name":"assign_crew","input":{"member":"Walk Seventeen Kappa"},"result":"member_added"}]
+
+8. step 8a GREEN (its note carried the client inside the kind: F-44.133)
+   10:35:08 HE: Assign to the Walk Seventeen Alpha shoot
+   10:35:08 DOOR · lane pwa: Who? Say the name.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"Walk Seventeen Alpha shoot"}],"route":"task"}
+   NOTE: {"acts":[{"act":"assign_crew","kind_as_spoken":"Walk Seventeen Alpha shoot"}],"asked":"B62","tries":0}
+
+9. step 8b MISS · F-44.133
+   10:35:21 HE: Walk Seventeen Theta
+   10:35:22 DOOR · lane pwa: Walk Seventeen Theta is already on your team.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"Walk Seventeen Alpha shoot","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+
+10. step 9a TRUTHFUL DIVERGENCE (Kappa was never assigned at step 7, so this turn assigned him; the card expected B59)
+   10:35:30 HE: Add Walk Seventeen Kappa to the team for the 22 November 2027 wedding
+   10:35:30 DOOR · lane pwa: Assigned: Walk Seventeen Kappa · Walk Seventeen Alpha · shoot · 22 November 2027.
+   HEARD: {"acts":[{"act":"assign_crew","date_as_spoken":"22 November 2027","member_as_spoken":"Walk Seventeen Kappa"}],"route":"task"}
+   CALLS: [{"name":"assign_crew","input":{"member":"Walk Seventeen Kappa","event_id":"627e6acc-267e-4f1a-932b-dc6a406fd511"},"result":"assigned"}]
+
+11. step 9b GREEN
+   10:35:45 HE: Add Walk Seventeen Kappa to the team for the 8 January 2027 wedding
+   10:35:45 DOOR · lane pwa: No shoot on 8 January 2027.
+   HEARD: {"acts":[{"act":"assign_crew","date_as_spoken":"8 January 2027","member_as_spoken":"Walk Seventeen Kappa"}],"route":"task"}
+
+12. step 10 GREEN
+   10:35:54 HE: Send Sarah a reminder for the payment
+   10:35:54 DOOR · lane pwa: Nothing is due from Sarah.
+   HEARD: {"acts":[{"act":"payment_reminder","client_as_spoken":"Sarah"}],"route":"task"}
+
+13. step 10b GREEN
+   10:36:04 HE: Send Walk Seventeen Alpha a reminder for the payment
+   10:36:04 DOOR · lane pwa: Reminders are switched off for now.
+   HEARD: {"acts":[{"act":"payment_reminder","client_as_spoken":"Walk Seventeen Alpha"}],"route":"task"}
+   CALLS: [{"name":"payment_reminder_send","input":{"lead":"Walk Seventeen Alpha","milestone_id":"b50bfdfd-a008-4e5a-b711-3689d9418b02"},"result":"refused:gate"}]
+
+14. step 11 GREEN
+   10:36:12 HE: Remind Walk Seventeen Alpha about the advance
+   10:36:12 DOOR · lane pwa: Reminders are switched off for now.
+   HEARD: {"acts":[{"act":"payment_reminder","client_as_spoken":"Walk Seventeen Alpha"}],"route":"task"}
+   CALLS: [{"name":"payment_reminder_send","input":{"lead":"Walk Seventeen Alpha","milestone_id":"b50bfdfd-a008-4e5a-b711-3689d9418b02"},"result":"refused:gate"}]
+
+### 8.2 the rows the walk left
+  team: Walk Seventeen Theta active true role null created 10:33:07 id ab47e7a0; Walk Seventeen Kappa active true role null created 10:34:30 id 223f3dc3
+  events: 2027-01-09 cancelled crew [] notes null; 2027-11-22 upcoming crew ["223f3dc3-84e6-4ec6-9a79-b6491f5c91c9"] notes Walk Seventeen Kappa assigned — 23 Sep
+  step 12 (his screenshots): Studio → Team lists Walk Seventeen Kappa and Walk Seventeen Theta; the 22 Nov 2027 day sheet shows the shoot with NO crew names (F-44.134).
+
+### 8.3 what the record shows, ruled by the chair
+Nine green (1, 2, 3, 4, 8a, 9b, 10, 10b, 11) and step 12's team list; four misses of ONE cause, F-44.133 (5, 6, 7, 8b): the ear returned the client inside
+kind_as_spoken ("Walk Seventeen Alpha shoot") and no client_as_spoken, so planAssign read a TEAM ADD. The P7 table never measured this shape (rows 10 and 11
+name a day): c-44.44's class, owned by the chair as c-45.12. Cured by the fix cut (ruling (i), the door reads it; b107). 9a a TRUTHFUL DIVERGENCE. F-44.132's
+cure was witnessed live (step 3's note carried slot 'member'); ASK 1 held live (8b's answer filled member_as_spoken). The fix cut's card re-walks 5 to 8b.
 
 ## 9 · LCV-13's SEAT CLOSE §6, AMENDED WITH THE CHAIR'S NUMBERS
 e-83 the "21 paths" count (it was 20) · e-84 the comment misplaced after floor run 1 · e-85 the void "surface=whatsapp" search · e-86 two withdrawn
 suspicions on F-44.131 · e-87 K5's first form keeping "Two" · e-88 the seat close's own §1 lines for CAP_KEY (:57, truly :60) and sendGate (:101, truly
 :103); the kickoff's carrying of them is the chair's c-45.11.
 
+## 9b · OPEN
+F-44.134 (minted and routed by the founder, R-45.10, "the crew fix goes up with pwa side fix of victor lane"): the day sheet and Studio show no crew on a
+shoot though the row carries assigned_member_ids and crew_confirmations is written. His words: "there is no surface where i can see which team is assigned
+what. In fact, even calender not showing work assigned. if im not mistaken it was visible previously". The pwa work rides the app-side cut with P6b's second
+half; this seat does not touch the pwa.
+
 ## 10 · NEXT FREE
-F-44.133 · migration 0171 · bench b107 · errors e-90 · corrections c-45.12.
+F-44.135 · migration 0171 · bench b107 (the fix), b108 (cut 4) · errors e-91 · corrections c-45.13 (as of the walk's reading).

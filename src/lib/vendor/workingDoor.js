@@ -798,6 +798,21 @@ async function shootsOnDay(supabase, vendorId, iso) {
     return (error || !Array.isArray(data)) ? null : data.filter((e) => e && typeof e.id === 'string' && e.event_date === iso);
   } catch (_e) { return null; }
 }
+// F-44.133 (CE-45 LCV-14, the cut 3 fix; the chair's ruling (i) of 23 September): THE DOOR READS THE CLIENT OUT OF THE KIND. WITNESSED on the cut 3 walk
+// (10:34:00, 10:34:12, 10:34:30, the 10:35:08 note, 10:35:21 UTC): "Assign {member} to the {client} shoot" came back with kind_as_spoken "Walk Seventeen Alpha
+// shoot" and NO client_as_spoken, so the door read a team add. On an assign_crew with no client_as_spoken, a kind_as_spoken that is NOT one of eventWrite's
+// CALENDAR_KINDS, minus ONE trailing calendar kind word, is read as the client and resolved through the ONE home like any client (lead exact, B36, B76).
+// "shoot" alone is the kind and is never a client. The heard request is recorded untouched. No listener byte. TOTAL: anything else is null.
+function kindClient(act, L) {
+  try {
+    const k = spotless(act && act.kind_as_spoken);
+    const kinds = Array.isArray(L && L.calendarKinds) ? L.calendarKinds : [];
+    if (!k || kinds.includes(key(k))) return null;
+    const words = k.split(/\s+/).filter(Boolean);
+    if (words.length > 1 && kinds.includes(key(words[words.length - 1]))) words.pop();
+    return spotless(words.join(' '));
+  } catch (_e) { return null; }
+}
 // An assignment, resolved READ-ONLY. THREE SHAPES (the kickoff's cut-3 paragraph): no member → B62, ASKED with a MEMBER note; a member with no date and no
 // client → a TEAM ADD (exact B57 · near B36 slot 'member' · else { add }); a member with a date and/or a client → an ASSIGNMENT: the shoot first (by the client's
 // lead through the ONE home and shootsOf, a said day narrowing it; by the day alone when no client: none B77, two or more 'assign_many'), then the member
@@ -811,7 +826,7 @@ async function planAssign(supabase, vendor, act, nowMs, L, offers) {
     if (!act || typeof act !== 'object' || act.act !== 'assign_crew') return null;
     const member = spotless(act.member_as_spoken);
     if (!member) return { ask: { line: DL.LINES.B62, key: 'B62' } };
-    const said = spotless(act.client_as_spoken);
+    const said = spotless(act.client_as_spoken) || kindClient(act, L); // F-44.133: the ear's client inside the kind, read by the door
     const client = said && key(said) !== key(member) ? said : null;
     const dated = spotless(act.date_as_spoken);
     const rows = await membersOf(supabase, vendor.id);
@@ -2025,4 +2040,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

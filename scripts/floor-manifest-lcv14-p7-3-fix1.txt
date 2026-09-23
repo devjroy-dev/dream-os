@@ -1,0 +1,6 @@
+# CE-45 LCV-14 · LC-Victor P7 cut 3 fix 1 · F-44.133, the door reads the client out of the kind · base 69f4b99
+src/lib/vendor/workingDoor.js
+scripts/b107_lcv14_kind_client_bench.js
+scripts/floor-manifest-lcv14-p7-3-fix1.txt
+docs/handovers/TDW_CE45_LCV14_P7_3_FIX1_HANDOVER.md
+docs/handovers/TDW_CE45_LCV14_P7_3_HANDOVER.md
