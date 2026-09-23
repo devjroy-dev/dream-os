@@ -369,12 +369,12 @@ async function main() {
   };
   const WEEK = (nowMs) => { const t = (n) => IC.istPlusDaysISO(n, nowMs || NOW); return [`Due this week: Rao · Advance · Rs 30,000 · ${LY(t(0))}.`, `Due this week: Rao · Second · Rs 45,000 · ${LY(t(6))}.`, `This week: Rao · shoot · ${LY(t(3))}.`].join('\n'); };
   const DAY14 = '14 February 2027: blocked — personal.\n14 February 2027: blocked.\n14 February 2027: Rao · shoot';
-  const LEADS2 = 'New leads: Walk Eighteen Nu (1 May 2027) · Walk Eighteen Xi.';
+  const LEADS2 = 'New leads: Walk Eighteen Xi · Walk Eighteen Nu (1 May 2027).'; // RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, R-45.12, labelled): NEWEST first, the door's own read
   const lk = (d, said, h, deps) => turnX(d, said, h, deps || {});
 
   sec('1 · THE LAWS OF THE CUT (the bytes, the lookups\' door, K3\'s relocation)');
   const EIGHT = { B69: '2529a488e7bc47337286f6737fae1b6fc061cc23c736495266546a307cbda459', B70: '1eb19e7ff80596105866e91a70f1c38ae50991c426035af5ad1d423395d64b31', B71: 'b2a93cd4ed88977434dc30f6dafe1fba387a867a6dccb5bef56b5add43022cdb', B72: 'caae4be489ef24c9743d11dba40370bd211ed83b8a1859a1a6f04b445273baae', B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a', B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5', B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a', B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74' };
-  T('1.1 LINES 75: the eight of his (B69 to B74, B78, B79), each byte its hash literal; B78 has NO full stop', Object.keys(DL.LINES).length === 75 && Object.keys(EIGHT).every((k) => DL.LINE_HASHES[k] === EIGHT[k] && sha(DL.LINES[k] || '') === EIGHT[k]) && !DL.LINES.B78.endsWith('.'));
+  T('1.1 LINES 75: the eight of his (B69 to B74, B78, B79), each byte its hash literal; B78 has NO full stop', Object.keys(DL.LINES).length === 79 /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): 79 since B80 to B83, his; b109 holds them */ && Object.keys(EIGHT).every((k) => DL.LINE_HASHES[k] === EIGHT[k] && sha(DL.LINES[k] || '') === EIGHT[k]) && !DL.LINES.B78.endsWith('.'));
   T('1.2 LOOKUP_ACTS is find, whatsdue, date and is NOT in COVERED (a lookup is never a job); COVERED still fourteen', J(WD.LOOKUP_ACTS) === 'find,whatsdue,date' && WD.COVERED.length === 14 && !WD.LOOKUP_ACTS.some((a) => WD.COVERED.includes(a)));
   const LFD = (() => { try { return require(P('src/lib/vendor/leadFeed.js')); } catch (_e) { return {}; } })();
   const WLs = src('src/api/vendor/worklistToday.js'); const LFs = (() => { try { return src('src/lib/vendor/leadFeed.js'); } catch (_e) { return ''; } })();
@@ -385,7 +385,7 @@ async function main() {
   sec('2 · THE RECORDS REPLAYED (the P7 table and R-45.11\'s)');
   {
     for (const k of ['1/C1/asis', '1/C2/slots']) { const x = await lk(db(lookEstate()), P7[k].said, heardRec(P7[k])); T(`2.1 P7 ${k} "${P7[k].said}" → the day's lines, blocks first then the booking; the cancelled shoot never shows`, x.reply === DAY14 && x.said.keys[0] === 'B72'); }
-    for (const k of ['13/C1/asis', '13/C1/slots', '13/C2/slots']) { const x = await lk(db(lookEstate()), P7[k].said, heardRec(P7[k])); T(`2.2 P7 ${k} "${P7[k].said}" → B69, oldest first, the undated lead by name alone (row 13 C1's lead-on-search is the lookup, F-44.128; never B18)`, x.reply === LEADS2 && x.said.keys[0] === 'B69'); }
+    for (const k of ['13/C1/asis', '13/C1/slots', '13/C2/slots']) { const x = await lk(db(lookEstate()), P7[k].said, heardRec(P7[k])); T(`2.2 P7 ${k} "${P7[k].said}" → B69, newest first (R-45.12), the undated lead by name alone (row 13 C1's lead-on-search is the lookup, F-44.128; never B18)`, x.reply === LEADS2 && x.said.keys[0] === 'B69'); }
     for (const k of ['14/C1/slots', '14/C2/slots']) { const x = await lk(db(lookEstate()), P7[k].said, heardRec(P7[k])); T(`2.3 P7 ${k} "${P7[k].said}" → the week: B73 per milestone due today through today plus six, then B79 per shoot`, x.reply === WEEK()); }
     const s = await lk(db(lookEstate()), P7['15/C1/slots'].said, heardRec(P7['15/C1/slots']));
     T('2.4 P7 15/C1/slots "What happened with the Sharma booking?" (history, a client) → B34, exit lookup (P8\'s)', s.reply === B34 && s.out.why === 'lookup');
@@ -436,14 +436,15 @@ async function main() {
     const u = lookEstate(); u['public.leads'] = u['public.leads'].filter((l) => l.state !== 'new');
     for (let i = 0; i < 21; i += 1) u['public.leads'].push(leadRow({ id: `l-c${i}`, name: `Cap ${String(i).padStart(2, '0')}`, state: 'new', created_at: `2026-09-01T00:${String(i).padStart(2, '0')}:00Z` }));
     const z = await lk(db(u), 'Who are my new leads?', req([{ act: 'find' }], 'search'));
-    T('5.3 twenty-one new leads → the line names the first TWENTY, oldest first (the cap, disclosed)', /^New leads: Cap 00 · Cap 01 /.test(z.reply) && z.reply.endsWith('Cap 19.') && !z.reply.includes('Cap 20'));
-    const f = await lk(db(lookEstate()), 'Who are my new leads?', req([{ act: 'find' }], 'search'), { newLeads: async () => ({ data: null, error: { message: 'down' } }) });
+    // 5.3 RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, Q4 and R-45.12, labelled): the FIVE newest named, newest first, then the derived tail
+    T('5.3 twenty-one new leads → the five NEWEST named, newest first, and "and 16 more." (Q4, R-45.12)', z.reply === 'New leads: Cap 20 · Cap 19 · Cap 18 · Cap 17 · Cap 16 and 16 more.');
+    const f = await lk(db(lookEstate()), 'Who are my new leads?', req([{ act: 'find' }], 'search'), { newestLeads: async () => ({ data: null, error: { message: 'down' } }) } /* RE-AIMED (P7 cut 4 fix): the door's own reader */);
     T('5.4 a FAILED read is the glitch line, never B70 (C-44.4)', f.out.why === 'lookup_unsayable' && f.reply !== 'No new leads.');
   }
 
   sec('6 · WHAT STAYS B34, AND THE LEFTOVER');
   {
-    for (const [label, rq] of [['tally', req([{ act: 'tally' }], 'search')], ['history with a client', req([{ act: 'history', client_as_spoken: 'Walk Seventeen Alpha' }], 'search')], ['two lookups in one message', req([{ act: 'find' }, { act: 'whatsdue' }], 'search')], ['date with no day', req([{ act: 'date' }], 'search')]]) {
+    for (const [label, rq] of [['tally naming a client (RE-AIMED, P7 cut 4 fix: tally with no client is answered, b109)', req([{ act: 'tally', client_as_spoken: 'Rao' }], 'search')], ['history with a client', req([{ act: 'history', client_as_spoken: 'Walk Seventeen Alpha' }], 'search')], ['two lookups in one message', req([{ act: 'find' }, { act: 'whatsdue' }], 'search')], ['date with no day', req([{ act: 'date' }], 'search')]]) {
       const x = await lk(db(lookEstate()), 'x y', rq);
       T(`6.1 ${label} → B34, exit lookup; nothing read, nothing written`, x.reply === B34 && x.out.why === 'lookup');
     }
@@ -466,9 +467,10 @@ async function main() {
     await M('7.5 M5 the failed-read guard removed from dueWeek → a failed read reads as an empty week (B74)', 'src/lib/vendor/dueWeek.js', [["    if (mErr || !Array.isArray(ms)) return { ok: false };", "    if (mErr) return { ok: true, payments: [], shoots: [] };"]],
       async (Mod) => { const d = db(lookEstate()); const o = d.from; d.from = (n) => { const b = o(n); if (n === 'payment_schedules') { b.then = (res) => Promise.resolve({ data: null, error: { message: 'down' } }).then(res); } return b; }; return turnX(d, "What's due this week?", req([{ act: 'whatsdue' }], 'search'), {}, { M: Mod }); },
       (x) => x.out.why === 'lookup_unsayable');
-    await M('7.6 M6 the cap removed → twenty-one names spoken', WDf, [['data.slice(0, cap)', 'data']],
+    // 7.6 RE-AIMED (CE-45 LCV-14, P7 cut 4 fix, labelled): the cap is now Q4's five; the mutation removes the five
+    await M('7.6 M6 the five removed → twenty-one names spoken', WDf, [['const shown = named.slice(0, 5);', 'const shown = named;']],
       async (Mod) => { const u = lookEstate(); u['public.leads'] = u['public.leads'].filter((l) => l.state !== 'new'); for (let i = 0; i < 21; i += 1) u['public.leads'].push(leadRow({ id: `l-c${i}`, name: `Cap ${String(i).padStart(2, '0')}`, state: 'new', created_at: `2026-09-01T00:${String(i).padStart(2, '0')}:00Z` })); return turnX(db(u), 'Who are my new leads?', req([{ act: 'find' }], 'search'), {}, { M: Mod }); },
-      (x) => !x.reply.includes('Cap 20'));
+      (x) => !x.reply.includes('Cap 00'));
   }
 
   sec('8 · THE LAWS');
@@ -488,7 +490,7 @@ async function main() {
   {
     const d = db(lookEstate());
     let x = await turnX(d, 'Who are my new leads?', heardRec(P7['13/C2/slots']));
-    T('9.1 STEP 1 "Who are my new leads?" → B69 naming exactly the new leads, oldest first', x.reply === LEADS2);
+    T('9.1 STEP 1 "Who are my new leads?" → B69 naming exactly the new leads, newest first (R-45.12)', x.reply === LEADS2);
     x = await turnX(d, 'Am I free on 14 February 2027?', req([{ act: 'find', date_as_spoken: '14 February 2027' }], 'search'));
     T('9.2 STEP 2 "Am I free on 14 February 2027?" → the day\'s lines (B72, B72 derived, B78)', x.reply === DAY14);
     x = await turnX(d, "What's due this week?", heardRec(P7['14/C1/slots']));

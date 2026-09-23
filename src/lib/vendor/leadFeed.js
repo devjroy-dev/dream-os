@@ -40,4 +40,22 @@ function newLeads(supabase, vendorId) {
           .limit(KIND_CAP + 1);                       // +1 detects truncation
 }
 
-module.exports = { KIND_CAP, LEAD_FEED_SELECT, newLeads };
+// P7 cut 4 FIX (R-45.12, the founder: "leads should be newest first"): THE DOOR'S OWN READ, a second reader. The same select and the same predicate as
+// newLeads, NEWEST FIRST, under a ceiling of NEWEST_CAP rows (the chair's ruling: 500, with a separate head-count when the ceiling is met). The app's feed
+// above keeps its order byte for byte. RETURNS the unawaited builder, as newLeads does.
+const NEWEST_CAP = 500;
+function newestLeads(supabase, vendorId) {
+  return supabase.from('leads')
+    .select(LEAD_FEED_SELECT)
+    .eq('vendor_id', vendorId).is('deleted_at', null)
+    .eq('state', 'new')
+    .order('created_at', { ascending: false })
+    .limit(NEWEST_CAP);
+}
+// the head-count of every live new lead, read only when the ceiling was met; { count } or { error }
+function newLeadsCount(supabase, vendorId) {
+  return supabase.from('leads').select('id', { count: 'exact', head: true })
+    .eq('vendor_id', vendorId).is('deleted_at', null).eq('state', 'new');
+}
+
+module.exports = { KIND_CAP, LEAD_FEED_SELECT, newLeads, NEWEST_CAP, newestLeads, newLeadsCount };

@@ -232,6 +232,11 @@ async function main() {
     B74: "Nothing due this week.",
     B78: "{date}: {client} · shoot",
     B79: "This week: {client} · shoot · {date}.",
+    // P7 cut 4 FIX (CE-45 LCV-14, labelled): four of his join the ruled set (B80, B82 the tally; B81, B83 the nameless); one cell each; b109 holds them
+    B80: "Owed to you: Rs {total} across {n} open invoices.",
+    B81: "{n} new enquiries have no name yet. Add their names in the app.",
+    B82: "Nothing is owed to you right now.",
+    B83: "1 new enquiry has no name yet. Add its name in the app.",
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -295,6 +300,10 @@ async function main() {
     B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5',
     B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
     B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74',
+    B80: '08f216a15644ce1b9202096dac24349c2d8cc0e16f022891bb9d87110af61ea2',
+    B81: 'f32090f8bc1ba08c6b14f85182ef9bc3a639c9b50cd790e65313181d0f85d5cd',
+    B82: '70d5189141b9cbd8092834919995f3cb16edadff17d2023989d26cf6ef49435b',
+    B83: 'ec1816251b9cfde6078edb4da2fa4b4499c9b7d68ec38ae17d6e09b17c7497e0',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };

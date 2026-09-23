@@ -170,9 +170,13 @@ function lazy(deps) {
     reminders: deps.reminders || require('./paymentReminders'),
     // P7 cut 4: the lookups' three reads AS THEY STAND, each a seam for the bench (production passes nothing)
     readDaySpine: deps.readDaySpine || ((...a) => require('./daySheet').readDaySpine(...a)),
-    newLeads: deps.newLeads || ((...a) => require('./leadFeed').newLeads(...a)),
     dueThisWeek: deps.dueThisWeek || ((...a) => require('./dueWeek').dueThisWeek(...a)),
-    kindCap: deps.kindCap || require('./leadFeed').KIND_CAP,
+    // P7 cut 4 FIX: the door's own newest-first read and its head-count (leadFeed.js), and the ONE books reader AS IT STANDS (invoices.js readOutstanding)
+    newestLeads: deps.newestLeads || ((...a) => require('./leadFeed').newestLeads(...a)),
+    newLeadsCount: deps.newLeadsCount || ((...a) => require('./leadFeed').newLeadsCount(...a)),
+    newestCap: deps.newestCap || require('./leadFeed').NEWEST_CAP,
+    readOutstanding: deps.readOutstanding || ((...a) => require('./invoices').readOutstanding(...a)),
+    outstandingStates: deps.outstandingStates || require('./invoices').OUTSTANDING_STATES,
     memory: deps.memory || null,
     meter: deps.meter || null,
     // P6b: the relay's organs, each a seam for the bench. The transport is the estate's ONE sender (src/lib/whatsapp.js sendWhatsApp),
@@ -1007,8 +1011,12 @@ async function fileReminder(supabase, vendor, plan, L) {
 //     ("How much is owed to me?" arrives here: 8 of 8 whatsdue on R-45.11's table, sha256 19167fb8789d…; F-44.129)
 //   · find, whatsdue or date WITH a day → AVAILABILITY of that day (readDaySpine, 2b's relocation): B72 per block, then B78 per booking; none → B71;
 //     an unreadable day → B7 (his byte; no note)
-//   · find with no day, or lead with no client (P7 row 13 C1, F-44.128) → THE NEW LEADS (leadFeed.js newLeads, K3): B69 naming at most the cap (20),
-//     oldest first; none → B70
+//   · find with no day, or lead with no client (P7 row 13 C1, F-44.128) → THE NEW LEADS. THE FIX (F-44.136; Q4; R-45.12): the door's OWN read, newest
+//     first (leadFeed.js newestLeads; the app's feed keeps its order). B69 names the FIVE newest NAMED leads, newest first, ending "and {n} more." when more
+//     named remain (derived); the nameless are counted on their own line, B83 for one, B81 for two or more; none at all → B70. A lead with no name never
+//     breaks the answer again.
+//   · tally with no client → WHAT IS OWED (invoices.js readOutstanding, the ONE derivation, AS IT STANDS): B80 "Owed to you: Rs {total} across {n} open
+//     invoices."; a zero total → B82; a failed read → his LEDGER_UNREADABLE REUSED from its home (victorLines.js), the invoice plane's fail-closed sentence
 // Every name, figure and date is a ROW's. A failed read is 'lookup_unsayable' (the glitch line), never an empty answer (C-44.4). TOTAL: never throws.
 const WEEK_WORDS = /^(this )?week$/;
 async function lookupDoor(supabase, vendor, heard, nowMs, L, st) {
@@ -1037,12 +1045,33 @@ async function lookupDoor(supabase, vendor, heard, nowMs, L, st) {
       return line ? answer(line, day.blocks.length ? 'B72' : 'B78', 'lookup_day') : CHAIN(st.ear, 'lookup_unsayable');
     }
     if ((a.act === 'find' || a.act === 'lead') && !said) {
-      const { data, error } = await L.newLeads(supabase, vendor.id);
+      const { data, error } = await L.newestLeads(supabase, vendor.id);
       if (error || !Array.isArray(data)) return CHAIN(st.ear, 'lookup_unsayable');
-      if (!data.length) return answer(DL.LINES.B70, 'B70', 'lookup_leads');
-      const cap = Number.isInteger(L.kindCap) && L.kindCap > 0 ? L.kindCap : 20;
-      const line = DL.newLeadsLine(data.slice(0, cap).map((l) => ({ name: l && l.name, date: l && l.wedding_date ? longDateYear(l.wedding_date) : null })));
-      return line ? answer(line, 'B69', 'lookup_leads') : CHAIN(st.ear, 'lookup_unsayable');
+      const named = data.filter((l) => l && typeof l.name === 'string' && l.name.trim());
+      let nameless = data.length - named.length;
+      let namedTotal = named.length;
+      const cap = Number.isInteger(L.newestCap) && L.newestCap > 0 ? L.newestCap : 500;
+      if (data.length >= cap) { // the ceiling met: the separate head-count; the rows beyond the ceiling are counted as named (disclosed)
+        const c = await L.newLeadsCount(supabase, vendor.id);
+        if (!c || c.error || !Number.isInteger(c.count)) return CHAIN(st.ear, 'lookup_unsayable');
+        namedTotal = named.length + Math.max(0, c.count - data.length);
+      }
+      if (!namedTotal && !nameless) return answer(DL.LINES.B70, 'B70', 'lookup_leads');
+      const shown = named.slice(0, 5);
+      const lines = [];
+      if (shown.length) lines.push(DL.newLeadsLine(shown.map((l) => ({ name: l.name.trim(), date: l.wedding_date ? longDateYear(l.wedding_date) : null })), namedTotal - shown.length));
+      if (nameless) lines.push(DL.namelessLine(nameless));
+      if (!lines.length || lines.some((x) => !x)) return CHAIN(st.ear, 'lookup_unsayable');
+      return answer(lines.join('\n'), shown.length ? 'B69' : (nameless === 1 ? 'B83' : 'B81'), 'lookup_leads');
+    }
+    if (a.act === 'tally' && !said) {
+      const r = await L.readOutstanding(supabase, vendor.id);
+      if (!r || r.ok !== true || !r.summary) { const ledger = require('../victorLines').VICTOR_LINES.LEDGER_UNREADABLE; return answer(ledger, 'LEDGER_UNREADABLE', 'lookup_owed'); }
+      const total = Number(r.summary.total_outstanding) || 0;
+      if (total <= 0) return answer(DL.LINES.B82, 'B82', 'lookup_owed');
+      const n = (Array.isArray(r.rows) ? r.rows : []).filter((x) => x && (L.outstandingStates || []).includes(x.state)).length;
+      const line = DL.render('B80', { total: digits(total), n });
+      return line ? answer(line, 'B80', 'lookup_owed') : CHAIN(st.ear, 'lookup_unsayable');
     }
     return null;
   } catch (_e) { return CHAIN(st && st.ear, 'lookup_unsayable'); }

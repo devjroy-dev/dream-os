@@ -196,6 +196,15 @@ const LINES = Object.freeze({
   // an upcoming shoot this week: the ROW's title and day
   B79: "This week: {client} · shoot · {date}.",
   B74: "Nothing due this week.",
+  // P7 cut 4 FIX (CE-45 LCV-14; F-44.136, R-45.12; his, 23 September 2026, "ill go with your recomendations" and "ok"):
+  // what is owed across open invoices: {total} readOutstanding's summary.total_outstanding (the ONE derivation), {n} its rows in OUTSTANDING_STATES
+  B80: "Owed to you: Rs {total} across {n} open invoices.",
+  // new leads with no name (two or more); exactly one reads B83
+  B81: "{n} new enquiries have no name yet. Add their names in the app.",
+  // nothing owed (a zero total), in place of B80
+  B82: "Nothing is owed to you right now.",
+  // exactly one new lead with no name (B81's singular, its own key)
+  B83: "1 new enquiry has no name yet. Add its name in the app.",
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
   B75: "Couldn't put that on the calendar — nothing was changed.",
   // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
@@ -301,6 +310,10 @@ const LINE_HASHES = Object.freeze({
   B72: 'caae4be489ef24c9743d11dba40370bd211ed83b8a1859a1a6f04b445273baae',
   B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a',
   B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5',
+  B80: '08f216a15644ce1b9202096dac24349c2d8cc0e16f022891bb9d87110af61ea2',
+  B81: 'f32090f8bc1ba08c6b14f85182ef9bc3a639c9b50cd790e65313181d0f85d5cd',
+  B82: '70d5189141b9cbd8092834919995f3cb16edadff17d2023989d26cf6ef49435b',
+  B83: 'ec1816251b9cfde6078edb4da2fa4b4499c9b7d68ec38ae17d6e09b17c7497e0',
   B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
   B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74',
   B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
@@ -479,14 +492,21 @@ function membersLine(name, members) {
 // P7 cut 4 · the new leads, B69 by position: "New leads: " then each lead as "{name} ({date})" (no date: "{name}" alone, derived) joined by " · ", then ".".
 // Exactly two dated leads fill his template verbatim; one, or three and more, extend it by the same " · " (derived, disclosed). The caller passes at most
 // the cap (twenty) and speaks B70 for none. Any unusable value is null.
-function newLeadsLine(leads) {
+// THE FIX (F-44.136; Q4, R-45.12): the caller passes the named leads it will speak (five, newest first) and how many MORE named leads remain; more > 0 ends
+// the line with the derived tail " and {n} more." in place of the closing "." (disclosed). A nameless lead never reaches this builder (B81/B83 count them).
+function newLeadsLine(leads, more) {
   try {
     if (!Array.isArray(leads) || !leads.length) return null;
     const parts = leads.map((l) => { const n = slot(l && l.name); if (n === null) return null; const d = slot(l && l.date); return d === null ? n : `${n} (${d})`; });
     if (parts.some((x) => x === null)) return null;
     const head = LINES.B69.slice(0, LINES.B69.indexOf('{name}'));
-    return `${head}${parts.join(' · ')}.`;
+    const m = Number.isInteger(more) && more > 0 ? more : 0;
+    return `${head}${parts.join(' · ')}${m ? ` and ${m} more.` : '.'}`;
   } catch (_e) { return null; }
+}
+// the nameless count: exactly one reads B83, two or more B81; none is null
+function namelessLine(n) {
+  try { if (!Number.isInteger(n) || n < 1) return null; return n === 1 ? LINES.B83 : render('B81', { n }); } catch (_e) { return null; }
 }
 // P7 cut 4 · the day's lines: every block first (B72; no reason drops " — {reason}"), then every booking (B78; a non-shoot kind places its own word),
 // each on its own line. None at all is null (the caller speaks B71). Any unusable value is null.
@@ -546,4 +566,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { newLeadsLine, dayLines, weekLines, membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { namelessLine, newLeadsLine, dayLines, weekLines, membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

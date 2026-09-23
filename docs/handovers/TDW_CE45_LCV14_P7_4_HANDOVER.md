@@ -75,13 +75,59 @@ bf1_bride_tool_fidelity_bench, test-shape; "[F-14.16] --delivery mode: 20 dirty 
 verified." Git status after: base 0, cured 20. This handover's path was declared before the runs and written after them (docs-only, read by no bench).
 
 ## 8 · CARD 4 AND THE WALK RECORD
-Card 4 in his words: 1 "Who are my new leads?" · 2 "Am I free on 14 February 2027?" · 3 "What's due this week?" · 4 "How much is owed to me?" (the same answer as
-step 3; R-45.11) · 5 "What happened with the Walk Seventeen Alpha booking?" → B34. The expected lines rest on his fixture rows, pasted before the walk.
-The walk record: (written in by script after the walk)
+Card 4 in his words: 1 "Who are my new leads?" · 2 "Am I free on 14 February 2027?" · 3 "What's due this week?" · 4 "How much is owed to me?" · 5 "What happened with the Walk
+Seventeen Alpha booking?" → B34.
+THE WALK RECORD · 23 September 2026 · DEV440 · 7687acd (Railway ACTIVE about 20:48 IST) · WRITTEN BY SCRIPT FROM THE FOUNDER'S EXPORTS, NEVER RETYPED
+  fixture (read before the walk, the card's lines read against it after the fact) 31cbb18cbd6124bc6c5f6f63573ac1fb612c489dd4e3417a10f5b70223d5072b: IST today 2026-09-23; 45 state-'new' leads, 12 with name NULL (the
+  seat first counted 11: e-91); no live row on 2027-02-14; due this week "Walk Seventeen Alpha · Deposit, 30% of the fee, on booking · Rs 24000 · 2026-09-23"
+  and "new test · Delivery · Rs 30000 · 2026-09-24"; no shoot this week.
+  thread (engine.messages with meta.listener, from 18:42 IST) 14 rows, sha256 43088a09badec2efb2525c7d9dee7bb1649372043e5dc7fcc7bba48f569a4310. Times UTC (IST +5:30). Every turn lane pwa, answered by code.
+  Nothing written; nothing sent.
+
+1. step 1 RED · F-44.136 (a nameless lead among the twenty oldest; newLeadsLine returned null; lookup_unsayable, the glitch line)
+   15:25:45 HE: Who are my new leads?
+   15:25:45 DOOR · lane pwa: There was a small glitch, please try again or use the app screens for this action
+   HEARD: {"acts":[{"act":"find"}],"route":"search"}
+
+2. step 1 RED · F-44.136 (the same, retyped)
+   15:25:57 HE: Who are my new leads?
+   15:25:57 DOOR · lane pwa: There was a small glitch, please try again or use the app screens for this action
+   HEARD: {"acts":[{"act":"find"}],"route":"search"}
+
+3. step 2 GREEN (B71; the fixture: no row on 2027-02-14)
+   15:26:05 HE: Am I free on 14 February 2027?
+   15:26:05 DOOR · lane pwa: 14 February 2027 is free.
+   HEARD: {"acts":[{"act":"date","date_as_spoken":"14 February 2027"}],"route":"search"}
+
+4. step 3 GREEN (B73 twice, day order, byte-exact to the fixture's two rows)
+   15:26:21 HE: What's due this week?
+   15:26:21 DOOR · lane pwa: Due this week: Walk Seventeen Alpha · Deposit, 30% of the fee, on booking · Rs 24,000 · 23 September 2026.
+Due this week: new test · Delivery · Rs 30,000 · 24 September 2026.
+   HEARD: {"acts":[{"act":"whatsdue"}],"route":"search"}
+
+5. step 4 DIVERGED (the live ear, in the thread, heard tally; B34 through 'lookup' exactly as R-45.11 ruled; the card's expectation rested on the cold table's 8 of 8 whatsdue)
+   15:26:33 HE: How much is owed to me?
+   15:26:33 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"tally"}],"route":"search"}
+
+6. step 5 GREEN (history with a client, B34)
+   15:26:41 HE: What happened with the Walk Seventeen Alpha booking?
+   15:26:41 DOOR · lane pwa: I cannot do that by message yet. Use the app for it.
+   HEARD: {"acts":[{"act":"history","client_as_spoken":"Walk Seventeen Alpha"}],"route":"search"}
+
+7. step 1 RED · F-44.136 (a third try)
+   15:27:05 HE: Who are my new leads?
+   15:27:05 DOOR · lane pwa: There was a small glitch, please try again or use the app screens for this action
+   HEARD: {"acts":[{"act":"find"}],"route":"search"}
+
+VERDICT: 2, 3 and 5 GREEN byte for byte; 1 RED three times, F-44.136 (minted by the chair; cured in TDW_CE45_LCV14_P7_4_FIX1, b109); 4 DIVERGED, the live ear
+hearing tally where the cold table heard whatsdue (the fix answers tally, B80/B82, on the chair's rulings of 23 September). His estate was then cleared on his
+word (the fix handover §6). Card 5 re-walks 1 and 4 on the fix.
 
 ## 9 · OPEN
 F-44.134 and his surface points of 23 September for the app-side cut (R-45.10). F-44.135 (fileBook's coarse refusal label) rides the next cut that opens
-fileBook. The "no · no" line after R-45.11's run, owed from him.
+fileBook. The "no · no" line after R-45.11's run, owed from him. F-44.136 cured in the fix cut.
 
 ## 10 · NEXT FREE
 F-44.136 · migration 0171 · bench b109 · errors e-91 · corrections c-45.14.
+

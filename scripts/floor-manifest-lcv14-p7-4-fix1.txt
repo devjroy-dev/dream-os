@@ -1,0 +1,20 @@
+# CE-45 LCV-14 · LC-Victor P7 cut 4 fix 1 · F-44.136, Q4, R-45.12, the tally · base 7687acd
+src/lib/vendor/workingDoor.js
+src/lib/vendor/doorLines.js
+src/lib/vendor/leadFeed.js
+scripts/b109_lcv14_lookups_fix_bench.js
+scripts/floor-manifest-lcv14-p7-4-fix1.txt
+scripts/b108_lcv14_lookups_bench.js
+scripts/b90_lcv_p5_bench.js
+scripts/b93_lcv9_chain_out_bench.js
+scripts/b97_lcv10_name_bench.js
+scripts/b98_lcv10_package_bench.js
+scripts/b99_lcv10_didyoumean_bench.js
+scripts/b102_lcv11_fix1_bench.js
+scripts/b103_lcv12_rehear_bench.js
+scripts/b104_lcv12_calendar_bench.js
+scripts/b105_lcv13_move_cancel_bench.js
+scripts/b106_lcv14_team_reminder_bench.js
+scripts/b107_lcv14_kind_client_bench.js
+docs/handovers/TDW_CE45_LCV14_P7_4_FIX1_HANDOVER.md
+docs/handovers/TDW_CE45_LCV14_P7_4_HANDOVER.md
