@@ -64,11 +64,39 @@ Git status after: base 0, cured 19. Both handovers' paths were declared before t
 On the CLEARED estate (33 named, 7 nameless), steps 1 and 4 of card 4 re-walked: 1 "Who are my new leads?" → the five newest named, newest first, and "and 28 more."
 (33 named), then "7 new enquiries have no name yet. Add their names in the app." · 4 "How much is owed to me?" → B80 (or B82) when heard as tally; the week's lines when
 heard as whatsdue. The exact lines are written from his card-5 fixture rows before he walks.
-The walk record: (written in by script after the walk)
+The walk record: CARD 5 · 23 September 2026 · DEV440 · b61e5d0 (Railway ACTIVE about 22:42 IST) · WRITTEN BY SCRIPT FROM THE FOUNDER'S EXPORTS, NEVER RETYPED
+  fixture (read before the walk; the expected lines written from it before he walked) 81398de4dc6b4add51e4e3a1506e956a4dc0c2effea39758cac382bf49124987: DEV440 1; the five newest named new leads Asha walk
+  fifteen, Isha Walk Fourteen, Ravi Walk Thirteen, Dia Walk Thirteen (each 2027-03-05), Priya Walk Twelve (no date); named 33; nameless 7; open invoices 18; owed 1066000.
+  thread (engine.messages with meta.listener, from 22:40 IST) 6 rows, sha256 cfbf1a1f8c48aaebceac433585f151dfed09c6a58464ff3d38c4023e393ec712. Times UTC (IST +5:30). Every turn lane pwa, answered by code. Nothing
+  written; nothing sent.
+
+1. step 1 GREEN byte-exact (F-44.136 closed live)
+   17:15:26 HE: Who are my new leads?
+   17:15:26 DOOR · lane pwa: New leads: Asha walk fifteen (5 March 2027) · Isha Walk Fourteen (5 March 2027) · Ravi Walk Thirteen (5 March 2027) · Dia Walk Thirteen (5 March 2027) · Priya Walk Twelve and 28 more.
+7 new enquiries have no name yet. Add their names in the app.
+   HEARD: {"acts":[{"act":"find"}],"route":"search"}
+
+2. step 4 the WEEK (heard whatsdue; the card's allowed alternative; F-44.137)
+   17:15:52 HE: How much is owed to me?
+   17:15:52 DOOR · lane pwa: Due this week: Walk Seventeen Alpha · Deposit, 30% of the fee, on booking · Rs 24,000 · 23 September 2026.
+Due this week: new test · Delivery · Rs 30,000 · 24 September 2026.
+   HEARD: {"acts":[{"act":"whatsdue"}],"route":"search"}
+
+3. step 4b his own retry, heard tally → B80 byte-exact to the fixture (18, 10,66,000)
+   17:16:52 HE: how uch is owed to me total
+   17:16:52 DOOR · lane pwa: Owed to you: Rs 10,66,000 across 18 open invoices.
+   HEARD: {"acts":[{"act":"tally"}],"route":"search"}
+  BEYOND THE EXPORT, AS THE CHAIR RECORDS HIS WORDS (not read by the seat's script): "how much is owed to me across everything" and "how much do i stand to gain from
+  all my leads and clents" each read B80 "Owed to you: Rs 10,66,000 across 18 open invoices."
+  KEYS: the "no · no" line landed (his terminal, about 22:46 IST): R-45.11's run is closed on the Codespaces law.
+VERDICT: step 1 GREEN byte-exact, F-44.136 CLOSED LIVE. Step 4 read the week (heard whatsdue), the card's allowed alternative; 4b and his phrasings with "total",
+"across everything" read B80 byte-exact. F-44.137 (minted: the ear splits "How much is owed to me?" across whatsdue and tally; the door cannot tell it from "What's
+due this week?" on the act alone) CLOSED AS A RECORD under R-45.13, the founder: "vendor using total is fine. because thats natural langage. how much is owed to me
+across all my business, so its fine". No cure built; the chair's (iv) withdrawn; F-44.129 stands.
 
 ## 9 · ERRORS AND OPEN
 e-91: the seat's count of 11 nameless leads (12). F-44.134 and his surface points for the app-side cut (R-45.10). F-44.135 for the next fileBook cut. The "no · no"
-line after R-45.11's run, owed from him.
+line after R-45.11's run landed (§8). F-44.137 closed as a record (R-45.13).
 
 ## 10 · NEXT FREE
 F-44.137 · migration 0171 · bench b110 · errors e-92 · corrections c-45.14.
