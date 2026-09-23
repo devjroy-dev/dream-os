@@ -494,5 +494,7 @@ router.get('/benchmarks', requireAuth, resolveVendor(), asyncHandler(async (req,
 router.use('/google', require('./google'));
 // G3.1 s2 · her address as a QR — see storefront.js; one call into the tent card's QR home.
 router.use('/storefront', require('./storefront'));
+// G6 · CE-45 G6-1 2a · her own number: the room's answer and Meta's code (number.js; FK1).
+router.use('/number', require('./number'));
 
 module.exports = router;

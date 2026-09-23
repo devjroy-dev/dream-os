@@ -1,0 +1,22 @@
+# scripts/floor-manifest-ce45-g61-srv1.txt
+# CE-45 · G6-1 · cut 2a (SRV_1) · dream-os. F-19.16: a dirty path outside this list is a STOP.
+# BASE: 46af98d21ed4 (given by the chair under R-45.14, LSP_1 landed). Built at 89e3a6e, carried and re-derived at 46af98d.
+# Every path this ZIP writes, and nothing else. `src/lib/ownNumber/` appears both as the
+# directory `git status --porcelain` prints for a new untracked folder (run-floor.sh :137) and as its
+# files, the precedent of floor-manifest-ce42-4b1-os.txt (tools/card_fonts/). SRV_1b adds the directory
+# line, which SRV_1 lacked and the founder's floor refused (CE-45, 2026-09-24).
+db/migrations/0171_own_number.sql
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/number.js
+src/lib/ownNumber/
+src/lib/ownNumber/meta.js
+src/lib/ownNumber/door.js
+src/lib/ownNumber/connect.js
+src/lib/ownNumber/wabaMap.js
+src/lib/ownNumber/events.js
+src/lib/metaInbound.js
+src/marketingIndex.js
+src/lib/discover/shapeVendor.js
+scripts/b121_g61_own_number_srv_bench.js
+scripts/floor-manifest-ce45-g61-srv1.txt
+docs/handovers/TDW_CE45_G61_SRV1_HANDOVER.md

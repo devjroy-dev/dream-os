@@ -332,7 +332,25 @@ function laneForPnid(pnid, env = process.env) {
   return null;
 }
 
+// ── CE-45 · G6-1 · 2a · THE ONE ROUTING DECISION FOR A SINGLE CHANGE (read-first G1/G2, F-44.138 widened) ──
+// Pure. `lane` is laneForPnid's answer (the estate's three env lanes win, unchanged); `own` is the
+// vendor_wabas row the receiver found for this change's PNID or entry.id, or null.
+//   a lane                          -> that lane (marketing in-process; bride/vendor forwarded as today)
+//   a vendor's own PNID or WABA     -> 'own'  (handled in the receiver; NEVER forwarded to index.js,
+//                                              whose /webhook/meta reads inbound as the VENDOR lane)
+//   no PNID, not a vendor's WABA    -> 'vendor' (TDW's own WABA-level events: account_update and
+//                                              message_template_status_update reach index.js :199/:222 (at 46af98d),
+//                                              which they never did while the receiver dropped them)
+//   an unknown PNID                 -> 'drop'  (logged, as before)
+function routeChange(lane, phoneNumberId, own) {
+  if (lane === 'marketing' || lane === 'bride' || lane === 'vendor') return lane;
+  if (own && own.vendor_id) return 'own';
+  if (!phoneNumberId) return 'vendor';
+  return 'drop';
+}
+
 module.exports = {
+  routeChange,
   extractAccountUpdates,
   extractTemplateStatusUpdates,
   handleVerifyChallenge,

@@ -42,6 +42,26 @@ const { waNumberFor } = require('../waNumbers');
 // different number than the live card would be a lie the vendor could not see.
 const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
+// ── §7c · THE ENQUIRY ROUTING RESOLVER · CE-45 G6-1 2a (spec §7c, Amendment 3; ruled into 2a) ──────────
+// ONE home for where "Enquire on WhatsApp" sends a couple; every enquiry surface will resolve through it,
+// never inline. The switch is vendors.enquiry_routing (0171), hers alone, three rungs:
+//   'tdw'        (default, every tier) TDW's vendor line with her handle: EXACTLY today's link.
+//   'own_number' her typed enquiry_phone (never users.phone; P0-B's refusal stands). A phone that is not
+//                10 to 15 digits falls back to 'tdw' rather than publishing a broken link.
+//   'own_waba'   her own number under TDW (G6). In 2a it resolves to 'tdw': the connected number arrives
+//                with 2b, which passes it as `ownNumber`; until then no row can hold this value usefully.
+// Anything unknown or absent (a row read before 0171 ran) is 'tdw'. Pure; never throws.
+// NOT YET WIRED into the four link builders (shapeVendor :169 below, weddingTeam :294, weddingPage :142,
+// vendorCard :572; at 46af98d): each reads the vendor through an explicit column list, and until a vendor can set the
+// switch (FE_2) every row is 'tdw', whose link is byte-identical to theirs. Declared for the chair.
+function enquireLinkFor({ handle, enquiry_routing, enquiry_phone, ownNumber } = {}) {
+  const tdw = handle ? `${ENQUIRE_BASE}${handle}` : null;
+  const digits = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 && d.length <= 15 ? d : null; };
+  if (enquiry_routing === 'own_number') { const d = digits(enquiry_phone); return d ? `https://wa.me/${d}` : tdw; }
+  if (enquiry_routing === 'own_waba') { const d = digits(ownNumber); return d ? `https://wa.me/${d}` : tdw; }
+  return tdw;
+}
+
 // ── THE DISPLAY CAP IS OVERTURNED — FOUNDER RULING, TDW_07 MICRO-2 ───────────────────
 // FOUNDER'S WORD, 2026-07-31: "couples should be able to see all approved photos on
 // discover". The card carries EVERY approved photo. There is no display cap.
@@ -157,6 +177,7 @@ function shapeVendorForDiscover(vendor, ctx = {}) {
 }
 
 module.exports = {
+  enquireLinkFor,
   shapeVendorForDiscover,
   normalizeIgHandle,
   // DISPLAY_PHOTO_LIMIT is GONE, not zeroed — MICRO-2 retired the rule, and a constant left

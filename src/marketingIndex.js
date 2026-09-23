@@ -19,8 +19,10 @@ const { createClient } = require('@supabase/supabase-js');
 
 const {
   handleVerifyChallenge, verifyMetaSignature, normalizeMetaInbound, extractStatuses,
-  changesWithPnid, buildSingleChangeBody, laneForPnid,
+  changesWithPnid, buildSingleChangeBody, laneForPnid, routeChange,
 } = require('./lib/metaInbound');
+const ownNumberMap = require('./lib/ownNumber/wabaMap');     // CE-45 G6-1 2a (read-first G1/G2)
+const ownNumberEvents = require('./lib/ownNumber/events');
 const {
   sidSeen, recordSid, captureDeadLetter, GRACEFUL_TURN_LINE,
 } = require('./lib/webhookCore');
@@ -205,10 +207,23 @@ app.post('/webhook/meta', async (req, res) => {
     for (const { phoneNumberId, entryId, change } of changesWithPnid(req.body)) {
       const lane = laneForPnid(phoneNumberId);
       const subBody = buildSingleChangeBody(req.body, entryId, change);
-      if (lane === 'marketing') {
+      // CE-45 G6-1 2a · the env lanes decide first, unchanged. Only a change they do not own is looked
+      // up: by its PNID, else by entry.id (the WABA). routeChange (metaInbound.js) is the one decision.
+      // A vendor's own number is handled HERE and never forwarded (index.js reads inbound as the vendor
+      // lane); a PNID-less change on any other WABA is TDW's own and goes to the vendor service, where
+      // index.js's template-status and account-update seams finally receive it (F-44.138, widened).
+      const own = lane ? null : await ownNumberMap.lookup(supabase, { phoneNumberId, wabaId: entryId });
+      const route = routeChange(lane, phoneNumberId, own);
+      if (route === 'marketing') {
         await processMarketingChange(subBody);
-      } else if (lane === 'bride' || lane === 'vendor') {
-        await forwardChange(lane, subBody, phoneNumberId);
+      } else if (route === 'bride' || route === 'vendor') {
+        await forwardChange(route, subBody, phoneNumberId);
+      } else if (route === 'own') {
+        try { await ownNumberEvents.handle(supabase, own, change); }
+        catch (e) {
+          console.error(`${SERVICE_TAG} own-number change for ${own.vendor_id} failed:`, e && e.message);
+          await captureDeadLetter({ supabase, service: 'ingress-own-number', phone: null, payload: subBody, error: e });
+        }
       } else {
         console.warn(`${SERVICE_TAG} unknown recipient PNID ${phoneNumberId || '(none)'}, dropping change`);
       }
