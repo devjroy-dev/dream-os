@@ -340,7 +340,7 @@ async function main() {
   const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : [];
   T('5.1 W-1 NONE: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
   T('5.2 the manifest names exactly the eleven paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([WALK_C, MAN, 'scripts/b99_lcv10_didyoumean_bench.js', 'scripts/b98_lcv10_package_bench.js', 'scripts/b97_lcv10_name_bench.js', 'scripts/b96_lcv10_fix_bench.js', 'scripts/b95_lcv10_note_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b90_lcv_p5_bench.js', 'src/lib/vendor/doorLines.js', WDf].sort()));
-  T('5.3 ONE vendor byte added, B36, his; LINES holds 41 (38 then; B37 to B39 since P6b, CE-45 LCV-11); the home is nearestName, called from exactly one offer helper', Object.keys(DL.LINES).length === 58 /* P7 2b (CE-45 LCV-13, labelled): six of his joined, b105 */ /* P7 2a: eleven of his joined, b104 */ && (src(WDf).replace(/^\s*\/\/.*$/gm, '').match(/nearestName\(/g) || []).length === 2);
+  T('5.3 ONE vendor byte added, B36, his; LINES holds 41 (38 then; B37 to B39 since P6b, CE-45 LCV-11); the home is nearestName, called from exactly one offer helper', Object.keys(DL.LINES).length === 67 /* RE-PINNED (CE-45 LCV-14, P7 cut 3, labelled): 67 since B56 to B62, B67, B68, his (B60 carried, unspoken); b106 holds them */ /* P7 2b (CE-45 LCV-13, labelled): six of his joined, b105 */ /* P7 2a: eleven of his joined, b104 */ && (src(WDf).replace(/^\s*\/\/.*$/gm, '').match(/nearestName\(/g) || []).length === 2);
   T('5.4 e-72\'s cure rides here: b96 1.10 and 6.1 no longer print a reading in a cell\'s name', !/\$\{ms\} ms/.test(src('scripts/b96_lcv10_fix_bench.js')) && !/\$\{Date\.now\(\) - t0\} ms/.test(src('scripts/b96_lcv10_fix_bench.js')));
 
   // ─── §6 FUZZ ───────────────────────────────────────────────────────────────────────────────
@@ -385,7 +385,7 @@ async function main() {
     [['    { const ask = askName(heard, 0); if (ask) return ask; }\n    if (!allCovered(heard))', "    { const ask = askName(heard, 0); if (ask) return ask; }\n    if (fromNote) { heard = { ...heard, acts: heard.acts.map((a) => (({ client_as_spoken: _c, ...rest }) => rest)(a)) }; }\n    if (!allCovered(heard))"]], [],
     async (rq) => flow(rq, [['Attach Walk P7 Album to Isha Walk Fourteen', req([att('Isha Walk Fourteen', 'Walk P7 Album')])], ['5 June 2027', req([att('Isha Walk Fourteen', 'Walk P7 Album', '5 June 2027')])]]), (x) => x.out[1].keys === 'B27');
   await mut('7.8 M8 the note carrying HER misspelling instead of the candidate\'s row name: YES then reads B4 (reddens 2.2)', WDf,
-    [["        const filled = { ...act, [slot === 'package' ? 'package_as_spoken' : 'client_as_spoken']: String(c.name).trim() };", '        const filled = { ...act };']], [],
+    [["        const filled = { ...act, [slotField(slot)]: String(c.name).trim() };", '        const filled = { ...act };']] /* anchor RE-AIMED (CE-45 LCV-14, P7 cut 3, labelled): the slot is three-way through slotField; the mutation is the same (the candidate's name not placed) */, [],
     async (rq) => flow(rq, [['x', req([money('booking_confirmed', 'Isha Walk Fourten')])], ['Yes', JSON.parse(NONE_JSON)]]), (x) => x.out[1].keys === 'B4');
 
   console.log(`\n════════  b99 · ${pass} pass · ${fail} fail  ════════`);

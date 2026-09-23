@@ -117,7 +117,10 @@ const MONEY_ACTS = Object.freeze(['booking_confirmed', 'advance_paid', 'mileston
 const CALENDAR_ACTS = Object.freeze(['block_date', 'unblock_date', 'book_event', 'edit_event', 'cancel_event']); // P7 cut 2a; edit_event and cancel_event joined at 2b
 // P7 cut 2b (CE-45 LCV-13): the two calendar acts that are ASKED before they write. Each must be the ONLY act of its message (one question at a time).
 const CAL_QUESTION_ACTS = Object.freeze(['edit_event', 'cancel_event']);
-const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay', ...CALENDAR_ACTS]);
+// P7 cut 3 (CE-45 LCV-14): the team and the payment reminder. assign_crew names a member (and a shoot by its client or its day), never needs a client;
+// payment_reminder names a client and is in NEEDS_CLIENT since 2a. Both LAND AT ONCE; neither ever touches money.
+const TEAM_ACTS = Object.freeze(['assign_crew', 'payment_reminder']);
+const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay', ...CALENDAR_ACTS, ...TEAM_ACTS]);
 // P7 (CE-45 LCV-12, cut 2a; the chair's ruling (g) of 22 September): THE ACTS THAT NAME A CLIENT. allCovered and namelessOf read this table and
 // nothing else: a block, an unblock, an assignment and a lookup name no client, so askName never asks B35 for a day. b90 pins its members.
 const NEEDS_CLIENT = Object.freeze(['lead', 'booking_confirmed', 'advance_paid', 'milestone_paid', 'invoice', 'attach_package', 'relay', 'book_event', 'edit_event', 'cancel_event', 'payment_reminder']); // `lead` names one too: B18 asks for it (the lead exception above the untouched return)
@@ -136,6 +139,8 @@ const HANDS = Object.freeze({
   book_event: 'donna_book_event', // P7 cut 2a: the signal's own name; the door calls writeEvent as calendarSignals' bookEvents does
   edit_event: 'donna_edit_event', // P7 cut 2b: the signals' own names; the door calls writeEvent AS IT STANDS on her YES
   cancel_event: 'donna_cancel_event',
+  assign_crew: 'assign_crew', // P7 cut 3: the door's own names (the kickoff's HANDS ruling), as attach_package is
+  payment_reminder: 'payment_reminder_send',
 });
 
 // `say` is what an exit KNOWS beyond its reason (the name that is no lead, the name that is no client, the money act);
@@ -157,6 +162,9 @@ function lazy(deps) {
     unblockDate: deps.unblockDate || ((...a) => require('./availability').unblockDate(...a)),
     writeEvent: deps.writeEvent || ((...a) => require('./eventWrite').writeEvent(...a)),
     calendarKinds: deps.calendarKinds || require('./eventWrite').CALENDAR_KINDS,
+    // P7 cut 3: the reminder's hand AS IT STANDS (paymentReminders.js :315) and its window helpers, each a seam for the bench (production passes nothing)
+    sendOneReminder: deps.sendOneReminder || ((...a) => require('./paymentReminders').sendOneReminder(...a)),
+    reminders: deps.reminders || require('./paymentReminders'),
     memory: deps.memory || null,
     meter: deps.meter || null,
     // P6b: the relay's organs, each a seam for the bench. The transport is the estate's ONE sender (src/lib/whatsapp.js sendWhatsApp),
@@ -271,6 +279,10 @@ function nearestName(said, rows) {
     return close.length === 1 ? close[0] : null;
   } catch (_e) { return null; }
 }
+// P7 cut 3: THE OFFER'S SLOT, THREE-WAY (the only in-place edit the offer needs): a package, a member, else the client. ONE table, read by offerFor
+// and by the B36 re-ask alike. A slot that is not one of the three is 'client', as the two-way switch always read it.
+const OFFER_SLOTS = Object.freeze({ package: 'package_as_spoken', member: 'member_as_spoken', client: 'client_as_spoken' });
+const slotField = (slot) => OFFER_SLOTS[slot === 'package' || slot === 'member' ? slot : 'client'];
 // the binder names of engine.records for the "Did you mean" home (the invoices cut): id and client, live rows only
 async function bindersOf(supabase, agentId) {
   try {
@@ -353,7 +365,11 @@ const CAL_ASKS = Object.freeze(['B48', 'B50']);
 // the door's own date read ONLY to pick the row among the candidates. Unreadable is B7 once, then B3; a readable day that picks no one row re-asks
 // B53 once, then B3; another act heard lapses the note.
 const SHOOT_ASKS = Object.freeze(['B53']);
-const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS, ...CAL_ASKS, ...SHOOT_ASKS]);
+// P7 cut 3 (CE-45 LCV-14; the chair's ruling of 23 September on ASK 1): THE MEMBER NOTE, its OWN list beside NAME_ASKS. acts[0] is the assign_crew act that
+// named no member; her WHOLE TRIMMED MESSAGE is the member (as B35's answer is the client), and it fills member_as_spoken and NEVER client_as_spoken.
+// Another kind of act heard lapses the note (F-44.115); a closed YES re-asks once, then B3. The rest of the message's acts ride behind it.
+const MEMBER_ASKS = Object.freeze(['B62']);
+const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS, ...CAL_ASKS, ...SHOOT_ASKS, ...MEMBER_ASKS]);
 const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && NEEDS_CLIENT.includes(a.act) && !spokenText(a.client_as_spoken)); // P7 cut 2a: NEEDS_CLIENT decides
 const namelessLead = (acts) => (Array.isArray(acts) ? acts : []).some((a) => a && typeof a === 'object' && a.act === 'lead' && !spokenText(a.client_as_spoken));
 const allKindsCovered = (acts) => Array.isArray(acts) && acts.length > 0 && acts.length <= 4 && acts.every((a) => a && typeof a === 'object' && COVERED.includes(a.act));
@@ -385,6 +401,7 @@ function validNote(n) {
     if (NAME_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || !(n.asked === 'B18' ? namelessLead(acts) : namelessOf(acts).length)) return null; }
     else if (PKG_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'attach_package' || !spokenText(acts[0].client_as_spoken)) return null; }
     else if (OFFER_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || typeof n.candidate_id !== 'string' || !n.candidate_id || namelessOf(acts).length || namelessLead(acts)) return null; }
+    else if (MEMBER_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'assign_crew' || spokenText(acts[0].member_as_spoken)) return null; }
     else if (RELAY_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'relay' || typeof n.draft_id !== 'string' || !n.draft_id) return null; }
     // P7 cut 2b: a CAL note is ONE move or cancel naming its client (a move its new day too) on ONE shoot row; a SHOOT note is the same act on two or more rows
     else if (CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) {
@@ -397,7 +414,7 @@ function validNote(n) {
     }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
+    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
   } catch (_e) { return null; }
 }
 
@@ -754,6 +771,210 @@ async function fileCal(supabase, vendor, lane, note, nowMs, L) {
     if (r && r.conflict && typeof r.conflict.message === 'string' && r.conflict.message.trim()) return { line: r.conflict.message.trim(), key: 'B47', call: { name: hand, input, result: `refused:${r.conflict.kind || 'conflict'}` }, landed: false };
     return his('refused:write_failed');
   } catch (_e) { return his('refused:exception'); }
+}
+
+// ── P7 CUT 3 · THE TEAM AND THE PAYMENT REMINDER (CE-45 LCV-14; LCV-12's designs §3.1 to §3.4 as ruled by the chair; ASKS 1 to 5) ───────────────
+// THE TEAM, ONE READ: team_members where vendor_id, active true, deleted_at null (studio/team.js GET :42 to :50, the same predicate). A failed read is
+// null (C-44.4). The door's own insert (no lib function exists) takes studio/team.js POST's row shape (:124 to :131) with the name she said.
+const TEAM_SELECT = 'id, name, role, phone, created_at';
+async function membersOf(supabase, vendorId) {
+  try {
+    const { data, error } = await supabase.from('team_members').select(TEAM_SELECT).eq('vendor_id', vendorId).eq('active', true).is('deleted_at', null);
+    return (error || !Array.isArray(data)) ? null : data.filter((m) => m && typeof m.id === 'string' && typeof m.name === 'string' && m.name.trim());
+  } catch (_e) { return null; }
+}
+// B61's {role}: the row's role; with none, the phone's last four; else the day the row was added, full month (the designs file §3.3)
+function memberWord(m) {
+  const role = spotless(m && m.role);
+  if (role) return role;
+  const d = String((m && m.phone) || '').replace(/\D/g, '');
+  if (d.length >= 4) return d.slice(-4);
+  return longDateYear(istDay(m && m.created_at));
+}
+// the shoots on ONE day, by the day alone (an assignment naming no client): events kind shoot, upcoming, live
+async function shootsOnDay(supabase, vendorId, iso) {
+  try {
+    const { data, error } = await supabase.from('events').select(SHOOT_SELECT).eq('vendor_id', vendorId).is('deleted_at', null).eq('state', 'upcoming').eq('kind', 'shoot').eq('event_date', iso);
+    return (error || !Array.isArray(data)) ? null : data.filter((e) => e && typeof e.id === 'string' && e.event_date === iso);
+  } catch (_e) { return null; }
+}
+// An assignment, resolved READ-ONLY. THREE SHAPES (the kickoff's cut-3 paragraph): no member → B62, ASKED with a MEMBER note; a member with no date and no
+// client → a TEAM ADD (exact B57 · near B36 slot 'member' · else { add }); a member with a date and/or a client → an ASSIGNMENT: the shoot first (by the client's
+// lead through the ONE home and shootsOf, a said day narrowing it; by the day alone when no client: none B77, two or more 'assign_many'), then the member
+// (exact one; two or more B61; near B36; absent → ADD THEN ASSIGN on two lines, the founder's own example); already on the shoot B59. A client_as_spoken
+// equal under key() to the member is DROPPED (ruling 4: the ear put one name in both slots, row 11 C1). Returns { speak, key } | { ask } | { noLead, name } |
+// { offer: { slot, said, rows } } | { add } | { assign } | { many: true } | null. An absent member with `offers` true returns { offer }: the caller asks offerFor, the
+// ONE home (nearestName is called from there and nowhere else, b99 5.3), and with no candidate the plan REBUILT with offers false ADDS the name. `offers`
+// false (a turn that began with a live money row, or answers a note other than B62, as every offer is gated): absent is ADDED. TOTAL: never throws.
+async function planAssign(supabase, vendor, act, nowMs, L, offers) {
+  try {
+    if (!act || typeof act !== 'object' || act.act !== 'assign_crew') return null;
+    const member = spotless(act.member_as_spoken);
+    if (!member) return { ask: { line: DL.LINES.B62, key: 'B62' } };
+    const said = spotless(act.client_as_spoken);
+    const client = said && key(said) !== key(member) ? said : null;
+    const dated = spotless(act.date_as_spoken);
+    const rows = await membersOf(supabase, vendor.id);
+    if (!rows) return null;
+    const exact = rows.filter((m) => key(m.name) === key(member));
+    if (!client && !dated) {
+      if (exact.length) { const line = DL.render('B57', { member: String(exact[0].name).trim() }); return line ? { speak: line, key: 'B57' } : null; }
+      if (offers === true) return { offer: { slot: 'member', said: member, rows } };
+      return { add: { name: member } };
+    }
+    let iso = null;
+    if (dated) { const d = calendarDate(act, nowMs); if (d.speak) return d; iso = d.iso; }
+    let shoots; let lead = null;
+    if (client) {
+      const found = await L.lifecycle.resolveLead(supabase, vendor.id, client, false);
+      if (!found || !found.ok) {
+        if (found && found.reason === 'not_found') return { noLead: true, name: client };
+        if (found && found.reason === 'ambiguous') {
+          const same = await leadsNamed(supabase, vendor.id, client, false);
+          const line = sameName(client, same, (r) => r.wedding_date);
+          return line ? { speak: line, key: 'B8', skipHarvest: true } : null;
+        }
+        return null;
+      }
+      lead = found.lead;
+      shoots = await shootsOf(supabase, vendor.id, lead);
+      if (!shoots) return null;
+      if (iso) shoots = shoots.filter((r) => r.event_date === iso);
+      const name = String(lead.name || '').trim();
+      if (!shoots.length) { const line = DL.render('B52', { client: name }); return line ? { speak: line, key: 'B52' } : null; }
+      if (shoots.length > 1) { const line = DL.shootsLine(name, shoots.map((r) => longDateYear(r.event_date))); return line ? { speak: line, key: 'B53' } : null; }
+    } else {
+      shoots = await shootsOnDay(supabase, vendor.id, iso);
+      if (!shoots) return null;
+      if (!shoots.length) { const line = DL.render('B77', { date: longDateYear(iso) }); return line ? { speak: line, key: 'B77' } : null; }
+      if (shoots.length > 1) return { many: true };
+    }
+    const shoot = shoots[0];
+    if (exact.length > 1) { const line = DL.membersLine(member, exact.map((m) => ({ name: m.name, role: memberWord(m) }))); return line ? { speak: line, key: 'B61', skipHarvest: true } : null; }
+    if (!exact.length) {
+      if (offers === true) return { offer: { slot: 'member', said: member, rows } };
+      return { assign: { event: shoot, member: null, addName: member } };
+    }
+    const m = exact[0];
+    const crew = Array.isArray(shoot.assigned_member_ids) ? shoot.assigned_member_ids.map(String) : [];
+    if (crew.includes(String(m.id))) { const line = DL.render('B59', { member: String(m.name).trim(), client: spotless(shoot.title) }); return line ? { speak: line, key: 'B59' } : null; }
+    return { assign: { event: shoot, member: { id: String(m.id), name: String(m.name).trim() }, addName: null } };
+  } catch (_e) { return null; }
+}
+// the door's own team insert (studio/team.js POST's row shape); the ROW's name is what she reads. { row } | { error }. TOTAL.
+async function insertMember(supabase, vendorId, name) {
+  try {
+    const { data, error } = await supabase.from('team_members')
+      .insert({ vendor_id: vendorId, name: String(name).trim(), role: null, phone: null, daily_rate_inr: null, notes: null })
+      .select('id, name').single();
+    if (error || !data || typeof data.id !== 'string' || !spotless(data.name)) return { error: (error && error.message) || 'no row' };
+    return { row: data };
+  } catch (e) { return { error: (e && e.message) || 'exception' }; }
+}
+// THE WRITES for a team act. Each returns { lines: [{ line, key }], calls, landed }. A team add reads B56 from the ROW; an assignment writes the crew through
+// writeEvent AS IT STANDS (its own validation, the crew_confirmations upsert, the notes trail), surface by lane and source 'victor', and reads B58 from the
+// RETURNED events row and the member row; add-then-assign is B56 then B58, two lines. A refusal speaks the writer's own sentence verbatim; anything
+// else, or a throw, is the glitch line (GLITCH), recorded refused:exception or refused:write_failed.
+async function fileAssign(supabase, vendor, lane, plan, L) {
+  const out = { lines: [], calls: [], landed: false };
+  const glitch = () => ({ line: glitchLine() || DL.LINES.B3, key: 'GLITCH' });
+  try {
+    let member = plan.assign ? plan.assign.member : null;
+    const addName = plan.add ? plan.add.name : plan.assign ? plan.assign.addName : null;
+    if (addName) {
+      const got = await insertMember(supabase, vendor.id, addName);
+      if (!got.row) { out.lines.push(glitch()); out.calls.push({ name: HANDS.assign_crew, input: { member: addName }, result: 'refused:write_failed' }); return out; }
+      const name = String(got.row.name).trim();
+      out.lines.push({ line: DL.render('B56', { member: name }), key: 'B56' });
+      out.calls.push({ name: HANDS.assign_crew, input: { member: name }, result: 'member_added' });
+      out.landed = true;
+      member = { id: String(got.row.id), name };
+    }
+    if (!plan.assign) return out;
+    const ev = plan.assign.event;
+    const crew = Array.isArray(ev.assigned_member_ids) ? ev.assigned_member_ids.map(String) : [];
+    const input = { member: member.name, event_id: String(ev.id) };
+    const r = await L.writeEvent(supabase, { vendorId: vendor.id, surface: lane === 'pwa' ? 'pwa' : 'whatsapp', source: 'victor', event_id: String(ev.id), assigned_member_ids: [...crew, member.id] });
+    if (r && r.ok === true && r.event && typeof r.event === 'object') {
+      const line = DL.render('B58', { member: member.name, client: spotless(r.event.title), date: longDateYear(r.event.event_date) });
+      out.lines.push(line ? { line, key: 'B58' } : glitch());
+      out.calls.push({ name: HANDS.assign_crew, input, result: 'assigned' }); out.landed = true;
+      return out;
+    }
+    const sentence = r && r.conflict && typeof r.conflict.message === 'string' && r.conflict.message.trim() ? r.conflict.message.trim() : (r && typeof r.error === 'string' && r.error.trim() ? r.error.trim() : null);
+    out.lines.push(sentence ? { line: sentence, key: 'ASSIGN_REFUSED' } : glitch());
+    out.calls.push({ name: HANDS.assign_crew, input, result: 'refused:write_failed' });
+    return out;
+  } catch (_e) {
+    out.lines.push(glitch()); out.calls.push({ name: HANDS.assign_crew, input: { member: (plan && plan.add && plan.add.name) || null }, result: 'refused:exception' });
+    return out;
+  }
+}
+// A payment reminder, resolved READ-ONLY (the designs file §3.4; the kickoff: planReminder's OWN invoice read). The client by the ONE home (not found →
+// B36's offer or B76 through 'book_no_lead', his one line for book, move, cancel and remind; two of a name → B8); her lead's LIVE invoices (vendor_id,
+// lead_id, deleted_at null, state not cancelled: id, client_name, client_phone, client_id, what sendOneReminder reads); their PENDING payment_schedules
+// with a due date, in the room's own select (reminders.js :168); THE PICK: the first due inside the room's window (istDayISO(0) through
+// istDayISO(WINDOW_DAYS), reminders.js :112 to :113), else the earliest pending; none → B68. → { remind: { milestone, invoice, client } } | { speak, key } |
+// { noLead, name } | null. TOTAL: never throws.
+const MILESTONE_SELECT = 'id, invoice_id, vendor_id, milestone_label, amount_due, due_date, state';
+async function planReminder(supabase, vendor, act, L) {
+  try {
+    if (!act || typeof act !== 'object' || act.act !== 'payment_reminder') return null;
+    const name = spokenText(act.client_as_spoken);
+    if (!name) return null; // a nameless reminder is B35's, asked before any plan (askName)
+    const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);
+    if (!found || !found.ok) {
+      if (found && found.reason === 'not_found') return { noLead: true, name };
+      if (found && found.reason === 'ambiguous') {
+        const rows = await leadsNamed(supabase, vendor.id, name, false);
+        const line = sameName(name, rows, (r) => r.wedding_date);
+        return line ? { speak: line, key: 'B8', skipHarvest: true } : null;
+      }
+      return null;
+    }
+    const client = String(found.lead.name || '').trim();
+    if (!client) return null;
+    const { data: invs, error } = await supabase.from('invoices').select('id, client_name, client_phone, client_id, state')
+      .eq('vendor_id', vendor.id).eq('lead_id', found.lead.id).is('deleted_at', null);
+    if (error || !Array.isArray(invs)) return null;
+    const live = invs.filter((i) => i && typeof i.id === 'string' && i.state !== 'cancelled');
+    const none = () => { const line = DL.render('B68', { client }); return line ? { speak: line, key: 'B68' } : null; };
+    if (!live.length) return none();
+    const { data: ms, error: mErr } = await supabase.from('payment_schedules').select(MILESTONE_SELECT)
+      .eq('vendor_id', vendor.id).in('invoice_id', live.map((i) => i.id)).eq('state', 'pending');
+    if (mErr || !Array.isArray(ms)) return null;
+    const pending = ms.filter((m) => m && typeof m.id === 'string' && isDateKey(m.due_date)).sort((a, b) => (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0));
+    if (!pending.length) return none();
+    const PR = L.reminders;
+    const from = PR.istDayISO(0); const to = PR.istDayISO(PR.WINDOW_DAYS);
+    const milestone = pending.find((m) => m.due_date >= from && m.due_date <= to) || pending[0];
+    const invoice = live.find((i) => i.id === milestone.invoice_id);
+    if (!invoice) return null;
+    return { remind: { milestone, invoice, client } };
+  } catch (_e) { return null; }
+}
+// HER ASK IS HER TAP (the chair's ruling on ASK 5): sendOneReminder AS IT STANDS with source 'vendor_tap', so a CLAIMED reminder also stands as her consent for
+// the nightly sweep on that invoice (R-41.60, invoiceHasVendorTap), exactly as the app's button. sent → B67 from the milestone ROW; already → the room's own
+// byte REUSED (reminders.js :202); refused by the gate or a refusal of the feature's own → out.reason_text VERBATIM (plainWords :94, :114, the four lowercase
+// refusals); a transport failure → its reason_text (:425); anything else, or a throw → the glitch line. A dark gate writes NO row (:360 before :367).
+const ALREADY_LINE = 'A reminder has already been sent for this milestone.'; // REUSE: reminders.js :202, byte for byte (b106 pins the pair)
+async function fileReminder(supabase, vendor, plan, L) {
+  const p = plan.remind; const input = { lead: p.client, milestone_id: String(p.milestone.id) };
+  const glitch = (result) => ({ line: glitchLine() || DL.LINES.B3, key: 'GLITCH', call: { name: HANDS.payment_reminder, input, result }, landed: false });
+  try {
+    let vendorName = null;
+    try { const { data } = await supabase.from('vendors').select('business_name').eq('id', vendor.id).maybeSingle(); vendorName = (data && data.business_name) || null; } catch (_e) { vendorName = null; }
+    const out = await L.sendOneReminder(supabase, { vendorId: vendor.id, milestone: p.milestone, invoice: p.invoice, vendorName, source: 'vendor_tap' });
+    if (out && out.ok === true && out.sent === true) {
+      const line = DL.render('B67', { client: p.client, milestone: spotless(p.milestone.milestone_label), amount: digits(p.milestone.amount_due), date: longDateYear(p.milestone.due_date) });
+      return { line: line || glitchLine() || DL.LINES.B3, key: line ? 'B67' : 'GLITCH', call: { name: HANDS.payment_reminder, input, result: 'sent' }, landed: true };
+    }
+    if (out && out.ok === true && out.already === true) return { line: ALREADY_LINE, key: 'REMINDER_ALREADY', call: { name: HANDS.payment_reminder, input, result: 'already' }, landed: false };
+    if (out && (out.skipped === true || out.failed === true) && typeof out.reason_text === 'string' && out.reason_text.trim()) {
+      return { line: out.reason_text.trim(), key: out.failed ? 'REMINDER_FAILED' : 'REMINDER_REFUSED', call: { name: HANDS.payment_reminder, input, result: out.failed ? 'failed' : 'refused:gate' }, landed: false };
+    }
+    return glitch('refused:write_failed');
+  } catch (_e) { return glitch('refused:exception'); }
 }
 
 // ── F-44.100 · THE NET: an event is not a client ────────────────────────────────────────────────────
@@ -1218,6 +1439,23 @@ async function preTurn(args, depsIn) {
         fromNote = { route: 'task', acts: note.acts.map((a) => ((note.asked === 'B18' ? (a.act === 'lead' && !spokenText(a.client_as_spoken)) : (a.act !== 'lead' && !spokenText(a.client_as_spoken))) ? { ...a, client_as_spoken: name } : { ...a })) };
         st.answered = note.asked; st.said = note.said || null; // F-44.123
       }
+    } else if (note && MEMBER_ASKS.includes(note.asked)) {
+      // P7 cut 3: HER ANSWER TO B62 IS THE MEMBER. Her whole trimmed message fills acts[0].member_as_spoken, never client_as_spoken (the chair's ruling on ASK 1).
+      // She has MOVED ON when the ear heard an act of a kind the note does not hold, or the assignment RESTATED with a member that is not her whole message;
+      // an act on route 'search', or one whose client or member IS her whole message, is her answer heard as something else (F-44.117's class). A closed YES
+      // is no name: re-asked once, then B3.
+      const name = message.trim();
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      const route = st.ear && st.ear.request ? st.ear.request.route : null;
+      const kinds = note.acts.map((a) => a.act);
+      const isAnswer = (a) => route === 'search' || key(a.client_as_spoken) === key(name) || key(a.member_as_spoken) === key(name);
+      const restated = (a) => a.act === 'assign_crew' && !!spokenText(a.member_as_spoken) && key(a.member_as_spoken) !== key(name);
+      const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && !isAnswer(a) && (!kinds.includes(a.act) || restated(a)));
+      if (PMA.decide(name) === 'yes') {
+        if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+        return askAgain(DL.LINES.B62, 'B62', note.tries + 1);
+      }
+      if (!movedOn) { fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, member_as_spoken: name } : { ...a })) }; st.answered = 'B62'; }
     } else if (note && OFFER_ASKS.includes(note.asked)) {
       // R-44.40: her YES runs the act with the candidate's own name, through the same plans; NO was answered B3 above; anything else lapses
       // on a heard act of another kind, or re-asks once, then B3. The candidate is never spoken outside the question.
@@ -1227,7 +1465,7 @@ async function preTurn(args, depsIn) {
         const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && a.act !== note.acts[0].act);
         if (!movedOn) {
           if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: 'B36', why: 'note_exhausted' };
-          const line = DL.render('B36', { name: note.acts[0][note.slot === 'package' ? 'package_as_spoken' : 'client_as_spoken'] || '' }) || DL.LINES.B3;
+          const line = DL.render('B36', { name: note.acts[0][slotField(note.slot)] || '' }) || DL.LINES.B3;
           return { ...askAgain(line, line === DL.LINES.B3 ? 'B3' : 'B36', note.tries + 1), note: { asked: 'B36', acts: note.acts, tries: note.tries + 1, candidate_id: note.candidate_id, slot: note.slot, ...(note.said ? { said: note.said } : {}) } };
         }
       }
@@ -1353,7 +1591,7 @@ async function preTurn(args, depsIn) {
         if (!c) return null;
         const line = DL.render('B36', { name: String(c.name).trim() });
         if (!line) return null;
-        const filled = { ...act, [slot === 'package' ? 'package_as_spoken' : 'client_as_spoken']: String(c.name).trim() };
+        const filled = { ...act, [slotField(slot)]: String(c.name).trim() };
         const original = act && act.act === 'relay' ? saidOf(st.said || message) : null; // F-44.123: her ORIGINAL message rides the offer note
         return { door: true, reply: line, keys: ['B36'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: 'B36', acts: [filled], tries: 0, candidate_id: String(c.id), slot, ...(original ? { said: original } : {}) }, why: 'offer_asked' };
       } catch (_e) { return null; }
@@ -1471,6 +1709,26 @@ async function preTurn(args, depsIn) {
         return CHAIN(st.ear, 'book_no_lead', { name: probe.name });
       }
     }
+    // P7 cut 3: every TEAM act (an assignment, a reminder) is PROBED read-only here, in message order, and REBUILT after the writes before it. B62 is ASKED
+    // with its MEMBER note carrying every act of the message (one question at a time; nothing is written on that turn); a near member or client is OFFERED
+    // (B36, its slot); a client that is no lead reads B76 ('book_no_lead'); a day holding two or more shoots with no client names none ('assign_many', B34).
+    const team = acts.filter((a) => TEAM_ACTS.includes(a.act));
+    const offers = !liveAtStart && (!fromNote || st.answered === 'B62');
+    for (const a of team) {
+      const probe = a.act === 'assign_crew' ? await planAssign(supabase, vendor, a, nowMs, L, offers) : await planReminder(supabase, vendor, a, L);
+      if (!probe) return CHAIN(st.ear, 'team_unsayable');
+      if (probe.ask) {
+        const n = { asked: 'B62', acts: [noteAct(a), ...acts.filter((x) => x !== a).map(noteAct).filter(Boolean)], tries: 0 };
+        return { door: true, reply: probe.ask.line, keys: ['B62'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, ...(validNote(n) ? { note: n } : {}), ...(st.answered ? { answered: st.answered } : {}), why: 'member_asked' };
+      }
+      if (probe.many) return CHAIN(st.ear, 'assign_many');
+      if (probe.noLead && !willFile.includes(key(probe.name))) {
+        const offer = !liveAtStart && !fromNote ? await offerFor(a, 'client', probe.name, await leadsOf(supabase, vendor.id)) : null;
+        if (offer) return offer;
+        return CHAIN(st.ear, 'book_no_lead', { name: probe.name });
+      }
+      if (probe.offer) { const offer = await offerFor(a, probe.offer.slot, probe.offer.said, probe.offer.rows); if (offer) return offer; } // no one near: the rebuild (offers false) adds her name
+    }
     let moneyPlan = null;
     if (money.length) {
       moneyPlan = await planMoney(supabase, vendor, money[0], L); if (!moneyPlan) return CHAIN(st.ear, 'money_unsayable', { act: money[0].act });
@@ -1532,6 +1790,26 @@ async function preTurn(args, depsIn) {
       if (f.line) { st.lines.push(f.line); st.keys.push(f.key); }
       st.toolCalls.push(f.call);
       if (f.landed) st.refresh = true;
+    }
+    // P7 cut 3: THE TEAM, after the calendar and before the relay and the money act, in message order; each plan REBUILT from the rows as they now stand.
+    // After a write nothing goes to the chain: what the door cannot say is the glitch line. A team add, an assignment and a reminder LAND AT ONCE.
+    for (const a of team) {
+      const tp = a.act === 'assign_crew' ? await planAssign(supabase, vendor, a, nowMs, L, false) : await planReminder(supabase, vendor, a, L);
+      if (!tp || tp.noLead || tp.ask || tp.many || tp.offer) {
+        if (!st.wrote) return CHAIN(st.ear, tp && tp.noLead ? 'book_no_lead' : 'team_unsayable', tp && tp.noLead ? { name: tp.name } : null);
+        st.lines.push(glitchLine() || DL.LINES.B3); st.keys.push('GLITCH'); continue;
+      }
+      if (tp.speak) { st.lines.push(tp.speak); st.keys.push(tp.key); if (tp.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(tp.key)) st.dateAsks.push({ key: tp.key, act: a }); continue; }
+      st.wrote = true; // a row may land inside a call that then throws
+      if (!st.fallback) st.fallback = glitchLine();
+      if (tp.remind) {
+        const f = await fileReminder(supabase, vendor, tp, L);
+        st.lines.push(f.line); st.keys.push(f.key); st.toolCalls.push(f.call); if (f.landed) st.refresh = true;
+      } else {
+        const f = await fileAssign(supabase, vendor, lane, tp, L);
+        for (const l of f.lines) { st.lines.push(l.line); st.keys.push(l.key); }
+        st.toolCalls.push(...f.calls); if (f.landed) st.refresh = true;
+      }
     }
     // P6b: the relay is composed and STAGED after the writes before it, and the frame is asked. A money act in the same message
     // is NOT staged this turn (one question at a time): it rides the frame's note and is planned afresh after her answer.
@@ -1653,6 +1931,7 @@ function standKeyOf(out, L, nowMs) {
   }
   if (why === 'lookup') return { key: 'B34' }; // F-44.128 (P7 cut 2a): a lookup, until cut four covers it
   if (why === 'cal_mixed') return { key: 'B34' }; // P7 cut 2b: a move or cancel beside another act; one question at a time
+  if (why === 'assign_many') return { key: 'B34' }; // P7 cut 3: an assignment by a day holding two or more shoots and no client names no one shoot
   if (why === 'book_no_lead') { const line = DL.render('B76', { name: say.name }); if (line) return { key: 'B76', line }; } // P7 cut 2a, his B76
   if (why === 'attach_no_lead') { const line = DL.render('B32', { name: say.name }); return line ? { key: 'B32', line } : { key: 'B30' }; }
   if (why === 'attach_unsayable') return { key: 'B30' };
@@ -1746,4 +2025,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

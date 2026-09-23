@@ -189,7 +189,8 @@ async function main() {
   T('4.1 a lead with no name is covered (the door asks B18)', WD.allCovered(req([{ act: 'lead', date_as_spoken: '3 January' }])) === true);
   T('4.2 a lead beside an invoice naming no client is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'invoice' }])) === false);
   T('4.3 a lead beside an invoice naming its client is covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'invoice', client_as_spoken: 'Walk45' }])) === true);
-  T('4.4 a lead beside an uncovered act (assign_crew; block_date joined COVERED at P7 2a) is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'assign_crew', date_as_spoken: '5 December' }])) === false);
+  // 4.4 RE-AIMED (CE-45 LCV-14, P7 cut 3, labelled): assign_crew is covered since cut 3; the uncovered specimen is `note` (no cut covers it); the strength kept.
+  T('4.4 a lead beside an uncovered act (note; assign_crew joined COVERED at P7 cut 3, block_date at 2a) is NOT covered', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'note', date_as_spoken: '5 December' }])) === false);
   T('4.4a (P7 2a) a lead beside a block_date naming no client IS covered: a block needs no client (NEEDS_CLIENT)', WD.allCovered(req([{ act: 'lead', client_as_spoken: 'Sharma' }, { act: 'block_date', date_as_spoken: '5 December' }])) === true);
   // RE-PINNED (CE-44 LCV-8, P6a-2): attach_package IS covered now (§14); an act the door has not learnt is still not.
   // RE-PINNED (CE-45 LCV-11, P6b first cut): relay is COVERED since P6b; the act the door has not learnt is now quote_send (the second cut's).
@@ -570,7 +571,8 @@ async function main() {
   // RE-PINNED (CE-45 LCV-11, P6b): COVERED is seven, relay joining at P6b.
   // RE-PINNED (CE-45 LCV-12, P7 2a): COVERED is ten, block_date, unblock_date and book_event joining.
   // 14.1 RE-PINNED (CE-45 LCV-13, P7 cut 2b, labelled): COVERED is twelve, edit_event and cancel_event joining after book_event; the strength kept.
-  T('14.1 COVERED is twelve (the calendar\'s three joined at P7 2a, move and cancel at 2b) and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay,block_date,unblock_date,book_event,edit_event,cancel_event' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
+  // 14.1 RE-PINNED (CE-45 LCV-14, P7 cut 3, labelled): COVERED is fourteen, assign_crew and payment_reminder joining after cancel_event; the strength kept.
+  T('14.1 COVERED is fourteen (the calendar\'s three joined at P7 2a, move and cancel at 2b, the team and the reminder at cut 3) and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay,block_date,unblock_date,book_event,edit_event,cancel_event,assign_crew,payment_reminder' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
   T('14.2 an attach naming no client is not the door\'s (the untouched return)', WD.allCovered(req([{ act: 'attach_package', package_as_spoken: 'X' }])) === false);
   db = makeDb(world2());
   o = await run(db, 'Attach Photographs and film to Walk P7 Dated', [att('walk p7 dated', 'photographs AND film')]);
@@ -810,7 +812,7 @@ async function main() {
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')]), (x) => x.d.log.inserts.some((i) => i.table === 'public.pending_money_acts'));
   // RE-PINNED (CE-45 LCV-11, P6b): HANDS' last entry is relay's.
   await mut('20.19 N19 b90\'s re-aimed M5 anchor is HANDS\' new last entry (relay, P6b), and a forbidden hand after it is still seen', WDf,
-    /* P7 2b re-pin (LCV-13, labelled): HANDS' new last entry is cancel_event */ [["  cancel_event: 'donna_cancel_event',\n});", "  cancel_event: 'donna_cancel_event',\n  note: 'donna_money_edit',\n});"]], [],
+    /* P7 cut 3 re-pin (LCV-14, labelled): HANDS' new last entry is payment_reminder */ [["  payment_reminder: 'payment_reminder_send',\n});", "  payment_reminder: 'payment_reminder_send',\n  note: 'donna_money_edit',\n});"]], [],
     async (rq) => Object.values(rq(WDf).HANDS), (h) => h.includes('donna_money_edit'));
 
   console.log(`\n════════  b92 · ${pass} pass · ${fail} fail  ════════`);

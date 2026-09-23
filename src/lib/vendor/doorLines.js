@@ -158,6 +158,27 @@ const LINES = Object.freeze({
   B53: "Two shoots for {client}: {date} · {date}. Say the date.",
   // a calendar act with no date (his, 23 September 2026; B7's register). A DATE note of the door's own kind: her whole next message is the day
   B54: "Which day? Say it like 5 December.",
+  // P7 cut 3 (CE-45 LCV-14) · THE TEAM AND THE PAYMENT REMINDER, all his (22 and 23 September 2026, "All proposed lines accepted"; LCV-12's designs file
+  // §3.3 and §3.4, sha256 05b449610210…). {member} is the TEAM_MEMBERS ROW's name; {client} and {date} the EVENTS ROW's title and day.
+  // a team member added by the door (the row the insert returned)
+  B56: "Added to the team: {member}.",
+  // a team add for a name already on her active team (exact under key())
+  B57: "{member} is already on your team.",
+  // a member assigned to a shoot: every slot from the member row and the events ROW writeEvent returned
+  B58: "Assigned: {member} · {client} · shoot · {date}.",
+  // the member is already in the shoot's assigned_member_ids
+  B59: "{member}'s already on the {client} shoot.",
+  // CARRIED, UNSPOKEN (the chair's ruling of 23 September on ASK 2; the bytes from his veto sheet of 22 September, held by the chair): rendered nowhere
+  // in P7, no exit reaches it, as B39 and B77 were carried before their cut
+  B60: "No one called {name} on your team. Add them first.",
+  // two active members share the name: rendered BY POSITION through membersLine() below, as B8 is; three or more take R-45.9's derived form
+  B61: "Two on your team are called {name}: {name} ({role}) · {name} ({role}). Say which one.",
+  // an assignment naming no member. The door keeps its OWN note (MEMBER_ASKS): her whole next message is the member
+  B62: "Who? Say the name.",
+  // a payment reminder SENT: {client} the LEAD ROW's name; {milestone}, {amount}, {date} the payment_schedules ROW's own
+  B67: "Reminder sent to {client}: {milestone} · Rs {amount} · due {date}.",
+  // a lead of hers with no pending payment on a live invoice
+  B68: "Nothing is due from {client}.",
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
   B75: "Couldn't put that on the calendar — nothing was changed.",
   // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
@@ -248,6 +269,15 @@ const LINE_HASHES = Object.freeze({
   B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb',
   B53: 'fd391aa7f9c88cfb1a5bdc18a3544be87c514728adc6caacf883b1c2cf9651e3',
   B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
+  B56: 'd434900fe046a14f2bc58dec7d35f367f4fac70d99b08a849b7cf2be1b064b5a',
+  B57: '992956ec3f4de01d0a5de21e3703a4c3d0cf3e1f6e9b627aac4e14329639a9e4',
+  B58: '73b92a93a9b8c1fb51dad5aff7d87309bbca7909b86fe9402f26b8d2c250fc20',
+  B59: '306e713bae4ef8766639d333200a49e3149fe7c1c2a7e47a3b45336b01485a03',
+  B60: '95a4dfa8101a8f0af4b9db1c173d41ce1fc72392746dd175c3dbfb5236276f4a',
+  B61: '646620f66e3229cbd4d7bf322d8a6a0ec211531822c0a4af6b9d6e2c31b2627e',
+  B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265',
+  B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc',
+  B68: '60ad19c5dfdfc5e50b4a72bb470f722649049554cfb64ea2ab6866f82585e415',
   B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
   B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
   B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
@@ -403,6 +433,24 @@ function shootsLine(client, dates) {
   } catch (_e) { return null; }
 }
 
+// Byte 61 has repeated slots, as byte 8 has: the name she used, then the members IN THE ORDER GIVEN, each its own row name and a word that tells
+// them apart ({role}: the row's role; with no role, the phone's last four; else the day the row was added, full month; that fallback is the
+// designs file's §3.3). Exactly two fills his template verbatim. THREE OR MORE take R-45.9's derived form, as shootsLine() does: the word
+// "Two" becomes the count as a numeral and the list extends by the same " · " ("3 on your team are called {name}: … Say which one."). Fewer than
+// two, or any unusable value, is null.
+function membersLine(name, members) {
+  try {
+    const n = slot(name);
+    if (n === null || !Array.isArray(members) || members.length < 2) return null;
+    const parts = members.map((x) => [slot(x && x.name), slot(x && x.role)]);
+    if (parts.some(([a, b]) => a === null || b === null)) return null;
+    const one = (p) => `${p[0]} (${p[1]})`;
+    const two = LINES.B61.replace('{name}', n).replace('{name} ({role}) · {name} ({role})', `${one(parts[0])} · ${one(parts[1])}`);
+    if (parts.length === 2) return two;
+    return `${parts.length}${two.slice('Two'.length)}`.replace(`${one(parts[0])} · ${one(parts[1])}.`, `${parts.map(one).join(' · ')}.`);
+  } catch (_e) { return null; }
+}
+
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
 function invoiceNumbers(client, numbers) {
   try {
@@ -430,4 +478,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
