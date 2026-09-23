@@ -195,6 +195,8 @@ Nine green (1, 2, 3, 4, 8a, 9b, 10, 10b, 11) and step 12's team list; four misse
 kind_as_spoken ("Walk Seventeen Alpha shoot") and no client_as_spoken, so planAssign read a TEAM ADD. The P7 table never measured this shape (rows 10 and 11
 name a day): c-44.44's class, owned by the chair as c-45.12. Cured by the fix cut (ruling (i), the door reads it; b107). 9a a TRUTHFUL DIVERGENCE. F-44.132's
 cure was witnessed live (step 3's note carried slot 'member'); ASK 1 held live (8b's answer filled member_as_spoken). The fix cut's card re-walks 5 to 8b.
+FINALISED: the re-walk of 5 to 8b (with step 0, a fresh booking) is GREEN on fafbaa9, recorded by script in TDW_CE45_LCV14_P7_3_FIX1_HANDOVER.md §6. Card 3 is
+closed: every step walked green on the record or recorded as ruled (9a a truthful divergence; 5 to 8b F-44.133, cured and re-walked).
 
 ## 9 · LCV-13's SEAT CLOSE §6, AMENDED WITH THE CHAIR'S NUMBERS
 e-83 the "21 paths" count (it was 20) · e-84 the comment misplaced after floor run 1 · e-85 the void "surface=whatsapp" search · e-86 two withdrawn

@@ -50,7 +50,82 @@ this section was rewritten at the attach from the logs of record. No delivered f
 7 "Assign Walk Seventeen Lambda to the Walk Seventeen Alpha shoot" → "Added to the team: Walk Seventeen Lambda." then "Assigned: Walk Seventeen Lambda · Walk Seventeen Alpha · shoot · 22 November 2027."
 8a "Assign to the Walk Seventeen Alpha shoot" → "Who? Say the name."
 8b "Walk Seventeen Theta" → "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot."
-The walk record: (written in by script after the walk)
+The walk record: THE RE-WALK · 23 September 2026 · DEV440 · fafbaa9 (Railway ACTIVE about 18:18 IST) · WRITTEN BY SCRIPT FROM THE FOUNDER'S EXPORTS, NEVER RETYPED
+  thread (engine.messages with meta.listener, from 18:25 IST) 16 rows, sha256 35d57be6e3906762521f085584ffeedf50ad2e3266ecedb55d78481a601e9675
+  team_members (Walk Seventeen%) 3 rows, sha256 81863096207df521e9d46ac3430659fda29d204902de95803445c4379e0d9845
+  events (Walk Seventeen Alpha shoots) 3 rows, sha256 f7a548f70705e55c9ba241b5399d639c71842252a05e0d10febc3c611c0531d8
+  and his read of 22 Nov 2027's rows (18:3x IST): 627e6acc cancelled at 18:35:23 IST, crew [Kappa] kept, deleted_at null; 0498bdb7 (morning block) deleted_at 18:35:30 IST.
+  Every export read-only, handed on his word (the chair: a read-only read on his word is not a C-44.10 breach). Times UTC (IST +5:30). Every turn lane pwa,
+  answered by code. Nothing sent; money untouched.
+  THE INTERRUPTION: the first re-walk turn met a live morning block on 2027-11-22 (created 16:47:57 IST, no door turn made it) and writeEvent refused the crew
+  patch (occupancy on row ⊕ patch); the door spoke occupancy.js :993's sentence verbatim. Removing the block from the app, the founder also cancelled the shoot
+  from the app ("that delete prabbly happened when i was trying to block unblock because the surface reads confusingly"). The card was adjusted (step 0, a fresh
+  booking by message) and put to the chair; the founder walked it.
+  WHAT THE LIVE EAR DID: on every assign_crew turn of this re-walk the ear put the client in client_as_spoken and "shoot" in kind_as_spoken, so kindClient
+  (F-44.133's cure) was NOT exercised live; it stands on b107 §2 (the five recorded kind-shape turns replayed verbatim) and M1. The ear's shape varies by turn.
+  AN OBSERVATION, NOT MINTED: the refused turn's recorded call reads result 'refused:write_failed' although the writer returned a conflict; fileBook records
+  'refused:{conflict.kind}'. The reply was right; only the record's label is coarse. For the chair.
+
+1. pre-walk · REFUSED BY THE WRITER (the morning block 0498bdb7, made 16:47:57 IST; nothing written)
+   13:00:10 HE: Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot
+   13:00:10 DOOR · lane pwa: You've blocked the morning of 22 November. That one's a no — unblock it first if you want it back.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+   CALLS: [{"name":"assign_crew","input":{"member":"Walk Seventeen Theta","event_id":"627e6acc-267e-4f1a-932b-dc6a406fd511"},"result":"refused:write_failed"}]
+
+2. pre-walk · B52, TRUTHFUL (the shoot 627e6acc had been cancelled from the app at 13:05:23 UTC; the block removed from the app at 13:05:30 UTC)
+   13:07:00 HE: Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot
+   13:07:01 DOOR · lane pwa: No shoot for Walk Seventeen Alpha on the calendar.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+
+3. 0 GREEN (B46; a NEW row, 7f9a837b; findExistingEvent excludes cancelled rows)
+   13:10:04 HE: Book the Walk Seventeen Alpha shoot on 22 November 2027
+   13:10:04 DOOR · lane pwa: Booked: Walk Seventeen Alpha · shoot · 22 November 2027.
+   HEARD: {"acts":[{"act":"book_event","date_as_spoken":"22 November 2027","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha"}],"route":"task"}
+   CALLS: [{"name":"donna_book_event","input":{"date":"2027-11-22","kind":"shoot","lead":"Walk Seventeen Alpha"},"result":"booked"}]
+
+4. 5 GREEN (B58)
+   13:10:12 HE: Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot
+   13:10:12 DOOR · lane pwa: Assigned: Walk Seventeen Theta · Walk Seventeen Alpha · shoot · 22 November 2027.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+   CALLS: [{"name":"assign_crew","input":{"member":"Walk Seventeen Theta","event_id":"7f9a837b-10b8-4c8b-a86c-05211a3e64e9"},"result":"assigned"}]
+
+5. 6 GREEN (B59)
+   13:10:20 HE: Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot
+   13:10:20 DOOR · lane pwa: Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+
+6. 7 GREEN (B56 then B58)
+   13:10:45 HE: Assign Walk Seventeen Lambda to the Walk Seventeen Alpha shoot
+   13:10:45 DOOR · lane pwa: Added to the team: Walk Seventeen Lambda.
+
+Assigned: Walk Seventeen Lambda · Walk Seventeen Alpha · shoot · 22 November 2027.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha","member_as_spoken":"Walk Seventeen Lambda"}],"route":"task"}
+   CALLS: [{"name":"assign_crew","input":{"member":"Walk Seventeen Lambda"},"result":"member_added"},{"name":"assign_crew","input":{"member":"Walk Seventeen Lambda","event_id":"7f9a837b-10b8-4c8b-a86c-05211a3e64e9"},"result":"assigned"}]
+
+7. 8a GREEN (B62, MEMBER note)
+   13:10:53 HE: Assign to the Walk Seventeen Alpha shoot
+   13:10:53 DOOR · lane pwa: Who? Say the name.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha"}],"route":"task"}
+   NOTE: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha"}],"asked":"B62","tries":0}
+
+8. 8b GREEN (B59, answered B62)
+   13:11:05 HE: Walk Seventeen Theta
+   13:11:05 DOOR · lane pwa: Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot.
+   HEARD: {"acts":[{"act":"assign_crew","kind_as_spoken":"shoot","client_as_spoken":"Walk Seventeen Alpha","member_as_spoken":"Walk Seventeen Theta"}],"route":"task"}
+
+The rows the re-walk left:
+  team: Walk Seventeen Theta active true id ab47e7a0; Walk Seventeen Kappa active true id 223f3dc3; Walk Seventeen Lambda active true id ef86e1c0
+  shoots: 937ce48a 2027-01-09 cancelled crew []; 627e6acc 2027-11-22 cancelled crew ["223f3dc3-84e6-4ec6-9a79-b6491f5c91c9"]; 7f9a837b 2027-11-22 upcoming crew ["ab47e7a0-6454-4a85-a398-5cec2d47001f","ef86e1c0-a1d2-4efa-87ee-b51774d0adff"]
+  The new shoot 7f9a837b carries Theta (ab47e7a0) and Lambda (ef86e1c0); the cancelled 627e6acc keeps Kappa. Its notes: "Walk Seventeen Theta assigned — 23 Sep",
+  "Walk Seventeen Lambda assigned — 23 Sep" (writeEvent's own trail).
+VERDICT: steps 0, 5, 6, 7, 8a, 8b GREEN, every reply byte-exact to the card. The two pre-walk turns are the writer's refusal and a truthful B52. F-44.133's
+walk closes on the card; its cure's live proof awaits an ear that repeats the kind shape (the rung holds it).
+
+
+## 6b · OPEN, FOR THE CHAIR
+The founder's surface points of 23 September, in his words: "previously could unblock from surface or add crew from surface! thats also gone"; "the surface
+reads confusingly"; "ask CE to change the word. Hold the day sounds like victor prose again". With F-44.134, for the app-side cut (R-45.10) unless ruled
+otherwise. writeEvent refusing a crew-only patch on a full-day shoot for a morning block that day: the writer's ruled behaviour, recorded.
 
 ## 7 · NEXT FREE
 F-44.135 · migration 0171 · bench b108 (cut 4) · errors e-91 · corrections c-45.13.
