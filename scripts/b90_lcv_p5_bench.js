@@ -202,6 +202,13 @@ async function main() {
     B44: "{date} wasn't blocked. Nothing changed.",
     B45: "Couldn't unblock {date} — nothing was written. Try again or unblock it from the calendar.",
     B46: "Booked: {client} · shoot · {date}.",
+    // P7 cut 2b re-pin (CE-45 LCV-13, labelled): the six 2b bytes, his (22 and 23 September), join the ruled set, one 1.1 cell each; 196 → 202
+    B48: "Move {client}'s shoot to {date}? Reply YES or NO.",
+    B49: "Moved: {client} · shoot · {date}.",
+    B50: "Cancel {client}'s shoot on {date}? Reply YES or NO.",
+    B51: "Cancelled: {client} · shoot · {date}.",
+    B52: "No shoot for {client} on the calendar.",
+    B53: "Two shoots for {client}: {date} · {date}. Say the date.",
     B54: "Which day? Say it like 5 December.",
     B75: "Couldn't put that on the calendar — nothing was changed.",
     B76: "No lead called {name}. Add the lead first.",
@@ -242,6 +249,12 @@ async function main() {
     B44: '2e8457a7173407d2b6166c895ad03188a19a174e3307a008e084996354ede0e5',
     B45: 'b4363bbbfc3f29c23b913cc26c88f1586c5a8b2b040e15da9b42cd00c8abcf6e',
     B46: 'e06955310af567757977dc641dd8231d410bc582014e0ea62d4cb67ffbd820f1',
+    B48: 'fb8734312f58ff98f2061be1e6559996f7ac7d7ae0c05910094d72257b39239e',
+    B49: '420a5f16d6dd179e663e5f64e2cae71499cbd3114034b533ed4c033f24b935a1',
+    B50: '11ff0598c04b4779886e7d4555eb3a7e8827643ec2191236da9b78b501e86dc4',
+    B51: '6e87ed6e362b53c41a0feedceb97a5460e88ee8cc836026ba7ed67bf8ad02216',
+    B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb',
+    B53: 'fd391aa7f9c88cfb1a5bdc18a3544be87c514728adc6caacf883b1c2cf9651e3',
     B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
     B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
     B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
@@ -291,11 +304,12 @@ async function main() {
   // H5 (CE-44 LCV-7, P6a-1, the chair's ruling): the ruled set gains exactly donna_lead; FORBIDDEN is unchanged.
   // H5 again (CE-44 LCV-8, P6a-2): it gains exactly attach_package, the recorded name of the attach; FORBIDDEN is unchanged.
   // H1 again (CE-45 LCV-11, P6b first cut): donna_relay_stage joins the image, a SIGNAL name (relayCouple.ts), never a write hand.
-  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead', 'attach_package', 'donna_relay_stage', 'donna_block_date', 'donna_unblock_date', 'donna_book_event'] /* P7 cut 2a: the §1.5 hands' and the book signal's own names; the door calls blockDate, unblockDate and writeEvent beneath them */.includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
+  const imageOk = (H) => Object.values(H).every((h) => ['donna_booking', 'donna_milestone_paid', 'donna_invoice_pdf', 'donna_lead', 'attach_package', 'donna_relay_stage', 'donna_block_date', 'donna_unblock_date', 'donna_book_event', 'donna_edit_event', 'donna_cancel_event'] /* P7 cut 2a: the §1.5 hands' and the book signal's own names; the door calls blockDate, unblockDate and writeEvent beneath them */.includes(h)) && !Object.values(H).some((h) => FORBIDDEN.includes(h));
   T('4.1 item 1 (i): the door\'s hands are booking, milestone, invoice, (P6a-1) lead, (P6a-2) attach_package and (P6b) the relay stage signal only; never donna_client, donna_stage, donna_money or donna_money_edit', imageOk(WD.HANDS));
   // H2 (CE-44 LCV-7, P6a-1): COVERED at five. H2 again (CE-44 LCV-8, P6a-2): at six, attach_package joins it. H2 again (CE-45 LCV-11, P6b): at seven, relay joins it.
   // H2 again (CE-45 LCV-12, P7 cut 2a): at ten, block_date, unblock_date and book_event join it; NEEDS_CLIENT is the table beside it (ruling (g)).
-  T('4.2 covered at P7 2a: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package, relay, block_date, unblock_date, book_event; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,attach_package,block_date,book_event,booking_confirmed,invoice,lead,milestone_paid,relay,unblock_date');
+  // H2 again (CE-45 LCV-13, P7 cut 2b, labelled): at twelve, edit_event and cancel_event join it (asked YES or NO before they write).
+  T('4.2 covered at P7 2b: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package, relay, block_date, unblock_date, book_event, edit_event, cancel_event; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,attach_package,block_date,book_event,booking_confirmed,cancel_event,edit_event,invoice,lead,milestone_paid,relay,unblock_date');
   T('4.2a NEEDS_CLIENT (P7 2a): the acts that must name a client, and a block or an unblock is not among them', WD.NEEDS_CLIENT.slice().sort().join() === 'advance_paid,attach_package,book_event,booking_confirmed,cancel_event,edit_event,invoice,lead,milestone_paid,payment_reminder,relay' && !WD.NEEDS_CLIENT.includes('block_date') && !WD.NEEDS_CLIENT.includes('unblock_date'));
   T('4.3 the door never names a forbidden hand anywhere in its source', !FORBIDDEN.some((h) => new RegExp(`'${h}'`).test(src('src/lib/vendor/workingDoor.js').replace(/^\s*\/\/.*$/gm, ''))));
 
@@ -318,7 +332,8 @@ async function main() {
   };
   const writes = (db) => db.log.inserts.length + db.log.updates.length;
   let db = makeDb(world());
-  let r = await run(db, 'Sarah paid the middle payment on 18 September and move the Verma shoot', req([{ act: 'milestone_paid', client_as_spoken: 'Sarah', date_as_spoken: '18 September', milestone: 'middle payment' }, { act: 'edit_event', client_as_spoken: 'Verma' }]));
+  // 5.1 RE-AIMED (CE-45 LCV-13, P7 cut 2b, labelled): edit_event is covered since 2b, so the uncovered specimen is assign_crew (cut three's); the strength kept.
+  let r = await run(db, 'Sarah paid the middle payment on 18 September and assign Harsh to the Verma shoot', req([{ act: 'milestone_paid', client_as_spoken: 'Sarah', date_as_spoken: '18 September', milestone: 'middle payment' }, { act: 'assign_crew', client_as_spoken: 'Verma', member_as_spoken: 'Harsh' }]));
   T('5.1 PIN (a): an uncovered act beside a covered one sends the WHOLE message to the chain; nothing written, nothing staged', r.out.door === false && r.out.why === 'uncovered' && writes(db) === 0 && r.calls === 1);
   r = await run(db, 'the middle payment came in today', req([{ act: 'milestone_paid', date_as_spoken: 'today', milestone: 'middle payment' }]));
   // 5.2 RE-PINNED (CE-44 LCV-10 PART B-2, first cut; R-44.39): a covered act naming no client is now the DOOR'S turn: it asks B35, his byte, keeps its note and WRITES NOTHING. The strength kept is the write count.
@@ -555,7 +570,7 @@ async function main() {
   });
   T('11.4 M4 the counted id\'s line removed from harvest.js reddens 6.4 (the door turn uncounted)', m === null);
   // H3 (CE-44 LCV-7, P6a-1): re-aimed on HANDS' last entry, which is now lead's. Re-aimed again (CE-45 LCV-11, P6b): the last entry is relay's.
-  m = await withMutated('src/lib/vendor/workingDoor.js', /* P7 2a re-pin: HANDS' new last entry is book_event */ [["  book_event: 'donna_book_event', // P7 cut 2a: the signal's own name; the door calls writeEvent as calendarSignals' bookEvents does\n});", "  book_event: 'donna_book_event',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
+  m = await withMutated('src/lib/vendor/workingDoor.js', /* P7 2b re-pin (LCV-13, labelled): HANDS' new last entry is cancel_event */ [["  cancel_event: 'donna_cancel_event',\n});", "  cancel_event: 'donna_cancel_event',\n  note: 'donna_money_edit',\n});"]], [], async (rq) => imageOk(rq('src/lib/vendor/workingDoor.js').HANDS));
   T('11.5 M5 a table reaching donna_money_edit reddens 4.1', m === false);
   m = await withMutated('src/lib/vendor/pendingMoneyActs.js', [["      else await closeRow(supabase, r, null, { code: 'refused:apply_unstamped', note: 'yes received; apply did not record its result' });", '      else { /* left open */ }']], WDdeps, async (rq) => {
     const d = makeDb(world());

@@ -143,6 +143,19 @@ const LINES = Object.freeze({
   B45: "Couldn't unblock {date} — nothing was written. Try again or unblock it from the calendar.",
   // a shoot booked by the door; every slot from the events ROW writeEvent returned (his, 23 September 2026)
   B46: "Booked: {client} · shoot · {date}.",
+  // P7 cut 2b (CE-45 LCV-13) · MOVE AND CANCEL A SHOOT, all his (22 and 23 September 2026, "All proposed lines accepted", "yes to all"). B48 and B50 are ASKED:
+  // nothing moves until her YES. {client} is the LEAD ROW's name; B48's {date} the new day as the door read it; B50's {date} the SHOOT ROW's own day.
+  B48: "Move {client}'s shoot to {date}? Reply YES or NO.",
+  // her YES to B48: every slot from the events ROW writeEvent returned
+  B49: "Moved: {client} · shoot · {date}.",
+  B50: "Cancel {client}'s shoot on {date}? Reply YES or NO.",
+  // her YES to B50: every slot from the events ROW writeEvent returned
+  B51: "Cancelled: {client} · shoot · {date}.",
+  // a lead of hers with no upcoming shoot on the calendar (a said day on a cancel narrows the read first)
+  B52: "No shoot for {client} on the calendar.",
+  // two or more upcoming shoots for her lead: rendered BY POSITION through shootsLine() below (repeated slots, as B8 is); three or more extend the
+  // list by the same " · " (the chair's K5 ruling, derived and disclosed as B40's no-reason form is). The door keeps its OWN note (SHOOT_ASKS).
+  B53: "Two shoots for {client}: {date} · {date}. Say the date.",
   // a calendar act with no date (his, 23 September 2026; B7's register). A DATE note of the door's own kind: her whole next message is the day
   B54: "Which day? Say it like 5 December.",
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
@@ -228,6 +241,12 @@ const LINE_HASHES = Object.freeze({
   B44: '2e8457a7173407d2b6166c895ad03188a19a174e3307a008e084996354ede0e5',
   B45: 'b4363bbbfc3f29c23b913cc26c88f1586c5a8b2b040e15da9b42cd00c8abcf6e',
   B46: 'e06955310af567757977dc641dd8231d410bc582014e0ea62d4cb67ffbd820f1',
+  B48: 'fb8734312f58ff98f2061be1e6559996f7ac7d7ae0c05910094d72257b39239e',
+  B49: '420a5f16d6dd179e663e5f64e2cae71499cbd3114034b533ed4c033f24b935a1',
+  B50: '11ff0598c04b4779886e7d4555eb3a7e8827643ec2191236da9b78b501e86dc4',
+  B51: '6e87ed6e362b53c41a0feedceb97a5460e88ee8cc836026ba7ed67bf8ad02216',
+  B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb',
+  B53: 'fd391aa7f9c88cfb1a5bdc18a3544be87c514728adc6caacf883b1c2cf9651e3',
   B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
   B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
   B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
@@ -368,6 +387,22 @@ function blockedLine(date, reason) {
   } catch (_e) { return null; }
 }
 
+// Byte 53 has repeated slots, as byte 8 has: the client, then the shoots' days (full month), IN THE ORDER GIVEN. Exactly two fills his template verbatim.
+// THREE OR MORE (R-45.9, the founder, 23 September 2026, "ill go with your recomendation"): the word "Two" becomes the count as a numeral and the list
+// extends by the same " · " ("3 shoots for {client}: {date} · {date} · {date}. Say the date."); a derivation of his byte, disclosed as B40's no-reason form
+// is; the hash-carried template is unchanged. Fewer than two, or any unusable value, is null.
+function shootsLine(client, dates) {
+  try {
+    const c = slot(client);
+    if (c === null || !Array.isArray(dates) || dates.length < 2) return null;
+    const ds = dates.map(slot);
+    if (ds.some((d) => d === null)) return null;
+    const two = LINES.B53.replace('{client}', c).replace('{date}', ds[0]).replace('{date}', ds[1]);
+    if (ds.length === 2) return two;
+    return `${ds.length}${two.slice('Two'.length)}`.replace(`${ds[0]} · ${ds[1]}.`, `${ds.join(' · ')}.`);
+  } catch (_e) { return null; }
+}
+
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
 function invoiceNumbers(client, numbers) {
   try {
@@ -395,4 +430,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

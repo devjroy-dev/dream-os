@@ -569,7 +569,8 @@ async function main() {
   sec('14 preTurn() on attach_package, through the real attachPackage and the real resolveLead');
   // RE-PINNED (CE-45 LCV-11, P6b): COVERED is seven, relay joining at P6b.
   // RE-PINNED (CE-45 LCV-12, P7 2a): COVERED is ten, block_date, unblock_date and book_event joining.
-  T('14.1 COVERED is ten (the calendar\'s three joined at P7 2a) and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay,block_date,unblock_date,book_event' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
+  // 14.1 RE-PINNED (CE-45 LCV-13, P7 cut 2b, labelled): COVERED is twelve, edit_event and cancel_event joining after book_event; the strength kept.
+  T('14.1 COVERED is twelve (the calendar\'s three joined at P7 2a, move and cancel at 2b) and the recorded hand is attach_package', WD.COVERED.join() === 'booking_confirmed,advance_paid,milestone_paid,invoice,lead,attach_package,relay,block_date,unblock_date,book_event,edit_event,cancel_event' && WD.HANDS.attach_package === 'attach_package' && WD.allCovered(req([att('Sharma', 'X')])) === true);
   T('14.2 an attach naming no client is not the door\'s (the untouched return)', WD.allCovered(req([{ act: 'attach_package', package_as_spoken: 'X' }])) === false);
   db = makeDb(world2());
   o = await run(db, 'Attach Photographs and film to Walk P7 Dated', [att('walk p7 dated', 'photographs AND film')]);
@@ -809,7 +810,7 @@ async function main() {
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')]), (x) => x.d.log.inserts.some((i) => i.table === 'public.pending_money_acts'));
   // RE-PINNED (CE-45 LCV-11, P6b): HANDS' last entry is relay's.
   await mut('20.19 N19 b90\'s re-aimed M5 anchor is HANDS\' new last entry (relay, P6b), and a forbidden hand after it is still seen', WDf,
-    /* P7 2a re-pin: HANDS' new last entry is book_event */ [["  book_event: 'donna_book_event', // P7 cut 2a: the signal's own name; the door calls writeEvent as calendarSignals' bookEvents does\n});", "  book_event: 'donna_book_event',\n  note: 'donna_money_edit',\n});"]], [],
+    /* P7 2b re-pin (LCV-13, labelled): HANDS' new last entry is cancel_event */ [["  cancel_event: 'donna_cancel_event',\n});", "  cancel_event: 'donna_cancel_event',\n  note: 'donna_money_edit',\n});"]], [],
     async (rq) => Object.values(rq(WDf).HANDS), (h) => h.includes('donna_money_edit'));
 
   console.log(`\n════════  b92 · ${pass} pass · ${fail} fail  ════════`);

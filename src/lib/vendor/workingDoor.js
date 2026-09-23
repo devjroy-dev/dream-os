@@ -114,7 +114,9 @@ const { isDateKey } = require('./packageSchedule');
 
 const HEAR_BEFORE_REPLY_MS = 4000;
 const MONEY_ACTS = Object.freeze(['booking_confirmed', 'advance_paid', 'milestone_paid']);
-const CALENDAR_ACTS = Object.freeze(['block_date', 'unblock_date', 'book_event']); // P7 cut 2a; edit_event and cancel_event are 2b's
+const CALENDAR_ACTS = Object.freeze(['block_date', 'unblock_date', 'book_event', 'edit_event', 'cancel_event']); // P7 cut 2a; edit_event and cancel_event joined at 2b
+// P7 cut 2b (CE-45 LCV-13): the two calendar acts that are ASKED before they write. Each must be the ONLY act of its message (one question at a time).
+const CAL_QUESTION_ACTS = Object.freeze(['edit_event', 'cancel_event']);
 const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay', ...CALENDAR_ACTS]);
 // P7 (CE-45 LCV-12, cut 2a; the chair's ruling (g) of 22 September): THE ACTS THAT NAME A CLIENT. allCovered and namelessOf read this table and
 // nothing else: a block, an unblock, an assignment and a lookup name no client, so askName never asks B35 for a day. b90 pins its members.
@@ -132,6 +134,8 @@ const HANDS = Object.freeze({
   block_date: 'donna_block_date', // P7 cut 2a: the §1.5 hands' own names (blockHands.js); the door calls blockDate/unblockDate beneath them
   unblock_date: 'donna_unblock_date',
   book_event: 'donna_book_event', // P7 cut 2a: the signal's own name; the door calls writeEvent as calendarSignals' bookEvents does
+  edit_event: 'donna_edit_event', // P7 cut 2b: the signals' own names; the door calls writeEvent AS IT STANDS on her YES
+  cancel_event: 'donna_cancel_event',
 });
 
 // `say` is what an exit KNOWS beyond its reason (the name that is no lead, the name that is no client, the money act);
@@ -339,7 +343,17 @@ const OFFER_ASKS = Object.freeze(['B36']);
 // never writes money). YES sends the row by its id; NO refuses it; another act heard lapses the note (a new relay supersedes the
 // row at stage time); nothing heard re-shows the frame ONCE, then B3 (the row itself lives its 24 hours).
 const RELAY_ASKS = Object.freeze(['B37']);
-const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS]);
+// P7 cut 2b (CE-45 LCV-13; the kickoff's §2 and the chair's K4 ruling of 23 September): TWO NOTES OF THE CALENDAR'S OWN.
+// CAL_ASKS: the move and cancel QUESTIONS. acts[0] is the edit_event or cancel_event with the LEAD ROW's name (and, for a move, the new day as she said it);
+// event_id is the shoot's row; iso is the new day as the door read it. Her YES writes through writeEvent AS IT STANDS; NO is B3 (above); another act
+// heard lapses the note (F-44.115); anything else re-asks ONCE, then B3.
+const CAL_ASKS = Object.freeze(['B48', 'B50']);
+// SHOOT_ASKS (K4, a catch): B53 is NOT a date note. On a move the act's date_as_spoken is the NEW day (ruling 3), and the date-note branch writes her
+// answer INTO that slot; noteFor deletes it. So B53 keeps a note of its OWN kind: the candidate event_ids and the act UNTOUCHED; her answer is read by
+// the door's own date read ONLY to pick the row among the candidates. Unreadable is B7 once, then B3; a readable day that picks no one row re-asks
+// B53 once, then B3; another act heard lapses the note.
+const SHOOT_ASKS = Object.freeze(['B53']);
+const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS, ...CAL_ASKS, ...SHOOT_ASKS]);
 const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && NEEDS_CLIENT.includes(a.act) && !spokenText(a.client_as_spoken)); // P7 cut 2a: NEEDS_CLIENT decides
 const namelessLead = (acts) => (Array.isArray(acts) ? acts : []).some((a) => a && typeof a === 'object' && a.act === 'lead' && !spokenText(a.client_as_spoken));
 const allKindsCovered = (acts) => Array.isArray(acts) && acts.length > 0 && acts.length <= 4 && acts.every((a) => a && typeof a === 'object' && COVERED.includes(a.act));
@@ -372,10 +386,30 @@ function validNote(n) {
     else if (PKG_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'attach_package' || !spokenText(acts[0].client_as_spoken)) return null; }
     else if (OFFER_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || typeof n.candidate_id !== 'string' || !n.candidate_id || namelessOf(acts).length || namelessLead(acts)) return null; }
     else if (RELAY_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'relay' || typeof n.draft_id !== 'string' || !n.draft_id) return null; }
+    // P7 cut 2b: a CAL note is ONE move or cancel naming its client (a move its new day too) on ONE shoot row; a SHOOT note is the same act on two or more rows
+    else if (CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) {
+      if (acts.length !== 1 || !CAL_QUESTION_ACTS.includes(acts[0].act) || !spokenText(acts[0].client_as_spoken)) return null;
+      if (n.asked === 'B48' && acts[0].act !== 'edit_event') return null;
+      if (n.asked === 'B50' && acts[0].act !== 'cancel_event') return null;
+      if (acts[0].act === 'edit_event' && !spokenText(acts[0].date_as_spoken)) return null;
+      if (CAL_ASKS.includes(n.asked) && (typeof n.event_id !== 'string' || !n.event_id)) return null;
+      if (SHOOT_ASKS.includes(n.asked) && (!Array.isArray(n.event_ids) || n.event_ids.length < 2 || n.event_ids.length > 20 || !n.event_ids.every((x) => typeof x === 'string' && x))) return null;
+    }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}) };
+    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
   } catch (_e) { return null; }
+}
+
+// P7 cut 2b: the calendar notes' own fields, strings only: the one shoot (CAL), the candidates (SHOOT), the new day as the door read it (a move).
+function calNoteFields(n) {
+  try {
+    const out = {};
+    if (typeof n.event_id === 'string' && n.event_id) out.event_id = n.event_id;
+    if (Array.isArray(n.event_ids)) out.event_ids = n.event_ids.filter((x) => typeof x === 'string' && x);
+    if (typeof n.iso === 'string' && LEAD_ISO.test(n.iso)) out.iso = n.iso;
+    return out;
+  } catch (_e) { return {}; }
 }
 
 // ── reads ─────────────────────────────────────────────────────────────────────────────────────────
@@ -629,6 +663,95 @@ async function fileBook(supabase, vendor, agentId, lane, plan, L) {
     }
     if (r && r.conflict && typeof r.conflict.message === 'string' && r.conflict.message.trim()) return { line: r.conflict.message.trim(), key: 'B47', call: { name: HANDS.book_event, input, result: `refused:${r.conflict.kind || 'conflict'}` }, landed: false };
     if (r && typeof r.error === 'string' && r.error.trim()) return { line: r.error.trim(), key: 'B75', call: { name: HANDS.book_event, input, result: 'refused:write_failed' }, landed: false };
+    return his('refused:write_failed');
+  } catch (_e) { return his('refused:exception'); }
+}
+
+// ── P7 CUT 2b · MOVE AND CANCEL A SHOOT (CE-45 LCV-13; the kickoff's §2 as ruled, K4, K5, K8) ─────────────────────────────────────────────
+// THE SHOOT RESOLVER, ONE READ: events where vendor_id, deleted_at null, state 'upcoming', kind 'shoot', and either linked_lead_id = the lead's id or
+// key(title) === key(the lead's name); oldest day first. A failed read is null (C-44.4: an empty answer and a broken answer differ).
+const SHOOT_SELECT = 'id, title, event_date, kind, state, linked_lead_id, assigned_member_ids';
+async function shootsOf(supabase, vendorId, lead) {
+  try {
+    const { data, error } = await supabase.from('events').select(SHOOT_SELECT).eq('vendor_id', vendorId).is('deleted_at', null).eq('state', 'upcoming').eq('kind', 'shoot');
+    if (error || !Array.isArray(data)) return null;
+    const name = key(lead && lead.name);
+    return data.filter((e) => e && typeof e.id === 'string' && (e.linked_lead_id === lead.id || (!!name && key(e.title) === name)) && isDateKey(e.event_date))
+      .sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+  } catch (_e) { return null; }
+}
+// the shoot rows by id, live only (a SHOOT note's candidates re-read on her answer; a row cancelled or deleted since drops out)
+async function shootsById(supabase, vendorId, ids) {
+  try {
+    if (!Array.isArray(ids) || !ids.length) return [];
+    const { data, error } = await supabase.from('events').select(SHOOT_SELECT).eq('vendor_id', vendorId).in('id', ids).is('deleted_at', null).eq('state', 'upcoming').eq('kind', 'shoot');
+    if (error || !Array.isArray(data)) return null;
+    return data.filter((e) => e && isDateKey(e.event_date)).sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+  } catch (_e) { return null; }
+}
+// the question for ONE shoot: B48 (a move, the new day) or B50 (a cancel, the ROW's day), with its CAL note. The act keeps the LEAD ROW's name.
+function calQuestion(act, client, row, iso) {
+  if (act.act === 'edit_event') {
+    const line = DL.render('B48', { client, date: longDateYear(iso) });
+    return line ? { ask: { line, key: 'B48', note: { asked: 'B48', acts: [{ ...noteAct(act), client_as_spoken: client }], tries: 0, event_id: String(row.id), iso } } } : null;
+  }
+  const line = DL.render('B50', { client, date: longDateYear(row.event_date) });
+  return line ? { ask: { line, key: 'B50', note: { asked: 'B50', acts: [{ ...noteAct(act), client_as_spoken: client }], tries: 0, event_id: String(row.id), iso: row.event_date } } } : null;
+}
+// B53 for two or more rows, with its SHOOT note: the candidates' ids, the act untouched (a move's NEW day stays in date_as_spoken, never overwritten)
+function shootsQuestion(act, client, rows, tries) {
+  const line = DL.shootsLine(client, rows.map((r) => longDateYear(r.event_date)));
+  return line ? { ask: { line, key: 'B53', note: { asked: 'B53', acts: [{ ...noteAct(act), client_as_spoken: client }], tries: tries || 0, event_ids: rows.map((r) => String(r.id)) } } } : null;
+}
+// A move or a cancel, resolved READ-ONLY to { speak, key } (B8, B52, B54, B7) | { noLead, name } | { ask } (B48, B50, B53) | null. ORDER: the lead by the
+// ONE home, then (a move) the NEW day from the ONE date slot (ruling 3: the old day is never read from the ear; a two-dates return is unreadable to the
+// door's own read and is B7), then the shoot. A cancel's said day NARROWS the resolver (unreadable is B7). TOTAL: never throws.
+async function planCal(supabase, vendor, act, nowMs, L) {
+  try {
+    if (!act || typeof act !== 'object' || !CAL_QUESTION_ACTS.includes(act.act)) return null;
+    const name = spokenText(act.client_as_spoken);
+    if (!name) return null; // a nameless move or cancel is B35's, asked before any plan (askName)
+    const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);
+    if (!found || !found.ok) {
+      if (found && found.reason === 'not_found') return { noLead: true, name };
+      if (found && found.reason === 'ambiguous') {
+        const rows = await leadsNamed(supabase, vendor.id, name, false);
+        const line = sameName(name, rows, (r) => r.wedding_date);
+        return line ? { speak: line, key: 'B8', skipHarvest: true } : null;
+      }
+      return null;
+    }
+    const lead = found.lead; const client = String(lead.name || '').trim();
+    if (!client) return null;
+    let iso = null; let narrow = null;
+    if (act.act === 'edit_event') { const d = calendarDate(act, nowMs); if (d.speak) return d; iso = d.iso; }
+    else if (spokenText(act.date_as_spoken)) { const d = calendarDate(act, nowMs); if (d.speak) return d; narrow = d.iso; }
+    let rows = await shootsOf(supabase, vendor.id, lead);
+    if (!rows) return null;
+    if (narrow) rows = rows.filter((r) => r.event_date === narrow);
+    if (!rows.length) { const line = DL.render('B52', { client }); return line ? { speak: line, key: 'B52' } : null; }
+    if (rows.length > 1) return shootsQuestion({ ...act, client_as_spoken: client }, client, rows, 0);
+    return calQuestion({ ...act, client_as_spoken: client }, client, rows[0], iso);
+  } catch (_e) { return null; }
+}
+// HER YES to B48 or B50: writeEvent AS IT STANDS, surface by lane and source 'victor' exactly as fileBook passes them (K8). The read-back is the ROW's.
+// { conflict } → B47, the checker's own sentence VERBATIM, nothing moved; an error sentence or a throw → B75. Returns { line, key, call, landed }.
+async function fileCal(supabase, vendor, lane, note, nowMs, L) {
+  const act = note.acts[0]; const move = act.act === 'edit_event';
+  const hand = move ? HANDS.edit_event : HANDS.cancel_event;
+  let input = { event_id: note.event_id };
+  const his = (result) => ({ line: DL.LINES.B75, key: 'B75', call: { name: hand, input, result }, landed: false });
+  try {
+    let iso = typeof note.iso === 'string' && LEAD_ISO.test(note.iso) ? note.iso : null;
+    if (move && !iso) { const d = calendarDate(act, nowMs); if (d.speak) return his('refused:unreadable'); iso = d.iso; }
+    input = move ? { event_id: note.event_id, date: iso } : { event_id: note.event_id, state: 'cancelled' };
+    const params = { vendorId: vendor.id, surface: lane === 'pwa' ? 'pwa' : 'whatsapp', source: 'victor', event_id: note.event_id, ...(move ? { event_date: iso } : { state: 'cancelled' }) };
+    const r = await L.writeEvent(supabase, params);
+    if (r && r.ok === true && r.event && typeof r.event === 'object') {
+      const line = DL.render(move ? 'B49' : 'B51', { client: spotless(r.event.title), date: longDateYear(r.event.event_date) });
+      return { line, key: line ? (move ? 'B49' : 'B51') : null, call: { name: hand, input, result: move ? 'moved' : 'cancelled' }, landed: true };
+    }
+    if (r && r.conflict && typeof r.conflict.message === 'string' && r.conflict.message.trim()) return { line: r.conflict.message.trim(), key: 'B47', call: { name: hand, input, result: `refused:${r.conflict.kind || 'conflict'}` }, landed: false };
     return his('refused:write_failed');
   } catch (_e) { return his('refused:exception'); }
 }
@@ -1145,6 +1268,55 @@ async function preTurn(args, depsIn) {
           return { ...askAgain(line, line === DL.LINES.B3 ? 'B3' : 'B31', note.tries + 1), note: { asked: 'B31', acts: note.acts, tries: note.tries + 1 } };
         }
       }
+    } else if (note && CAL_ASKS.includes(note.asked)) {
+      // P7 cut 2b: THE MOVE OR CANCEL QUESTION. NO was answered B3 above. YES writes the ONE shoot the note names through writeEvent AS IT STANDS and reads
+      // back from the row (B49, B51), or speaks the checker's own sentence (B47) or B75. Another act heard lapses the note (F-44.115: handled fresh below);
+      // anything else re-asks the question ONCE, then B3.
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      if (PMA.decide(message) === 'yes') {
+        st.wrote = true; st.skipHarvest = true; st.answered = note.asked; st.fallback = DL.LINES.B75;
+        const f = await fileCal(supabase, vendor, lane, note, nowMs, L);
+        if (f.line) { st.lines.push(f.line); st.keys.push(f.key); }
+        st.toolCalls.push(f.call); if (f.landed) st.refresh = true;
+        return doorAnswer(st, 'cal_answered');
+      }
+      const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string');
+      if (!movedOn) {
+        if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+        const client = note.acts[0].client_as_spoken;
+        const line = note.iso ? DL.render(note.asked, { client, date: longDateYear(note.iso) }) : null;
+        if (!line) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+        return { door: true, reply: line, keys: [note.asked], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: note.asked, acts: note.acts, tries: note.tries + 1, event_id: note.event_id, iso: note.iso }, answered: note.asked, why: 'note_reasked' };
+      }
+    } else if (note && SHOOT_ASKS.includes(note.asked)) {
+      // P7 cut 2b (K4): HER ANSWER TO B53 PICKS THE SHOOT, and nothing else. The door's own date read of her WHOLE message against the candidates' live
+      // rows: exactly one on that day → the move or cancel is ASKED on it (B48, B50), the act's own new day UNTOUCHED. Otherwise: another act heard lapses
+      // the note (a lookup heard is her answer, F-44.117's class); unreadable → B7 once; a day naming no one candidate → B53 once; then B3.
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      const noted = note.acts[0];
+      const own = resolveSpokenDate(message.trim(), { direction: 'future', nowMs });
+      const rows = await shootsById(supabase, vendor.id, note.event_ids);
+      if (!rows) return CHAIN(st.ear, 'calendar_unsayable');
+      const hit = own.ok ? rows.filter((r) => r.event_date === own.iso) : [];
+      const quiet = { toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: 'B53' };
+      if (hit.length === 1) {
+        let iso = null;
+        if (noted.act === 'edit_event') { const d = calendarDate(noted, nowMs); if (d.speak) return { door: true, reply: d.speak, keys: [d.key], ...quiet, why: 'cal_refused' }; iso = d.iso; }
+        const q = calQuestion(noted, noted.client_as_spoken, hit[0], iso);
+        if (!q) return CHAIN(st.ear, 'calendar_unsayable');
+        return { door: true, reply: q.ask.line, keys: [q.ask.key], ...quiet, note: q.ask.note, why: 'cal_asked' };
+      }
+      const route = st.ear && st.ear.request ? st.ear.request.route : null;
+      const restated = (a) => a.act === noted.act && ((!!spokenText(a.date_as_spoken) && key(a.date_as_spoken) !== key(message.trim()) && key(a.date_as_spoken) !== key(noted.date_as_spoken || ''))
+        || (!!spokenText(a.client_as_spoken) && key(noted.client_as_spoken) !== key(a.client_as_spoken)));
+      const movedOn = route !== 'search' && heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && a.act !== 'date' && (a.act !== noted.act || restated(a)));
+      if (!movedOn) {
+        if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], ...quiet, why: 'note_exhausted' };
+        if (!own.ok) return { door: true, reply: DL.LINES.B7, keys: ['B7'], ...quiet, note: { asked: 'B53', acts: note.acts, tries: note.tries + 1, event_ids: note.event_ids }, why: 'note_reasked' };
+        const again = rows.length > 1 ? shootsQuestion(noted, noted.client_as_spoken, rows, note.tries + 1) : null;
+        if (!again) return { door: true, reply: DL.LINES.B3, keys: ['B3'], ...quiet, why: 'note_exhausted' };
+        return { door: true, reply: again.ask.line, keys: ['B53'], ...quiet, note: again.ask.note, why: 'note_reasked' };
+      }
     } else if (note) {
       const own = resolveSpokenDate(message.trim(), { direction: note.direction, nowMs });
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
@@ -1209,6 +1381,32 @@ async function preTurn(args, depsIn) {
     if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');
     // F-44.96's guard stood here until P6b's first cut: the ear now hears phone_as_spoken and the door files the number itself.
     } else st.answered = note.asked;
+
+    // P7 cut 2b: A MOVE OR A CANCEL IS ASKED, NEVER WRITTEN ON THIS TURN. It must be the ONLY act of her message (one question at a time; a mixed message
+    // reads B34, exit 'cal_mixed'). Resolved read-only by planCal: the ONE home offers B36 for a near name, a name that is no lead reads B76 ('book_no_lead',
+    // his one line for book, move, cancel and remind); B8, B52 and the date lines are spoken; B54 and B7 keep a DATE note as every calendar act's do; B48,
+    // B50 and B53 keep their own notes. Nothing is written until her YES to B48 or B50.
+    const calActs = heard.acts.filter((a) => a && CAL_QUESTION_ACTS.includes(a.act));
+    if (calActs.length) {
+      if (heard.acts.length !== 1) return CHAIN(st.ear, 'cal_mixed');
+      const a = calActs[0];
+      const plan = await planCal(supabase, vendor, a, nowMs, L);
+      if (!plan) return CHAIN(st.ear, 'calendar_unsayable');
+      if (plan.noLead) {
+        const offer = !liveAtStart && !fromNote ? await offerFor(a, 'client', plan.name, await leadsOf(supabase, vendor.id)) : null;
+        if (offer) return offer;
+        return CHAIN(st.ear, 'book_no_lead', { name: plan.name });
+      }
+      const base = { door: true, toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, ...(st.answered ? { answered: st.answered } : {}) };
+      if (plan.ask) return { ...base, reply: plan.ask.line, keys: [plan.ask.key], note: plan.ask.note, why: 'cal_asked' };
+      if (DATE_ASKS.includes(plan.key)) {
+        const tries = fromNote && note && DATE_ASKS.includes(note.asked) ? note.tries + 1 : 0;
+        if (tries > 1) return { ...base, reply: DL.LINES.B3, keys: ['B3'], why: 'note_exhausted' };
+        const n = await noteFor(supabase, vendor, plan.key, a, [], tries, L);
+        return { ...base, reply: plan.speak, keys: [plan.key], ...(n ? { note: n } : {}), why: 'cal_date_asked' };
+      }
+      return { ...base, reply: plan.speak, keys: [plan.key], why: 'cal_refused' };
+    }
 
     // 3 · resolve every act first, read-only; any act the door cannot say sends the WHOLE message to the chain
     const acts = heard.acts;
@@ -1454,6 +1652,7 @@ function standKeyOf(out, L, nowMs) {
     return { key: 'LEFTOVER' };
   }
   if (why === 'lookup') return { key: 'B34' }; // F-44.128 (P7 cut 2a): a lookup, until cut four covers it
+  if (why === 'cal_mixed') return { key: 'B34' }; // P7 cut 2b: a move or cancel beside another act; one question at a time
   if (why === 'book_no_lead') { const line = DL.render('B76', { name: say.name }); if (line) return { key: 'B76', line }; } // P7 cut 2a, his B76
   if (why === 'attach_no_lead') { const line = DL.render('B32', { name: say.name }); return line ? { key: 'B32', line } : { key: 'B30' }; }
   if (why === 'attach_unsayable') return { key: 'B30' };
@@ -1547,4 +1746,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

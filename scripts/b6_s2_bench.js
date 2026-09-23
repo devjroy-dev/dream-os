@@ -217,9 +217,12 @@ sec('§6 — the day endpoint (item 4\'s backend, source assertions) + the mount
   ok(/router\.get\('\/:vendorId\/:date'/.test(day), 'GET /day/:vendorId/:date exists');
   ok(/router\.use\('\/day',\s+require\('\.\/day'\)\)/.test(core), '   ...and is mounted (core.js)');
   ok(/DATE_RE\.test\(date\)/.test(day), 'the date is validated before any read');
-  ok(/\.is\('deleted_at', null\)\s*\n?\s*\.neq\('state', 'cancelled'\)/.test(day),
+  // RE-AIMED (CE-45 LCV-13, P7 cut 2b, labelled): the spine's read and split moved, byte-preserved, into src/lib/vendor/daySheet.js readDaySpine (the
+  // chair's ruling (d)); these two read that home, and day.js must call it. The strength is kept: each still fails if its covenant or split leaves.
+  const spine = read('src/lib/vendor/daySheet.js') + (/readDaySpine\(supabase, vendor\.id, date\)/.test(day) ? '' : '/* day.js no longer calls the spine */');
+  ok(/readDaySpine\(supabase, vendor\.id, date\)/.test(day) && /\.is\('deleted_at', null\)\s*\n?\s*\.neq\('state', 'cancelled'\)/.test(spine),
      'the spine read carries BOTH covenants (deleted_at + cancelled)');
-  ok(/kind !== 'blocked'/.test(day) && /kind === 'blocked'/.test(day),
+  ok(/readDaySpine\(supabase, vendor\.id, date\)/.test(day) && /kind !== 'blocked'/.test(spine) && /kind === 'blocked'/.test(spine),
      'blocks and engagements split from ONE read — the day sheet renders both truths (Q-S-4)');
   ok(/return res\.status\(500\)\.json\(\{ ok: false, error: 'Lookup failed\.' \}\)/.test(day),
      'the SPINE fails hard — a broken calendar read is never a silently empty day');

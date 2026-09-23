@@ -198,7 +198,9 @@ sec('(vi) [seam b] the day-fetch payload carries assigned_member_ids, always-an-
   // absent from the select comes back undefined). Assert it at source, the estate's own
   // b6 §4 precedent for a fact a behavioural double cannot reach. This line fails the
   // moment assigned_member_ids leaves the day-fetch select.
-  const daySrc = require('fs').readFileSync(path.join(ROOT, 'src/api/vendor/day.js'), 'utf8');
+  // RE-AIMED (CE-45 LCV-13, P7 cut 2b, labelled): the day-fetch SELECT moved, byte-preserved, into src/lib/vendor/daySheet.js readDaySpine (the
+  // chair's ruling (d)); the source read is that home, and day.js must still reach it. The strength is kept: the line fails if the column leaves.
+  const daySrc = require('fs').readFileSync(path.join(ROOT, 'src/lib/vendor/daySheet.js'), 'utf8') + (/require\('\.\.\/\.\.\/lib\/vendor\/daySheet'\)/.test(require('fs').readFileSync(path.join(ROOT, 'src/api/vendor/day.js'), 'utf8')) ? '' : '\n/* day.js no longer reaches the spine */ .select(\'x\')');
   ok(/\.select\(\s*'[^']*assigned_member_ids/.test(daySrc), 'seam b: the day-fetch SELECT carries assigned_member_ids (source)');
 }
 

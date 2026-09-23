@@ -40,6 +40,7 @@ const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 const asyncHandler   = require('../../lib/asyncHandler');
 const { resolveAgentForVendor } = require('../middleware/agentBridge');
+const { readDaySpine } = require('../../lib/vendor/daySheet'); // P7 cut 2b: the spine's one home
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -57,29 +58,14 @@ router.get('/:vendorId/:date', requireAuth, resolveVendor({ paramName: 'vendorId
   // convergence) and the day sheet is the ONE surface ruled to show both
   // truths side by side (Q-S-4: "the tension is the day sheet's to render").
   // deleted_at + cancelled: the covenant, read side, every events read.
-  const { data: dayRows, error: dayErr } = await supabase
-    .from('events')
-    .select('id, title, kind, slot, event_date, event_time, state, notes, linked_binder_id, linked_lead_id, assigned_member_ids')
-    .eq('vendor_id', vendor.id)
-    .eq('event_date', date)
-    .is('deleted_at', null)
-    .neq('state', 'cancelled')
-    .order('event_time', { ascending: true, nullsFirst: true });
-  if (dayErr) {
-    console.error('[GET /vendor/day] events read failed:', dayErr.message);
+  // P7 cut 2b (CE-45 LCV-13, the chair's ruling (d)): THE SPINE'S READ AND SPLIT MOVED, byte-preserved, into src/lib/vendor/daySheet.js
+  // readDaySpine, so the working door's availability lookup (cut four) reads the SAME rows the day sheet renders. The 500 stays here.
+  const spine = await readDaySpine(supabase, vendor.id, date);
+  if (!spine.ok) {
+    console.error('[GET /vendor/day] events read failed:', spine.error);
     return res.status(500).json({ ok: false, error: 'Lookup failed.' });
   }
-
-  const rows   = dayRows || [];
-  const events = rows.filter((r) => r.kind !== 'blocked');
-  const blocks = rows
-    .filter((r) => r.kind === 'blocked')
-    .map((r) => ({
-      id:     r.id,
-      slot:   r.slot || 'full_day',       // pre-0078 rows are full_day (0075's witnessed backfill)
-      reason: r.notes == null ? null : r.notes,  // the reason round-trip: notes is the SOURCE (B1's ruled shape)
-      title:  r.title,
-    }));
+  const { events, blocks } = spine;
 
   // ── DECORATION LEG 1 — the muhurat note (hot_dates) ─────────────────────
   let hot = null;
