@@ -163,14 +163,9 @@ const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { hasFullLeadAccess } = require('../../lib/vendor/leadSerializer');
 const { istTodayISO, istDayWindowUtc } = require('../../lib/vendor/istClock');
+const { KIND_CAP, LEAD_FEED_SELECT, newLeads } = require('../../lib/vendor/leadFeed'); // P7 cut 4 (K3): the lead feed's one home
 
-// ── THE CEILINGS ───────────────────────────────────────────────────────────
-// One cap for every kind, deliberately. A per-kind cap would encode a judgement
-// about which kind deserves more of the vendor's screen, and D-4 already ruled
-// the ranking; a second, quieter ranking hidden in the limits is not something
-// anyone would find later. 20 is chosen against the founder's own test account
-// shape and is a CEILING, never a promise — see `truncated` below.
-const KIND_CAP = 20;
+// ── THE CEILINGS ─── KIND_CAP lives in src/lib/vendor/leadFeed.js since P7 cut 4 (K3's relocation, names unchanged); required below.
 
 // The five attention kinds, in D-4's ruled rank order minus the parked
 // `shop_nudge`. THE ORDER OF THIS ARRAY IS THE RANK ORDER and the bench asserts
@@ -192,7 +187,7 @@ const DONE_KINDS = ['invoice_paid', 'contract_signed', 'team_task_done'];
 // actually sends by an independent method — a regex over this file's source
 // would be reproducing the method under test (the independent-method law).
 // LEAD_FEED_SELECT is the one FEED_SELECT_CENSUS is pinned to.
-const LEAD_FEED_SELECT     = 'id, name, wedding_date, wedding_city, budget_min, budget_max, state, created_at';
+// LEAD_FEED_SELECT lives in src/lib/vendor/leadFeed.js since P7 cut 4 (K3), required below and re-exported at the foot unchanged.
 const INVOICE_FEED_SELECT  = 'id, invoice_number, client_name, amount_total, amount_paid, due_date, state';
 const EVENT_FEED_SELECT    = 'id, title, event_date, event_time, kind, slot, state';
 const CONTRACT_FEED_SELECT = 'id, title, state, sent_at, created_at';
@@ -239,24 +234,9 @@ router.get(
     let raw;
     try {
       raw = await Promise.all([
-        // ── lead_unanswered · Candidate A, §8.4 ─────────────────────────────
-        // NO CONTACT COLUMN IS NAMED. See the connect-gate paragraph above.
-        //
-        // `state = 'new'` IS A CODE CONVENTION, NOT A DATABASE GUARANTEE.
-        // Derived at read-first: `public.leads` carries NO state CHECK
-        // constraint — the {new, contacted, quoted, booked, lost} vocabulary is
-        // declared only at src/api/vendor/leads.js (symbol: the PATCH state
-        // validator). §8.4 ruled Candidate A knowing it is a proxy for
-        // "unanswered" rather than the fact; Candidate B
-        // (pending_lead_pings.acknowledged_at) is held as a Phase 3 enrichment
-        // by the same ruling. Recorded so the next reader does not mistake the
-        // proxy for a guarantee.
-        supabase.from('leads')
-          .select(LEAD_FEED_SELECT)
-          .eq('vendor_id', vendorId).is('deleted_at', null)
-          .eq('state', 'new')
-          .order('created_at', { ascending: true })   // D-4's tie rule: oldest first
-          .limit(KIND_CAP + 1),                       // +1 detects truncation
+        // ── lead_unanswered · Candidate A, §8.4 ── the query lives in src/lib/vendor/leadFeed.js newLeads (P7 cut 4, K3), BYTE-PRESERVED there;
+        // it returns the UNAWAITED builder, so this Promise.all element resolves exactly as the inline query did.
+        newLeads(supabase, vendorId),
 
         // ── invoice_due · §6.2 as corrected by F-P3.1 ───────────────────────
         supabase.from('invoices')

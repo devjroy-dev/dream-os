@@ -121,6 +121,9 @@ const CAL_QUESTION_ACTS = Object.freeze(['edit_event', 'cancel_event']);
 // payment_reminder names a client and is in NEEDS_CLIENT since 2a. Both LAND AT ONCE; neither ever touches money.
 const TEAM_ACTS = Object.freeze(['assign_crew', 'payment_reminder']);
 const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay', ...CALENDAR_ACTS, ...TEAM_ACTS]);
+// P7 cut 4 (CE-45 LCV-14): THE LOOKUPS the door answers on route 'search' (never jobs, so NOT in COVERED: a lookup writes nothing and asks nothing).
+// They switch LEFTOVER examples 3, 7 and 8 on through the stand-in's pool. tally, history and find WITH a client stay B34 (exit 'lookup').
+const LOOKUP_ACTS = Object.freeze(['find', 'whatsdue', 'date']);
 // P7 (CE-45 LCV-12, cut 2a; the chair's ruling (g) of 22 September): THE ACTS THAT NAME A CLIENT. allCovered and namelessOf read this table and
 // nothing else: a block, an unblock, an assignment and a lookup name no client, so askName never asks B35 for a day. b90 pins its members.
 const NEEDS_CLIENT = Object.freeze(['lead', 'booking_confirmed', 'advance_paid', 'milestone_paid', 'invoice', 'attach_package', 'relay', 'book_event', 'edit_event', 'cancel_event', 'payment_reminder']); // `lead` names one too: B18 asks for it (the lead exception above the untouched return)
@@ -165,6 +168,11 @@ function lazy(deps) {
     // P7 cut 3: the reminder's hand AS IT STANDS (paymentReminders.js :315) and its window helpers, each a seam for the bench (production passes nothing)
     sendOneReminder: deps.sendOneReminder || ((...a) => require('./paymentReminders').sendOneReminder(...a)),
     reminders: deps.reminders || require('./paymentReminders'),
+    // P7 cut 4: the lookups' three reads AS THEY STAND, each a seam for the bench (production passes nothing)
+    readDaySpine: deps.readDaySpine || ((...a) => require('./daySheet').readDaySpine(...a)),
+    newLeads: deps.newLeads || ((...a) => require('./leadFeed').newLeads(...a)),
+    dueThisWeek: deps.dueThisWeek || ((...a) => require('./dueWeek').dueThisWeek(...a)),
+    kindCap: deps.kindCap || require('./leadFeed').KIND_CAP,
     memory: deps.memory || null,
     meter: deps.meter || null,
     // P6b: the relay's organs, each a seam for the bench. The transport is the estate's ONE sender (src/lib/whatsapp.js sendWhatsApp),
@@ -992,6 +1000,54 @@ async function fileReminder(supabase, vendor, plan, L) {
   } catch (_e) { return glitch('refused:exception'); }
 }
 
+// ── P7 CUT 4 · THE LOOKUPS (CE-45 LCV-14; LCV-12's designs §4.2 to §4.4 as ruled; K3; Q1; F-44.129; R-45.11; ASK 7) ────────────────────────────
+// A request on route 'search' is a LOOKUP: READ ONLY, one answer, NO note, NO question (a lookup keeps no question). ONE act only; a lookup naming a
+// CLIENT, tally (R-45.11's table: the ear never hears it), history (P8's), or anything else returns null and the gate speaks B34 through 'lookup'.
+//   · whatsdue with no day, or "this week" / "week" → WHAT'S DUE THIS WEEK (dueWeek.js): B73 per milestone, then B79 per shoot; none → B74
+//     ("How much is owed to me?" arrives here: 8 of 8 whatsdue on R-45.11's table, sha256 19167fb8789d…; F-44.129)
+//   · find, whatsdue or date WITH a day → AVAILABILITY of that day (readDaySpine, 2b's relocation): B72 per block, then B78 per booking; none → B71;
+//     an unreadable day → B7 (his byte; no note)
+//   · find with no day, or lead with no client (P7 row 13 C1, F-44.128) → THE NEW LEADS (leadFeed.js newLeads, K3): B69 naming at most the cap (20),
+//     oldest first; none → B70
+// Every name, figure and date is a ROW's. A failed read is 'lookup_unsayable' (the glitch line), never an empty answer (C-44.4). TOTAL: never throws.
+const WEEK_WORDS = /^(this )?week$/;
+async function lookupDoor(supabase, vendor, heard, nowMs, L, st) {
+  try {
+    const acts = heard && Array.isArray(heard.acts) ? heard.acts : [];
+    if (acts.length !== 1 || !acts[0] || typeof acts[0] !== 'object') return null;
+    const a = acts[0];
+    if (spokenText(a.client_as_spoken)) return null; // a lookup WITH a client stays B34
+    const said = spotless(a.date_as_spoken);
+    const answer = (line, key, why) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, ...(st.answered ? { answered: st.answered } : {}), why });
+    if (a.act === 'whatsdue' && (!said || WEEK_WORDS.test(key(said)))) {
+      const w = await L.dueThisWeek(supabase, vendor.id, nowMs);
+      if (!w || w.ok !== true) return CHAIN(st.ear, 'lookup_unsayable');
+      if (!w.payments.length && !w.shoots.length) return answer(DL.LINES.B74, 'B74', 'lookup_week');
+      const line = DL.weekLines(w.payments.map((p) => ({ client: p.client, milestone: p.milestone, amount: digits(p.amount), date: longDateYear(p.date) })), w.shoots.map((x) => ({ client: x.client, date: longDateYear(x.date) })));
+      return line ? answer(line, w.payments.length ? 'B73' : 'B79', 'lookup_week') : CHAIN(st.ear, 'lookup_unsayable');
+    }
+    if (LOOKUP_ACTS.includes(a.act) && said) {
+      const d = resolveSpokenDate(said, { direction: 'future', nowMs });
+      if (!d.ok || !LEAD_ISO.test(typeof d.iso === 'string' ? d.iso : '')) return answer(DL.LINES.B7, 'B7', 'lookup_day');
+      const day = await L.readDaySpine(supabase, vendor.id, d.iso);
+      if (!day || day.ok !== true) return CHAIN(st.ear, 'lookup_unsayable');
+      const when = longDateYear(d.iso);
+      if (!day.blocks.length && !day.events.length) { const line = DL.render('B71', { date: when }); return line ? answer(line, 'B71', 'lookup_day') : CHAIN(st.ear, 'lookup_unsayable'); }
+      const line = DL.dayLines(when, day.blocks, day.events);
+      return line ? answer(line, day.blocks.length ? 'B72' : 'B78', 'lookup_day') : CHAIN(st.ear, 'lookup_unsayable');
+    }
+    if ((a.act === 'find' || a.act === 'lead') && !said) {
+      const { data, error } = await L.newLeads(supabase, vendor.id);
+      if (error || !Array.isArray(data)) return CHAIN(st.ear, 'lookup_unsayable');
+      if (!data.length) return answer(DL.LINES.B70, 'B70', 'lookup_leads');
+      const cap = Number.isInteger(L.kindCap) && L.kindCap > 0 ? L.kindCap : 20;
+      const line = DL.newLeadsLine(data.slice(0, cap).map((l) => ({ name: l && l.name, date: l && l.wedding_date ? longDateYear(l.wedding_date) : null })));
+      return line ? answer(line, 'B69', 'lookup_leads') : CHAIN(st.ear, 'lookup_unsayable');
+    }
+    return null;
+  } catch (_e) { return CHAIN(st && st.ear, 'lookup_unsayable'); }
+}
+
 // ── F-44.100 · THE NET: an event is not a client ────────────────────────────────────────────────────
 // WITNESSED on the founder's walk of 21 September: "Add a new lead, haldi shoot on 3 January" filed a lead NAMED
 // "haldi shoot"; the listener had put the event in client_as_spoken. A name made ONLY of these words is NO NAME and
@@ -1620,7 +1676,7 @@ async function preTurn(args, depsIn) {
     // table (row 13, C1 both variants): "Who are my new leads?" returned act `lead` with no client on route search, which met askName below and
     // would have asked B18 (the lead's name question) for a LOOKUP. Its acts are lookups only; until cut four covers them the turn reads
     // B34 (exit 'lookup', standKey); cut four makes this exit the lookups' door. Never reached on a note turn (fromNote decides above).
-    if (heard && heard.route === 'search') return CHAIN(st.ear, 'lookup');
+    if (heard && heard.route === 'search') return (await lookupDoor(supabase, vendor, heard, nowMs, L, st)) || CHAIN(st.ear, 'lookup'); // P7 cut 4: the lookups' door
     // F-44.118 (the chair; kept by the founder's R-44.41 as a SAFETY FLOOR UNDER MONEY and not as a cure for context): on a turn not answering
     // a note, a heard client_as_spoken NOT PRESENT in her message under key() is a name she did not say (the ear carried the thread's last
     // lead onto "The booking is confirmed", 06:32:24 and 08:01:09 on 22 September) and is treated as UNSAID, so B18 or B35 is asked.
@@ -1944,7 +2000,7 @@ function standKeyOf(out, L, nowMs) {
     if (acts.some((a) => !a || !COVERED.includes(a.act))) return { key: 'B34' };
     return { key: 'LEFTOVER' };
   }
-  if (why === 'lookup') return { key: 'B34' }; // F-44.128 (P7 cut 2a): a lookup, until cut four covers it
+  if (why === 'lookup') return { key: 'B34' }; // F-44.128 (P7 cut 2a); since cut 4, a lookup the door does not answer (tally, history, a client named)
   if (why === 'cal_mixed') return { key: 'B34' }; // P7 cut 2b: a move or cancel beside another act; one question at a time
   if (why === 'assign_many') return { key: 'B34' }; // P7 cut 3: an assignment by a day holding two or more shoots and no client names no one shoot
   if (why === 'book_no_lead') { const line = DL.render('B76', { name: say.name }); if (line) return { key: 'B76', line }; } // P7 cut 2a, his B76
@@ -1964,7 +2020,7 @@ async function standIn(args, depsIn) {
     if (chainIn) return null;
     if (out && out.door === true) return out;
     const k = standKey(out, lazy(deps), Number.isFinite(deps.nowMs) ? deps.nowMs : undefined);
-    if (k.key === 'LEFTOVER') return answer('LEFTOVER', DL.leftover(COVERED, deps.rand), out);
+    if (k.key === 'LEFTOVER') return answer('LEFTOVER', DL.leftover([...COVERED, ...LOOKUP_ACTS], deps.rand), out); // P7 cut 4: examples 3, 7, 8 on
     if (k.key === 'GLITCH') return answer('GLITCH', glitchLine() || DL.LINES.B3, out);
     return answer(k.key, k.line || DL.LINES[k.key], out);
   } catch (e) {
@@ -2040,4 +2096,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, CHAIN_FLAG, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };

@@ -179,6 +179,23 @@ const LINES = Object.freeze({
   B67: "Reminder sent to {client}: {milestone} · Rs {amount} · due {date}.",
   // a lead of hers with no pending payment on a live invoice
   B68: "Nothing is due from {client}.",
+  // P7 cut 4 (CE-45 LCV-14) · THE LOOKUPS, all his (22 September 2026, "All proposed lines accepted"; LCV-12's designs file §4.2 to §4.4, sha256 05b449610210…,
+  // extracted by script). ASK 7 (the chair, 23 September): each FORM is its own hash-carried key, so no byte holds two shapes: B72/B78 the day's two line
+  // forms, B73/B79 the week's. Every figure, name and date is a ROW's.
+  // the new leads, by position through newLeadsLine() below (his two-lead shape; one or three and more derived and disclosed; no date drops " ({date})")
+  B69: "New leads: {name} ({date}) · {name} ({date}).",
+  B70: "No new leads.",
+  // a day with no live row
+  B71: "{date} is free.",
+  // a block on the day; the reason is the ROW's notes (no reason: "{date}: blocked." derived, as B40's no-reason form is)
+  B72: "{date}: blocked — {reason}.",
+  // a booking on the day: {client} the ROW's title (a non-shoot kind places its own kind word, derived as B46's is). NO full stop, exactly as he accepted it
+  B78: "{date}: {client} · shoot",
+  // a pending milestone due this week (today through today plus six, IST): every slot from the payment_schedules ROW and its invoice's client_name
+  B73: "Due this week: {client} · {milestone} · Rs {amount} · {date}.",
+  // an upcoming shoot this week: the ROW's title and day
+  B79: "This week: {client} · shoot · {date}.",
+  B74: "Nothing due this week.",
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
   B75: "Couldn't put that on the calendar — nothing was changed.",
   // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
@@ -278,6 +295,14 @@ const LINE_HASHES = Object.freeze({
   B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265',
   B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc',
   B68: '60ad19c5dfdfc5e50b4a72bb470f722649049554cfb64ea2ab6866f82585e415',
+  B69: '2529a488e7bc47337286f6737fae1b6fc061cc23c736495266546a307cbda459',
+  B70: '1eb19e7ff80596105866e91a70f1c38ae50991c426035af5ad1d423395d64b31',
+  B71: 'b2a93cd4ed88977434dc30f6dafe1fba387a867a6dccb5bef56b5add43022cdb',
+  B72: 'caae4be489ef24c9743d11dba40370bd211ed83b8a1859a1a6f04b445273baae',
+  B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a',
+  B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5',
+  B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
+  B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74',
   B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
   B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
   B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
@@ -451,6 +476,49 @@ function membersLine(name, members) {
   } catch (_e) { return null; }
 }
 
+// P7 cut 4 · the new leads, B69 by position: "New leads: " then each lead as "{name} ({date})" (no date: "{name}" alone, derived) joined by " · ", then ".".
+// Exactly two dated leads fill his template verbatim; one, or three and more, extend it by the same " · " (derived, disclosed). The caller passes at most
+// the cap (twenty) and speaks B70 for none. Any unusable value is null.
+function newLeadsLine(leads) {
+  try {
+    if (!Array.isArray(leads) || !leads.length) return null;
+    const parts = leads.map((l) => { const n = slot(l && l.name); if (n === null) return null; const d = slot(l && l.date); return d === null ? n : `${n} (${d})`; });
+    if (parts.some((x) => x === null)) return null;
+    const head = LINES.B69.slice(0, LINES.B69.indexOf('{name}'));
+    return `${head}${parts.join(' · ')}.`;
+  } catch (_e) { return null; }
+}
+// P7 cut 4 · the day's lines: every block first (B72; no reason drops " — {reason}"), then every booking (B78; a non-shoot kind places its own word),
+// each on its own line. None at all is null (the caller speaks B71). Any unusable value is null.
+function dayLines(date, blocks, events) {
+  try {
+    const d = slot(date);
+    if (d === null) return null;
+    const out = [];
+    for (const b of (Array.isArray(blocks) ? blocks : [])) {
+      const r = slot(b && b.reason);
+      out.push(r === null ? LINES.B72.replace(' — {reason}', '').replace('{date}', d) : render('B72', { date: d, reason: r }));
+    }
+    for (const e of (Array.isArray(events) ? events : [])) {
+      const line = render('B78', { date: d, client: e && e.title });
+      const k = slot(e && e.kind);
+      out.push(line && k && k !== 'shoot' ? line.replace(/ · shoot$/, ` · ${k}`) : line);
+    }
+    if (!out.length || out.some((x) => !x)) return null;
+    return out.join('\n');
+  } catch (_e) { return null; }
+}
+// P7 cut 4 · the week's lines: every pending milestone (B73), then every upcoming shoot (B79), each on its own line. None is null (the caller speaks B74).
+function weekLines(payments, shoots) {
+  try {
+    const out = [];
+    for (const p of (Array.isArray(payments) ? payments : [])) out.push(render('B73', { client: p && p.client, milestone: p && p.milestone, amount: p && p.amount, date: p && p.date }));
+    for (const s of (Array.isArray(shoots) ? shoots : [])) out.push(render('B79', { client: s && s.client, date: s && s.date }));
+    if (!out.length || out.some((x) => !x)) return null;
+    return out.join('\n');
+  } catch (_e) { return null; }
+}
+
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
 function invoiceNumbers(client, numbers) {
   try {
@@ -478,4 +546,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { newLeadsLine, dayLines, weekLines, membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

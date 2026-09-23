@@ -488,7 +488,9 @@ async function main() {
     async (rq) => flow(rq, [ASK, ['Yes', JSON.parse(NONE_JSON)]]), (x) => x.out[1].keys === 'LEFTOVER');
   await mut('9.6 M6 THE LISTENER DECIDING A TYPED ANSWER: a bare date over-heard as a `date` lookup lapses the note and nothing attaches (reddens 3.5)', WDf,
     [['      if (own.ok || !movedOn) fromNote =', '      if (!movedOn) fromNote =']], [],
-    async (rq) => flow(rq, [ASK, ['5 June 2027', req([{ act: 'date', date_as_spoken: '5 June 2027' }], 'search')]]), (x) => lpsIn(x.d).length === 0 && x.out[1].reply === 'I cannot do that by message yet. Use the app for it.');
+    // RE-AIMED (CE-45 LCV-14, P7 cut 4, labelled): the mutation is unchanged and still reddens 3.5 (nothing attaches). Since cut 4 the lapsed turn, heard as a
+    // `date` lookup on route search, is ANSWERED by the lookups' door (availability of that day) where it read B34 before; the cell pins that answer instead.
+    async (rq) => flow(rq, [ASK, ['5 June 2027', req([{ act: 'date', date_as_spoken: '5 June 2027' }], 'search')]]), (x) => lpsIn(x.d).length === 0 && x.out[1].reply === '5 June 2027 is free.');
   await mut('9.7 M7 THE LAPSE REMOVED: a fresh invoice job typed after B26 is read as a date and refused (reddens 3.6)', WDf,
     [['      if (own.ok || !movedOn) fromNote =', '      if (true) fromNote =']], [],
     async (rq) => flow(rq, [ASK, ['Raise the invoice for Walk45', req([{ act: 'invoice', client_as_spoken: 'Walk45' }])]]), (x) => x.out[1].reply === B7);

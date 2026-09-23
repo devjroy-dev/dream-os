@@ -1,10 +1,11 @@
 'use strict';
-// scripts/b107_lcv14_kind_client_bench.js · TDW CE-45 · LCV-14 · LC-Victor P7 CUT 3 FIX 1: F-44.133, THE DOOR READS THE CLIENT OUT OF THE KIND (the chair's ruling (i),
-// 23 September 2026). On an assign_crew with no client_as_spoken, a kind_as_spoken that is not one of eventWrite's CALENDAR_KINDS, minus one trailing
-// calendar kind word, is the client, resolved through the ONE home. Rung b107. b106's harness and definitions carried byte for byte below this header
-// (b105's harness under them: makeDb, world, doubles, withMutated; the PGRST116 double, C-44.3). THE EXIT CODE IS THE VERDICT.
-// EVERY CELL THAT CLAIMS A SENTENCE REPLAYS A RECORDED HEARING VERBATIM (C-44.12): the five F-44.133 turns of the cut 3 walk (the founder's thread export of
-// 23 September 2026, sha256 prefix b02566fba96b), through the REAL normaliseRequest, on the estate that walk stood on. Mutations are of PRODUCTION code.
+// scripts/b108_lcv14_lookups_bench.js · TDW CE-45 · LCV-14 · LC-Victor P7 CUT 4: THE LOOKUPS. A request on route 'search' is answered READ ONLY behind the
+// route-search gate (workingDoor.js lookupDoor): the new leads (leadFeed.js newLeads, K3's relocation of worklistToday's query, byte-preserved), a day's
+// availability (daySheet.js readDaySpine), what's due this week (dueWeek.js); B69 to B74, B78, B79 his (ASK 7: each form its own key); tally, history and a
+// lookup naming a client stay B34 (R-45.11's table, sha256 19167fb8789d…: 8 of 8 whatsdue). Rung b108. b107's harness and definitions carried byte for
+// byte below this header (b106's and b105's under them: makeDb, world, doubles, withMutated; the PGRST116 double, C-44.3). THE EXIT CODE IS THE VERDICT.
+// EVERY CELL THAT CLAIMS A SENTENCE REPLAYS A RECORDED HEARING VERBATIM (C-44.12): the P7 table (sha256 f563b33daa37…) rows 1, 13, 14, 15, 16 and
+// R-45.11's table (19167fb8789d…) rows 1 to 4, through the REAL normaliseRequest. Mutations are of PRODUCTION code.
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'bench-inert';
 
@@ -15,7 +16,7 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const P = (rel) => path.join(ROOT, rel);
-const MAN = 'scripts/floor-manifest-lcv14-p7-3-fix1.txt';
+const MAN = 'scripts/floor-manifest-lcv14-p7-4.txt';
 const RECORD = 'docs/handovers/TDW_CE44_LCV9_PART1_WALK_RECORD.md';
 let pass = 0; let fail = 0; const failed = [];
 function T(name, cond) { if (cond) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); } }
@@ -321,99 +322,184 @@ async function main() {
   const SWITCHED_OFF = 'Reminders are switched off for now.';
   const APPROVAL = 'This message is waiting on WhatsApp approval.';
 
-  // F-44.133 · THE FIVE HEARD RECORDS OF THE CUT 3 WALK, VERBATIM (thread export Supabase_Snippet_Untitled_query__17_.csv, sha256 prefix b02566fba96b; times UTC), extracted by script
-  const WALK = [
-    { at: "10:34:00", said: "Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot", heard: "{\"acts\":[{\"act\":\"assign_crew\",\"kind_as_spoken\":\"Walk Seventeen Alpha shoot\",\"member_as_spoken\":\"Walk Seventeen Theta\"}],\"route\":\"task\"}" },
-    { at: "10:34:12", said: "Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot", heard: "{\"acts\":[{\"act\":\"assign_crew\",\"kind_as_spoken\":\"Walk Seventeen Alpha shoot\",\"member_as_spoken\":\"Walk Seventeen Theta\"}],\"route\":\"task\"}" },
-    { at: "10:34:30", said: "Assign Walk Seventeen Kappa to the Walk Seventeen Alpha shoot", heard: "{\"acts\":[{\"act\":\"assign_crew\",\"kind_as_spoken\":\"Walk Seventeen Alpha shoot\",\"member_as_spoken\":\"Walk Seventeen Kappa\"}],\"route\":\"task\"}" },
-    { at: "10:35:08", said: "Assign to the Walk Seventeen Alpha shoot", heard: "{\"acts\":[{\"act\":\"assign_crew\",\"kind_as_spoken\":\"Walk Seventeen Alpha shoot\"}],\"route\":\"task\"}" },
-    { at: "10:35:22", said: "Walk Seventeen Theta", heard: "{\"acts\":[{\"act\":\"assign_crew\",\"kind_as_spoken\":\"Walk Seventeen Alpha shoot\",\"member_as_spoken\":\"Walk Seventeen Theta\"}],\"route\":\"task\"}" },
-  ];
-  const LK = { calendarKinds: require(P('src/lib/vendor/eventWrite.js')).CALENDAR_KINDS };
-  const walkHeard = (i) => LD.normaliseRequest(JSON.parse(WALK[i].heard));
-  // THE ESTATE THE CUT 3 WALK STOOD ON AT 10:34:00 UTC (its thread and exports): Theta on the team (added at step 1), NOT on the crew; Kappa not on the team; the
-  // Walk Seventeen Alpha shoot on 22 November 2027, crew empty.
-  const THETA = 'ab47e7a0-6454-4a85-a398-5cec2d47001f'; const KAPPA = '223f3dc3-84e6-4ec6-9a79-b6491f5c91c9';
-  const atStep5 = () => { const w = estate(); w['public.team_members'] = [tmRow({ id: THETA, name: 'Walk Seventeen Theta', created_at: '2026-09-23T10:33:07Z' })]; return w; };
-  // THE ESTATE THE WALK LEFT (the founder's exports): Theta and Kappa on the team; the shoot's crew [Kappa]
-  const leftByWalk = () => { const w = atStep5(); w['public.team_members'].push(tmRow({ id: KAPPA, name: 'Walk Seventeen Kappa', created_at: '2026-09-23T10:34:30Z' })); w['public.events'][0].assigned_member_ids = [KAPPA]; return w; };
+  const QUERY4 = "          .select(LEAD_FEED_SELECT)\n          .eq('vendor_id', vendorId).is('deleted_at', null)\n          .eq('state', 'new')\n          .order('created_at', { ascending: true })   // D-4's tie rule: oldest first"; // worklistToday.js :255 to :258 at 23780ed, verbatim
+  // ── THE RECORDS, VERBATIM (C-44.12): the P7 table (f563b33daa37…) and R-45.11's table (19167fb8789d…), extracted from the verified CSVs ──
+  const P7 = {
+    '1/C1/asis': { said: 'Am I free on 14 February?', raw: '{"route":"search","acts":[{"act":"find","date_as_spoken":"14 February","client_as_spoken":""}]}' },
+    '1/C2/slots': { said: 'Am I free on 14 February?', raw: '{"route":"search","acts":[{"act":"find","date_as_spoken":"14 February"}]}' },
+    '13/C1/asis': { said: 'Who are my new leads?', raw: '{"route":"search","acts":[{"act":"lead","client_as_spoken":"","date_as_spoken":"","missing":[]}]}' },
+    '13/C1/slots': { said: 'Who are my new leads?', raw: '{"route":"search","acts":[{"act":"lead"}]}' },
+    '13/C2/slots': { said: 'Who are my new leads?', raw: '{"route":"search","acts":[{"act":"find"}]}' },
+    '14/C1/slots': { said: "What's due this week?", raw: '{"route":"search","acts":[{"act":"whatsdue","date_as_spoken":"this week","client_as_spoken":"","package_as_spoken":"","phone_as_spoken":"","milestone":"","missing":[],"member_as_spoken":"","reason_as_spoken":"","kind_as_spoken":""}]}' },
+    '14/C2/slots': { said: "What's due this week?", raw: '{"route":"search","acts":[{"act":"whatsdue"}]}' },
+    '15/C1/slots': { said: 'What happened with the Sharma booking?', raw: '{"route":"search","acts":[{"act":"history","client_as_spoken":"Sharma"}]}' },
+    '16/C2/slots': { said: 'How much is owed to me?', raw: '{"route":"search","acts":[{"act":"whatsdue"}]}' },
+  };
+  const T45 = {
+    '2/C1': { said: 'How much do my clients owe me?', raw: '{"route":"search","acts":[{"act":"whatsdue"}]}' },
+    '3/C2': { said: "What's my total outstanding?", raw: '{"route":"search","acts":[{"act":"whatsdue"}]}' },
+    '4/C1': { said: 'Total owed to me', raw: '{"route":"search","acts":[{"act":"whatsdue","client_as_spoken":"","date_as_spoken":"","missing":[]}]}' },
+  };
+  const heardRec = (r) => LD.normaliseRequest(JSON.parse(r.raw));
+  const LY = (iso) => require(P('src/lib/witnessLine.js')).longDateYear(iso);
+  const IC = require(P('src/lib/vendor/istClock.js'));
+  // THE LOOKUP ESTATE: two new leads (one dated), a booked lead; on 14 February 2027 a personal block, a reasonless evening block and a shoot, and a
+  // CANCELLED shoot that must not show; milestones due in the week of the door's clock and outside it; a shoot in the week and one after it.
+  const lookEstate = (nowMs) => {
+    const w = estate(); const t = (n) => IC.istPlusDaysISO(n, nowMs || NOW);
+    w['public.leads'].find((l) => l.id === ALPHA).state = 'booked'; // as the estate holds it (his fixture: Alpha booked)
+    w['public.leads'].push(
+      leadRow({ id: 'l-new1', name: 'Walk Eighteen Nu', wedding_date: '2027-05-01', state: 'new', created_at: '2026-09-20T00:00:00Z' }),
+      leadRow({ id: 'l-new2', name: 'Walk Eighteen Xi', wedding_date: null, state: 'new', created_at: '2026-09-21T00:00:00Z' }));
+    w['public.events'].push(
+      evRow({ id: 'e0000000-0000-4000-8000-0000000b0001', kind: 'blocked', title: 'Blocked', event_date: '2027-02-14', notes: 'personal', slot: 'full_day' }),
+      evRow({ id: 'e0000000-0000-4000-8000-0000000b0002', kind: 'blocked', title: 'Blocked', event_date: '2027-02-14', notes: null, slot: 'evening' }),
+      evRow({ id: 'e0000000-0000-4000-8000-0000000b0003', kind: 'shoot', title: 'Rao', event_date: '2027-02-14' }),
+      evRow({ id: 'e0000000-0000-4000-8000-0000000b0004', kind: 'shoot', title: 'Gone', event_date: '2027-02-14', state: 'cancelled' }),
+      evRow({ id: 'e0000000-0000-4000-8000-0000000b0005', kind: 'shoot', title: 'Rao', event_date: t(3) }),
+      evRow({ id: 'e0000000-0000-4000-8000-0000000b0006', kind: 'shoot', title: 'Later', event_date: t(7) }));
+    w['public.invoices'].push({ id: 'i-rao', vendor_id: V.id, lead_id: null, invoice_number: 'TDW/DEV440/30', client_name: 'Rao', client_phone: null, client_id: null, state: 'issued', deleted_at: null });
+    w['public.payment_schedules'].push(
+      { id: 'ms-w0', invoice_id: 'i-rao', vendor_id: V.id, milestone_label: 'Advance', amount_due: 30000, due_date: t(0), state: 'pending' },
+      { id: 'ms-w6', invoice_id: 'i-rao', vendor_id: V.id, milestone_label: 'Second', amount_due: 45000, due_date: t(6), state: 'pending' },
+      { id: 'ms-past', invoice_id: 'i-rao', vendor_id: V.id, milestone_label: 'Past', amount_due: 1000, due_date: t(-1), state: 'pending' },
+      { id: 'ms-late', invoice_id: 'i-rao', vendor_id: V.id, milestone_label: 'Late', amount_due: 2000, due_date: t(7), state: 'pending' },
+      { id: 'ms-paid', invoice_id: 'i-rao', vendor_id: V.id, milestone_label: 'Paid', amount_due: 3000, due_date: t(2), state: 'paid' });
+    return w;
+  };
+  const WEEK = (nowMs) => { const t = (n) => IC.istPlusDaysISO(n, nowMs || NOW); return [`Due this week: Rao · Advance · Rs 30,000 · ${LY(t(0))}.`, `Due this week: Rao · Second · Rs 45,000 · ${LY(t(6))}.`, `This week: Rao · shoot · ${LY(t(3))}.`].join('\n'); };
+  const DAY14 = '14 February 2027: blocked — personal.\n14 February 2027: blocked.\n14 February 2027: Rao · shoot';
+  const LEADS2 = 'New leads: Walk Eighteen Nu (1 May 2027) · Walk Eighteen Xi.';
+  const lk = (d, said, h, deps) => turnX(d, said, h, deps || {});
 
-  sec('1 · kindClient (the door\'s own read), and its controls');
-  T('1.1 "Walk Seventeen Alpha shoot" (the walk\'s kind) → "Walk Seventeen Alpha": ONE trailing calendar kind word dropped', typeof WD.kindClient === 'function' && WD.kindClient({ kind_as_spoken: 'Walk Seventeen Alpha shoot' }, LK) === 'Walk Seventeen Alpha');
-  T('1.2 CONTROL: "shoot" alone (any case) is the KIND and never a client; so is every CALENDAR_KIND', typeof WD.kindClient === 'function' && WD.kindClient({ kind_as_spoken: 'shoot' }, LK) === null && WD.kindClient({ kind_as_spoken: 'Shoot' }, LK) === null && LK.calendarKinds.every((k) => WD.kindClient({ kind_as_spoken: k }, LK) === null));
-  T('1.3 another calendar kind word trails too ("Verma recce" → "Verma"); a kind of no calendar word is read whole', typeof WD.kindClient === 'function' && WD.kindClient({ kind_as_spoken: 'Verma recce' }, LK) === 'Verma' && WD.kindClient({ kind_as_spoken: 'Verma wedding' }, LK) === 'Verma wedding');
-  const HOST = [undefined, null, 0, '', '   ', [], {}, { kind_as_spoken: 7 }, { kind_as_spoken: {} }, { get kind_as_spoken() { throw new Error('x'); } }];
-  let thrown = 0; for (const h of HOST) for (const l of [undefined, null, {}, LK, { calendarKinds: 'x' }]) { try { if (typeof WD.kindClient === 'function' && WD.kindClient(h, l) !== null) thrown += 1; } catch (_e) { thrown += 1; } }
-  T('1.4 TOTAL: hostile acts and hostile L (fifty pairs) read null and never throw', typeof WD.kindClient === 'function' && thrown === 0);
+  sec('1 · THE LAWS OF THE CUT (the bytes, the lookups\' door, K3\'s relocation)');
+  const EIGHT = { B69: '2529a488e7bc47337286f6737fae1b6fc061cc23c736495266546a307cbda459', B70: '1eb19e7ff80596105866e91a70f1c38ae50991c426035af5ad1d423395d64b31', B71: 'b2a93cd4ed88977434dc30f6dafe1fba387a867a6dccb5bef56b5add43022cdb', B72: 'caae4be489ef24c9743d11dba40370bd211ed83b8a1859a1a6f04b445273baae', B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a', B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5', B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a', B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74' };
+  T('1.1 LINES 75: the eight of his (B69 to B74, B78, B79), each byte its hash literal; B78 has NO full stop', Object.keys(DL.LINES).length === 75 && Object.keys(EIGHT).every((k) => DL.LINE_HASHES[k] === EIGHT[k] && sha(DL.LINES[k] || '') === EIGHT[k]) && !DL.LINES.B78.endsWith('.'));
+  T('1.2 LOOKUP_ACTS is find, whatsdue, date and is NOT in COVERED (a lookup is never a job); COVERED still fourteen', J(WD.LOOKUP_ACTS) === 'find,whatsdue,date' && WD.COVERED.length === 14 && !WD.LOOKUP_ACTS.some((a) => WD.COVERED.includes(a)));
+  const LFD = (() => { try { return require(P('src/lib/vendor/leadFeed.js')); } catch (_e) { return {}; } })();
+  const WLs = src('src/api/vendor/worklistToday.js'); const LFs = (() => { try { return src('src/lib/vendor/leadFeed.js'); } catch (_e) { return ''; } })();
+  T('1.3 K3: leadFeed.js holds KIND_CAP 20 and LEAD_FEED_SELECT; worklistToday requires them back and re-exports the SAME constant', LFD.KIND_CAP === 20 && typeof LFD.LEAD_FEED_SELECT === 'string' && require(P('src/api/vendor/worklistToday.js')).LEAD_FEED_SELECT === LFD.LEAD_FEED_SELECT && /require\('\.\.\/\.\.\/lib\/vendor\/leadFeed'\)/.test(WLs) && !/^const KIND_CAP = 20;/m.test(WLs) && !/^const LEAD_FEED_SELECT\s+=/m.test(WLs));
+  T('1.4 K3: the query\'s four middle lines are BYTE-PRESERVED in leadFeed.js (their 23780ed text, sha256 literal) and gone from worklistToday; newLeads RETURNS the unawaited builder', LFs.includes(QUERY4) && sha(QUERY4) === '975914f7a672b90061b1d27047c70b77d0a24f13a560b2eb601fab676ab729a0' && !WLs.includes(QUERY4) && /newLeads\(supabase, vendorId\),/.test(WLs) && (() => { const b = typeof LFD.newLeads === 'function' ? LFD.newLeads(makeDb(lookEstate()), V.id) : null; return !!b && typeof b.then === 'function' && typeof b.select === 'function'; })());
+  T('1.5 a lib never imports from a router: leadFeed.js and dueWeek.js require nothing under src/api', !/require\([^)]*api\//.test(LFs) && !/require\([^)]*api\//.test((() => { try { return src('src/lib/vendor/dueWeek.js'); } catch (_e) { return 'require(\'api/\')'; } })()));
 
-  sec('2 · THE FIVE WALK TURNS, REPLAYED VERBATIM on the estate they met (F-44.133)');
+  sec('2 · THE RECORDS REPLAYED (the P7 table and R-45.11\'s)');
   {
-    const d = db(atStep5());
-    let x = await turnX(d, WALK[0].said, walkHeard(0));
-    T(`2.1 ${WALK[0].at} "${WALK[0].said}" as heard → "Assigned: Walk Seventeen Theta · Walk Seventeen Alpha · shoot · 22 November 2027." (was B57 on the walk); the crew holds Theta`, x.reply === 'Assigned: Walk Seventeen Theta · Walk Seventeen Alpha · shoot · 22 November 2027.' && J(crewOf(d, SHOOT)) === THETA);
-    x = await turnX(d, WALK[1].said, walkHeard(1));
-    T(`2.2 ${WALK[1].at} the same, as heard → "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot." (was B57)`, x.reply === "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot.");
-    x = await turnX(d, WALK[2].said, walkHeard(2));
-    T(`2.3 ${WALK[2].at} "${WALK[2].said}" as heard → B56 then B58 on two lines (was B56 alone); the crew holds Theta and Kappa`, x.reply === 'Added to the team: Walk Seventeen Kappa.\n\nAssigned: Walk Seventeen Kappa · Walk Seventeen Alpha · shoot · 22 November 2027.' && crewOf(d, SHOOT).length === 2);
-    x = await turnX(d, WALK[3].said, walkHeard(3));
-    T(`2.4 ${WALK[3].at} "${WALK[3].said}" as heard → B62 with a MEMBER note that carries the kind (the client inside it)`, x.reply === 'Who? Say the name.' && noteIn(d).asked === 'B62' && noteIn(d).acts[0].kind_as_spoken === 'Walk Seventeen Alpha shoot');
-    x = await turnX(d, WALK[4].said, walkHeard(4));
-    T(`2.5 ${WALK[4].at} (door row; her message 10:35:21) "${WALK[4].said}" as heard → "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot." (was B57)`, x.reply === "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot." && x.said.answered === 'B62');
-    T('2.6 THE RECORD IS UNTOUCHED: the door\'s row keeps what was HEARD (kind_as_spoken, no client_as_spoken)', (() => { const r = lastDoor(d); const q = r && r.meta && r.meta.listener && r.meta.listener.request; return !!q && q.acts[0].kind_as_spoken === 'Walk Seventeen Alpha shoot' && !('client_as_spoken' in q.acts[0]); })());
-  }
-  {
-    const d = db(atStep5());
-    const x = await turnX(d, 'Assign Walk Seventeen Theta to the Walk Seventeen Zeta shoot', req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', kind_as_spoken: 'Walk Seventeen Zeta shoot' }]));
-    T('2.7 the client read from the kind goes through the ONE home: a name that is no lead → B76', x.reply === 'No lead called Walk Seventeen Zeta. Add the lead first.');
-    const y = await turnX(d, 'Assign Walk Seventeen Theta to the Walk Seventeen Alpa shoot', req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', kind_as_spoken: 'Walk Seventeen Alpa shoot' }]));
-    T('2.8 … and a near name → B36 (slot client), nothing written', y.reply === B36('Walk Seventeen Alpha') && noteIn(d).slot === 'client' && crewOf(d, SHOOT).length === 0);
-    const z = await turnX(db(atStep5()), 'Add Walk Seventeen Theta to the team', /* a fresh estate: 2.8 left an offer note on d */ req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', kind_as_spoken: 'shoot' }]));
-    T('2.9 CONTROL: kind "shoot" alone with no client and no day is still a TEAM ADD (B57), never B76', z.reply === 'Walk Seventeen Theta is already on your team.');
-    const w = await turnX(db(atStep5()), 'Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot', req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', client_as_spoken: 'Walk Seventeen Alpha', kind_as_spoken: 'Walk Seventeen Zeta shoot' }]));
-    T('2.10 a heard client_as_spoken WINS over the kind (the read fires only when no client was heard)', w.reply === 'Assigned: Walk Seventeen Theta · Walk Seventeen Alpha · shoot · 22 November 2027.');
+    for (const k of ['1/C1/asis', '1/C2/slots']) { const x = await lk(db(lookEstate()), P7[k].said, heardRec(P7[k])); T(`2.1 P7 ${k} "${P7[k].said}" → the day's lines, blocks first then the booking; the cancelled shoot never shows`, x.reply === DAY14 && x.said.keys[0] === 'B72'); }
+    for (const k of ['13/C1/asis', '13/C1/slots', '13/C2/slots']) { const x = await lk(db(lookEstate()), P7[k].said, heardRec(P7[k])); T(`2.2 P7 ${k} "${P7[k].said}" → B69, oldest first, the undated lead by name alone (row 13 C1's lead-on-search is the lookup, F-44.128; never B18)`, x.reply === LEADS2 && x.said.keys[0] === 'B69'); }
+    for (const k of ['14/C1/slots', '14/C2/slots']) { const x = await lk(db(lookEstate()), P7[k].said, heardRec(P7[k])); T(`2.3 P7 ${k} "${P7[k].said}" → the week: B73 per milestone due today through today plus six, then B79 per shoot`, x.reply === WEEK()); }
+    const s = await lk(db(lookEstate()), P7['15/C1/slots'].said, heardRec(P7['15/C1/slots']));
+    T('2.4 P7 15/C1/slots "What happened with the Sharma booking?" (history, a client) → B34, exit lookup (P8\'s)', s.reply === B34 && s.out.why === 'lookup');
+    const o = await lk(db(lookEstate()), P7['16/C2/slots'].said, heardRec(P7['16/C2/slots']));
+    T('2.5 P7 16/C2/slots "How much is owed to me?" (whatsdue, no day) → the SAME week lines (F-44.129; R-45.11: tally stays B34)', o.reply === WEEK());
+    for (const k of Object.keys(T45)) { const x = await lk(db(lookEstate()), T45[k].said, heardRec(T45[k])); T(`2.6 R-45.11 ${k} "${T45[k].said}" → the week lines`, x.reply === WEEK()); }
   }
 
-  sec('3 · MUTATIONS OF PRODUCTION CODE (workingDoor.js), each must redden');
+  sec('3 · AVAILABILITY');
   {
-    const M = async (name, pairs, drive, cured) => mut(name, WDf, pairs, [], async () => drive(require(WDP)), (v) => !cured(v));
-    await M('3.1 M1 the read removed (F-44.133 undone) → the walk\'s 10:34:00 turn reads B57 again, not B58', [['    const said = spotless(act.client_as_spoken) || kindClient(act, L);', '    const said = spotless(act.client_as_spoken);']],
-      async (Mod) => turnX(db(atStep5()), WALK[0].said, walkHeard(0), {}, { M: Mod }), (x) => x.reply === 'Assigned: Walk Seventeen Theta · Walk Seventeen Alpha · shoot · 22 November 2027.');
-    await M('3.2 M2 the trailing kind word NOT dropped → "Walk Seventeen Alpha shoot" is no lead, the 10:34:12 turn cannot read B59', [['    if (words.length > 1 && kinds.includes(key(words[words.length - 1]))) words.pop();\n', '']],
-      async (Mod) => { const d = db(leftByWalk()); d.tables['public.events'][0].assigned_member_ids = [THETA]; return turnX(d, WALK[1].said, walkHeard(1), {}, { M: Mod }); }, (x) => x.reply === "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot.");
-    await M('3.3 M3 the calendar-kind guard removed → kind "shoot" alone is read as a client (2.9\'s control reddens: B76, not B57)', [['    if (!k || kinds.includes(key(k))) return null;', '    if (!k) return null;']],
-      async (Mod) => turnX(db(atStep5()), 'Add Walk Seventeen Theta to the team', req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', kind_as_spoken: 'shoot' }]), {}, { M: Mod }), (x) => x.reply === 'Walk Seventeen Theta is already on your team.');
+    const x = await lk(db(lookEstate()), 'Am I free on 15 February 2027?', req([{ act: 'find', date_as_spoken: '15 February 2027' }], 'search'));
+    T('3.1 a day with no live row → B71 "15 February 2027 is free."', x.reply === '15 February 2027 is free.' && x.said.keys[0] === 'B71');
+    const w = lookEstate(); w['public.events'].push(evRow({ kind: 'meeting', title: 'Venue recce call', event_date: '2027-03-01' }));
+    const y = await lk(db(w), 'Am I free on 1 March 2027?', req([{ act: 'date', date_as_spoken: '1 March 2027' }], 'search'));
+    T('3.2 a non-shoot booking places its own kind word (derived, as B46\'s is); act date is a lookup too', y.reply === '1 March 2027: Venue recce call · meeting');
+    const z = await lk(db(lookEstate()), 'Am I free on the blue moon?', req([{ act: 'find', date_as_spoken: 'the blue moon' }], 'search'));
+    T('3.3 an unreadable day → B7, and NO note is kept (a lookup keeps no question)', z.reply === DL.LINES.B7 && !z.said.note);
+    const f = await lk(db(lookEstate()), 'Am I free on 14 February 2027?', req([{ act: 'find', date_as_spoken: '14 February 2027' }], 'search'), { readDaySpine: async () => ({ ok: false, error: 'down' }) });
+    T('3.4 a FAILED read is the glitch line (lookup_unsayable), never "is free" (C-44.4)', f.out.why === 'lookup_unsayable' && f.reply !== '14 February 2027 is free.');
+    const n = await lk(db(lookEstate()), 'Is 14 February 2027 free for Rao?', req([{ act: 'find', date_as_spoken: '14 February 2027', client_as_spoken: 'Rao' }], 'search'));
+    T('3.5 a lookup naming a CLIENT stays B34 (exit lookup)', n.reply === B34 && n.out.why === 'lookup');
   }
 
-  sec('4 · THE LAWS');
+  sec('4 · WHAT\'S DUE THIS WEEK (the window: today through today plus six, IST)');
+  {
+    const x = await lk(db(lookEstate()), "What's due this week?", req([{ act: 'whatsdue', date_as_spoken: 'this week' }], 'search'));
+    T('4.1 today and today plus six are IN; yesterday and today plus seven are OUT; a paid milestone is out; the cancelled and the later shoot are out', x.reply === WEEK() && !/Past|Late|Paid|Later/.test(x.reply));
+    const e = lookEstate(); e['public.payment_schedules'] = e['public.payment_schedules'].filter((m) => !/^ms-w/.test(m.id)); e['public.events'] = e['public.events'].filter((v) => v.id !== 'e0000000-0000-4000-8000-0000000b0005');
+    const y = await lk(db(e), "What's due this week?", req([{ act: 'whatsdue' }], 'search'));
+    T('4.2 nothing in the week → B74 "Nothing due this week."', y.reply === 'Nothing due this week.' && y.said.keys[0] === 'B74');
+    const f = await lk(db(lookEstate()), "What's due this week?", req([{ act: 'whatsdue' }], 'search'), { dueThisWeek: async () => ({ ok: false }) });
+    T('4.3 a FAILED read is the glitch line, never B74 (C-44.4)', f.out.why === 'lookup_unsayable' && f.reply !== 'Nothing due this week.');
+    for (const [label, at] of [['a year\'s end (29 December 2027 IST, the week runs into 2028)', Date.parse('2027-12-29T06:00:00Z')], ['a leap day (26 February 2028 IST, the week holds 29 February)', Date.parse('2028-02-26T06:00:00Z')]]) {
+      const z = await lk(db(lookEstate(at)), "What's due this week?", req([{ act: 'whatsdue' }], 'search'), { nowMs: at });
+      const t6 = IC.istPlusDaysISO(6, at);
+      T(`4.4 the window on ${label}: B73 on today and on ${t6}, B79 on today plus three, nothing from today plus seven`, z.reply === WEEK(at) && (at < Date.parse('2028-01-01') ? t6.startsWith('2028-01') : ['2028-02-29', '2028-03-01', '2028-03-02', '2028-03-03'].includes(t6)));
+    }
+  }
+
+  sec('5 · THE NEW LEADS');
+  {
+    const w = lookEstate(); w['public.leads'] = w['public.leads'].filter((l) => l.state !== 'new');
+    const x = await lk(db(w), 'Who are my new leads?', req([{ act: 'find' }], 'search'));
+    T('5.1 none → B70 "No new leads."', x.reply === 'No new leads.' && x.said.keys[0] === 'B70');
+    const v = lookEstate(); v['public.leads'] = v['public.leads'].filter((l) => l.id !== 'l-new2');
+    const y = await lk(db(v), 'Who are my new leads?', req([{ act: 'find' }], 'search'));
+    T('5.2 one dated lead → "New leads: Walk Eighteen Nu (1 May 2027)." (one, derived and disclosed)', y.reply === 'New leads: Walk Eighteen Nu (1 May 2027).');
+    const u = lookEstate(); u['public.leads'] = u['public.leads'].filter((l) => l.state !== 'new');
+    for (let i = 0; i < 21; i += 1) u['public.leads'].push(leadRow({ id: `l-c${i}`, name: `Cap ${String(i).padStart(2, '0')}`, state: 'new', created_at: `2026-09-01T00:${String(i).padStart(2, '0')}:00Z` }));
+    const z = await lk(db(u), 'Who are my new leads?', req([{ act: 'find' }], 'search'));
+    T('5.3 twenty-one new leads → the line names the first TWENTY, oldest first (the cap, disclosed)', /^New leads: Cap 00 · Cap 01 /.test(z.reply) && z.reply.endsWith('Cap 19.') && !z.reply.includes('Cap 20'));
+    const f = await lk(db(lookEstate()), 'Who are my new leads?', req([{ act: 'find' }], 'search'), { newLeads: async () => ({ data: null, error: { message: 'down' } }) });
+    T('5.4 a FAILED read is the glitch line, never B70 (C-44.4)', f.out.why === 'lookup_unsayable' && f.reply !== 'No new leads.');
+  }
+
+  sec('6 · WHAT STAYS B34, AND THE LEFTOVER');
+  {
+    for (const [label, rq] of [['tally', req([{ act: 'tally' }], 'search')], ['history with a client', req([{ act: 'history', client_as_spoken: 'Walk Seventeen Alpha' }], 'search')], ['two lookups in one message', req([{ act: 'find' }, { act: 'whatsdue' }], 'search')], ['date with no day', req([{ act: 'date' }], 'search')]]) {
+      const x = await lk(db(lookEstate()), 'x y', rq);
+      T(`6.1 ${label} → B34, exit lookup; nothing read, nothing written`, x.reply === B34 && x.out.why === 'lookup');
+    }
+    const draws = new Set(); for (let i = 0; i < 600; i += 1) { const l = await quiet(() => WD.standIn({ supabase: db(estate()), out: { door: false, why: 'uncovered', ear: { request: req([], 'none') } } }, {})); draws.add(l.reply); }
+    const all = [...draws].join('\n');
+    T('6.2 LEFTOVER examples 3, 7 and 8 switch on ("Am I free on 14 February?", "Who are my new leads?", "What\'s due this week?"): each appears in the stand-in\'s draws', ['Am I free on 14 February?', 'Who are my new leads?', "What's due this week?"].every((e) => all.includes(e)));
+  }
+
+  sec('7 · MUTATIONS OF PRODUCTION CODE, each must redden');
+  {
+    const M = async (name, rel, pairs, drive, cured) => mut(name, rel, pairs, rel === WDf ? [] : [WDf], async () => drive(require(WDP)), (v) => !cured(v));
+    await M('7.1 M1 the lookups\' door removed (the gate back to B34 alone) → row 13 C2 reads B34, not B69', WDf, [['return (await lookupDoor(supabase, vendor, heard, nowMs, L, st)) || CHAIN(st.ear, \'lookup\');', 'return CHAIN(st.ear, \'lookup\');']],
+      async (Mod) => turnX(db(lookEstate()), P7['13/C2/slots'].said, heardRec(P7['13/C2/slots']), {}, { M: Mod }), (x) => x.reply === LEADS2);
+    await M('7.2 M2 the client guard removed → a lookup naming a client is answered (3.5 reddens)', WDf, [['    if (spokenText(a.client_as_spoken)) return null; // a lookup WITH a client stays B34\n', '']],
+      async (Mod) => turnX(db(lookEstate()), 'Is 14 February 2027 free for Rao?', req([{ act: 'find', date_as_spoken: '14 February 2027', client_as_spoken: 'Rao' }], 'search'), {}, { M: Mod }), (x) => x.reply === B34);
+    await M('7.3 M3 the week read from yesterday (window off by one) → the past milestone shows', 'src/lib/vendor/dueWeek.js', [['const from = istTodayISO(now);', 'const from = istPlusDaysISO(-1, now);']],
+      async (Mod) => turnX(db(lookEstate()), "What's due this week?", req([{ act: 'whatsdue' }], 'search'), {}, { M: Mod }), (x) => x.reply === WEEK());
+    await M('7.4 M4 the cancelled filter removed from the day\'s spine → the cancelled shoot shows on 14 February', 'src/lib/vendor/daySheet.js', [["    .neq('state', 'cancelled')\n", '']],
+      async (Mod) => turnX(db(lookEstate()), P7['1/C2/slots'].said, heardRec(P7['1/C2/slots']), {}, { M: Mod }), (x) => x.reply === DAY14);
+    await M('7.5 M5 the failed-read guard removed from dueWeek → a failed read reads as an empty week (B74)', 'src/lib/vendor/dueWeek.js', [["    if (mErr || !Array.isArray(ms)) return { ok: false };", "    if (mErr) return { ok: true, payments: [], shoots: [] };"]],
+      async (Mod) => { const d = db(lookEstate()); const o = d.from; d.from = (n) => { const b = o(n); if (n === 'payment_schedules') { b.then = (res) => Promise.resolve({ data: null, error: { message: 'down' } }).then(res); } return b; }; return turnX(d, "What's due this week?", req([{ act: 'whatsdue' }], 'search'), {}, { M: Mod }); },
+      (x) => x.out.why === 'lookup_unsayable');
+    await M('7.6 M6 the cap removed → twenty-one names spoken', WDf, [['data.slice(0, cap)', 'data']],
+      async (Mod) => { const u = lookEstate(); u['public.leads'] = u['public.leads'].filter((l) => l.state !== 'new'); for (let i = 0; i < 21; i += 1) u['public.leads'].push(leadRow({ id: `l-c${i}`, name: `Cap ${String(i).padStart(2, '0')}`, state: 'new', created_at: `2026-09-01T00:${String(i).padStart(2, '0')}:00Z` })); return turnX(db(u), 'Who are my new leads?', req([{ act: 'find' }], 'search'), {}, { M: Mod }); },
+      (x) => !x.reply.includes('Cap 20'));
+  }
+
+  sec('8 · THE LAWS');
   {
     const blob = (rel) => { const b = fs.readFileSync(P(rel)); return crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${b.length}\0`), b])).digest('hex'); };
     const MONEY = { planMoney: '2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb', planPayment: 'cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e', planBooking: '086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa', applyRow: '01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b', reread: 'e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc' };
-    T('4.1 the money functions hash to their f24ffd9 (and 69f4b99) text', Object.keys(MONEY).every((k) => typeof WD[k] === 'function' && sha(WD[k].toString()) === MONEY[k]));
+    T('8.1 the money functions hash to their f24ffd9 text', Object.keys(MONEY).every((k) => typeof WD[k] === 'function' && sha(WD[k].toString()) === MONEY[k]));
     const cur = src(WDf); const a = cur.indexOf('    // 1 · the pending check, BEFORE the listener'); const b = cur.indexOf('    const liveAtStart');
-    T('4.2 the live-row block hashes to its f24ffd9 text', a > 0 && b > a && sha(cur.slice(a, b)) === '5289029740782e70dcfb678590d0f8eebaa363a0c8e806c3496b97714edf2e18');
-    T('4.3 doorLines.js is 69f4b99\'s blob: no byte moved (LINES 67); listenerDoor.js is f24ffd9\'s: no listener byte (the ruling)', blob(DLf) === 'd8ba5ab4ed4a24c7958c76d35e8e29637308d390' /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): doorLines.js moved by the eight lookup bytes (b108 1.1); at 69f4b99 it was f41dd59d314d */ && blob(LDf) === '6d86a8ffd2e15d865e66d65023b4b902fea93693' && Object.keys(DL.LINES).length === 75 /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled) */);
+    T('8.2 the live-row block hashes to its f24ffd9 text', a > 0 && b > a && sha(cur.slice(a, b)) === '5289029740782e70dcfb678590d0f8eebaa363a0c8e806c3496b97714edf2e18');
+    const HANDS_BLOBS = { 'src/lib/vendor/eventWrite.js': 'c425bd543756a73fdb4d44ebae56f44436b4c638', 'src/lib/vendor/availability.js': '259772903012b0a46c852ce6a4ad4c8cfdaf3b70', 'src/lib/vendor/lifecycleHands.js': '30259a6a66cc44ca3455b152465338f31a3771b4', 'src/lib/vendor/paymentReminders.js': '60ff12d09aa17cc2e03e1cbcf4e0eac0682e3eea', 'src/lib/vendor/pendingMoneyActs.js': 'd88f70e5b4166657feb4f4306588c056e3683cc2', 'src/lib/vendor/listenerDoor.js': '6d86a8ffd2e15d865e66d65023b4b902fea93693', 'src/lib/vendor/daySheet.js': '212d3a0047d3840622f7696456cbe7390b3d6685', 'src/api/vendor/reminders.js': '909398ac3f6fe9257077d72778cc3f93dccce1fe', 'src/lib/vendor/istClock.js': 'b8cf2b8b9b07418cefe27cdac38d7d421fa967a1' };
+    T('8.3 eventWrite, availability, lifecycleHands, paymentReminders, pendingMoneyActs, listenerDoor, daySheet, reminders.js and istClock.js are byte for byte their 23780ed blobs (no listener byte; the spine called as it stands)', Object.keys(HANDS_BLOBS).every((r) => blob(r) === HANDS_BLOBS[r]));
     const man = (() => { try { return src(MAN).split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')); } catch (_e) { return []; } })();
-    T('4.4 the manifest names workingDoor.js and b107, and neither doorLines.js nor listenerDoor.js', man.includes(WDf) && man.includes('scripts/b107_lcv14_kind_client_bench.js') && !man.includes(DLf) && !man.includes(LDf));
+    T('8.4 the manifest names the cut\'s files and none of the hands above', man.includes(WDf) && man.includes(DLf) && man.includes('src/lib/vendor/leadFeed.js') && man.includes('src/lib/vendor/dueWeek.js') && man.includes('src/api/vendor/worklistToday.js') && !Object.keys(HANDS_BLOBS).some((r) => man.includes(r)));
   }
 
-  sec('5 · THE FIX CARD IN HIS WORDS: steps 5 to 8b re-walked with a FRESH member (Walk Seventeen Lambda), on the estate the cut 3 walk left (Theta on the team, not on the crew; Kappa on the crew), the ear as the walk recorded it (the client inside the kind)');
+  sec('9 · CARD 4 IN HIS WORDS, on the lookup estate, the ear as the P7 table recorded it');
   {
-    const d = db(leftByWalk());
-    const ear = (member) => req([{ act: 'assign_crew', ...(member ? { member_as_spoken: member } : {}), kind_as_spoken: 'Walk Seventeen Alpha shoot' }]);
-    let x = await turnX(d, 'Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot', ear('Walk Seventeen Theta'));
-    T('5.5 STEP 5 "Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot" → "Assigned: Walk Seventeen Theta · Walk Seventeen Alpha · shoot · 22 November 2027."', x.reply === 'Assigned: Walk Seventeen Theta · Walk Seventeen Alpha · shoot · 22 November 2027.');
-    x = await turnX(d, 'Assign Walk Seventeen Theta to the Walk Seventeen Alpha shoot', ear('Walk Seventeen Theta'));
-    T('5.6 STEP 6 the same → "Walk Seventeen Theta\'s already on the Walk Seventeen Alpha shoot."', x.reply === "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot.");
-    x = await turnX(d, 'Assign Walk Seventeen Lambda to the Walk Seventeen Alpha shoot', ear('Walk Seventeen Lambda'));
-    T('5.7 STEP 7 "Assign Walk Seventeen Lambda to the Walk Seventeen Alpha shoot" → "Added to the team: Walk Seventeen Lambda." then, on its own line, "Assigned: Walk Seventeen Lambda · Walk Seventeen Alpha · shoot · 22 November 2027."', x.reply === 'Added to the team: Walk Seventeen Lambda.\n\nAssigned: Walk Seventeen Lambda · Walk Seventeen Alpha · shoot · 22 November 2027.');
-    x = await turnX(d, 'Assign to the Walk Seventeen Alpha shoot', ear(null));
-    T('5.8a STEP 8a "Assign to the Walk Seventeen Alpha shoot" → "Who? Say the name."', x.reply === 'Who? Say the name.');
-    x = await turnX(d, 'Walk Seventeen Theta', ear('Walk Seventeen Theta'));
-    T('5.8b STEP 8b "Walk Seventeen Theta" → "Walk Seventeen Theta\'s already on the Walk Seventeen Alpha shoot."', x.reply === "Walk Seventeen Theta's already on the Walk Seventeen Alpha shoot.");
-    T('5.9 END STATE: the crew is Kappa, Theta and Lambda; the team holds three Walk Seventeen members (Theta, Kappa, Lambda)', crewOf(d, SHOOT).length === 3 && team(d).length === 3);
+    const d = db(lookEstate());
+    let x = await turnX(d, 'Who are my new leads?', heardRec(P7['13/C2/slots']));
+    T('9.1 STEP 1 "Who are my new leads?" → B69 naming exactly the new leads, oldest first', x.reply === LEADS2);
+    x = await turnX(d, 'Am I free on 14 February 2027?', req([{ act: 'find', date_as_spoken: '14 February 2027' }], 'search'));
+    T('9.2 STEP 2 "Am I free on 14 February 2027?" → the day\'s lines (B72, B72 derived, B78)', x.reply === DAY14);
+    x = await turnX(d, "What's due this week?", heardRec(P7['14/C1/slots']));
+    T('9.3 STEP 3 "What\'s due this week?" → the week\'s lines (B73, B73, B79)', x.reply === WEEK());
+    const y = await turnX(d, 'How much is owed to me?', heardRec(P7['16/C2/slots']));
+    T('9.4 STEP 4 "How much is owed to me?" → the SAME answer as step 3 (8 of 8 whatsdue on R-45.11\'s table; F-44.129)', y.reply === x.reply);
+    x = await turnX(d, 'What happened with the Walk Seventeen Alpha booking?', req([{ act: 'history', client_as_spoken: 'Walk Seventeen Alpha' }], 'search'));
+    T('9.5 STEP 5 "What happened with the Walk Seventeen Alpha booking?" → "I cannot do that by message yet. Use the app for it." (P8\'s)', x.reply === 'I cannot do that by message yet. Use the app for it.');
   }
 
-  console.log(`\nb107_lcv14_kind_client_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
+  console.log(`\nb108_lcv14_lookups_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
   if (fail) { console.log(`FAILED: ${failed.join(' · ')}`); process.exit(1); }
 }
 main().catch((e) => { console.log(`BENCH CRASHED: ${e && e.stack}`); process.exit(1); });
