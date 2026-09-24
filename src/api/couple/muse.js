@@ -12,6 +12,7 @@ const { meteredAnthropic, coupleCapGate } = require('../../lib/coupleAiCap'); //
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { waNumberFor } = require('../../lib/waNumbers');   // F5 rider
+const { enquireLinkFor } = require('../../lib/discover/shapeVendor');   // §7c, CE-45 G6-1 FE_2
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
 // ── POST /save ────────────────────────────────────────────────────────────────
@@ -166,7 +167,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     .select(`
       id, save_number, image_url, source_type, vendor_id,
       caption, aesthetic_tags, saved_by_role, circle_comment_count, created_at,
-      vendor:vendors(id, business_name, city, category, rate_min, aesthetic_tags, routing_handle)
+      vendor:vendors(id, business_name, city, category, rate_min, aesthetic_tags, routing_handle, enquiry_routing, enquiry_phone)
     `, { count: 'exact' })
     .eq('couple_id', couple_id)
     .order('save_number', { ascending: false })
@@ -196,7 +197,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     vendor_vibe_tags:      s.vendor?.aesthetic_tags     || [],
     vendor_routing_handle: s.vendor?.routing_handle     || null,
     enquire_link:          s.vendor?.routing_handle
-      ? `${ENQUIRE_BASE}${s.vendor.routing_handle}`
+      ? enquireLinkFor({ tdwLink: `${ENQUIRE_BASE}${s.vendor.routing_handle}`, enquiry_routing: s.vendor.enquiry_routing, enquiry_phone: s.vendor.enquiry_phone })   // §7c, FE_2
       : null,
     caption:               s.caption                    || null,
     aesthetic_tags:        s.aesthetic_tags             || [],

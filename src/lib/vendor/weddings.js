@@ -14,7 +14,7 @@ const { seasonYearFor } = require('../season');
 // R-G13.3 · IMPORTED, NEVER TRANSCRIBED. One module, whose own only runtime
 // dependency is `../waNumbers`; the public page and the Frost deck therefore
 // send a couple to the same number with the same message by construction.
-const { ENQUIRE_BASE } = require('../discover/shapeVendor');
+const { ENQUIRE_BASE, enquireLinkFor } = require('../discover/shapeVendor');
 
 // ── THE TEN ROLES — R-40.7, in R-40.7's ORDER ───────────────────────────────
 // ⚠ THE ROLL IS NEVER ORDERED BY ANYTHING BUT ROLE (master §4 G1.1's own
@@ -777,7 +777,7 @@ async function teamTargets(supabase, { weddingId, ownerVendorId }) {
 
   const { data: vs, error } = await supabase
     .from('vendors')
-    .select('id, business_name, routing_handle, status, discover_paused')
+    .select('id, business_name, routing_handle, status, discover_paused, enquiry_routing, enquiry_phone')
     .in('id', wanted);
   if (error) throw error;
   const byId = (vs || []).reduce((acc, v) => { acc[v.id] = v; return acc; }, {});
@@ -832,7 +832,7 @@ function publicRoll(credits, vendorsById) {
         // The roll is not a directory (R-G11.6) — an unclaimed credit has no
         // storefront to send anyone to, and a TDW line with a code nobody owns
         // would route an enquiry into nothing.
-        enquire_link: linkable ? ENQUIRE_BASE + String(v.routing_handle) : null,
+        enquire_link: linkable ? enquireLinkFor({ tdwLink: ENQUIRE_BASE + String(v.routing_handle), enquiry_routing: v.enquiry_routing, enquiry_phone: v.enquiry_phone }) : null,   // §7c, FE_2
       };
     })
     .filter((r) => r.name);

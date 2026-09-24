@@ -11,6 +11,14 @@ the schema's 102 tables**, it does not describe `pending_money_acts` at all, and
 be read as a statement about privileges or RLS. Columns for the other 101 tables are unaffected. The
 two migrations are the witness until the founder regenerates this file. (CE-44, SEC-1.)
 
+**AND STALE BY A THIRD SINCE 24 SEPTEMBER 2026: `0171_own_number.sql`** (CE-45 G6-1, applied by the founder
+2026-09-24) created `public.vendor_wabas` (14 columns; UNIQUE on vendor_id, waba_id and phone_number_id) and
+`public.vendor_wa_events` (5 columns; one index), RLS enabled on both in the same transaction; added
+`vendors.enquiry_routing text NOT NULL DEFAULT 'tdw'` (CHECK in 'tdw', 'own_number', 'own_waba') and
+`vendors.enquiry_phone text`; and inserted five `public.capabilities` rows (`flag.own_number` and one per tier,
+all 'off'). None of that is described below; 0171 is its witness until the snapshot is regenerated. This note
+should have landed with 0171 itself (SRV_1b) and did not: e-107, corrected in FE_2.
+
 **Repo tip at authoring:** `713340a` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
 **Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0168` across 152 files, and it is not contiguous: **16 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
 **⏳ HOW TO TELL WHETHER THIS DOCUMENT IS STILL TRUE.** If `db/migrations/` holds any file newer than the ladder tip named above, **this document is STALE for any table those migrations touch — the migration is the witness until regen.** Check the directory before you cite a column from this file. F-09.185 is what happens otherwise: a committed handover asserted `public.messages` at 18 columns on this document's word, while `0105` had made it 20 and the document said nothing.

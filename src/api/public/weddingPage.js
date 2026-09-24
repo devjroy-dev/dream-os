@@ -38,7 +38,7 @@ const express = require('express');
 const router  = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
-const { ENQUIRE_BASE } = require('../../lib/discover/shapeVendor');
+const { ENQUIRE_BASE, enquireLinkFor } = require('../../lib/discover/shapeVendor');
 
 // Byte-identical to `vendorCard.js:213`. One miss, one body, no reason leaked.
 function notFound(res) {
@@ -57,7 +57,7 @@ router.get('/:code/:slug', asyncHandler(async (req, res) => {
     // one canonical form, as the card door.
     const { data: owner, error: oErr } = await supabase
       .from('vendors')
-      .select('id, business_name, routing_handle, status, discover_paused')
+      .select('id, business_name, routing_handle, status, discover_paused, enquiry_routing, enquiry_phone')
       .eq('routing_handle', code.toUpperCase())
       .maybeSingle();
     if (oErr) throw oErr;
@@ -114,7 +114,7 @@ router.get('/:code/:slug', asyncHandler(async (req, res) => {
     if (vendorIds.length) {
       const { data: vs, error: vErr } = await supabase
         .from('vendors')
-        .select('id, business_name, routing_handle, status, discover_paused')
+        .select('id, business_name, routing_handle, status, discover_paused, enquiry_routing, enquiry_phone')
         .in('id', vendorIds);
       if (vErr) throw vErr;
       vendorsById = (vs || []).reduce((acc, v) => { acc[v.id] = v; return acc; }, {});
@@ -139,7 +139,7 @@ router.get('/:code/:slug', asyncHandler(async (req, res) => {
         // `handle` above is lowercased for `/v/`, so this is built off the same
         // uppercase rule `vendorCard.js` states and `publicRoll` follows — one
         // rule, three readers, none of them re-typing it.
-        enquire_link: ENQUIRE_BASE + String(owner.routing_handle || '').toUpperCase(),
+        enquire_link: enquireLinkFor({ tdwLink: ENQUIRE_BASE + String(owner.routing_handle || '').toUpperCase(), enquiry_routing: owner.enquiry_routing, enquiry_phone: owner.enquiry_phone }),   // §7c, FE_2
       },
       roll:   W.publicRoll(credits, vendorsById),
       // ── THE TEAM RIDES THE PAGE'S OWN PAYLOAD (G1.3 rider) ────────────────

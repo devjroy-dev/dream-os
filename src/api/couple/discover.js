@@ -15,7 +15,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 // all moved to ONE home so the vendor's preview mount eats the identical function.
 // See src/lib/discover/shapeVendor.js for the boundary and what deliberately stayed here.
 const {
-  shapeVendorForDiscover, normalizeIgHandle, ENQUIRE_BASE,
+  shapeVendorForDiscover, normalizeIgHandle, ENQUIRE_BASE, enquireLinkFor,
 } = require('../../lib/discover/shapeVendor');
 
 // TDW_07 P1 — the ranking terms and their one homes.
@@ -69,7 +69,7 @@ router.get('/feed', asyncHandler(async (req, res) => {
     // profileScore this sitting; a term whose column never reaches the call scores zero
     // for everyone by OMISSION rather than by truth, which is the F-07.8 class one column
     // over. Read here so the score reads reality.
-    .select('id, business_name, category, city, routing_handle, rate_min, rate_max, aesthetic_tags, about, instagram_handle, rate_display, discover_paused, open_to_travel, travel_notes', { count: 'exact' })
+    .select('id, business_name, category, city, routing_handle, rate_min, rate_max, aesthetic_tags, about, instagram_handle, rate_display, discover_paused, open_to_travel, travel_notes, enquiry_routing, enquiry_phone', { count: 'exact' })
     .eq('discover_eligible', true)
     .eq('discover_paused', false);   // P1 item 4 — the 0101 predicate. Approval retained.
 
@@ -488,9 +488,18 @@ router.get('/heroes', asyncHandler(async (req, res) => {
     .limit(3);
 
   if (!error && heroes && heroes.length > 0) {
+    // §7c, FE_2: a hero names its vendor only by handle, so her switch is read by handle. One read for
+    // the (at most three) handles; a failed or empty read leaves every hero on rung 1 exactly as before.
+    const handles = [...new Set(heroes.map(h => h.routing_handle).filter(Boolean))];
+    let routingByHandle = {};
+    if (handles.length > 0) {
+      const { data: hv } = await supabase.from('vendors')
+        .select('routing_handle, enquiry_routing, enquiry_phone').in('routing_handle', handles);
+      (hv || []).forEach(r => { routingByHandle[r.routing_handle] = r; });
+    }
     const shaped = heroes.map(h => ({
       ...h,
-      enquire_link: h.routing_handle ? `${ENQUIRE_BASE}${h.routing_handle}` : null,
+      enquire_link: h.routing_handle ? enquireLinkFor({ tdwLink: `${ENQUIRE_BASE}${h.routing_handle}`, enquiry_routing: (routingByHandle[h.routing_handle] || {}).enquiry_routing, enquiry_phone: (routingByHandle[h.routing_handle] || {}).enquiry_phone }) : null,   // §7c, FE_2
     }));
     return okRes(res, { heroes: shaped });
   }
@@ -498,7 +507,7 @@ router.get('/heroes', asyncHandler(async (req, res) => {
   // Fallback — top 3 discover-eligible vendors
   const { data: vendors } = await supabase
     .from('vendors')
-    .select('id, business_name, routing_handle')
+    .select('id, business_name, routing_handle, enquiry_routing, enquiry_phone')
     .eq('discover_eligible', true)
     .order('created_at', { ascending: false })
     .limit(3);
@@ -524,7 +533,7 @@ router.get('/heroes', asyncHandler(async (req, res) => {
     image_url:      heroPhotoMap[v.id] || null,
     caption:        null,
     routing_handle: v.routing_handle   || null,
-    enquire_link:   v.routing_handle   ? `${ENQUIRE_BASE}${v.routing_handle}` : null,
+    enquire_link:   v.routing_handle   ? enquireLinkFor({ tdwLink: `${ENQUIRE_BASE}${v.routing_handle}`, enquiry_routing: v.enquiry_routing, enquiry_phone: v.enquiry_phone }) : null,   // §7c, FE_2
   }));
 
   return okRes(res, { heroes: shaped });

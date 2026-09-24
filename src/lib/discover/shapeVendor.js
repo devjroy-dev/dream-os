@@ -54,8 +54,11 @@ const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 // NOT YET WIRED into the four link builders (shapeVendor :169 below, weddingTeam :294, weddingPage :142,
 // vendorCard :572; at 46af98d): each reads the vendor through an explicit column list, and until a vendor can set the
 // switch (FE_2) every row is 'tdw', whose link is byte-identical to theirs. Declared for the chair.
-function enquireLinkFor({ handle, enquiry_routing, enquiry_phone, ownNumber } = {}) {
-  const tdw = handle ? `${ENQUIRE_BASE}${handle}` : null;
+// FE_2 (e-109's ruling, 2026-09-24): `tdwLink`, when given, is the CALLER'S OWN rung-1 expression passed
+// whole, and is returned unchanged for rung 1, so every emitter's TDW link stays byte-identical by
+// construction (the emitters spell the handle four ways: upper-cased, raw, `String(x || '')`, templated).
+function enquireLinkFor({ handle, tdwLink, enquiry_routing, enquiry_phone, ownNumber } = {}) {
+  const tdw = tdwLink !== undefined ? tdwLink : (handle ? `${ENQUIRE_BASE}${handle}` : null);
   const digits = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 && d.length <= 15 ? d : null; };
   if (enquiry_routing === 'own_number') { const d = digits(enquiry_phone); return d ? `https://wa.me/${d}` : tdw; }
   if (enquiry_routing === 'own_waba') { const d = digits(ownNumber); return d ? `https://wa.me/${d}` : tdw; }
@@ -166,7 +169,7 @@ function shapeVendorForDiscover(vendor, ctx = {}) {
     photos:         photos,
     vibe_tags:      v.aesthetic_tags || [],
     about:          v.about          || null,
-    enquire_link:   handle ? `${ENQUIRE_BASE}${handle}` : null,
+    enquire_link:   enquireLinkFor({ tdwLink: handle ? `${ENQUIRE_BASE}${handle}` : null, enquiry_routing: v.enquiry_routing, enquiry_phone: v.enquiry_phone }),   // §7c, FE_2
     is_demo:        false,
     // D-3: the chip's source. Stripped of a leading '@' so the client builds
     // instagram://user?username=X without minting a double sigil.

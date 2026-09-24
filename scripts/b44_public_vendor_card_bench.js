@@ -361,12 +361,18 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_ena
     // vendor has permitted the public date check before it decides whether to
     // advertise the control. Eleven columns now, and both §3.3 and §3.5 read
     // this one constant — so the SELECT and the ruling cannot drift apart.
+    // ── AMENDED BY LABEL · CE-45 G6-1 FE_2 · spec §7c, the chair's ruling (a) of 2026-09-24 (e-109) and FK4 ──
+    // `enquiry_routing` and `enquiry_phone` join: /v/'s Enquire link must honour HER switch (§7c: one switch,
+    // read by every enquiry surface), and rung 2's link is built from the phone she typed and consented to
+    // publish (the twice-stated consent, FK3). The phone reaches the page ONLY inside enquire_link, and only
+    // when she chose rung 2: the card's own `enquiry_phone` key stays null for a real vendor (vendorCard :567's
+    // literal, pinned by b124 3.5). Neither column is on SELECT_FORBIDDEN. Fifteen columns now.
     const WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
-                  'discover_paused', 'id', 'rate_display', 'rate_min', 'routing_handle',
-                  'seo_description', 'seo_title', 'status'];   // G3.1 s2: thirteen — 0147 §4's two join the SELECT
+                  'discover_paused', 'enquiry_phone', 'enquiry_routing', 'id', 'rate_display', 'rate_min', 'routing_handle',
+                  'seo_description', 'seo_title', 'status'];   // G3.1 s2: thirteen; CE-45 FE_2: fifteen — 0147 §4's two join the SELECT
     const asked = [...new Set(vs.flatMap((s) => s.cols.split(',').map((x) => x.trim())))].sort();
     chk(JSON.stringify(asked) === JSON.stringify(WANT),
-        '\u00a73.3 the vendors SELECT is exactly the thirteen allowlisted columns', asked.join(','));
+        '\u00a73.3 the vendors SELECT is exactly the fifteen allowlisted columns', asked.join(','));   // AMENDED BY LABEL, CE-45 FE_2 (was: thirteen)
     const forbiddenAsked = asked.filter((c) => SELECT_FORBIDDEN.includes(c));
     chk(forbiddenAsked.length === 0, '§3.4 no select-forbidden column is even ASKED FOR',
         forbiddenAsked.length ? 'ASKED: ' + forbiddenAsked.join(', ') : 'the query never sees them');

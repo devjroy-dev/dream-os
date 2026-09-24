@@ -231,7 +231,10 @@ asyncCells.push(async () => {
 sec('C3c \u00b7 the owner\u2019s door comes from the owner, not from the roll');
 {
   const pg = strip(read('src/api/public/weddingPage.js'));
-  ok('the page serves owner.enquire_link', /enquire_link:\s*ENQUIRE_BASE/.test(pg));
+  // AMENDED BY LABEL · CE-45 G6-1 FE_2 (§7c, ruling (a)): the page's link now passes through enquireLinkFor, which
+  // is handed the SAME owner-built expression whole as tdwLink (the next cell still pins that expression), so
+  // rung 1 is byte-identical. Was: /enquire_link:\s*ENQUIRE_BASE/.
+  ok('the page serves owner.enquire_link', /enquire_link:\s*(ENQUIRE_BASE|enquireLinkFor\(\{ tdwLink: ENQUIRE_BASE)/.test(pg));
   ok('...built from the OWNER row, uppercased',
     /ENQUIRE_BASE \+ String\(owner\.routing_handle \|\| ''\)\.toUpperCase\(\)/.test(pg));
   ok('...and ENQUIRE_BASE is imported, never transcribed',

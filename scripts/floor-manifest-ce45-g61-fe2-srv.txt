@@ -1,0 +1,18 @@
+# scripts/floor-manifest-ce45-g61-fe2-srv.txt
+# CE-45 · G6-1 · FE_2's dream-os half. F-19.16: a dirty path outside this list is a STOP.
+# BASE: 90f607d (given by the chair under R-45.14; built at a7e90bf, carried and re-derived at 90f607d). Every path this ZIP writes, and nothing else.
+# No new directory.
+src/api/vendor/me.js
+src/lib/discover/shapeVendor.js
+src/api/public/vendorCard.js
+src/api/public/weddingPage.js
+src/lib/vendor/weddings.js
+src/api/couple/discover.js
+src/api/couple/muse.js
+src/api/circle/muse.js
+docs/db/PUBLIC_SCHEMA.md
+scripts/b124_g61_enquiry_srv_bench.js
+scripts/b44_public_vendor_card_bench.js
+scripts/b57_g13_team_bench.js
+scripts/floor-manifest-ce45-g61-fe2-srv.txt
+docs/handovers/TDW_CE45_G61_FE2_SRV_HANDOVER.md

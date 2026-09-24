@@ -114,7 +114,7 @@ const router  = express.Router();
 // `waNumbers.js`'s own header records what two homes cost last time: eleven
 // independent `|| '14787788550'` tails, one of which fell back to the wrong
 // lane entirely (F-05.23).
-const { ENQUIRE_BASE } = require('../../lib/discover/shapeVendor');
+const { ENQUIRE_BASE, enquireLinkFor } = require('../../lib/discover/shapeVendor');
 // G2 · R-G2.9. The visibility rule is IMPORTED, never restated: `three` lives
 // once, beside the computation that produces the count it tests.
 const { sealIsVisible } = require('../../lib/vendor/seal');
@@ -217,7 +217,7 @@ const CARD_KEYS = Object.freeze([
  * `select('*')` is not merely discouraged here; there is no code path that
  * could produce one, because these are the strings the queries are built from.
  */
-const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, date_check_enabled, about, rate_min, rate_display, seo_title, seo_description';
+const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, date_check_enabled, about, rate_min, rate_display, seo_title, seo_description, enquiry_routing, enquiry_phone';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
 // `computed_at` is selected and WITHHELD — the page shows a fact, not an audit
 // trail, and "counted every night" is the room's sentence to the vendor, not the
@@ -569,7 +569,7 @@ router.get('/:code', async (req, res) => {
           // Donna parses out of `TDW-<handle>`. NOT from the wire's `handle`,
           // which this door lowercases for the URL. Two cases of one value, and
           // only one of them is the message body.
-          enquire_link:   ENQUIRE_BASE + String(v.routing_handle),
+          enquire_link:   enquireLinkFor({ tdwLink: ENQUIRE_BASE + String(v.routing_handle), enquiry_routing: v.enquiry_routing, enquiry_phone: v.enquiry_phone }),   // §7c, FE_2
           about:          v.about,
           starting_price: startingPrice(v.rate_display, v.rate_min),
           photos:         (rows || []).map(photo),

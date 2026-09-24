@@ -34,6 +34,7 @@ const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 
 const { waNumberFor } = require('../../lib/waNumbers');
+const { enquireLinkFor } = require('../../lib/discover/shapeVendor');   // §7c, CE-45 G6-1 FE_2
 const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
 // ── F-07.116 CURED BY DELETION — THE HELPER NOBODY CALLED ───────────────────
@@ -170,7 +171,7 @@ router.get('/:brideId', asyncHandler(async (req, res) => {
     .select(`
       id, save_number, image_url, source_type, vendor_id,
       caption, aesthetic_tags, saved_by_role, circle_comment_count, created_at,
-      vendor:vendors(id, business_name, city, category, rate_min, routing_handle)
+      vendor:vendors(id, business_name, city, category, rate_min, routing_handle, enquiry_routing, enquiry_phone)
     `)
     .eq('couple_id', brideId)
     .order('save_number', { ascending: false })
@@ -193,7 +194,7 @@ router.get('/:brideId', asyncHandler(async (req, res) => {
     vendor_starting_price: s.vendor?.rate_min        || null,
     vendor_routing_handle: s.vendor?.routing_handle  || null,
     enquire_link:          s.vendor?.routing_handle
-      ? `${ENQUIRE_BASE}${s.vendor.routing_handle}` : null,
+      ? enquireLinkFor({ tdwLink: `${ENQUIRE_BASE}${s.vendor.routing_handle}`, enquiry_routing: s.vendor.enquiry_routing, enquiry_phone: s.vendor.enquiry_phone }) : null,   // §7c, FE_2
     caption:               s.caption                 || null,
     aesthetic_tags:        s.aesthetic_tags          || [],
     saved_by_role:         s.saved_by_role,

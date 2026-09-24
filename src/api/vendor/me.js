@@ -253,6 +253,11 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // for a vendor the search can already see, which is the worst of both: she
       // is listed and her own settings screen tells her she is not.
       peer_discoverable:       vendor.peer_discoverable       !== false,
+      // CE-45 G6-1 FE_2 · §7c. Anything but 'own_number' reads 'tdw' (a row read before 0171, or
+      // 'own_waba', which no write can set until 2b): the row must never draw a rung the link
+      // builders would not honour.
+      enquiry_routing:         vendor.enquiry_routing === 'own_number' ? 'own_number' : 'tdw',
+      enquiry_phone:           typeof vendor.enquiry_phone === 'string' ? vendor.enquiry_phone : null,
       // CE-42 4c-3b · G5.3 THE INFLUENCER EXCHANGE, ruling (i). `=== true`, on
       // `date_check_enabled`'s side of the coercion and NOT `peer_discoverable`'s
       // one line above: 0166 §1 defaults this column FALSE, because the opt-in
@@ -373,7 +378,12 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // police craft, and it does not need to: the browse
                         // predicate reads `category` too, so a photographer who
                         // set it is listed by nothing.
-                        'exchange_discoverable'];
+                        'exchange_discoverable',
+                        // CE-45 G6-1 FE_2 · spec §7c, her one switch for where "Enquire on
+                        // WhatsApp" sends a couple (0171). Joins the same one writer and the
+                        // same `.eq('id', vendor.id)` guard (FK1, ruled). Validated below by
+                        // validateEnquiryRouting, never passed to Postgres raw.
+                        'enquiry_routing', 'enquiry_phone'];
 
 // The three booleans the vendor may now set. Guarded on the slot_capacity pattern
 // (:147 below): a 400 here, never a silent coercion. Without this, {"discover_paused":
@@ -410,6 +420,39 @@ const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'd
 // onboardingPredicate.serviceAreaPresent holds it in pure code (so the FORM can
 // ask before a row exists to constrain), and this holds it at the API edge (so
 // the vendor gets a legible refusal). One rule, three altitudes.
+// ── §7c · THE SERVER'S RULES FOR THE ENQUIRY SWITCH (FE_2, FK2 ruled 2026-09-24) ─────────────────
+// 'tdw' and 'own_number' ONLY. 'own_waba' is REFUSED until 2b: a couple writing to a connected number
+// gets no reply before 2b, so no surface may send them there. 'own_number' needs a phone of 10 to 15
+// digits (an optional leading +) already on her row or in this same write. 'tdw' needs nothing and
+// takes effect at once. The phone is stored as typed, trimmed; enquireLinkFor strips it to digits.
+// Pure: (update as it will be written, her current row) -> an error string, or null. Mutates `update`
+// only to trim the phone.
+const ENQUIRY_PHONE_RE = /^\+?[\d ()-]{10,24}$/;
+function validateEnquiryRouting(update, current) {
+  if (update.enquiry_phone !== undefined) {
+    if (update.enquiry_phone === null || update.enquiry_phone === '') {
+      update.enquiry_phone = null;
+    } else {
+      if (typeof update.enquiry_phone !== 'string') return "'enquiry_phone' must be text.";
+      const t = update.enquiry_phone.trim();
+      const digits = t.replace(/\D/g, '');
+      if (!ENQUIRY_PHONE_RE.test(t) || digits.length < 10 || digits.length > 15) {
+        return "'enquiry_phone' must be a WhatsApp number of 10 to 15 digits.";
+      }
+      update.enquiry_phone = t;
+    }
+  }
+  if (update.enquiry_routing !== undefined) {
+    const r = update.enquiry_routing;
+    if (r === 'own_waba') return "'own_waba' arrives with Own number.";
+    if (r !== 'tdw' && r !== 'own_number') return "'enquiry_routing' must be 'tdw' or 'own_number'.";
+  }
+  const routing = update.enquiry_routing !== undefined ? update.enquiry_routing : (current && current.enquiry_routing);
+  const phone = update.enquiry_phone !== undefined ? update.enquiry_phone : (current && current.enquiry_phone);
+  if (routing === 'own_number' && !phone) return "'own_number' needs 'enquiry_phone'.";
+  return null;
+}
+
 function validateServiceArea(body) {
   const { SERVICE_AREA_TOKENS } = require('../../lib/onboardingPredicate');
   const hasArea   = body.service_area   !== undefined;
@@ -511,9 +554,13 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
     const saErr = validateServiceArea(update);
     if (saErr) return errRes(res, 400, saErr);
 
+    // §7c (FE_2): the switch and its phone, judged against her row as it stands (req.vendor).
+    const erErr = validateEnquiryRouting(update, vendor);
+    if (erErr) return errRes(res, 400, erErr, 'ENQUIRY_ROUTING');
+
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible, enquiry_routing, enquiry_phone')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -524,7 +571,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities')
+      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, enquiry_routing, enquiry_phone')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -578,6 +625,9 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       // as the GET shape above — the row must read the DOOR'S answer, never the
       // value the tap hoped for.
       exchange_discoverable: updated.exchange_discoverable === true,
+      // CE-45 G6-1 FE_2 · §7c. The echo the Settings row settles on (FK5): the DOOR'S answer.
+      enquiry_routing: updated.enquiry_routing === 'own_number' ? 'own_number' : 'tdw',
+      enquiry_phone: typeof updated.enquiry_phone === 'string' ? updated.enquiry_phone : null,
     },
   });
 }));
@@ -643,3 +693,4 @@ module.exports = router;
 // `capacity_applicable` agrees with the ladder, rather than re-implementing the
 // comparison and testing its own copy (F-40.169's lesson, one file over).
 module.exports.capacityFacts = capacityFacts;
+module.exports.validateEnquiryRouting = validateEnquiryRouting;   // CE-45 G6-1 FE_2, for b124
