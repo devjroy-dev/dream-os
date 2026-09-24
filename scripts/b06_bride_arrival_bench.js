@@ -87,6 +87,58 @@ const __RETIRE = new Map([
   [
     "A11.5 ",
     "LSP_1: the WhatsApp chain's tail in vendorInbound.js is deleted; the relay seat's replace/append on a chain turn has no turn to act on"
+  ],
+  [
+    "A2.2 ",
+    "LSP_3: the pointer it read (a comment naming coupleArrival.js and arrivalAutoSend) lived in relaySeat's deleted seat; A2.3 to A2.8 prove the trigger's siting on the live code"
+  ],
+  [
+    "A6.1 ",
+    "LSP_3: relaySeat's pending-relay block (buildPendingRelay, pendingRelayBlock, the standing law) is deleted with the chain era's seat"
+  ],
+  [
+    "A6.2 ",
+    "LSP_3: relaySeat's pending-relay block (buildPendingRelay, pendingRelayBlock, the standing law) is deleted with the chain era's seat"
+  ],
+  [
+    "A6.3 ",
+    "LSP_3: relaySeat's pending-relay block (buildPendingRelay, pendingRelayBlock, the standing law) is deleted with the chain era's seat"
+  ],
+  [
+    "A6.4 ",
+    "LSP_3: relaySeat's pending-relay block (buildPendingRelay, pendingRelayBlock, the standing law) is deleted with the chain era's seat"
+  ],
+  [
+    "A6.5 ",
+    "LSP_3: its mutation's anchor is in the deleted buildPendingRelay (vacuous)"
+  ],
+  [
+    "A13.1 ",
+    "LSP_3: relaySeat's confirm-row reader (doorAsked, ASKING_KINDS, RELAY_CONFIRM_SENT_BY) is deleted; the door stages and confirms by draft id"
+  ],
+  [
+    "A13.2 ",
+    "LSP_3: relaySeat's confirm-row reader (doorAsked, ASKING_KINDS, RELAY_CONFIRM_SENT_BY) is deleted; the door stages and confirms by draft id"
+  ],
+  [
+    "A13.3 ",
+    "LSP_3: relaySeat's confirm-row reader (doorAsked, ASKING_KINDS, RELAY_CONFIRM_SENT_BY) is deleted; the door stages and confirms by draft id"
+  ],
+  [
+    "A13.4 ",
+    "LSP_3: relaySeat's confirm-row reader (doorAsked, ASKING_KINDS, RELAY_CONFIRM_SENT_BY) is deleted; the door stages and confirms by draft id"
+  ],
+  [
+    "A13.5 ",
+    "LSP_3: relaySeat's confirm-row reader (doorAsked, ASKING_KINDS, RELAY_CONFIRM_SENT_BY) is deleted; the door stages and confirms by draft id"
+  ],
+  [
+    "A13.7 ",
+    "LSP_3: its mutation's anchor is in the deleted doorAsked (vacuous)"
+  ],
+  [
+    "A14.5 ",
+    "LSP_3: relaySeat's copy-free claim reader (RELAY_CLAIM_RE_LOCAL) is deleted; chat.js's RELAY_CLAIM_RE, the one home, is proven by A14.1 to A14.6"
   ]
 ]);
 const __seen = new Map();

@@ -190,6 +190,20 @@ function makeDb(tables, opts = {}) {
 }
 
 // The door's real signal shape, copied from the proven harness.
+
+// CE-45 LCV-15 LSP_3 · RE-AIMED (labelled, the chair's ruling): runRelaySeat and handleSend, the chain era's entry, are DELETED. The fork these cells
+// prove is LIVE: the door reaches it through relaySeat.sendApprovedDraft (workingDoor.js sendDraft), handing it her STAGED draft (openStagedFor's row),
+// the name coupleDisplayName reads for its phone, and the deps. viaDoor makes exactly that call, so each cell now proves the fork on the door's own road.
+// (handleSend's name check, "the name she said matches the draft's", was the seat's and left with it: the door sends by the draft's id.)
+async function viaDoor(seat, db, vendor, deps) {
+  const drafts = fresh(SRC('src/lib/vendor/coupleDrafts.js'));
+  const open = await drafts.openStagedFor(db, vendor.id);
+  if (!open || !open.draft) return null;
+  const { coupleDisplayName } = fresh(RELAY);
+  const name = await coupleDisplayName(db, vendor.id, open.draft.couple_phone);
+  return seat.sendApprovedDraft(db, vendor, open.draft, name, deps);
+}
+
 const sendSig = (recipient_name) => ({
   tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_relay_send', input: { recipient_name } }] }],
 });
@@ -487,9 +501,8 @@ await t('A2.5 AN EMPTY BODY NEVER RIDES THE ENVELOPE', async () => {
 await t('A2.6 THE FORK — a FITTING draft on a shut window SENDS THE CONTENT TEMPLATE', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const world = shutWorld(); const m = meta();
-  const out = await seat.runRelaySeat(makeDb(world), { id: VENDOR_ID, business_name: 'Studio Nine' },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+  const out = await viaDoor(seat, makeDb(world), { id: VENDOR_ID, business_name: 'Studio Nine' },
+        { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(out.kind, 'sent', 'the content arm did not fire on a fitting draft');
   assert.strictEqual(m.calls.length, 1);
   assert.strictEqual(m.calls[0].payload.name, 'tdw_enquiry_reply_couple',
@@ -499,9 +512,8 @@ await t('A2.6 THE FORK — a FITTING draft on a shut window SENDS THE CONTENT TE
 await t('A2.7 ③ SPEAKS, UNCHANGED AND TRUE — the envelope is Meta\'s, not the message', async () => {
   withPnid('123456');
   const seat = fresh(SEAT);
-  const out = await seat.runRelaySeat(makeDb(shutWorld()), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
+  const out = await viaDoor(seat, makeDb(shutWorld()), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.ok(/^Sent to /.test(out.line), 'byte ③ did not ship on a delivered content send');
   assert.ok(/\+919625759924/.test(out.line), 'the founder\'s standing word: the phone is always shown');
 });
@@ -509,9 +521,8 @@ await t('A2.7 ③ SPEAKS, UNCHANGED AND TRUE — the envelope is Meta\'s, not th
 await t('A2.8 THE EQUALITY CELL — {{3}} IS THE STORED BODY, BYTE-EXACT', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const world = shutWorld(); const m = meta();
-  await seat.runRelaySeat(makeDb(world), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, makeDb(world), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
   const params = m.calls[0].payload.components[0].parameters.map((p) => p.text);
   assert.strictEqual(params[2], draftRow().body,
     'THE EQUALITY LAW BROKE: what he approved is not what she received');
@@ -521,18 +532,16 @@ await t('A2.9 EQUALITY SURVIVES A BODY WITH QUOTES AND PUNCTUATION', async () =>
   withPnid('123456');
   const body = 'Rs 60,000 — "all in", no extras. OK?';
   const seat = fresh(SEAT); const m = meta();
-  await seat.runRelaySeat(makeDb(shutWorld({ body })), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, makeDb(shutWorld({ body })), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(m.calls[0].payload.components[0].parameters[2].text, body);
 });
 
 await t('A2.10 THE DRAFT IS SPENT — `sent`, resolved, and never re-sendable', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const world = shutWorld();
-  await seat.runRelaySeat(makeDb(world), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, makeDb(world), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
   const d = world.pending_couple_drafts[0];
   assert.strictEqual(d.state, 'sent', 'a delivered draft was left alive and re-sendable');
   assert.ok(d.resolved_at, 'a terminal transition did not stamp resolved_at');
@@ -541,9 +550,8 @@ await t('A2.10 THE DRAFT IS SPENT — `sent`, resolved, and never re-sendable', 
 await t('A2.11 THE REGISTER CARRIES `content:<wamid>` — which send, not just that one went', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const world = shutWorld();
-  await seat.runRelaySeat(makeDb(world), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: meta({ wamid: 'wamid.XYZ' }), env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, makeDb(world), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: meta({ wamid: 'wamid.XYZ' }), env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(world.pending_couple_drafts[0].refusal_reason, 'content:wamid.XYZ');
   assert.strictEqual(world.pending_couple_drafts[0].twilio_sid, 'wamid.XYZ');
 });
@@ -551,9 +559,8 @@ await t('A2.11 THE REGISTER CARRIES `content:<wamid>` — which send, not just t
 await t('A2.12 HER THREAD HOLDS THE BYTES SHE RECEIVED, not a marker', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const db = makeDb(shutWorld());
-  await seat.runRelaySeat(db, { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, db, { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
   const row = db._log.inserts.find((i) => i.table === 'messages' && i.row.sent_by === 'vendor_relay');
   assert.ok(row, 'bytes reached her handset with no row on her thread — walk seven exactly');
   assert.strictEqual(row.row.body, draftRow().body);
@@ -563,9 +570,8 @@ await t('A2.12 HER THREAD HOLDS THE BYTES SHE RECEIVED, not a marker', async () 
 await t('A2.13 №14 IS REACHABLE — `vendor_relay` is the marker the receipt chain reads', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const db = makeDb(shutWorld());
-  await seat.runRelaySeat(db, { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, db, { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
   const row = db._log.inserts.find((i) => i.table === 'messages' && i.row.twilio_sid === 'wamid.CONTENT');
   assert.strictEqual(row.row.sent_by, 'vendor_relay',
     'the content send cannot produce a receipt — LEG 1\'s promise on his handset is unkeepable');
@@ -574,9 +580,8 @@ await t('A2.13 №14 IS REACHABLE — `vendor_relay` is the marker the receipt c
 await t('A2.14 THE LANE IS PINNED — the content template rides the VENDOR PNID', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const m = meta();
-  await seat.runRelaySeat(makeDb(shutWorld()), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, makeDb(shutWorld()), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(m.calls[0].phoneNumberId, '123456',
     'her reply is invited onto a number holding no draft');
   assert.strictEqual(m.calls[0].to, PHONE);
@@ -597,9 +602,8 @@ await t('A2.15 NO VENDOR PNID ⇒ NO CONTENT SEND, and the doorbell inherits the
 await t('A2.16 A NON-FITTING DRAFT FALLS TO THE DOORBELL — ④b-v2, not ③', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const m = meta();
-  const out = await seat.runRelaySeat(makeDb(shutWorld({ body: 'line one\nline two' })), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+  const out = await viaDoor(seat, makeDb(shutWorld({ body: 'line one\nline two' })), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(out.kind, 'window_closed_doorbell', 'a multi-line draft rode the envelope');
   assert.strictEqual(m.calls[0].payload.name, 'tdw_enquiry_update_couple');
   assert.ok(/been notified on WhatsApp/.test(out.line), 'byte ④b-v2 did not ship');
@@ -608,9 +612,8 @@ await t('A2.16 A NON-FITTING DRAFT FALLS TO THE DOORBELL — ④b-v2, not ③', 
 await t('A2.17 THE DOORBELL\'S DRAFT STAYS APPROVED — R-29.35 unbroken beneath the new arm', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const world = shutWorld({ body: 'line one\nline two' });
-  await seat.runRelaySeat(makeDb(world), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, makeDb(world), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: meta(), env: ENV, hasTransport: true, conversationId: 'c9' });
   const d = world.pending_couple_drafts[0];
   assert.strictEqual(d.state, 'approved');
   assert.strictEqual(d.resolved_at, null);
@@ -622,9 +625,8 @@ await t('A2.18 A FAILED CONTENT SEND FALLS TO THE DOORBELL, never claims it went
   const seat = fresh(SEAT); const world = shutWorld();
   let n = 0;
   const flaky = async (arg, opts) => { n += 1; if (n === 1) throw new Error('meta refused'); return { ok: true, wamid: 'wamid.DOORBELL' }; };
-  const out = await seat.runRelaySeat(makeDb(world), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: flaky, env: ENV, hasTransport: true, conversationId: 'c9' });
+  const out = await viaDoor(seat, makeDb(world), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: flaky, env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(out.kind, 'window_closed_doorbell');
   assert.strictEqual(world.pending_couple_drafts[0].state, 'approved',
     'a content send that did not go still spent the draft');
@@ -633,9 +635,8 @@ await t('A2.18 A FAILED CONTENT SEND FALLS TO THE DOORBELL, never claims it went
 await t('A2.19 BOTH ARMS FAILING ⇒ BYTE ④ VERBATIM, and the draft is refused', async () => {
   withPnid('123456');
   const seat = fresh(SEAT); const world = shutWorld();
-  const out = await seat.runRelaySeat(makeDb(world), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: meta({ throw: true }), env: ENV, hasTransport: true, conversationId: 'c9' });
+  const out = await viaDoor(seat, makeDb(world), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: meta({ throw: true }), env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(out.kind, 'window_closed');
   assert.ok(/hasn't written in over 24 hours/.test(out.line), 'byte ④ did not ship');
   assert.strictEqual(world.pending_couple_drafts[0].state, 'refused');
@@ -645,9 +646,8 @@ await t('A2.20 AN UNDETERMINED WINDOW SENDS NOTHING — ⑤, and neither arm fir
   withPnid('123456');
   const seat = fresh(SEAT); const m = meta();
   const world = shutWorld();
-  const out = await seat.runRelaySeat(makeDb(world, { queryError: 'conversations' }), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+  const out = await viaDoor(seat, makeDb(world, { queryError: 'conversations' }), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(m.calls.length, 0,
     'a message went out on a window the estate could not read — a send on a guess');
 });
@@ -698,17 +698,15 @@ await t('A2.26 BOTH-WAYS · PRODUCTION MUTATION — defeating the fit test turns
     withPnid('123456');
     delete require.cache[require.resolve(SEAT)];
     const seat = require(SEAT); const m = meta();
-    const out = await seat.runRelaySeat(makeDb(shutWorld({ body: 'line one\nline two' })), { id: VENDOR_ID },
-      sendSig('Priya'),
-      { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+    const out = await viaDoor(seat, makeDb(shutWorld({ body: 'line one\nline two' })), { id: VENDOR_ID },
+            { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
     assert.strictEqual(m.calls[0].payload.name, 'tdw_enquiry_reply_couple',
       'the mutation did not bite — a multi-line body would have been refused anyway');
   });
   delete require.cache[require.resolve(SEAT)];
   const seat = require(SEAT); const m = meta();
-  await seat.runRelaySeat(makeDb(shutWorld({ body: 'line one\nline two' })), { id: VENDOR_ID },
-    sendSig('Priya'),
-    { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
+  await viaDoor(seat, makeDb(shutWorld({ body: 'line one\nline two' })), { id: VENDOR_ID },
+        { sendWhatsApp: wa(), sendMetaTemplate: m, env: ENV, hasTransport: true, conversationId: 'c9' });
   assert.strictEqual(m.calls[0].payload.name, 'tdw_enquiry_update_couple', 'restored tree must be green again');
 });
 

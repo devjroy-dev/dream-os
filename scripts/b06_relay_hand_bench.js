@@ -128,6 +128,150 @@ const __RETIRE = new Map([
   [
     "§13.12 ",
     "LSP_1: this reads the WhatsApp chain's tail in vendorInbound.js (the relay seat's siting, the thread patch, the confirm-shape interception), which is deleted"
+  ],
+  [
+    "§1.1 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§1.4 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§1.8 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§2.7 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§5.6 ",
+    "hollow green, LSP_3: with no open draft the bench's own viaDoor returns null before any production code runs; a bare yes to nothing is the door's note logic now"
+  ],
+  [
+    "§5.7 ",
+    "LSP_3: handleSend's name guard left with the seat; the door sends her staged draft by its id (workingDoor sendDraft)"
+  ],
+  [
+    "§5.8 ",
+    "LSP_3: handleSend's name guard left with the seat; the door sends her staged draft by its id (workingDoor sendDraft)"
+  ],
+  [
+    "§5.9 ",
+    "LSP_3: handleSend's name guard left with the seat; the door sends her staged draft by its id (workingDoor sendDraft)"
+  ],
+  [
+    "§5.10 ",
+    "LSP_3: its mutation's anchor (the E3 name guard) is in the deleted handleSend"
+  ],
+  [
+    "§5.11 ",
+    "LSP_3: expiry at send is the door's own check now (workingDoor sendDraft reads expires_at before calling the seat); the seat's approve-time refusal left with handleSend"
+  ],
+  [
+    "§6.5 ",
+    "LSP_3: runRelaySeat's lanes (the relay costume lane, the PWA refusal) are deleted with the chain era"
+  ],
+  [
+    "§6.6 ",
+    "LSP_3: runRelaySeat's lanes (the relay costume lane, the PWA refusal) are deleted with the chain era"
+  ],
+  [
+    "§7.2 ",
+    "LSP_3: STAGE_SIGNAL and SEND_SIGNAL are deleted (their one reader, introductionSeat.js, left in LSP_1)"
+  ],
+  [
+    "§8.7 ",
+    "LSP_3: SEND_SIGNAL is deleted"
+  ],
+  [
+    "§9.1 ",
+    "LSP_3: the pending-relay block and the affirmative guard (buildPendingRelay, pendingRelayBlock, affirmativeNames, AFFIRM_RE) are deleted"
+  ],
+  [
+    "§9.2 ",
+    "LSP_3: the pending-relay block and the affirmative guard (buildPendingRelay, pendingRelayBlock, affirmativeNames, AFFIRM_RE) are deleted"
+  ],
+  [
+    "§9.3 ",
+    "LSP_3: the pending-relay block and the affirmative guard (buildPendingRelay, pendingRelayBlock, affirmativeNames, AFFIRM_RE) are deleted"
+  ],
+  [
+    "§9.4 ",
+    "LSP_3: runRelaySeat's lanes (the relay costume lane, the PWA refusal) are deleted with the chain era"
+  ],
+  [
+    "§9.5 ",
+    "LSP_3: the confirm-row adjacency and decline lanes (doorAsked, AFFIRM_PLAIN_RE, DECLINE_PLAIN_RE) are deleted; the door answers YES and NO on its own note"
+  ],
+  [
+    "§9.6 ",
+    "LSP_3: handleSend's name guard left with the seat; the door sends her staged draft by its id (workingDoor sendDraft)"
+  ],
+  [
+    "§9.7 ",
+    "LSP_3: the pending-relay block and the affirmative guard (buildPendingRelay, pendingRelayBlock, affirmativeNames, AFFIRM_RE) are deleted"
+  ],
+  [
+    "§9.8 ",
+    "LSP_3: its mutation's anchor (the affirmative guard) is deleted"
+  ],
+  [
+    "§9.9 ",
+    "LSP_3: runRelaySeat's lanes (the relay costume lane, the PWA refusal) are deleted with the chain era"
+  ],
+  [
+    "§9.10 ",
+    "LSP_3: runRelaySeat's lanes (the relay costume lane, the PWA refusal) are deleted with the chain era"
+  ],
+  [
+    "§9.11 ",
+    "LSP_3: relaySeat's claim reader (RELAY_CLAIM_RE_LOCAL) is deleted; chat.js's RELAY_CLAIM_RE is the one home"
+  ],
+  [
+    "§10.1 ",
+    "LSP_3: the confirm-row adjacency and decline lanes (doorAsked, AFFIRM_PLAIN_RE, DECLINE_PLAIN_RE) are deleted; the door answers YES and NO on its own note"
+  ],
+  [
+    "§10.2 ",
+    "LSP_3: the confirm-row adjacency and decline lanes (doorAsked, AFFIRM_PLAIN_RE, DECLINE_PLAIN_RE) are deleted; the door answers YES and NO on its own note"
+  ],
+  [
+    "§10.3 ",
+    "LSP_3: its mutation's anchor (the adjacency check) is deleted"
+  ],
+  [
+    "§10.4 ",
+    "LSP_3: handleSend's name guard left with the seat; the door sends her staged draft by its id (workingDoor sendDraft)"
+  ],
+  [
+    "§10.5 ",
+    "LSP_3: handleSend's name guard left with the seat; the door sends her staged draft by its id (workingDoor sendDraft)"
+  ],
+  [
+    "§10.6 ",
+    "LSP_3: the confirm-row adjacency and decline lanes (doorAsked, AFFIRM_PLAIN_RE, DECLINE_PLAIN_RE) are deleted; the door answers YES and NO on its own note"
+  ],
+  [
+    "§10.8 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§10.9 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§10.10 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§10.11 ",
+    "LSP_3: the chain era's stager (runRelaySeat's stage lane, doorStage) is deleted; the door stages through draftSeat (P6b, its own benches)"
+  ],
+  [
+    "§10.16 ",
+    "LSP_3: composeBody, the compose fork's Donna call, is deleted; draftSeat composes"
   ]
 ]);
 const __seen = new Map();
@@ -296,10 +440,20 @@ function openWorld(over = {}) {
 
 const ENV = { VENDOR_WHATSAPP_NUMBER: 'whatsapp:+917982159047', VENDOR_PHONE_NUMBER_ID: '123' };
 
+// CE-45 LCV-15 LSP_3 · RE-AIMED (labelled, the chair's ruling): runRelaySeat and handleSend, the chain era's entry, are DELETED. The send leg these
+// cells prove is LIVE: the door reaches it through relaySeat.sendApprovedDraft (workingDoor.js sendDraft), handing it her STAGED draft (openStagedFor's
+// row), the name coupleDisplayName reads for its phone, and the deps. viaDoor makes exactly that call; runSend now rides it, so every send cell proves
+// the leg on the door's own road. (handleSend's name check left with the seat; its cells are retired in the table above, the door sends by draft id.)
+async function viaDoor(s, db, vendor, deps) {
+  const open = await fresh(DRAFTS).openStagedFor(db, vendor.id);
+  if (!open || !open.draft) return null;
+  const name = await fresh(RELAY).coupleDisplayName(db, vendor.id, open.draft.couple_phone);
+  return s.sendApprovedDraft(db, vendor, open.draft, name, deps);
+}
 async function runSend(world, opts = {}, dbOpts = {}) {
   const db = makeDb(world, dbOpts);
   const send = opts.sendWhatsApp || transport();
-  const line = await seat().runRelaySeat(db, VENDOR, sendSig(opts.said === undefined ? 'Priya' : opts.said), {
+  const line = await viaDoor(seat(), db, VENDOR, {
     sendWhatsApp: send, env: opts.env || ENV, conversationId: 'c9', hasTransport: true,
   });
   return { line, db, send, world };
@@ -338,7 +492,7 @@ await t('§1.4 shown bytes === sent bytes across a full stage-then-send walk', a
   const db = makeDb(world);
   const shown = await seat().runRelaySeat(db, VENDOR, stageSig('Priya', BODY), { sendWhatsApp: transport(), env: ENV, conversationId: 'c9', hasTransport: true });
   const send = transport();
-  await seat().runRelaySeat(db, VENDOR, sendSig('Priya'), { sendWhatsApp: send, env: ENV, conversationId: 'c9', hasTransport: true });
+  await viaDoor(seat(), db, VENDOR, { sendWhatsApp: send, env: ENV, conversationId: 'c9', hasTransport: true });
   assert.ok(shown.line.includes(send.calls[0].body), 'what was shown is not what was sent');
 });
 
@@ -743,7 +897,7 @@ await t('§6.5 a clean turn appends NOTHING — no signal, no line', async () =>
 
 await t('§6.6 ⑩ the PWA door DECLARES its refusal, naming the subject', async () => {
   const db = makeDb(openWorld());
-  const out = await seat().runRelaySeat(db, VENDOR, sendSig('Priya'), { hasTransport: false });
+  const out = await viaDoor(seat(), db, VENDOR, { hasTransport: false });
   assert.strictEqual(out.kind, 'no_relay_surface');
   assert.ok(/only works over WhatsApp/.test(out.line));
 });
@@ -752,7 +906,7 @@ await t('§6.6 ⑩ the PWA door DECLARES its refusal, naming the subject', async
 H('§7 structural — import guard · one home · the door seat');
 
 await t('§7.1 ABSENT-SUBJECT IMPORT GUARD (R-26.19 §A) — every subject loads and is not hollow', async () => {
-  for (const [p, sym] of [[SEAT, 'runRelaySeat'], [RELAY, 'relayToCouple'], [DRAFTS, 'stage']]) {
+  for (const [p, sym] of [[SEAT, 'sendApprovedDraft' /* RE-AIMED (LSP_3, labelled): runRelaySeat is deleted; the door's live entry */], [RELAY, 'relayToCouple'], [DRAFTS, 'stage']]) {
     const mod = fresh(p);
     assert.ok(mod && typeof mod[sym] === 'function', `SUBJECT PRESENT BUT HOLLOW — ${path.relative(ROOT, p)} exports no ${sym}`);
   }
@@ -858,7 +1012,7 @@ await t('§7.7 the eleven vetoed bytes are present and none was silently reworde
     [s.noNumberLine('Priya'), "Send me her number and I'll write it again."],
     [s.noLaneLine('Priya'), "I can't send from our number right now"],
     [s.mismatchBlock(BODY, 'Priya', PHONE), "I haven't sent anything."],
-    [s.PWA_RELAY_UNAVAILABLE_LINE, "Message me on WhatsApp and I'll send it from there."],
+    // RE-AIMED (LSP_3, labelled): PWA_RELAY_UNAVAILABLE_LINE is DELETED (its retirement ruled with P6b's first cut, carried out here); ten bytes remain
   ];
   for (const [actual, needle] of must) assert.ok(String(actual).includes(needle), `vetoed byte drifted: ${needle}`);
 });
@@ -1454,7 +1608,7 @@ await t('§12.2 A CLOSED WINDOW RINGS THE DOORBELL and speaks byte ④b', async 
   withPnid('123456');
   const world = bellWorld();
   const b = bell();
-  const out = await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
+  const out = await viaDoor(seat(), makeDb(world), VENDOR, {
     sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
   });
   assert.strictEqual(out.kind, 'window_closed_doorbell');
@@ -1468,7 +1622,7 @@ await t('§12.2 A CLOSED WINDOW RINGS THE DOORBELL and speaks byte ④b', async 
 await t('§12.3 ② THE LANE IS PINNED — the doorbell rides the VENDOR PNID', async () => {
   withPnid('123456');
   const b = bell();
-  await seat().runRelaySeat(makeDb(bellWorld()), VENDOR, sendSig('Priya'), {
+  await viaDoor(seat(), makeDb(bellWorld()), VENDOR, {
     sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
   });
   assert.strictEqual(b.calls[0].phoneNumberId, '123456',
@@ -1480,7 +1634,7 @@ await t('§12.4 ② no vendor PNID ⇒ NO doorbell, and byte ④ verbatim', asyn
   withPnid(null);
   const world = bellWorld();
   const b = bell();
-  const out = await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
+  const out = await viaDoor(seat(), makeDb(world), VENDOR, {
     sendWhatsApp: transport(), sendMetaTemplate: b, env: ENV, hasTransport: true, conversationId: 'c9',
   });
   assert.strictEqual(b.calls.length, 0, 'a doorbell went with no lane to send from');
@@ -1491,7 +1645,7 @@ await t('§12.4 ② no vendor PNID ⇒ NO doorbell, and byte ④ verbatim', asyn
 await t('§12.5 ④ A DOORBELL THAT DID NOT GO NEVER CLAIMS IT DID', async () => {
   withPnid('123456');
   for (const b of [bell({ fail: 'opted_out' }), bell({ throw: true })]) {
-    const out = await seat().runRelaySeat(makeDb(bellWorld()), VENDOR, sendSig('Priya'), {
+    const out = await viaDoor(seat(), makeDb(bellWorld()), VENDOR, {
       sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
     });
     assert.strictEqual(out.kind, 'window_closed', 'a failed doorbell was reported as rung');
@@ -1503,7 +1657,7 @@ await t('§12.6 ① AN UNDETERMINED WINDOW NEVER RINGS IT', async () => {
   withPnid('123456');
   const b = bell();
   const db = makeDb(openWorld(), { queryError: 'messages' });
-  await seat().runRelaySeat(db, VENDOR, sendSig('Priya'), {
+  await viaDoor(seat(), db, VENDOR, {
     sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
   });
   assert.strictEqual(b.calls.length, 0, 'a doorbell rang on a window we could not read');
@@ -1518,7 +1672,7 @@ await t('§12.7 R-29.35 — A RUNG DOORBELL LEAVES THE DRAFT APPROVED AND ALIVE'
   // NULL is the state that keeps the promise; expiry and supersede still stand.
   withPnid('123456');
   const world = bellWorld();
-  await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
+  await viaDoor(seat(), makeDb(world), VENDOR, {
     sendWhatsApp: transport(), sendMetaTemplate: bell(), env: ENVB, hasTransport: true, conversationId: 'c9',
   });
   const d = world.pending_couple_drafts[0];
@@ -1610,7 +1764,7 @@ await t('§13.4 THE DOORBELL WRITES ITS OWN ROW ON HER THREAD', async () => {
   withPnid('123456');
   const world = bellWorld();
   const db = makeDb(world);
-  await seat().runRelaySeat(db, VENDOR, sendSig('Priya'), {
+  await viaDoor(seat(), db, VENDOR, {
     sendWhatsApp: transport(), sendMetaTemplate: bell(), env: ENVB, hasTransport: true, conversationId: 'c9',
   });
   const row = db._log.inserts.find((i) => i.table === 'messages' && /doorbell/.test(String(i.row.body)));

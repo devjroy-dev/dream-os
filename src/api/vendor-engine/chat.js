@@ -1300,22 +1300,8 @@ const RELAY_DEED_RE = /^donna_relay_send$/;
 
 // CE-45 LCV-15 LSP_1: TDW_06 F-06.166's CONFIRM_SHAPE_RE is DELETED; its only reader was the WhatsApp chain's tail.
 
-// ── TDW_06 R-29.32 ① — THE RELAY-INSTRUCTION FAMILY, ONE HOME ──────────────
-// Four walks proved THE MODEL IS AN UNRELIABLE TRIGGER: every relay turn came
-// back with zero tool calls while the vendor's screen filled with plausible
-// prose. Detection moves to the door and becomes mechanical.
-//
-// THE (3c) OBJECTION, ANSWERED WHERE IT LIVES RATHER THAN IN A HANDOVER:
-// R-29.19 refused door word-matching on the APPROVE side, where a false
-// positive is a SEND — an irreversible wire event decided by a regex. The
-// STAGE side inverts that geometry entirely. A false-positive stage mints a
-// ROW AND A QUESTION: named, phone-bearing, shown verbatim, E3-guarded,
-// 24h-expiring, and refused unless the vendor answers it. Walk four is the
-// proof — the guard refused the FOUNDER three times running. A false-NEGATIVE
-// stage is the status quo, which is four failed walks. Mechanical reading is
-// safe here BECAUSE it stays refused at approve; one design, not a
-// contradiction.
-const RELAY_VERB_RE = /\b(?:send|message|msg|text|whatsapp|write to|reply to|tell|ask|let\s+\S+\s+know|inform)\b/i;
+// CE-45 LCV-15 LSP_3: R-29.32's RELAY_VERB_RE (the relay-instruction family) is DELETED; its only reader was relaySeat's doorStage, the
+// chain era's stager, deleted with it. The door stages a relay through draftSeat on the listener's heard act. RELAY_CLAIM_RE stays (the guard's).
 
 // The VERBATIM fork's markers: the vendor supplied the words himself, so the
 // estate delivers HIS bytes and no model touches the body path.
@@ -3913,7 +3899,6 @@ module.exports.NARRATED_LOOKUP_RE    = NARRATED_LOOKUP_RE;
 // the masking law is honored by construction while the shared four stay byte-identical.
 module.exports.MUTATION_CLAIM_RE     = MUTATION_CLAIM_RE;
 module.exports.RELAY_CLAIM_RE        = RELAY_CLAIM_RE;   // F-06.159 — one home; the rig borrows
-module.exports.RELAY_VERB_RE         = RELAY_VERB_RE;    // R-29.32 ① — the door's trigger
 module.exports.VERBATIM_RE           = VERBATIM_RE;      // R-29.32 ② — the vendor's own bytes
 module.exports.RELAY_DEED_RE         = RELAY_DEED_RE;
 module.exports.patchComposedReply    = patchComposedReply; // R-29.26 — the core both doors call

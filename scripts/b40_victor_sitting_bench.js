@@ -80,6 +80,66 @@ const __RETIRE = new Map([
   [
     "M11 drop cure 2",
     "LSP_1: its mutation targets Fork D's retry gate in the deleted chain tail (the anchor is gone, so the mutation would be vacuous)"
+  ],
+  [
+    "no stopword lifted (was \"for\")",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "no stopword lifted (was \"the\")",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "no stopword lifted (was \"dor/here\")",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "no stopword lifted (was \"her\")",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "a named recipient still lifts",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "  …two verbs in a row still reach the name",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "  …a phone lifts, and WITHOUT the trailing space",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "  …whatsapp / ask / message all still carry a name",
+    "hollow green, LSP_3: it drives the bench's own copy of the deleted lifter (extractRecipient); the lifter it models no longer exists"
+  ],
+  [
+    "an UNRESOLVED lift returns null from handleStage",
+    "LSP_3: relaySeat's stager (handleStage, doorStage, extractRecipient) is deleted; the cell read its shipped bytes"
+  ],
+  [
+    "  …a NAMED recipient with no phone STILL gets the refusal line",
+    "LSP_3: relaySeat's stager (handleStage, doorStage, extractRecipient) is deleted; the cell read its shipped bytes"
+  ],
+  [
+    "  …and ambiguous_recipient stays on the speaking side",
+    "LSP_3: relaySeat's stager (handleStage, doorStage, extractRecipient) is deleted; the cell read its shipped bytes"
+  ],
+  [
+    "doorStage declines a null lift with its own reason",
+    "LSP_3: relaySeat's stager (handleStage, doorStage, extractRecipient) is deleted; the cell read its shipped bytes"
+  ],
+  [
+    "the lifter returns null, never the empty string",
+    "LSP_3: relaySeat's stager (handleStage, doorStage, extractRecipient) is deleted; the cell read its shipped bytes"
+  ],
+  [
+    "the `i` flag no longer sits on the NAME capture",
+    "LSP_3: relaySeat's stager (handleStage, doorStage, extractRecipient) is deleted; the cell read its shipped bytes"
+  ],
+  [
+    "M9 drop arm (b)",
+    "LSP_3: its mutation's anchor is in relaySeat's deleted stager (the mutation would be vacuous)"
   ]
 ]);
 const __seen = new Map();
