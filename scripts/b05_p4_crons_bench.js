@@ -354,7 +354,10 @@ t('§5.3 the two lanes carry the SAME branches — BOTH of them — modulo the l
   const grab = (f) => {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const a = src.indexOf('const nudgeWord = matchNudgeWord(trimmedBody);');
-    const b = src.indexOf('const fullStopWord = matchFullStopWord(trimmedBody);');
+    // RE-ANCHORED (CE-45 LCV-15 LSP_1b, labelled): the vendor lane's branch calls matchOptOutExact now (F-44.141, ruled vendor
+    // lane only); the bride lane's still calls matchFullStopWord (F-44.145). The twins therefore differ BY RULING until F-44.145
+    // lands, on top of the G2 drift this base-red cell already reported; the anchor follows so its red keeps its true reason.
+    const b = Math.max(src.indexOf('const fullStopWord = matchFullStopWord(trimmedBody);'), src.indexOf('const fullStopWord = matchOptOutExact(trimmedBody);'));
     assert.ok(a > 0 && b > a, `${f} missing a branch, or they are out of order`);
     // The slice must run to the branch's CLOSING BRACE, not to its last statement:
     // mutation N10 appended a comment AFTER that statement and landed outside an
@@ -603,7 +606,9 @@ t('§9.5 *** ORDER IS LOAD-BEARING *** — the nudge branch runs FIRST on both c
   for (const f of ['src/lib/brideInbound.js', 'src/lib/vendorInbound.js']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const nudgeAt = src.indexOf('const nudgeWord = matchNudgeWord(trimmedBody);');
-    const stopAt  = src.indexOf('const fullStopWord = matchFullStopWord(trimmedBody);');
+    // RE-ANCHORED (CE-45 LCV-15 LSP_1b, labelled): the vendor lane's branch now calls matchOptOutExact (F-44.141); the bride
+    // lane's still calls matchFullStopWord (F-44.145, its own sitting). The ORDER the cell guards is unchanged on both.
+    const stopAt  = Math.max(src.indexOf('const fullStopWord = matchFullStopWord(trimmedBody);'), src.indexOf('const fullStopWord = matchOptOutExact(trimmedBody);'));
     assert.ok(nudgeAt > 0 && stopAt > 0, `${f} missing a branch`);
     assert.ok(nudgeAt < stopAt, `${f}: the full stop runs BEFORE the nudge — pauses become terminal`);
   }

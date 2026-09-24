@@ -1,0 +1,8 @@
+# CE-45 LCV-15 · LSP_1b · F-44.141's cure (the vendor lane's opt-out matches the WHOLE message; returning turns on the record) · base bd9d153 (rebased from 46af98d under R-45.14; SRV_1b is disjoint)
+src/lib/fullStop.js
+src/lib/vendorInbound.js
+scripts/b111_lcv15_lsp1b_bench.js
+scripts/b05_f0555_media_dedupe_bench.js
+scripts/b05_p4_crons_bench.js
+scripts/floor-manifest-lcv15-lsp1b.txt
+docs/handovers/TDW_CE45_LCV15_LSP_1b_HANDOVER.md

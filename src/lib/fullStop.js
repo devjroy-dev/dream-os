@@ -49,7 +49,7 @@
 'use strict';
 
 const {
-  isStopWord, isStartWord,
+  isStopWord, isStartWord, STOP_WORDS, START_WORDS,
   findOrCreateProspectByPhone, updateProspect,
 } = require('./prospects');
 
@@ -58,6 +58,23 @@ const {
 function matchFullStopWord(text) {
   if (isStopWord(text))  return 'stop';
   if (isStartWord(text)) return 'start';
+  return null;
+}
+
+// ── CE-45 LCV-15 LSP_1b · F-44.141's CURE · THE WHOLE-MESSAGE MATCH ─────────────────────────────────────────────
+// matchFullStopWord above reads the FIRST TOKEN, so on the vendor lane "Cancel Walk Seventeen Alpha's shoot" was an
+// opt-out: the vendor was marked opted_out, told so, and her cancel never reached the door (witnessed twice on 24
+// September 2026). matchOptOutExact matches only when the WHOLE message is one word of the same two lists
+// (prospects.js's STOP_WORDS and START_WORDS, one home): "STOP", "Cancel.", "  start  " match; "Cancel the shoot",
+// "End it", "Resume on Monday" and "STOP MORNINGS" do not. Surrounding punctuation and case are tolerated; nothing
+// inside the message is. The vendor lane calls this one (vendorInbound.js); the bride lane still calls
+// matchFullStopWord (F-44.145, its own sitting, switches it with one call change); the marketing lane's isStopWord
+// is untouched.
+function matchOptOutExact(text) {
+  const t = String(text == null ? '' : text).trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').toUpperCase();
+  if (!t || /\s/.test(t)) return null;
+  if (STOP_WORDS.has(t))  return 'stop';
+  if (START_WORDS.has(t)) return 'start';
   return null;
 }
 
@@ -96,4 +113,4 @@ async function recordFullStart({ supabase, phone }) {
 // The bench asserts every getNudgeCopy send on both cores carries it (§9.11).
 const ACK_BYPASS = { isOptedOut: async () => false };
 
-module.exports = { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS };
+module.exports = { matchFullStopWord, matchOptOutExact, recordFullStop, recordFullStart, ACK_BYPASS };

@@ -30,7 +30,7 @@
 'use strict';
 
 const { matchNudgeWord, setNudgeOptout, matchGlitchWord } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22 · TDW_06 F-06.130
-const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
+const { matchOptOutExact, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27 · LSP_1b (F-44.141): the whole-message matcher
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
 const { onboardingGate } = require('./onboardingGate');                // ARC OB / CE-31 · the onboarding gate, dark under R-OB.9
@@ -166,6 +166,35 @@ function scrubModelFrame(text, verbatim, witness = null) {
 // and still deserves an answer.
 const { relayFiredOnArrival } = require('./vendor/coupleArrival');
 
+// ── CE-45 LCV-15 LSP_1b · F-44.141 · THE OPT-OUT TURN, ON THE RECORD ─────────────────────────────────────────────
+// Called only where the opt-out branch RETURNS. For a VENDOR OWNER (the phone reads a user, the user owns a vendor, the
+// vendor has a vendor_self thread) it writes her inbound row, with its sid, and the acknowledgment as an outbound row, so
+// the thread the door's turns live in shows both. Read-only until then; it creates no user, vendor or thread (a first-
+// ever message that is STOP stays unrecorded, as a first-ever image does at the guard row, declared). A couple or an
+// unknown sender writes nothing. NEVER THROWS: a failure is logged and the opt-out stands.
+async function persistOptOutTurn({ supabase, webhookCore, phone, body, reply, sent, messageSid }) {
+  try {
+    const { data: u } = await supabase.from('users').select('id').eq('phone', phone).maybeSingle();
+    if (!u || !u.id) return { persisted: false, why: 'no_user' };
+    const { data: v } = await supabase.from('vendors').select('id').eq('user_id', u.id).maybeSingle();
+    if (!v || !v.id) return { persisted: false, why: 'not_a_vendor' };
+    const { data: c } = await supabase.from('conversations').select('id').eq('vendor_id', v.id).eq('kind', 'vendor_self').maybeSingle();
+    if (!c || !c.id) return { persisted: false, why: 'no_vendor_self' };
+    await supabase.from('messages').insert(webhookCore.inboundRow({
+      conversation_id: c.id, direction: 'inbound', channel: 'whatsapp', body, sent_by: 'vendor',
+    }, messageSid || null));
+    await supabase.from('messages').insert({
+      conversation_id: c.id, direction: 'outbound', channel: 'whatsapp', body: reply, sent_by: 'agent',
+      twilio_sid: sent && sent.sid ? sent.sid : null,
+    });
+    await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', c.id);
+    return { persisted: true };
+  } catch (e) {
+    try { console.error('[webhook] opt-out turn not persisted (the opt-out stands):', e && e.message); } catch (_e) { /* */ }
+    return { persisted: false, why: 'error' };
+  }
+}
+
 async function processVendorInbound(inputs, deps, _noRetry) {
   return withTurnLock(turnKey('vendor', inputs && inputs.phone), () => _processVendorInbound(inputs, deps, _noRetry));
 }
@@ -226,18 +255,31 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // single documented bypass the marketing lane uses for the same reason
     // (prospects.js:132-134) — an acknowledgement the recipient never receives
     // reads as an opt-out that did not register.
-    const fullStopWord = matchFullStopWord(trimmedBody);
+    //
+    // CE-45 LCV-15 LSP_1b (F-44.141, the chair's rulings Q1b to Q3b): the match is the WHOLE message (matchOptOutExact),
+    // never the first token, for EVERY sender on this lane (the branch runs before the sender is known, and a
+    // bride's "Cancel the shoot" to her vendor must reach the door as a vendor's "Cancel Walk Seventeen Alpha's
+    // shoot" must). The branch keeps its pre-cap position: an opt-out works even for a capped vendor. On a RETURNING
+    // branch only (STOP; a START that changed the state), a vendor owner's two turns are persisted into her vendor_self
+    // thread (persistOptOutTurn), her inbound row WITH its message_sid so RF-1's dedupe still holds. NEVER on a
+    // fall-through (a START from someone never opted out): nothing was sent here, and the normal turn below writes her
+    // inbound row with the same sid; a row written here first would be a second writer on it (the turn's insert then
+    // meets the unique sid, and the lane discards that error) and would record a reply never sent. A couple
+    // sender's opt-out turns are matched here but not persisted (her thread resolves far below); named in the handover.
+    const fullStopWord = matchOptOutExact(trimmedBody);
     if (fullStopWord) {
       try {
         if (fullStopWord === 'stop') {
           await recordFullStop({ supabase, phone });
-          await sendWhatsApp(phone, getNudgeCopy('full_stop_confirmation'), [], undefined, ACK_BYPASS);
+          const sent = await sendWhatsApp(phone, getNudgeCopy('full_stop_confirmation'), [], undefined, ACK_BYPASS);
           console.log(`[webhook] FULL STOP recorded for ${phone} (lane=vendor)`);
+          await persistOptOutTurn({ supabase, webhookCore, phone, body, reply: getNudgeCopy('full_stop_confirmation'), sent, messageSid: internalReplay ? null : messageSid });
         } else {
           const r = await recordFullStart({ supabase, phone });
           if (r.changed) {
-            await sendWhatsApp(phone, getNudgeCopy('full_start_confirmation'), [], undefined, ACK_BYPASS);
+            const sent = await sendWhatsApp(phone, getNudgeCopy('full_start_confirmation'), [], undefined, ACK_BYPASS);
             console.log(`[webhook] FULL START recorded for ${phone} (lane=vendor)`);
+            await persistOptOutTurn({ supabase, webhookCore, phone, body, reply: getNudgeCopy('full_start_confirmation'), sent, messageSid: internalReplay ? null : messageSid });
             return;
           }
           // Never opted out — fall through to the normal turn, exactly as the
@@ -1861,4 +1903,5 @@ module.exports = {
   resolveAgentOrDegrade, NO_AGENT_USAGE_PROBE,             // R-36.5 F2(b) — exported so the bench drives the shipped seam, never a copy (R-29.34's callable doctrine)
   scrubModelFrame,                                         // BLOCK 06 M-3 / F-06.17+F-06.29 — same reason, same law
   resolveVendorMedia, WA_MEDIA_BUCKET, VENDOR_MEDIA_ALLOW_MIMES, VENDOR_MEDIA_MAX_BYTES,
+  persistOptOutTurn,                                       // CE-45 LCV-15 LSP_1b (F-44.141) — exported so b111 drives the shipped helper
 };

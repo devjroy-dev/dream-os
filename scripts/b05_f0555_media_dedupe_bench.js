@@ -343,11 +343,14 @@ const outboundRows = (c) => c.messages.flat().filter((m) => m && m.direction ===
   // ────────────────────────────────────────────────────────────────────────────────────
   H('§5 — F-05.61 SCOPE (R1): THE ERROR IS READ AT THIS ONE SITE, AND SAID SO');
 
-  await t('§5.1 the guard site reads {error}; the other five inboundRow sites are untouched', () => {
+  await t('§5.1 the guard site reads {error}; the other five inboundRow sites are untouched (RE-PINNED, LSP_1b: seven sites, the seventh persistOptOutTurn\'s)', () => {
     const L = read('src/lib/vendorInbound.js').split('\n');
     const sites = [];
     L.forEach((l, i) => { if (/\.insert\(webhookCore\.inboundRow\(\{/.test(l)) sites.push({ n: i + 1, l }); });
-    assert.strictEqual(sites.length, 6, `the inboundRow census moved to ${sites.length} — re-derive before trusting this cell`);
+    // RE-PINNED (CE-45 LCV-15 LSP_1b, labelled): the census is 7. The seventh site is persistOptOutTurn's (F-44.141: a vendor's
+    // STOP or START turn on the record), which awaits bare like the five and reads no error; the guard stays the one reader.
+    assert.strictEqual(sites.length, 7, `the inboundRow census moved to ${sites.length}; re-derive before trusting this cell`);
+    assert.strictEqual(sites.filter((x) => /persistOptOutTurn|conversation_id: c\.id/.test(L.slice(Math.max(0, x.n - 1), x.n + 1).join('\n'))).length, 1, 'the seventh site is persistOptOutTurn\'s');
     const reading = sites.filter((s) => /const \{ error:/.test(s.l));
     assert.strictEqual(reading.length, 1, 'exactly ONE site reads the error this micro — R1 scoped it there');
     assert.ok(/guardErr/.test(reading[0].l), 'and it is the guard');
