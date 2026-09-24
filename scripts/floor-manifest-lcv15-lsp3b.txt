@@ -1,0 +1,7 @@
+# CE-45 LCV-15 · LSP_3b · F-44.152 (R-45.24: a relay's recipient is its client), F-44.153 (a B35 answer read for the heard name), F-44.149 (the offered name is yes) · base 547c340 (LSP_3 landed)
+src/lib/vendor/workingDoor.js
+scripts/b114_lcv15_lsp3b_bench.js
+scripts/b94_lcv10_bench.js
+scripts/b106_lcv14_team_reminder_bench.js
+scripts/floor-manifest-lcv15-lsp3b.txt
+docs/handovers/TDW_CE45_LCV15_LSP_3b_HANDOVER.md

@@ -270,6 +270,18 @@ function sameSpokenDay(a, b, nowMs) {
     return false;
   } catch (_e) { return false; }
 }
+// CE-45 LCV-15 LSP_3b · F-44.152 (R-45.24, the founder: "if it's a send, tell or say, it has to be a client"; no message to crew or team, now or planned).
+// A RELAY act's recipient is its client, whatever slot the ear filed it in: P7's member slot (listenerDoor.js :85, for assign_crew) began catching the
+// recipient of "Tell Sarah hi" (24 September 14:38:51, heard {"act":"relay","member_as_spoken":"Sarah"}), so a NEEDS_CLIENT act asked B35 instead of staging.
+// For a relay with an empty client_as_spoken and a member_as_spoken, the member IS the client. Relay only; the member slot keeps its meaning on
+// assign_crew and is untouched on every other act. One home: the door's heard acts (preTurn) and the B35 answer's read of them both pass through here.
+function relayRecipient(request) {
+  if (!request || typeof request !== 'object' || !Array.isArray(request.acts)) return request;
+  const acts = request.acts.map((a) => (a && typeof a === 'object' && a.act === 'relay' && !spokenText(a.client_as_spoken) && spokenText(a.member_as_spoken)
+    ? (({ member_as_spoken: m, ...rest }) => ({ ...rest, client_as_spoken: m }))(a) : a));
+  // the SAME request back when nothing was folded (as withoutEchoedEvents does): the record of what was heard is never copied for nothing
+  return acts.some((a, i) => a !== request.acts[i]) ? { ...request, acts } : request;
+}
 function withoutEchoedEvents(request, nowMs) {
   try {
     if (!request || typeof request !== 'object' || !Array.isArray(request.acts)) return request;
@@ -1627,9 +1639,13 @@ async function preTurn(args, depsIn) {
     // A NAME NOTE (B18 or B35): decided before the date-note branch below.
     const askAgain = (line, key, tries) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries, ...(note.said ? { said: note.said } : {}), ...(note.unsaid === true ? { unsaid: true } : {}) }, answered: key, why: 'note_reasked' });
     if (note && NAME_ASKS.includes(note.asked)) {
-      const name = message.trim();
-      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? relayRecipient(st.ear.request).acts : [];
       const kinds = note.acts.map((a) => a.act);
+      // F-44.153 (LSP_3b): her answer to a relay's B35 may restate the whole instruction ("Tell Sarah hi", 24 September 14:39:16, taken verbatim as the name,
+      // B38 "No client called Tell Sarah hi"). When the ear heard a RELAY carrying a client (after F-44.152's fold), that client is her answer; otherwise her
+      // whole trimmed message, as before.
+      const heardRelay = kinds.includes('relay') ? heardActs.find((a) => a && a.act === 'relay' && spokenText(a.client_as_spoken)) : null;
+      const name = heardRelay ? spokenText(heardRelay.client_as_spoken) : message.trim();
       const carried = note.acts.map((a) => key(a.date_as_spoken)).filter(Boolean);
       const newDate = (a) => !!spokenText(a.date_as_spoken) && key(a.date_as_spoken) !== key(name) && !carried.includes(key(a.date_as_spoken));
       // F-44.117 (the chair, 22 September): a heard act whose client_as_spoken IS her whole message under key(), or any act on route 'search',
@@ -1666,7 +1682,10 @@ async function preTurn(args, depsIn) {
       // R-44.40: her YES runs the act with the candidate's own name, through the same plans; NO was answered B3 above; anything else lapses
       // on a heard act of another kind, or re-asks once, then B3. The candidate is never spoken outside the question.
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
-      if (PMA.decide(message) === 'yes') { fromNote = { route: 'task', acts: note.acts.map((a) => ({ ...a })) }; st.answered = 'B36'; st.said = note.said || null; } // F-44.123
+      // F-44.149 (LSP_3b): a did-you-mean answered with the offered name itself, exact under key(), is her yes ("Walk seventeen alpha", 24 September 11:41:42,
+      // drew the question again; only "Yes" moved it on).
+      const offeredName = spokenText(note.acts[0] && note.acts[0][slotField(note.slot)]);
+      if (PMA.decide(message) === 'yes' || (offeredName && key(message) === key(offeredName))) { fromNote = { route: 'task', acts: note.acts.map((a) => ({ ...a })) }; st.answered = 'B36'; st.said = note.said || null; } // F-44.123
       else {
         const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && a.act !== note.acts[0].act);
         if (!movedOn) {
@@ -1807,7 +1826,7 @@ async function preTurn(args, depsIn) {
     if (!fromNote) {
     if (!st.ear || !st.ear.request) return CHAIN(st.ear, 'no_request');
     // F-44.110: the door DECIDES on the request with an echoed event dropped; st.ear, which is recorded, keeps what was HEARD.
-    heard = withoutEchoedEvents(st.ear.request, nowMs);
+    heard = withoutEchoedEvents(relayRecipient(st.ear.request), nowMs); // F-44.152: the relay's recipient read as its client first
     // F-44.128 (CE-45 LCV-12, cut 2a; the chair's ruling 5 of 23 September): A REQUEST ON ROUTE 'search' IS NEVER A JOB. MEASURED on the P7
     // table (row 13, C1 both variants): "Who are my new leads?" returned act `lead` with no client on route search, which met askName below and
     // would have asked B18 (the lead's name question) for a LOOKUP. Its acts are lookups only; until cut four covers them the turn reads
