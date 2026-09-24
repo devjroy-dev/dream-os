@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce45-g61-fe2b-srv.txt
+# CE-45 · G6-1 · FE_2b's dream-os half (F-44.154). F-19.16: a dirty path outside this list is a STOP.
+# BASE: 085741a (LSP_4 landed; given under R-45.14; built at 547c340, carried to cd71986 and then 085741a byte for byte). No new directory.
+src/api/vendor/me.js
+src/lib/discover/shapeVendor.js
+scripts/b124_g61_enquiry_srv_bench.js
+scripts/floor-manifest-ce45-g61-fe2b-srv.txt
+docs/handovers/TDW_CE45_G61_FE2b_SRV_HANDOVER.md

@@ -36,6 +36,7 @@
 'use strict';
 
 const { waNumberFor } = require('../waNumbers');
+const { toE164 } = require('../phone');   // F-44.154: the one phone home (FE_2b)
 
 // The enquire deep link's base. Held here rather than at each caller so the preview's
 // link and the feed's link cannot drift — a preview whose Enquire button pointed at a
@@ -59,7 +60,9 @@ const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 // construction (the emitters spell the handle four ways: upper-cased, raw, `String(x || '')`, templated).
 function enquireLinkFor({ handle, tdwLink, enquiry_routing, enquiry_phone, ownNumber } = {}) {
   const tdw = tdwLink !== undefined ? tdwLink : (handle ? `${ENQUIRE_BASE}${handle}` : null);
-  const digits = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 && d.length <= 15 ? d : null; };
+  // F-44.154 (FE_2b): through toE164 first, so a bare 10-digit mobile links with +91 (a raw value stored before FE_2b
+  // included), then digits only for wa.me. 11 to 15 digits after normalising; anything else falls back to rung 1.
+  const digits = (p) => { const d = String(toE164(String(p || '').trim()) || '').replace(/\D/g, ''); return d.length >= 11 && d.length <= 15 ? d : null; };
   if (enquiry_routing === 'own_number') { const d = digits(enquiry_phone); return d ? `https://wa.me/${d}` : tdw; }
   if (enquiry_routing === 'own_waba') { const d = digits(ownNumber); return d ? `https://wa.me/${d}` : tdw; }
   return tdw;

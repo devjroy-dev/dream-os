@@ -151,6 +151,9 @@ const V0 = () => ({ id: 'v1', user_id: 'u1', business_name: 'Dev Roy Photography
     && SV.enquireLinkFor({ tdwLink: X[0], enquiry_routing: 'own_number', enquiry_phone: '12' }) === X[0]
     && SV.enquireLinkFor({ handle: 'DEV440' }) === `${SV.ENQUIRE_BASE}DEV440`,
     '2.3 rung 2 sends to her digits; a non-phone falls back to rung 1; the handle form (2a\u2019s) is unchanged');
+  ok(SV.enquireLinkFor({ tdwLink: X[0], enquiry_routing: 'own_number', enquiry_phone: '8757788550' }) === 'https://wa.me/918757788550'
+    && /require\('\.\.\/phone'\)/.test(read('src/lib/discover/shapeVendor.js')),
+    '2.4 F-44.154: a raw 10-digit value already stored (the founder\u2019s own, from FE2_1\u2019s walk) links with +91, through toE164');
 
   sec('3  every select feeding an emitter names both columns');
   const has = (f, re) => re.test(read(f));
@@ -177,8 +180,15 @@ const V0 = () => ({ id: 'v1', user_id: 'u1', business_name: 'Dev Roy Photography
   r = await patch(router, V0(), { enquiry_routing: 'own_number' });
   ok(r.status === 400 && r.writes.length === 0, '4.3 own_number without a phone is refused, nothing written');
   r = await patch(router, V0(), { enquiry_routing: 'own_number', enquiry_phone: '  +91 87577 88550 ' });
-  ok(r.status === 200 && r.writes.length === 1 && r.row.enquiry_phone === '+91 87577 88550' && r.json.vendor.enquiry_routing === 'own_number' && r.json.vendor.enquiry_phone === '+91 87577 88550',
-    '4.4 own_number with a phone in the same write: saved, the phone trimmed, the DOOR echoes both (FK5)', JSON.stringify(r.json && r.json.vendor));
+  // AMENDED BY LABEL · FE_2b, F-44.154: the phone is stored through toE164 (was: trimmed as typed).
+  ok(r.status === 200 && r.writes.length === 1 && r.row.enquiry_phone === '+918757788550' && r.json.vendor.enquiry_routing === 'own_number' && r.json.vendor.enquiry_phone === '+918757788550',
+    '4.4 own_number with a phone in the same write: saved through toE164, the DOOR echoes both (FK5)', JSON.stringify(r.json && r.json.vendor));
+  // F-44.154 · one cell per form the founder might type: every one lands as the estate's E.164.
+  const forms = [['8757788550', '+918757788550'], ['+91 87577 88550', '+918757788550'], ['918757788550', '+918757788550'], ['+1 415 555 0123', '+14155550123']];
+  for (const [typed, want] of forms) {
+    const x = await patch(router, V0(), { enquiry_routing: 'own_number', enquiry_phone: typed });
+    ok(x.status === 200 && x.row.enquiry_phone === want, `4.4.${typed.replace(/\D/g, '').length} "${typed}" is stored as ${want} (toE164, the one home)`, JSON.stringify(x.row.enquiry_phone));
+  }
   r = await patch(router, { ...V0(), enquiry_phone: '9888294440' }, { enquiry_routing: 'own_number' });
   ok(r.status === 200 && r.json.vendor.enquiry_routing === 'own_number', '4.5 own_number with the phone already on her row: saved');
   r = await patch(router, { ...V0(), enquiry_routing: 'own_number', enquiry_phone: '9888294440' }, { enquiry_routing: 'tdw' });
@@ -216,6 +226,10 @@ const V0 = () => ({ id: 'v1', user_id: 'u1', business_name: 'Dev Roy Photography
     async () => { const a = []; for (const f of walk('src')) for (const c of censusOf(read(f))) a.push({ f, ...c }); return a.filter((c) => !/enquireLinkFor\(/.test(c.expr) && !NOT_EMITTERS.some(([nf, s]) => nf === c.f && c.expr.includes(s))).length === 0; })]);
   res.push(['M5 the echo trusts the row raw', await mutate('src/api/vendor/me.js', "      enquiry_routing: updated.enquiry_routing === 'own_number' ? 'own_number' : 'tdw',", '      enquiry_routing: updated.enquiry_routing,',
     async (m) => { const x = await patch(loadMe(m), { ...V0(), enquiry_routing: 'own_waba' }, { business_name: 'x' }); return x.json.vendor.enquiry_routing === 'tdw'; })]);
+  res.push(['M6 the resolver skips toE164', await mutate('src/lib/discover/shapeVendor.js', "String(toE164(String(p || '').trim()) || '')", "String(p || '')",
+    async () => fresh('src/lib/discover/shapeVendor.js').enquireLinkFor({ tdwLink: X[0], enquiry_routing: 'own_number', enquiry_phone: '8757788550' }) === 'https://wa.me/918757788550')]);
+  res.push(['M7 the door stores the phone as typed', await mutate('src/api/vendor/me.js', '      update.enquiry_phone = toE164(t);\n', '      update.enquiry_phone = t;\n',
+    async (m) => { const x = await patch(loadMe(m), V0(), { enquiry_routing: 'own_number', enquiry_phone: '8757788550' }); return x.row.enquiry_phone === '+918757788550'; })]);
   for (const [name, x] of res) ok(x.applied && x.red && x.restored, `6 ${name}: applies, turns its cell red, restored by sha`, JSON.stringify(x));
 
   console.log(`\nb124 · ${pass} pass · ${fail} fail`);

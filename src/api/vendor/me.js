@@ -428,6 +428,7 @@ const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'd
 // Pure: (update as it will be written, her current row) -> an error string, or null. Mutates `update`
 // only to trim the phone.
 const ENQUIRY_PHONE_RE = /^\+?[\d ()-]{10,24}$/;
+const { toE164 } = require('../../lib/phone');   // F-44.154: the one home (FE_2b)
 function validateEnquiryRouting(update, current) {
   if (update.enquiry_phone !== undefined) {
     if (update.enquiry_phone === null || update.enquiry_phone === '') {
@@ -439,7 +440,9 @@ function validateEnquiryRouting(update, current) {
       if (!ENQUIRY_PHONE_RE.test(t) || digits.length < 10 || digits.length > 15) {
         return "'enquiry_phone' must be a WhatsApp number of 10 to 15 digits.";
       }
-      update.enquiry_phone = t;
+      // F-44.154 (FE_2b): stored through the estate's ONE phone home, never as typed: a bare 10-digit mobile
+      // gains +91, a longer number is taken as already carrying its country code (src/lib/phone.js, b57_e164_guard).
+      update.enquiry_phone = toE164(t);
     }
   }
   if (update.enquiry_routing !== undefined) {
