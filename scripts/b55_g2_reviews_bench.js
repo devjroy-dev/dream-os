@@ -437,8 +437,11 @@ await (async () => {
       if (!re.test(fs.readFileSync(R(f), 'utf8'))) return `${f} does not pass seal`;
     }
     const eng = fs.readFileSync(R('src/agent/engine.js'), 'utf8');
-    const island = eng.slice(eng.indexOf('F-05.56 \u2014 EVERYTHING BELOW THIS LINE'));
-    if (/seal/.test(island)) return 'the defused island was edited; its freeze guard will red';
+    // RE-AIMED (CE-45 LCV-15 LSP_4, labelled): the island is DELETED (L4-a). Its clause read a slice from the banner; with no banner that slice would be
+    // the file's last character and pass on nothing (a hollow green). What it guarded is now simpler and stronger: engine.js calls no renderer at all.
+    const at = eng.indexOf('F-05.56 \u2014 EVERYTHING BELOW THIS LINE');
+    if (at >= 0) { if (/seal/.test(eng.slice(at))) return 'the defused island was edited; its freeze guard will red'; }
+    else if (/generateInvoicePdf/.test(eng.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n'))) return 'engine.js calls the renderer again with no island around it';
     return true;
   });
 

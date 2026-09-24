@@ -47,6 +47,10 @@ const __RETIRE = new Map([
   [
     "§8.4 ",
     "LSP_1: the vendor lane's fact build fed only the chain's runTurn, deleted (K8)"
+  ],
+  [
+    "§7.7 ",
+    "LSP_4 (L4-a): F-05.56's defused island is DELETED; there is no island left to stay unedited, and no banner for the cell to find"
   ]
 ]);
 const __seen = new Map();

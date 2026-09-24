@@ -1,0 +1,21 @@
+# CE-45 LCV-15 · LSP_4 · F-05.56's island and the orphans it left, deleted (L4-a; 7.6 ruled (i)); floor-base 21 -> 20 · base cd71986
+# Deletions carry '# DELETED' (A-45.1): block 1 removes them by name, block 3 records them with git rm.
+scripts/b05_arc_m5_bench.js
+scripts/b05_f0532_haiku_ceiling_bench.js
+scripts/b06_m0_bench.js
+scripts/b06_relay_hand_bench.js
+scripts/b08_p5_unblock_bench.js
+scripts/b47_money_crossing_bench.js
+scripts/b49_writer_hygiene_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/b66_inbound_consent.js
+scripts/b84_lc2_p4a_lifecycle_bench.js
+scripts/floor-base.txt
+src/agent/engine.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/floor-manifest-lcv15-lsp4.txt
+docs/handovers/TDW_CE45_LCV15_LSP_4_HANDOVER.md
+src/agent/classifier.js # DELETED
+src/agent/systemPrompt.js # DELETED
+src/agent/tools.js # DELETED
+src/lib/vendor/replyToCouple.js # DELETED

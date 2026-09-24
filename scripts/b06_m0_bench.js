@@ -341,8 +341,12 @@ await t('§4.6 the door names the binder POST-turn only (pre-turn has no name to
 await t('§4.7 the engine returns leadName ADDITIVELY — every existing key intact', () => {
   const c = code(ENGINE);
   const ret = c.slice(c.indexOf('reply: finalReply'), c.indexOf('reply: finalReply') + 600);
-  for (const k of ['reply:', 'toolCalls:', 'iterations:', 'vendorNotification:', 'leadName:']) {
-    assert.ok(ret.includes(k), `the couple turn's contract lost ${k}`);
+  // RE-AIMED (CE-45 LCV-15 LSP_4, labelled): the return object writes `iterations` in SHORTHAND (`iterations,`). At the base this cell's `iterations:`
+  // was found only because its 600-character window ran on into F-05.56's island, whose text held that word with a colon: a HOLLOW green for that key,
+  // exposed when the island was deleted. Each key is now matched as the object's own (`key:` or shorthand `key,`), inside the object's braces only.
+  const obj = ret.slice(0, ret.indexOf('};') + 2);
+  for (const k of ['reply', 'toolCalls', 'iterations', 'vendorNotification', 'leadName']) {
+    assert.ok(new RegExp(`\\b${k}\\s*[:,]`).test(obj), `the couple turn's contract lost ${k}`);
   }
 });
 

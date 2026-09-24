@@ -9,13 +9,22 @@ const ROOT = path.resolve(__dirname, '..'); const P = (r) => path.join(ROOT, r);
 const read = (r) => fs.readFileSync(P(r), 'utf8');
 const code = (r) => read(r).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
 let pass=0, fail=0;
-const t=(n,f)=>{try{f();console.log(`  ok   ${n}`);pass++;}catch(e){console.log(`  FAIL ${n}\n       ${e.message}`);fail++;}};
+// ── A-45.2 (CE-45 LCV-15 LSP_4): THE RETIRED CELLS, printed RETIRED, never counted; every row must match exactly one reached cell or the bench exits 1 ──
+const __RETIRE = new Map([
+  ['§2.1 ', 'LSP_4 (L4-a): classifier.js is DELETED by ruling (no caller since ARC M5); "survives intact" has no subject'],
+  ['§2.2 ', 'LSP_4 (L4-a): the ambiguity limb lived only in classifier.js, deleted by ruling with the island that alone could have revived it'],
+  ['§2.3 ', 'LSP_4 (L4-a): the island and its revival pointer are DELETED; there is nothing left to declare itself'],
+  ['§4.2 ', "LSP_4 (L4-a): classifier.js is deleted, so R-M5-3's one disclosed non-deletion delta (its header) has no file to live in"],
+]);
+const __seen = new Map();
+const t=(n,f)=>{for(const [k,why] of __RETIRE){if(String(n).startsWith(k)){__seen.set(k,(__seen.get(k)||0)+1);console.log(`  RETIRED ${n}\n       (${why})`);return;}}try{f();console.log(`  ok   ${n}`);pass++;}catch(e){console.log(`  FAIL ${n}\n       ${e.message}`);fail++;}};
 const H=(s)=>console.log(`\n${s}`);
 
 H('§1 — THE TRIO, LEG 2: POST-DELETE GREP-ZERO');
 t('§1.1 runAgenticTurn is gone from every executable line in src/**', () => {
   const hits = [];
-  for (const f of ['src/agent/engine.js','src/agent/brideEngine.js','src/agent/classifier.js','src/lib/vendorInbound.js','src/index.js','src/brideIndex.js'])
+  // RE-AIMED (CE-45 LCV-15 LSP_4, labelled): classifier.js is deleted (L4-a); the orphan must stay gone from every file that remains.
+  for (const f of ['src/agent/engine.js','src/agent/brideEngine.js','src/lib/vendorInbound.js','src/index.js','src/brideIndex.js'])
     for (const l of code(f).split('\n'))
       if (/\brunAgenticTurn\b/.test(l)) hits.push(`${f}: ${l.trim()}`);
   assert.deepStrictEqual(hits, [], 'the orphan survived somewhere executable');
@@ -80,7 +89,8 @@ t('§3.1 pending_lead_pings: three TEXTUAL writers in src/agent (one DEAD, F-05.
       else if (/from\('pending_lead_pings'\)/.test(l)) readers++;
     }
   assert.strictEqual(readers, 0, `src/agent still holds a reader — the drain's home is lib/vendor, found ${readers}`);
-  assert.strictEqual(writers, 3, `expected three textual writers, found ${writers}`);
+  // RE-PINNED (CE-45 LCV-15 LSP_4, labelled): 3 to 2. The DEAD writer lived in F-05.56's island, deleted (L4-a); the two live writers are unchanged.
+  assert.strictEqual(writers, 2, `expected two textual writers, found ${writers}`);
   // 3.1b RE-AIMED (CE-45 LCV-15 LSP_1, labelled, COUNT PRESERVED): the drain at src/lib/vendor/leadPings.js is DELETED with
   // the WhatsApp chain (A11; F-44.139: it stamped acknowledged_at on turns nothing surfaced). The zero above is now honest
   // about the WHOLE estate, so the referent this cell asserts is the absence itself, not a home elsewhere.
@@ -128,6 +138,7 @@ t('§4.2 deletions-pure, with its ONE disclosed exception', () => {
   assert.ok(added > 0 && added < 20, `the header only, found +${added}`);
 });
 
+for (const k of __RETIRE.keys()) { if ((__seen.get(k) || 0) !== 1) { fail++; console.log(`  FAIL the retired-cell table does not match exactly one reached cell: ${k}`); } }
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);
 if (fail === 0) console.log('GREEN — the orphan is gone, its classifier waits whole and uncalled, and the census says so out loud.');
 process.exit(fail === 0 ? 0 : 1);

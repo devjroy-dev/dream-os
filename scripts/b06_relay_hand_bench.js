@@ -272,6 +272,10 @@ const __RETIRE = new Map([
   [
     "§10.16 ",
     "LSP_3: composeBody, the compose fork's Donna call, is deleted; draftSeat composes"
+  ],
+  [
+    "§7.6 ",
+    "LSP_4 (L4-a, 7.6 ruled (i)): the corpse's one caller (executeTool) was deleted with F-05.56's island, leaving replyToCouple.js a new orphan; it is DELETED here as a named path, so there is no corpse to keep byte-dead"
   ]
 ]);
 const __seen = new Map();

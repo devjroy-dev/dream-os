@@ -189,9 +189,9 @@ cell('2.1 only the home opens public.expenses with a mutation verb', () => {
   const ISLAND_FILE = 'src/agent/engine.js';
   const islandLines = read(ISLAND_FILE).split('\n');
   const islandAt = islandLines.findIndex((l) => /F-05\.56 — EVERYTHING BELOW THIS LINE HAS ZERO CALLERS/.test(l));
-  if (islandAt < 0) {
-    return `REFUSED — the F-05.56 island header is gone from ${ISLAND_FILE}; this cell's exclusion no longer has a basis and must be re-derived, not re-scoped`;
-  }
+  // RE-DERIVED (CE-45 LCV-15 LSP_4, labelled): the island is DELETED (L4-a), its log_expense writer with it. The exclusion's basis is gone and so is the
+  // exclusion: with no header, EVERY line of engine.js counts, so the cell is now stronger than it was, never re-scoped. (A header that reappears
+  // restores the old exclusion only below it.)
   const offenders = [];
   for (const f of files) {
     if (f === 'src/lib/vendor/expenses.js') continue;
@@ -200,7 +200,7 @@ cell('2.1 only the home opens public.expenses with a mutation verb', () => {
       if (!/\.from\('expenses'\)/.test(lines[i])) continue;
       const window = lines.slice(i, i + 5).join(' ');
       if (!/\.(insert|update|upsert|delete)\s*\(/.test(window)) continue;
-      if (f === ISLAND_FILE && i > islandAt) continue;   // below the freeze line
+      if (islandAt >= 0 && f === ISLAND_FILE && i > islandAt) continue;   // below the freeze line (none since LSP_4)
       offenders.push(`${f}:${i + 1}`);
     }
   }

@@ -57,7 +57,14 @@ const HAIKU  = 'claude-haiku-4-5-20251001';
 const SONNET = 'claude-sonnet-4-6';
 
 let pass = 0, fail = 0;
+// ── A-45.2 (CE-45 LCV-15 LSP_4): THE RETIRED CELLS, printed RETIRED, never counted; every row must match exactly one reached cell or the bench exits 1 ──
+const __RETIRE = new Map([
+  ['§2.4 ', 'LSP_4 (L4-a): classifier.js is DELETED by ruling (no caller since ARC M5); the cure it guarded against touching has nothing left to touch'],
+]);
+const __seen = new Map();
+process.on('exit', () => { const bad = [...__RETIRE.keys()].filter((k) => __seen.get(k) !== 1); if (bad.length) { console.log(`  FAIL the retired-cell table does not match exactly one reached cell: ${bad.join(' | ')}`); process.exitCode = 1; } });
 async function t(name, fn) {
+  for (const [k, why] of __RETIRE) { if (String(name).startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED ${name}\n       (${why})`); return; } }
   try { await fn(); console.log(`  ok   ${name}`); pass++; }
   catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 }

@@ -189,7 +189,13 @@ cell('1.4 the engine tool switch is a DEFUSED ISLAND — no money verb lives the
   const s = strip(read('src/agent/engine.js'));
   const raw = read('src/agent/engine.js');
   const islandAt = raw.split('\n').findIndex((l) => /ZERO CALLERS SINCE ARC M5/.test(l));
-  if (islandAt < 0) return 'the F-05.56 island header is gone — re-derive before trusting this cell';
+  // RE-DERIVED (CE-45 LCV-15 LSP_4, labelled): the island is DELETED (L4-a). The fact this cell guards is now stronger: NO money verb case exists
+  // in engine.js at all, above or below any line, and neither entry point is declared or called.
+  if (islandAt < 0) {
+    for (const c of ['record_payment', 'log_expense']) if (raw.includes(`case '${c}'`)) return `case '${c}' is back in engine.js with no island around it: it may be live`;
+    if (/\b(handleOnboarding|executeTool)\b/.test(s)) return 'an island entry point is back in engine.js';
+    return true;
+  }
   const lines = raw.split('\n');
   for (const c of ['record_payment', 'log_expense']) {
     const at = lines.findIndex((l) => l.includes(`case '${c}'`));

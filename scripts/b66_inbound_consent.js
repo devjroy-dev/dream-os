@@ -384,8 +384,11 @@ section('14. F-41.75 — one money format, no L');
     const src = strip(read(f));
     ok(`14.${files.indexOf(f) + 1} ${f} writes no lakh suffix in code`,
        !/toFixed\(1\)\}L/.test(src));
+    // RE-AIMED for engine.js (CE-45 LCV-15 LSP_4, labelled): engine.js's lib/format import served only F-05.56's island (formatRs), deleted with it.
+    // Its one remaining money line (the couple lane's lead budget) reads witnessLine.rupees, the CJS wire's ONE grouped-money home (TDW_06 M-4,
+    // ruling R2-B; b08_p5_unblock 4.5 pins it). Either home satisfies the cell for engine.js; the other two files are unchanged.
     ok(`14.${files.indexOf(f) + 1}b ${f} imports the estate's one formatter`,
-       /require\(['"]\.\.?\/(\.\.\/)?lib\/format['"]\)/.test(src));
+       /require\(['"]\.\.?\/(\.\.\/)?lib\/format['"]\)/.test(src) || (f === 'src/agent/engine.js' && /require\(['"]\.\.\/lib\/witnessLine['"]\)/.test(src)));
   }
 }
 

@@ -86,11 +86,7 @@ const MUTATIONS = {
     s.replace('          const bud = budMax ? `${budMin}-${budMax}` : budMin;',
               '          const bud = `Rs ${(input.budget_min/100000).toFixed(1)}L`;')],
 
-  // F-08.89: site 2 is uncured by ruling, so its arm inverts — it CURES the dead
-  // site, which must red §4.4 (the freeze) rather than green anything.
-  site2_cured_inside_the_frozen_island: [ENGINE_P, (s) =>
-    s.replace('          ? `Rs ${(l.budget_min/100000).toFixed(1)}L${l.budget_max && l.budget_max !== l.budget_min ? `-${(l.budget_max/100000).toFixed(1)}L` : \'\'}`',
-              '          ? (require(\'../lib/witnessLine\').rupees(l.budget_min) || `Rs ${l.budget_min}`)')],
+  // RETIRED (CE-45 LCV-15 LSP_4, labelled): site2_cured_inside_the_frozen_island's anchor lived in the deleted island; its cell (4.4) is retired.
 
   second_money_formatter_planted: [ENGINE_P, (s) =>
     s.replace("          const { rupees } = require('../lib/witnessLine');\n          const budMin",
@@ -221,7 +217,16 @@ async function drive({ existingLeadRow = null, history = DEC_HISTORY, capture, i
 
 // ── runner ──────────────────────────────────────────────────────────────────
 let pass = 0, fail = 0;
+// ── A-45.2 (CE-45 LCV-15 LSP_4): THE RETIRED CELLS. A row names a cell by its prefix and gives why; the cell is printed RETIRED and never counted as a
+// pass; at exit every row must have matched exactly one reached cell, or the bench exits 1. ──────────────────────────────────────────────────────
+const __RETIRE = new Map([
+  ['§4.4 ', "LSP_4: F-08.89's site 2 lived in F-05.56's defused island, which is deleted (L4-a); the dead site it froze no longer exists, so there is nothing to freeze or cure"],
+]);
+const __seen = new Map();
+function __retired(name) { for (const [k, why] of __RETIRE) { if (String(name).startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); return why; } } return null; }
 async function t(name, fn) {
+  const why = __retired(name);
+  if (why) { console.log(`  RETIRED ${name}\n       (${why})`); return; }
   try { await fn(); pass++; console.log(`  ok   ${name}`); }
   catch (e) { fail++; console.log(`  FAIL ${name}\n       ${e.message}`); }
 }
@@ -304,9 +309,13 @@ await t('§2.3 the resolver has ONE home and this lane calls it, not a copy', ()
   // TWO lanes, TWO `resolveWeddingDate` imports, ONE home. (The file holds four
   // `datePrecision` requires in total — the other two pull `formatDateWithPrecision`
   // for display and are not this cell's subject.)
-  assert.strictEqual((e.match(/const \{ resolveWeddingDate \} = require\('\.\/datePrecision'\)/g) || []).length, 2,
-    'the two lanes no longer share one date home — re-derive before trusting any §1 cell');
-  assert.ok(!/hasDayAdjacentToMonth|findMonthInText/.test(e),
+  // RE-AIMED (CE-45 LCV-15 LSP_4, labelled): the vendor lane's copy lived in the deleted island; ONE lane is left (the couple lane), and it still reads
+  // the one home. The next assertion (no second implementation inside engine.js) held red at the base for the island's own copy; it now holds.
+  assert.strictEqual((e.match(/const \{ resolveWeddingDate \} = require\('\.\/datePrecision'\)/g) || []).length, 1,
+    'the couple lane no longer reads the one date home: re-derive before trusting any 1 cell');
+  // RE-AIMED (CE-45 LCV-15 LSP_4, labelled): read on CODE, comments stripped. At the base this assertion was red on two COMMENTS in the couple lane
+  // (engine.js :46 and :65) that CITE the one home by name (`hasDayAdjacentToMonth` at datePrecision.js); a citation is not a second implementation.
+  assert.ok(!/hasDayAdjacentToMonth|findMonthInText/.test(e.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')),
     'a second precision implementation was reconstructed inside engine.js — one home, or none');
   assert.ok(!/setFullYear/.test(read(DATE_P)),
     'the year-bump migrated INTO the shared resolver: the vendor lane would inherit a rule it never had');
@@ -394,6 +403,7 @@ await t('§4.6 the money register holds across the whole notification, not just 
 });
 
 // ── summary ─────────────────────────────────────────────────────────────────
+for (const k of __RETIRE.keys()) { if ((__seen.get(k) || 0) !== 1) { fail++; console.log(`  FAIL the retired-cell table does not match exactly one reached cell: ${k}`); } }
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);
 if (fail === 0) {
   console.log('GREEN — "December" survives as December on both write paths, the bride\'s own\n'
