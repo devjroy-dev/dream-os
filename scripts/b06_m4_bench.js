@@ -76,14 +76,17 @@ const firstContact = (over = {}) => buildCouple()({
   ...over,
 });
 
+// ── LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26: the prompt stops assuming a bride; the name is spoken only when asked) ──
+// the stanza's heading reads THEY, not SHE; the property (the answer-first stanza reaches first contact) is unchanged.
 await t('§1.1 THE STANZA IS IN THE FIRST-CONTACT PROMPT — the disease was authored into instructions, so the cure is too', () => {
   const p = firstContact();
-  assert.ok(p.includes('WHO YOU ARE WHEN SHE ARRIVES'), 'the opener stanza never reaches the composed prompt');
+  assert.ok(p.includes('WHO YOU ARE WHEN THEY ARRIVE'), 'the opener stanza never reaches the composed prompt');
 });
 
 await t('§1.2 ANSWER LEADS, QUALIFY BESIDE — both halves of the ruling are present, and the ORDER is stated', () => {
   const p = firstContact();
-  assert.ok(/her question gets answered first/i.test(p), 'the answer-first instruction is absent');
+  // ── LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26: the prompt stops assuming a bride; the name is spoken only when asked) ──
+  assert.ok(/their question gets answered first/i.test(p), 'the answer-first instruction is absent');
   assert.ok(/Beside the answer, never instead of it/i.test(p), 'the beside-not-instead clause is absent');
 });
 
@@ -96,8 +99,9 @@ await t('§1.3 THE DEFLECTION WAS DEMOTED, NOT DELETED — what only the vendor 
 
 await t('§1.4 THE FIRST TURN BRANCHES — a bare greeting still gets the fused line; a question does not', () => {
   const p = firstContact();
-  assert.ok(/If she opened with a question or a specific need, ANSWER IT first/i.test(p), 'FLOW 1 does not branch');
-  assert.ok(/If she opened with a bare greeting or nothing specific/i.test(p), 'the greeting path was dropped');
+  // ── LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26: the prompt stops assuming a bride; the name is spoken only when asked) ──
+  assert.ok(/If they opened with a question or a specific need, ANSWER IT first/i.test(p), 'FLOW 1 does not branch');
+  assert.ok(/If they opened with a bare greeting/i.test(p), 'the greeting path was dropped');
 });
 
 await t('§1.5 ⚑ THE CAPTURE CELL (CE: NON-NEGOTIABLE) — the rule that makes the vendor\'s notification possible SURVIVES', () => {
@@ -119,7 +123,7 @@ await t('§1.5 ⚑ THE CAPTURE CELL (CE: NON-NEGOTIABLE) — the rule that makes
 
 await t('§1.6 THE RETURNING-BRIDE BRANCH IS UNTOUCHED — this sitting cured FIRST contact only', () => {
   const p = buildCouple()({ vendor: { category: 'photography', city: 'Delhi' }, vendorUser: { name: 'Swati' }, isReturningBride: true, leadName: 'Priya' });
-  assert.ok(!/WHO YOU ARE WHEN SHE ARRIVES/.test(p), 'the stanza leaked into the returning-bride branch');
+  assert.ok(!/WHO YOU ARE WHEN (SHE|THEY) ARRIVE/.test(p), 'the stanza leaked into the returning-bride branch'); // ELZ-1: either heading
   assert.ok(/don't restart any onboarding flow/i.test(p), 'the returning branch drifted');
 });
 
@@ -145,7 +149,10 @@ await t('§1.7 THE NAMING ACT ARRIVED — and the name has ONE HOME (amended, TD
     vendor: { category: 'photography', city: 'Delhi' }, vendorUser: { name: 'Swati' },
     isReturningBride: false, useEliza: true,
   });
-  assert.ok(new RegExp(`You are ${soul.ELIZA},`).test(on), 'the ruled name never reaches the Eliza path');
+  // ── LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26: the prompt stops assuming a bride; the name is spoken only when asked) ──
+  // THIS READ `You are ${ELIZA},`: the header no longer opens with the persona (the founder: no persona name unprompted); the name
+  // is still carried, for an answer to "what's your name", from the one home.
+  assert.ok(new RegExp(`Your name, if anyone asks, is ${soul.ELIZA}\\.`).test(on), 'the ruled name never reaches the Eliza path');
 
   const shellSrc = read('src/agent/coupleSystemPrompt.js');
   assert.ok(!/['"`]Eliza['"`]/.test(shellSrc),
@@ -398,8 +405,8 @@ H('§6 — NON-VACUOUS: RED AT THE UNCURED TREE, BY PRODUCTION MUTATION');
 
 const MUTATIONS = [
   { label: '§1.1/§1.2 RED — the stanza is removed: first contact hands her the form again, the 50k specimen restored',
-    file: COUPLE, from: 'WHO YOU ARE WHEN SHE ARRIVES', to: 'WHO YOU ARE WHEN SHE ARRIVES_MUTANT',
-    check: () => assert.ok(!firstContact().includes('WHO YOU ARE WHEN SHE ARRIVES\n')) },
+    file: COUPLE, from: 'WHO YOU ARE WHEN THEY ARRIVE', to: 'WHO YOU ARE WHEN THEY ARRIVE_MUTANT', // ELZ-1: the heading re-aimed
+    check: () => assert.ok(!firstContact().includes('WHO YOU ARE WHEN THEY ARRIVE\n')) },
   { label: '§1.5 RED — HARD RULE 11 is deleted: an answer-first opener can lose the lead and the vendor is never told',
     file: COUPLE, from: 'STILL call capture_couple_lead with whatever you have so far', to: 'stop and wait',
     check: () => assert.ok(!/STILL call capture_couple_lead with whatever you have so far/.test(firstContact())) },
@@ -453,7 +460,7 @@ await t('§6.0 every mutated file is restored BYTE-IDENTICAL', () => {
   const dirty = execFileSync('git', ['status', '--porcelain', '--', COUPLE, SCRUB, FIND_SRC, 'src/engine/src/core/tools/recordPrimitives.ts'], { cwd: ROOT, encoding: 'utf8' }).trim();
   // A file this sitting legitimately CHANGED will show as modified against origin; what
   // must not survive is a MUTATION. Asserted by content, the only honest way here.
-  assert.ok(!read(COUPLE).includes('WHO YOU ARE WHEN SHE ARRIVES_MUTANT'), 'a mutation survived in the couple prompt');
+  assert.ok(!read(COUPLE).includes('WHO YOU ARE WHEN THEY ARRIVE_MUTANT'), 'a mutation survived in the couple prompt');
   assert.ok(read(SCRUB).includes("persona_scrub_on_wire"), 'a mutation survived in the firewall');
   assert.ok(read(FIND_SRC).includes('const withholdingTell = recentsShape ? '), 'a mutation survived in the find tool');
   assert.ok(read('src/engine/src/core/tools/recordPrimitives.ts').includes('return `Rs ${inr(v)}`;'), 'a mutation survived in the money home');

@@ -1,0 +1,20 @@
+# CE-45 ELZ-1 · cut 1 · the couple lane on R-45.26's footing (F-44.125, F-44.145, F-44.157, F-44.158, F-44.159; R-45.25; BS-1 §11 rule 1) · rung b117a (+ b117m, measured) · base 62c7ef5
+# floor-base unchanged: the differential on 62c7ef5 read the same red set both sides.
+scripts/b06_m4_bench.js
+scripts/b06_relay_foundations_bench.js
+scripts/b08_p5_eliza_bench.js
+scripts/b111_lcv15_lsp1b_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b117a_elz1_couple_bench.js
+scripts/b117m_elz1_couple_measure.js
+scripts/b55_g2_reviews_bench.js
+src/agent/coupleSystemPrompt.js
+src/agent/coupleThreadFacts.js
+src/agent/engine.js
+src/agent/souls/elizaSoul.js
+src/agent/studioName.js
+src/lib/brideInbound.js
+src/lib/vendor/categoryProfiles.js
+src/lib/vendor/coupleDateState.js
+scripts/floor-manifest-ce45-elz1-1.txt
+docs/handovers/TDW_CE45_ELZ1_1_HANDOVER.md

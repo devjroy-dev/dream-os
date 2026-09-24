@@ -383,7 +383,7 @@ await (async () => {
   cell('the couple branch runs BEFORE the full stop in brideInbound', () => {
     const src = fs.readFileSync(R('src/lib/brideInbound.js'), 'utf8');
     const a = src.indexOf('matchStopMessages(trimmedBody)');
-    const b = src.indexOf('matchFullStopWord(trimmedBody)');
+    const b = src.indexOf('matchOptOutExact(trimmedBody)'); // LABELED · ELZ-1 cut 1 (F-44.145): the bride lane's full stop now reads the whole message
     if (a < 0) return 'the couple branch is absent';
     if (b < 0) return 'the full stop branch is absent';
     return a < b ? true : 'the full stop runs first and would swallow the button as a terminal opt-out';

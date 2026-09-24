@@ -43,7 +43,7 @@
 'use strict';
 
 const { matchNudgeWord, setNudgeOptout, matchStopMessages } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22 · G2 F-19.08
-const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
+const { matchOptOutExact, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27 · ELZ-1 cut 1 (F-44.145): the whole-message matcher
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
 const { makeInboundSend, REFUSAL } = require('./sendOutcome');         // ARC M1 / F-05.33
@@ -186,7 +186,9 @@ async function _processBrideInbound(inputs, deps) {
     // single documented bypass the marketing lane uses for the same reason
     // (prospects.js:132-134) — an acknowledgement the recipient never receives
     // reads as an opt-out that did not register.
-    const fullStopWord = matchFullStopWord(trimmedBody);
+    // CE-45 ELZ-1 cut 1 (F-44.145, the bride lane's twin of F-44.141): the WHOLE message, never the first token, so a bride's
+    // "Cancel the mehendi booking" or "End of day works" is not an opt-out; "STOP" and "Cancel." still are (LSP_1b's matcher).
+    const fullStopWord = matchOptOutExact(trimmedBody);
     if (fullStopWord) {
       try {
         if (fullStopWord === 'stop') {

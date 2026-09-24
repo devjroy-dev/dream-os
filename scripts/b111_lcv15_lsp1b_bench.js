@@ -137,7 +137,9 @@ async function drive(lane, text, from, prospectState) {
   // §2
   sec('2 the marketing lane and the bride lane are untouched (C-44.7: bytes pinned from 46af98d)');
   T('2.1 prospects.js is byte-identical to 46af98d (isStopWord, the two word lists, the marketing lane\'s own opt-out)', sha(src('src/lib/prospects.js')) === '59bd32b721a281b370ac80454281d1ac50a6ea3f20fc5bb7c5db60595d115ddd');
-  T('2.2 brideInbound.js is byte-identical to 46af98d (it still calls the first-token matcher: F-44.145, its own sitting)', sha(src('src/lib/brideInbound.js')) === 'e9ab675a1b2a56459a12d87efa6c6f2a61baff47b73c954090941a99a2f8f115' && /matchFullStopWord\(trimmedBody\)/.test(src('src/lib/brideInbound.js')));
+  // LABELED AMENDMENT · CE-45 ELZ-1 cut 1: F-44.145's own sitting came. This read "byte-identical to 46af98d (it still calls the
+  // first-token matcher)"; the bride lane now calls the whole-message matcher, one call, and is pinned to cut 1's bytes.
+  T('2.2 brideInbound.js is byte-identical to ELZ-1 cut 1 (it calls the whole-message matcher: F-44.145 landed)', sha(src('src/lib/brideInbound.js')) === '2e17fbcb8896bd1c49aaebe9598c381a94dcb8b2767c8fcb5df6b3d18d6a8f62' && /matchOptOutExact\(trimmedBody\)/.test(src('src/lib/brideInbound.js')) && !/matchFullStopWord\(/.test(src('src/lib/brideInbound.js')));
   T('2.3 the marketing lane still reads the first token: isStopWord("Cancel the shoot") is true, exactly as before', PR.isStopWord('Cancel the shoot') === true);
 
   // §3

@@ -17,6 +17,10 @@ const { readLaneFlag }  = require('../lib/laneFlags');
 const { captureField }          = require('../lib/coupleIdentity');
 const { getReturningBrideIntent } = require('../lib/intentExtractor');
 const { buildEnquiryEnrichment } = require('../lib/vendor/enquiryEnrichment');
+// CE-45 ELZ-1 cut 1 (R-45.26): the studio's name (FACT 4), the thread's whole record (FACT 1), a date's state (FACT 3).
+const { studioName }            = require('./studioName');
+const { threadFacts }           = require('./coupleThreadFacts');
+const { dateState, dateStateFact } = require('../lib/vendor/coupleDateState');
 
 
 const MAX_ITERATIONS = 5;
@@ -84,6 +88,8 @@ const RELAY_SENT_BY = 'vendor_relay';
 //                       survives BELOW as the fallback only.
 //
 // ── WHICH NAME · DERIVED BY CENSUS, NOT PICKED ──────────────────────────────
+// ⚠ SUPERSEDED AT CE-45 ELZ-1 cut 1 (F-44.157, the founder: a couple hears the STUDIO, "Dev Roy Photography", not "Dev Roy").
+// The census below is kept as history; the rule now lives once in src/agent/studioName.js, business_name first.
 // The register is `vendorUser.name` FIRST, `vendor.business_name` SECOND — the
 // person, then the studio. Cited, not asserted:
 //   · `src/agent/coupleSystemPrompt.js` (symbol `buildCoupleSystemPrompt`) builds
@@ -114,9 +120,8 @@ const RELAY_ATTRIBUTION_GENERIC = 'From the vendor: ';
 // invented, never guessed from another column, and never the phone number — an
 // unnamed vendor is a fact about the row, not a gap to fill.
 function relayAttributionPrefix(vendor, vendorUser) {
-  const person = typeof (vendorUser && vendorUser.name) === 'string' ? vendorUser.name.trim() : '';
-  const studio = typeof (vendor && vendor.business_name) === 'string' ? vendor.business_name.trim() : '';
-  const name = person || studio;
+  // CE-45 ELZ-1 cut 1 (F-44.157): the STUDIO first, the person only when the studio has none; one rule, one home (studioName.js).
+  const name = studioName(vendor, vendorUser, '');
   return name ? `From ${name}: ` : RELAY_ATTRIBUTION_GENERIC;
 }
 
@@ -263,7 +268,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   const useEliza = await readLaneFlag(supabase, 'couple.eliza_enabled');
   console.log(`[couple-agent] lane=${useEliza ? 'eliza' : 'legacy'}`);
 
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza });
+  // CE-45 ELZ-1 cut 1 · FACT 1 (§11 rule 1, F-44.125): the thread's WHOLE record, not the ten-minute window, says whether this
+  // client is already in conversation and what was last asked. A fact the prompt reads; the words stay hers (R-45.26).
+  const conversationFacts = await threadFacts({ supabase, conversationId: conversation.id, inboundBodyAsStored, historyLength: history.length });
+  console.log(`[couple-agent] inConversation=${conversationFacts.inConversation} prior=${conversationFacts.priorCount}`);
+
+  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts });
 
   const messages = [
     ...history,
@@ -295,6 +305,16 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           notes: { type: 'string', description: 'Anything else worth capturing' },
         },
         required: [],
+      },
+    },
+    {
+      // CE-45 ELZ-1 cut 1 · FACT 3 (R-45.25; F1-r2 ruled): the date's state, from the /v page's one reader. A fact, never a sentence.
+      name: 'date_state',
+      description: 'Look up whether the studio is free on a date the client asked about. Pass the date exactly as the client wrote it. Returns the date and one state: free, taken, check_off or unreadable.',
+      input_schema: {
+        type: 'object',
+        properties: { date_as_spoken: { type: 'string', description: 'The date in the client\'s own words, e.g. "5 march 2028" or "12th Feb".' } },
+        required: ['date_as_spoken'],
       },
     },
     {
@@ -351,7 +371,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     if (toolUseBlocks.length === 0) {
       if (!finalReply) {
         const textBlocks = response.content.filter(b => b.type === 'text');
-        finalReply = textBlocks.map(b => b.text).join('\n').trim() || 'Thanks — we\'ll be in touch soon!';
+        finalReply = textBlocks.map(b => b.text).join('\n').trim() || 'Thanks, we\'ll be in touch soon!';
       }
       break;
     }
@@ -635,8 +655,14 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         toolResults.push({
           type: 'tool_result',
           tool_use_id: toolUse.id,
-          content: 'Lead saved successfully. The enquiry is now COMPLETE. Your only remaining action is to call respond_to_couple with a brief, warm closing line (e.g. "Perfect — I\'ve passed this to ' + (vendorUser?.name || vendor?.business_name || 'the vendor') + ', they\'ll be in touch soon!"). Do NOT ask any more questions. Do NOT reconsider what might be missing. Just send the closing line and stop.',
+          content: 'Lead saved successfully. The enquiry is now COMPLETE. Your only remaining action is to call respond_to_couple with a brief, warm closing line (e.g. "Perfect, I\'ve passed this to ' + studioName(vendor, vendorUser, 'the studio') + '. They\'ll be in touch soon!"). Do NOT ask any more questions. Do NOT reconsider what might be missing. Just send the closing line and stop.',
         });
+
+      } else if (toolUse.name === 'date_state') {
+        const ds = await dateState({ supabase, vendor, dateAsSpoken: toolUse.input && toolUse.input.date_as_spoken, nowMs: Date.now() });
+        const fact = dateStateFact(ds);
+        toolCallsAudit.push({ name: 'date_state', input: toolUse.input, result: fact });
+        toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: fact });
 
       } else if (toolUse.name === 'respond_to_couple') {
         finalReply = toolUse.input.message;
@@ -719,7 +745,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   }
 
   return {
-    reply: finalReply || 'Thanks — we\'ll be in touch soon!',
+    reply: finalReply || 'Thanks, we\'ll be in touch soon!',
     toolCalls: toolCallsAudit,
     iterations,
     vendorNotification: isReturningBride ? returningBrideNotif : firstContactNotif,

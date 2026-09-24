@@ -218,13 +218,21 @@ await t('§1.1 flag OFF -> the model is handed the LEGACY prompt, unnamed', asyn
   const c = await drive({ elizaEnabled: false });
   const p = c.params.system;
   assert.ok(!/\bEliza\b/.test(p), 'Eliza reached the wire with the lane flag off');
-  assert.ok(/You are a friendly assistant for Swati/.test(p), 'the legacy header is not what shipped');
+  // LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26; the founder: no "assistant", no persona name unprompted; F-44.157 the studio's
+  // name): the headers open "You answer WhatsApp messages for {studio}"; the Eliza path carries the name only as the answer to
+  // "what's your name". The property (OFF unnamed, ON named and souled) is unchanged. This fixture's vendor has no business_name,
+  // so the studio's name falls to the person, Swati.
+  assert.ok(/You answer WhatsApp messages for Swati, /.test(p), 'the legacy header is not what shipped');
 });
 
 await t('§1.2 flag ON -> the model is handed ELIZA, named and souled', async () => {
   const c = await drive({ elizaEnabled: true });
   const p = c.params.system;
-  assert.ok(/You are Eliza, the assistant for Swati/.test(p), 'the Eliza header never reached the model');
+  // LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26; the founder: no "assistant", no persona name unprompted; F-44.157 the studio's
+  // name): the headers open "You answer WhatsApp messages for {studio}"; the Eliza path carries the name only as the answer to
+  // "what's your name". The property (OFF unnamed, ON named and souled) is unchanged. This fixture's vendor has no business_name,
+  // so the studio's name falls to the person, Swati.
+  assert.ok(/You answer WhatsApp messages for Swati, /.test(p) && /Your name, if anyone asks, is Eliza\./.test(p), 'the Eliza header never reached the model');
   assert.ok(p.includes(soul.ELIZA_SOUL), 'the soul is not in the prompt the model received');
 });
 
@@ -276,9 +284,11 @@ await t('§2.4 she does not VOLUNTEER it — S-2 is both halves, not one', async
   // the answering half. So the half is asserted where it actually lives, on the
   // path it actually governs — not read off a prompt that has no persona.
   const c = await drive({ elizaEnabled: true });
-  assert.ok(soul.ELIZA_SOUL.includes('You never volunteer it — nobody opens a conversation by announcing'),
+  // LABELED AMENDMENT · CE-45 ELZ-1 cut 1, under R-45.25 and R-45.26: the soul's em dashes became commas, colons or stops (the founder);
+  // the words are unchanged. The soul's date paragraph was rewritten under R-45.25 (it was F-44.158's source); the card shows old and new.
+  assert.ok(soul.ELIZA_SOUL.includes('You never volunteer it: nobody opens a conversation by announcing'),
     'the soul lost the never-volunteer half, or its reason');
-  assert.ok(c.params.system.includes('You never volunteer it — nobody opens a conversation by announcing'),
+  assert.ok(c.params.system.includes('You never volunteer it: nobody opens a conversation by announcing'),
     'the never-volunteer half never reached the model on the Eliza path');
 });
 
@@ -328,8 +338,11 @@ await t('§2.7 ⚑ THE SEALED BYTES ARE PINNED — a vetoed byte may not drift w
   assert.strictEqual(soul.HONESTY_RULE,
     'If she asks whether you are an AI, say yes plainly and continue with what she wanted.',
     'the sealed honesty rule drifted — it is the founder\'s byte, not the executor\'s');
+  // LABELED AMENDMENT · CE-45 ELZ-1 cut 1, under R-45.25 and R-45.26 (the chair's ruling (a) on the build status): the NEW VETO
+  // this cell asks for happened. The founder's A7 (table (a1), R-45.26(4)):
+  // no "assistant", no em dash, "yours reaches them". Re-pinned literally, so the next drift reddens here again.
   assert.strictEqual(soul.ELIZA_ADMISSION,
-    "I'm an AI, yes — {studio}'s assistant. They read every enquiry themselves; I just make sure one reaches them.",
+    "I'm an AI, yes, answering for {studio}. They read every enquiry themselves; I just make sure yours reaches them.",
     'the sealed admission line drifted — candidate (C) was vetoed at the byte');
 });
 
@@ -337,7 +350,8 @@ H('§3 — THE NAME: ONE HOME, PER-VENDOR, ELIZA BY DEFAULT (LOG:2821)');
 
 await t('§3.1 null assistant_name -> Eliza, and the literal has ONE home', async () => {
   const c = await drive({ elizaEnabled: true });
-  assert.ok(new RegExp(`You are ${soul.ELIZA},`).test(c.params.system), 'the default name is not the soul module\'s');
+  // LABELED AMENDMENT · ELZ-1 cut 1: the name is carried as the answer to "what's your name", not as the header's opening.
+  assert.ok(new RegExp(`Your name, if anyone asks, is ${soul.ELIZA}\\.`).test(c.params.system), 'the default name is not the soul module\'s');
   const shellSrc = read(SHELL_P);
   assert.ok(!/['"`]Eliza['"`]/.test(shellSrc),
     'the shell re-declares the literal — one home, sixteen-importer discipline (waNumbers/miraSoul precedent)');
@@ -345,14 +359,14 @@ await t('§3.1 null assistant_name -> Eliza, and the literal has ONE home', asyn
 
 await t('§3.2 a renamed vendor gets HER name, and Eliza vanishes entirely', async () => {
   const c = await drive({ elizaEnabled: true, vendor: { ...VENDOR, assistant_name: '  Roshni  ' } });
-  assert.ok(/You are Roshni, the assistant for Swati/.test(c.params.system), 'the per-vendor rename was ignored');
+  assert.ok(/Your name, if anyone asks, is Roshni\./.test(c.params.system), 'the per-vendor rename was ignored'); // ELZ-1 re-aim
   assert.ok(!/\bEliza\b/.test(c.params.system), 'the default leaked past a live rename');
 });
 
 await t('§3.3 an emptied field is not a rename to nothing', async () => {
   for (const v of ['', '   ', null]) {
     const c = await drive({ elizaEnabled: true, vendor: { ...VENDOR, assistant_name: v } });
-    assert.ok(new RegExp(`You are ${soul.ELIZA},`).test(c.params.system),
+    assert.ok(new RegExp(`Your name, if anyone asks, is ${soul.ELIZA}\\.`).test(c.params.system), // ELZ-1 re-aim
       `assistant_name=${JSON.stringify(v)} did not fall back to the default`);
   }
 });

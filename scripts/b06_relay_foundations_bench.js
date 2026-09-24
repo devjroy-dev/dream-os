@@ -289,12 +289,15 @@ H('§2 A2 — W-B · provenance survives the role map');
 const RELAY = (body, ts) => msg('outbound', body, 'vendor_relay', ts);
 const ELIZA = (body, ts) => msg('outbound', body, 'agent',        ts);
 
+// ── LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (F-44.157, the founder: a couple hears the STUDIO) ── §2.1 to §2.8 read "From Rohan
+// Mehta:", the person-first form; the rule is now studio first (src/agent/studioName.js), so the same fixture reads "From Rohan
+// Studios:". The property each cell guards (the relay row is distinguishable, survives merges, never persists) is unchanged.
 await t('§2.1 a relay row is DISTINGUISHABLE from Eliza\'s own prose', async () => {
   const relayed = await assembled([RELAY('The amount is Rs 60,000.', '2026-08-08T16:01:00Z')]);
   const own     = await assembled([ELIZA('The amount is Rs 60,000.', '2026-08-08T16:01:00Z')]);
   assert.notStrictEqual(relayed[0].content, own[0].content,
     'identical bodies produced identical context — sent_by did not survive');
-  assert.strictEqual(relayed[0].content, 'From Rohan Mehta: The amount is Rs 60,000.',
+  assert.strictEqual(relayed[0].content, 'From Rohan Studios: The amount is Rs 60,000.',
     'the attribution is not the founder-vetoed named form');
 });
 
@@ -305,7 +308,7 @@ await t('§2.2 the distinction SURVIVES the A1 merge', async () => {
   ]);
   const c = m.find((x) => x.role === 'assistant').content;
   assert.ok(/Rs 60,000/.test(c) && /Let me check/.test(c), 'merge lost a body');
-  assert.ok(c.includes('From Rohan Mehta: The amount is Rs 60,000.'),
+  assert.ok(c.includes('From Rohan Studios: The amount is Rs 60,000.'),
     'the relay body entered the merge unmarked, or not in the vetoed named form');
 });
 
@@ -317,7 +320,7 @@ await t('§2.3 the distinction survives a THREE-row merge', async () => {
   ]);
   const c = m.find((x) => x.role === 'assistant').content;
   for (const w of ['before', 'Rs 60,000', 'after']) assert.ok(c.includes(w), `${w} lost`);
-  assert.ok(c.includes('From Rohan Mehta: The amount is Rs 60,000.'),
+  assert.ok(c.includes('From Rohan Studios: The amount is Rs 60,000.'),
     'the middle relay body is unmarked inside the merge, or not in the vetoed named form');
 });
 
@@ -334,7 +337,7 @@ await t('§2.5 the :297-301 premise holds — the USER side carries zero assista
   ], SRC('src/agent/engine.js'), 'and the venue?');
   const userSide = m.filter((x) => x.role === 'user').map((x) => x.content).join(' ');
   assert.ok(!/Rs 60,000/.test(userSide), 'assistant bytes reached the user side');
-  assert.ok(!/^From |\bFrom Rohan Mehta:/.test(userSide), 'the marker reached the user side');
+  assert.ok(!/^From |\bFrom Rohan Studios:/.test(userSide), 'the marker reached the user side');
 });
 
 await t('§2.6 the :96 ternary is still the sole role source — a relay row is `assistant`', async () => {
@@ -361,10 +364,10 @@ await t('§2.8 the DURABLE row is byte-untouched — the marker is assembly-time
   const row = RELAY('The amount is Rs 60,000.', '2026-08-08T16:01:00Z');
   const before = row.body;
   const m = await assembled([row]);
-  assert.ok(/^From Rohan Mehta: /.test(m[0].content), 'the marker did not apply — fixture void');
+  assert.ok(/^From Rohan Studios: /.test(m[0].content), 'the marker did not apply — fixture void');
   assert.strictEqual(row.body, before,
     'the source row was mutated — the marker must never reach public.messages.body');
-  assert.ok(!/From Rohan Mehta:/.test(row.body), 'marker bytes persisted onto the row');
+  assert.ok(!/From Rohan Studios:/.test(row.body), 'marker bytes persisted onto the row');
 });
 
 await t('§2.9 FALLBACK — a nameless vendor renders the generic form, nothing invented', async () => {
