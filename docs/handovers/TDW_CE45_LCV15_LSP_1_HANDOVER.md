@@ -80,8 +80,23 @@ NO-CHANGE, WhatsApp only (the chair's weight): rows 1 to 18 sent once on the dep
 opened with "fresh" so no note carries across; the seat's script diffs the two exports turn by turn, masking only LEFTOVER's two random
 examples and B37's model-written {body}. The walk record is written into this file's §8 by script at the confirm.
 
-## 8 · THE WALK RECORD
-Owed at the walk.
+## 8 · THE WALK RECORD (written by the seat from his exports, 24 September 2026; docs-only under C-44.1)
+THE BEFORE HALF (on 89e3a6e's deploy, 23 September 20:56:02 to 21:03:51 UTC): his 25 messages, verbatim, exported as
+Supabase_Snippet_Untitled_query__28_.csv (sha256 30e8166d2b102049…); a second export after the walk (…__29_.csv, 80cde32e2610ec4a…). His messages
+were not the card's words; R-b ruled that the AFTER half replay HIS twenty-five (c-45.34: "thirty" was a miscount).
+THE WALKS' WRITES AND THEIR CLEANUPS: row 6 filed the lead "walk nc" (72f59b26…; the door's P7 phone_as_spoken, the card's B34 expectation the
+card's error); the MEMBER answer "No one" filed 694200ba… and put it on the 22 November 2027 shoot (e-96). Cleanup A (confirmed 8f25a9f4dda8…) removed
+"No one" and its crew slot (the crew read by name: Walk Seventeen Theta, Walk Seventeen Lambda); Cleanup B (299e6cc8920c…) soft-deleted "walk nc" after
+the AFTER half; Cleanup C (0039676a9b39…) soft-deleted "nobody crew" (239f643e…, filed by an off-card message at 07:42:45 UTC on 24 September; never
+on the crew). Each read before and after, as run.
+THE AFTER HALF (on e813d3f's deploy, 24 September 07:26 to 07:43 UTC): not sent as the card listed it (reworded, added and skipped messages).
+Export …__1_.csv (b9bfc2d1f14ea308…). The seat's reader first read BEFORE against BEFORE (e-103, closed: the AFTER run must begin after the BEFORE
+run ends); the engine SELECT first returned nothing (e-104, the join corrected; export …__2_.csv, 8d9dbf8093569276…).
+THE PAIR, CLOSED AS PARTIAL per R-d (ii): of the AFTER messages whose words equal a BEFORE message, 10 SAME; 2 EXPECTED ("Add a new lead walk nc
+phone 9876543210": B16 before, B19 after with the lead live; "Who are my new leads": the list now led by walk nc, the BEFORE half's own write);
+1 EAR VARIANCE ("Nobody walk booked with me": BEFORE heard {"acts":[{"act":"find","client_as_spoken":"Nobody walk"}],"route":"search"} → B34;
+AFTER heard {"acts":[],"route":"none"} twice → LEFTOVER); NO RED. The rest not comparable (words changed). A no-change gate that two deletion
+cuts otherwise prove by rung and differential.
 
 ## 9 · NEXT FREE
 F-44.140 · migration 0171 · bench b111 · errors e-96 · corrections c-45.22.

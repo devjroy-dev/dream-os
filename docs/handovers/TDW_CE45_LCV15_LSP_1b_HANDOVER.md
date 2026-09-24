@@ -56,8 +56,13 @@ On LSP_1b's deploy, on WhatsApp to DEV440's line: "Cancel Walk Seventeen Alpha's
 shoot on 22 November 2027? Reply YES or NO.") and "No" gives B3; "STOP" alone opts out with the confirmation; "START" resumes. His
 export of vendor_self shows all six rows, the STOP and START inbound rows carrying their message_sid.
 
-## 7 · THE WALK RECORD
-Owed at the walk.
+## 7 · THE WALK RECORD (written by the seat from his exports, 24 September 2026; docs-only under C-44.1)
+On e813d3f's deploy, his eight-row export (Supabase_Snippet_Untitled_query.csv, sha256 162dd181f8010b37…), 07:17 UTC: "Cancel walk seventeen alphas
+shoot" (sid present) → the door's did-you-mean, NOT an opt-out (F-44.141's swallowed sentence reaches the door; his typo drew the did-you-mean);
+"No" → B3; "Stop" (message_sid present) → the opt-out confirmation (twilio_sid present); "Start" (message_sid present) → the resume line
+(twilio_sid present): both opt-out turns ON THE RECORD with their ids. B50 witnessed at 07:26:25 UTC in the AFTER half's export (…__1_.csv,
+b9bfc2d1f14ea308…): "Cancel walk seventeen alpha shoot" → "Cancel Walk Seventeen Alpha's shoot on 22 November 2027? Reply YES or NO." → "No" → B3;
+no opt-out anywhere. F-44.141 cured and witnessed live.
 
 ## 8 · NEXT FREE
 As the chair holds them.

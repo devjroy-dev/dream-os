@@ -51,6 +51,21 @@ FLOOR: "FLOOR = NAMED BASE, no delta (refusals, not in base: 3)", 21 exact, decl
 ## 6 · THE WALK AND ITS RECORD
 The card: a real three-event calendar screenshot, B84, "skip 2", the SELECT after; "Cancel walk seventeen alpha's shoot" to B50 then No;
 "Add nobody crew to talk seventeen alpha shoot" to B35 then "Walk Seventeen Alpha" to B56 and B58. Cleanup D by id afterwards.
-The record: owed at the walk.
+THE RECORD (written by the seat, 24 September 2026; docs-only under C-44.1). On a7e90bf's deploy, 11:39 to 11:42 UTC. His read after
+(Supabase_Snippet_Untitled_query__5_.csv, sha256 f86bae8b3193f2ad…), the Railway log (logs_1790250347160.csv, 58 lines, 8eee79efec7685fa…) and the
+engine rows for the crew exchange (…__6_.csv, 438dcd9513fef805…).
+THE SAVE, LIVE: he sent his real calendar, not three test events: proposal eb86e3a1-f2b0-4c75-8727-98333b437a32 staged with 7; "skip 2" answered by
+the door's grammar; "[door:wa] spoke alone (B46,B46,B46,B46,B46,B47)": five rows written, the sixth a clash spoken verbatim (B47); the proposal
+resolved save_selected. F-44.147: "Cancel walk seventeen alpha's shoot" → B50, then B3.
+F-44.148: the crew sentence ran the DID-YOU-MEAN path, not B35. At 11:41:07 the ear heard {"act":"assign_crew","client_as_spoken":"talk seventeen
+alpha","member_as_spoken":"nobody"}: it kept his "talk" (ear variance against 07:42:43's correction), so the client was in his words, the floor
+never fired, and nearestName offered Walk Seventeen Alpha (B36, the door's right answer). B35 was not exercised; b112 §5 is its proof. His
+"Walk seventeen alpha" (heard as no act) drew B36 again (F-44.149, minted: a did-you-mean answered with the offered name itself is taken as yes);
+"Yes" → B56 then B58 ("Assigned: nobody · Walk Seventeen Alpha · shoot · 22 November 2027."). "nobody" is the ear's split of "nobody crew".
+NO CLEANUP (R-45.22, the founder: "the estate can use them for test"). TEST ROWS ON DEV440, for later walks: events fb9566b6-7b43-487c-ace6-ed5c882ccbac
+(Yamini's Haldi, 2026-11-20), 8d6aa30a-0924-44d8-8215-498878c5544c (Bhoomika Arora (Bride + 2 guests booking), 2026-11-20),
+a5559d06-a39e-49a1-ae51-6fffb5caedaf (yamini's wedding, 2026-11-21), 86613a10-8f16-41be-98ec-2f0f347b23eb (yamini's vidai, 2026-11-21),
+f68b2a3f-2924-4a10-a2d2-3416438e4132 (Amritsar bride 22-24 nov (Day 1/3), 2026-11-22), all shoots; the member "nobody"
+619b4104-ff1c-48d2-afdf-2b909eabe630, on the 22 November 2027 shoot beside Walk Seventeen Theta and Walk Seventeen Lambda.
 ---
 A PROSE INSTRUCTION IS NOT A MECHANISM.
