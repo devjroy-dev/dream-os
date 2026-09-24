@@ -489,14 +489,21 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           const noteBit = p.notes ? ` — ${p.notes}` : '';
           return `${i + 1}. ${p.event_date}${timeBit} · ${p.kind} · ${p.title}${noteBit}`;
         });
+        // LSP_2 (CE-45 LCV-15) · R-45.16: the preview closes on his B84 (hash-carried, doorLines.js), and the door answers it (the IMG note below)
         const previewMsg =
           `I found ${proposals.length} event${proposals.length === 1 ? '' : 's'} in this image:\n\n` +
-          lines.join('\n');
-        // F-44.109, Q2 (the founder, 22 September 2026; CE-45 LCV-12, P7 cut 2a): the line that asked her to reply "save all" is DROPPED: no hand reads
-        // that reply since the door took every turn (F-44.126; the packet after P7 teaches the door "save all" and "skip N", R-45.8). The preview ends
-        // after its list; a sentence no mechanism answers is not spoken.
+          lines.join('\n') + '\n\n' + require('./vendor/doorLines').LINES.B84;
+        // F-44.109, Q2 dropped Victor's asking line (no hand read the reply). R-45.16 (LSP_2) gives the door that hand: the preview asks in his words (B84)
+        // and the door's IMG note, written just below, answers "save all" / "skip N" by its own grammar (workingDoor.answerProposals).
 
         const sent = await sendWhatsApp(phone, previewMsg);
+
+        // R-45.16: the door's note for her answer, on the engine thread the door reads. Never throws; no usage row. If the agent cannot be resolved the
+        // preview still stands and her reply is handled fresh (declared).
+        try {
+          const { agentId: imgAgent } = await resolveAgentForVendor(supabase, vendor, user && user.auth_user_id);
+          await require('./vendor/workingDoor').noteProposals({ supabase, agentId: imgAgent, message: caption ? `[image] ${caption}` : '[image]', reply: previewMsg, proposalId: proposalRow && proposalRow.id, count: proposals.length, lane: 'whatsapp' });
+        } catch (e) { console.warn('[webhook:vendor-image] the save note was not written (her reply is handled fresh):', e && e.message); }
 
         // Log the OUTBOUND half to vendor_self for audit + agent history. The INBOUND
         // half is the F-05.55 guard row above — written before the spend, not after it,

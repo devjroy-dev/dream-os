@@ -1,0 +1,20 @@
+# CE-45 LCV-15 · LSP_2 · R-45.16 (the screenshot save, B84 and B85, his), F-44.147 (the possessive fold), F-44.148 (the lost client) · base e813d3f
+scripts/b102_lcv11_fix1_bench.js
+scripts/b103_lcv12_rehear_bench.js
+scripts/b104_lcv12_calendar_bench.js
+scripts/b105_lcv13_move_cancel_bench.js
+scripts/b106_lcv14_team_reminder_bench.js
+scripts/b107_lcv14_kind_client_bench.js
+scripts/b108_lcv14_lookups_bench.js
+scripts/b109_lcv14_lookups_fix_bench.js
+scripts/b90_lcv_p5_bench.js
+scripts/b95_lcv10_note_bench.js
+scripts/b97_lcv10_name_bench.js
+scripts/b98_lcv10_package_bench.js
+scripts/b99_lcv10_didyoumean_bench.js
+src/lib/vendor/doorLines.js
+src/lib/vendor/workingDoor.js
+src/lib/vendorInbound.js
+scripts/b112_lcv15_lsp2_bench.js
+scripts/floor-manifest-lcv15-lsp2.txt
+docs/handovers/TDW_CE45_LCV15_LSP_2_HANDOVER.md

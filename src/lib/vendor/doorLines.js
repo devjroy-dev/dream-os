@@ -205,6 +205,10 @@ const LINES = Object.freeze({
   B82: "Nothing is owed to you right now.",
   // exactly one new lead with no name (B81's singular, its own key)
   B83: "1 new enquiry has no name yet. Add its name in the app.",
+  // LSP_2 (CE-45 LCV-15) · R-45.16, THE SCREENSHOT SAVE · both his (24 September 2026, "ok"): B84 closes the preview of a calendar screenshot
+  // (the dropped line was Victor's); B85 answers a "skip" that leaves nothing to save (resolution 'cancel')
+  B84: "Reply \"save all\" to add them, or \"skip 2\" to leave one out.",
+  B85: "Nothing was saved.",
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
   B75: "Couldn't put that on the calendar — nothing was changed.",
   // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
@@ -314,6 +318,8 @@ const LINE_HASHES = Object.freeze({
   B81: 'f32090f8bc1ba08c6b14f85182ef9bc3a639c9b50cd790e65313181d0f85d5cd',
   B82: '70d5189141b9cbd8092834919995f3cb16edadff17d2023989d26cf6ef49435b',
   B83: 'ec1816251b9cfde6078edb4da2fa4b4499c9b7d68ec38ae17d6e09b17c7497e0',
+  B84: '6f413c3f0f6dcf9e7383d3efeadf7b319d719c914b1f8fa2a4faaca0c9f3906d',
+  B85: '2a100bbec87f53280ef40a2cb39dab5a0b74543df6e2bb10fd810795283f1868',
   B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
   B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74',
   B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',

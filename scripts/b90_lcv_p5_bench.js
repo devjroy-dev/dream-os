@@ -275,6 +275,9 @@ async function main() {
     B81: "{n} new enquiries have no name yet. Add their names in the app.",
     B82: "Nothing is owed to you right now.",
     B83: "1 new enquiry has no name yet. Add its name in the app.",
+    // RE-PINNED (CE-45 LCV-15, LSP_2, labelled): B84 and B85, his (R-45.16, the screenshot save); b112 holds them
+    B84: 'Reply "save all" to add them, or "skip 2" to leave one out.',
+    B85: "Nothing was saved.",
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -342,6 +345,8 @@ async function main() {
     B81: 'f32090f8bc1ba08c6b14f85182ef9bc3a639c9b50cd790e65313181d0f85d5cd',
     B82: '70d5189141b9cbd8092834919995f3cb16edadff17d2023989d26cf6ef49435b',
     B83: 'ec1816251b9cfde6078edb4da2fa4b4499c9b7d68ec38ae17d6e09b17c7497e0',
+    B84: '6f413c3f0f6dcf9e7383d3efeadf7b319d719c914b1f8fa2a4faaca0c9f3906d',
+    B85: '2a100bbec87f53280ef40a2cb39dab5a0b74543df6e2bb10fd810795283f1868',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };

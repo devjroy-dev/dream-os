@@ -150,14 +150,34 @@ const HANDS = Object.freeze({
 // `say` is what an exit KNOWS beyond its reason (the name that is no lead, the name that is no client, the money act);
 // the chain never reads it; standIn() does.
 const CHAIN = (ear, why, say) => ({ door: false, ear: ear || null, why, ...(say ? { say } : {}) });
-const key = (s) => String(s == null ? '' : s).trim().toLowerCase();
+// CE-45 LCV-15 LSP_2 · F-44.147: key() folds a word-final POSSESSIVE ("alpha's", "alpha’s" → "alpha"; "sisters'" → "sisters") as well as case and edge
+// space, so a heard "walk seventeen alpha's" and a stored "Walk Seventeen Alpha" key alike, on both sides of every comparison key() serves (F-44.118's
+// floor included). A name that merely ends in s ("Alphas") is untouched. One home: every door comparison of a heard name to a stored one runs through here.
+const possessiveFold = (s) => String(s).replace(/(\S)['’]s(?=\s|$|[.,!?;:])/gu, '$1').replace(/s['’](?=\s|$|[.,!?;:])/gu, 's');
+const key = (s) => possessiveFold(String(s == null ? '' : s).trim().toLowerCase());
 const digits = (n) => { const r = rupees(n); return r ? r.replace(/^Rs /, '') : null; };
+
+// CE-45 LCV-15 LSP_2 · F-44.147 at the ONE home: resolveLead (lifecycleHands.js, untouched by law) matches lower(trim(name)) exactly. The door's view of it
+// tries the name AS HEARD FIRST (a stored "Alpha's Studio" still matches itself exactly), and ONLY on not_found, when the possessive fold changes the name,
+// asks once more with the folded name. Every door call reaches the one home through L, so all nine agree; nothing else in the hands changes.
+function withPossessiveFallback(lifecycle) {
+  if (!lifecycle || typeof lifecycle.resolveLead !== 'function' || lifecycle.__possessiveFallback) return lifecycle;
+  const resolveLead = async (supabase, vendorId, name, bookedOnly) => {
+    const first = await lifecycle.resolveLead(supabase, vendorId, name, bookedOnly);
+    if (!first || first.ok || first.reason !== 'not_found') return first;
+    const raw = String(name == null ? '' : name).trim();
+    const folded = possessiveFold(raw);
+    if (!folded || folded === raw) return first;
+    return lifecycle.resolveLead(supabase, vendorId, folded, bookedOnly);
+  };
+  return Object.assign(Object.create(lifecycle), { resolveLead, __possessiveFallback: true });
+}
 
 function lazy(deps) {
   return {
     createLead: deps.createLead || ((...a) => require('./leads').createLead(...a)),
     attachPackage: deps.attachPackage || ((...a) => require('../../api/vendor/leadPackages').attachPackage(...a)),
-    lifecycle: deps.lifecycle || require('./lifecycleHands'),
+    lifecycle: withPossessiveFallback(deps.lifecycle || require('./lifecycleHands')),
     listener: deps.listener || require('./listenerDoor'),
     generateInvoiceForBinder: deps.generateInvoiceForBinder || ((...a) => require('../../api/vendor/invoices').generateInvoiceForBinder(...a)),
     // P7 cut 2a: the calendar's hands AS THEY STAND, each a seam for the bench (production passes nothing)
@@ -381,8 +401,14 @@ const SHOOT_ASKS = Object.freeze(['B53']);
 // named no member; her WHOLE TRIMMED MESSAGE is the member (as B35's answer is the client), and it fills member_as_spoken and NEVER client_as_spoken.
 // Another kind of act heard lapses the note (F-44.115); a closed YES re-asks once, then B3. The rest of the message's acts ride behind it.
 const MEMBER_ASKS = Object.freeze(['B62']);
-const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS, ...CAL_ASKS, ...SHOOT_ASKS, ...MEMBER_ASKS]);
-const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && NEEDS_CLIENT.includes(a.act) && !spokenText(a.client_as_spoken)); // P7 cut 2a: NEEDS_CLIENT decides
+// LSP_2 · R-45.16: 'IMG' is the note a calendar screenshot's preview leaves (proposal_id, count); her whole message answers it, read by the door's own grammar.
+const IMG_ASKS = Object.freeze(['IMG']);
+const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS, ...CAL_ASKS, ...SHOOT_ASKS, ...MEMBER_ASKS, ...IMG_ASKS]);
+// CE-45 LCV-15 LSP_2 · F-44.148: UNSAID marks an act whose HEARD client F-44.118's floor stripped (a name not in her words). It is a Symbol, so the ear can
+// never send it and JSON never carries it; the floor is its one writer. An act so marked needs its client back even when its kind does not (assign_crew:
+// a member with no client is a team add, so without the mark the stripped act silently became a different, smaller act, B56 alone, 24 September 07:42).
+const UNSAID = Symbol('F-44.148: heard client stripped by F-44.118');
+const namelessOf = (acts) => (Array.isArray(acts) ? acts : []).filter((a) => a && typeof a === 'object' && a.act !== 'lead' && (NEEDS_CLIENT.includes(a.act) || a[UNSAID] === true) && !spokenText(a.client_as_spoken)); // P7 cut 2a: NEEDS_CLIENT decides
 const namelessLead = (acts) => (Array.isArray(acts) ? acts : []).some((a) => a && typeof a === 'object' && a.act === 'lead' && !spokenText(a.client_as_spoken));
 const allKindsCovered = (acts) => Array.isArray(acts) && acts.length > 0 && acts.length <= 4 && acts.every((a) => a && typeof a === 'object' && COVERED.includes(a.act));
 const NOTE_SLOTS = Object.freeze(['act', 'client_as_spoken', 'package_as_spoken', 'date_as_spoken', 'milestone', 'phone_as_spoken', 'member_as_spoken', 'reason_as_spoken', 'kind_as_spoken']); // P7 cut 2a: the three measured slots ride a note
@@ -406,11 +432,17 @@ const holdsRelay = (acts) => Array.isArray(acts) && acts.some((a) => a && a.act 
 // same message that did not run because of it. Every act must pass the covered check as any heard request must.
 function validNote(n) {
   try {
+    // R-45.16: an IMG note holds no acts; it is valid only with a proposal id and a count from 1 to 20
+    if (n && typeof n === 'object' && n.asked === 'IMG') {
+      if (typeof n.proposal_id !== 'string' || !n.proposal_id.trim() || !Number.isInteger(n.count) || n.count < 1 || n.count > 20) return null;
+      return { asked: 'IMG', acts: [], tries: 0, proposal_id: n.proposal_id.trim(), count: n.count };
+    }
     if (!n || typeof n !== 'object' || !ASKS.includes(n.asked) || !Array.isArray(n.acts) || !n.acts.length || n.acts.length > 4) return null;
     const acts = n.acts.map(noteAct);
     if (acts.some((a) => !a)) return null;
     // a NAME note is a covered request with the one thing missing that was asked for; a DATE note passes the covered check as any request must
-    if (NAME_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || !(n.asked === 'B18' ? namelessLead(acts) : namelessOf(acts).length)) return null; }
+    // F-44.148: a B35 note may also stand for an assignment whose heard client the floor stripped (n.unsaid, set only by askName from UNSAID)
+    if (NAME_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || !(n.asked === 'B18' ? namelessLead(acts) : (namelessOf(acts).length || (n.unsaid === true && acts.some((a) => a.act === 'assign_crew' && !spokenText(a.client_as_spoken)))))) return null; }
     else if (PKG_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'attach_package' || !spokenText(acts[0].client_as_spoken)) return null; }
     else if (OFFER_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || typeof n.candidate_id !== 'string' || !n.candidate_id || namelessOf(acts).length || namelessLead(acts)) return null; }
     else if (MEMBER_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'assign_crew' || spokenText(acts[0].member_as_spoken)) return null; }
@@ -426,7 +458,7 @@ function validNote(n) {
     }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
+    return { asked: n.asked, acts, tries, ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
   } catch (_e) { return null; }
 }
 
@@ -1396,6 +1428,73 @@ function doorAnswer(st, why) {
   return { door: true, reply, keys: st.keys, toolCalls: st.toolCalls, toolNames: st.toolCalls.map((t) => t.name), refresh: st.refresh, documents: st.documents, skipHarvest: st.skipHarvest, ear: st.ear, ...(st.note ? { note: st.note } : {}), ...(st.answered ? { answered: st.answered } : {}), ...(why ? { why } : {}) };
 }
 
+// ── LSP_2 · R-45.16 · THE SCREENSHOT SAVE ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Her whole trimmed message, case-folded, a trailing full stop or exclamation dropped: "save all" | "save" | "save them all" keeps every row;
+// "skip N", "skip N and M", "skip N, M and K" (1 ≤ N ≤ count, no repeats) keeps the rest, and skipping every row keeps none (B85). Anything else: null.
+function proposalChoice(message, count) {
+  const t = String(message == null ? '' : message).trim().toLowerCase().replace(/[.!]+$/, '').replace(/\s+/g, ' ');
+  if (!Number.isInteger(count) || count < 1) return null;
+  if (t === 'save all' || t === 'save' || t === 'save them all') return { keep: Array.from({ length: count }, (_, i) => i) };
+  const m = t.match(/^skip (\d{1,2}(?:(?:, ?| and | ?& ?)\d{1,2})*)$/);
+  if (!m) return null;
+  const nums = m[1].split(/, ?| and | ?& ?/).map((x) => parseInt(x, 10));
+  if (nums.some((n) => !Number.isInteger(n) || n < 1 || n > count) || new Set(nums).size !== nums.length) return null;
+  const skip = new Set(nums.map((n) => n - 1));
+  return { keep: Array.from({ length: count }, (_, i) => i).filter((i) => !skip.has(i)) };
+}
+const PROPOSAL_TTL_MS = 24 * 60 * 60 * 1000;
+// The save. Re-reads the proposals row (hers, unresolved, under 24 hours old by the store's own created_at; else the note LAPSES, null), writes each kept row
+// through writeEvent AS IT STANDS (the way fileBook calls it), speaks one line per row (bookedLine B46 on ok, the writer's conflict sentence verbatim B47,
+// B75 otherwise; never force), then ONE resolution update ('save_all' when every row was kept, 'save_selected' when some, 'cancel' when none, with B85).
+// Money is never touched. TOTAL: a throw after a write is the glitch line, the turn the door's (e-20).
+async function answerProposals({ supabase, vendor, lane, message, note, nowMs, L }) {
+  const choice = proposalChoice(message, note.count);
+  if (!choice) return null;
+  let row = null;
+  try {
+    const { data } = await supabase.from('pending_event_proposals').select('id, vendor_id, proposals, created_at, resolved_at').eq('id', note.proposal_id).maybeSingle();
+    row = data || null;
+  } catch (_e) { row = null; }
+  const born = row ? Date.parse(String(row.created_at).replace(' ', 'T').replace(/\+00(:00)?$/, 'Z')) : NaN;
+  if (!row || row.vendor_id !== vendor.id || row.resolved_at || !Array.isArray(row.proposals) || row.proposals.length !== note.count
+      || !Number.isFinite(born) || nowMs - born > PROPOSAL_TTL_MS || nowMs < born - 60000) return null;
+  const base = { door: true, toolNames: [], documents: [], skipHarvest: true, ear: null, answered: 'IMG' };
+  const lines = []; const keys = []; let wrote = false;
+  try {
+    for (const i of choice.keep) {
+      const p = row.proposals[i] || {};
+      const r = await L.writeEvent(supabase, { vendorId: vendor.id, surface: lane === 'pwa' ? 'pwa' : 'whatsapp', source: 'victor',
+        title: spotless(p.title), event_date: spotless(p.event_date), event_time: spotless(p.event_time), kind: spotless(p.kind), notes: spotless(p.notes) });
+      if (r && r.ok === true && r.event) { wrote = true; const l = bookedLine(r.event); lines.push(l || DL.LINES.B75); keys.push(l ? 'B46' : 'B75'); continue; }
+      if (r && r.conflict && typeof r.conflict.message === 'string' && r.conflict.message.trim()) { lines.push(r.conflict.message.trim()); keys.push('B47'); continue; }
+      lines.push(DL.LINES.B75); keys.push('B75');
+    }
+    const resolution = choice.keep.length === 0 ? 'cancel' : choice.keep.length === note.count ? 'save_all' : 'save_selected';
+    await supabase.from('pending_event_proposals').update({ resolved_at: new Date(nowMs).toISOString(), resolution }).eq('id', row.id).is('resolved_at', null);
+    if (!choice.keep.length) { lines.push(DL.LINES.B85); keys.push('B85'); }
+    return { ...base, reply: lines.join('\n'), keys, toolCalls: [{ name: 'save_proposals', input: { proposal_id: row.id, kept: choice.keep.map((i) => i + 1) }, result: resolution }], refresh: wrote, why: 'img_answered' };
+  } catch (_e) {
+    return { ...base, reply: glitchLine() || DL.LINES.B75, keys: ['GLITCH'], toolCalls: [], refresh: wrote, why: 'img_glitch' };
+  }
+}
+// The preview's note, on the engine thread the door reads (lastDoorNote), written by the vendor-image stager: her image as the user row, the preview (with
+// B84) as the assistant row carrying meta.listener { lane, door: true, note: IMG }. NO usage row: an image turn counted nothing before and must not start.
+// Read-only up to its two inserts; never throws.
+async function noteProposals(args, depsIn) {
+  try {
+    const { supabase, agentId, message, reply, proposalId, count, lane } = (args && typeof args === 'object') ? args : {};
+    const deps = (depsIn && typeof depsIn === 'object') ? depsIn : {};
+    const note = { asked: 'IMG', acts: [], proposal_id: proposalId, count };
+    if (!validNote(note) || typeof agentId !== 'string' || !agentId) return { written: false };
+    const memory = deps.memory || require('../../engine/dist/core/memory');
+    const { conversationId } = await memory.getOrCreateConversation(agentId);
+    await memory.saveMessage(conversationId, 'user', String(message || '[image]'));
+    const id = await memory.saveMessage(conversationId, 'assistant', String(reply), undefined, { listener: { lane: lane || 'whatsapp', door: true, note } });
+    if (id) { try { await supabase.schema('engine').from('messages').update({ room: 'business' }).eq('id', id); } catch (_e) { /* the room is a label */ } }
+    return { written: true };
+  } catch (e) { try { console.warn('[door:noteProposals]', e && e.message); } catch (_e) { /* */ } return { written: false }; }
+}
+
 async function preTurn(args, depsIn) {
   const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null, note: null, answered: null, dateAsks: [], pkgAsks: [], relayNote: null, said: null };
   try {
@@ -1431,7 +1530,14 @@ async function preTurn(args, depsIn) {
     if (live && said === null) await pma.markExpired(supabase, live); // a stamp, not an act: the row is not live either way
     // F-44.112: THE DOOR'S OWN NOTE, read AFTER the live-row handling (a yes or a no belongs to the money question first) and
     // ABOVE the bare yes-or-no exit, so her "No" to a date question meets the note and reads B3, never LEFTOVER.
-    const note = await lastDoorNote(supabase, agentId);
+    const noteRead = await lastDoorNote(supabase, agentId);
+    // R-45.16: a calendar screenshot's IMG note is answered by the door's OWN grammar on her whole message, before the ear; anything else LAPSES it
+    // (her message is then handled fresh, as a different act lapses a date note) and it is no note for the rest of this turn.
+    if (noteRead && noteRead.asked === 'IMG') {
+      const img = await answerProposals({ supabase, vendor, lane, message, note: noteRead, nowMs, L });
+      if (img) return img;
+    }
+    const note = noteRead && noteRead.asked === 'IMG' ? null : noteRead;
     // P6b: the frame's own answers. A NO refuses the stored row and reads the seat's declined byte (fork (i), the seat's own
     // receipt names her); a YES sends the row by its id through the seat's one approved leg. Both are the door's writes.
     const draftName = async (phone) => { try { return await L.coupleDisplayName(supabase, vendor.id, phone); } catch (_e) { return null; } };
@@ -1519,7 +1625,7 @@ async function preTurn(args, depsIn) {
     // date and the plans answer as they answer any unreadable date.
     let fromNote = null;
     // A NAME NOTE (B18 or B35): decided before the date-note branch below.
-    const askAgain = (line, key, tries) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries, ...(note.said ? { said: note.said } : {}) }, answered: key, why: 'note_reasked' });
+    const askAgain = (line, key, tries) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries, ...(note.said ? { said: note.said } : {}), ...(note.unsaid === true ? { unsaid: true } : {}) }, answered: key, why: 'note_reasked' });
     if (note && NAME_ASKS.includes(note.asked)) {
       const name = message.trim();
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
@@ -1682,7 +1788,8 @@ async function preTurn(args, depsIn) {
       // F-44.96: the phone guard that stood here LEFT with P6b's first cut; the ear hears the phone and the door files it.
       const k = namelessLead(rq.acts) ? 'B18' : 'B35';
       const original = holdsRelay(rq.acts) ? saidOf(st.said || message) : null; // F-44.123: her ORIGINAL message rides the name note
-      return { door: true, reply: DL.LINES[k], keys: [k], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: k, acts: rq.acts.map((a) => ({ ...a })), tries, ...(original ? { said: original } : {}) }, ...(st.answered ? { answered: st.answered } : {}), why: 'name_asked' };
+      const unsaid = rq.acts.some((a) => a && a[UNSAID] === true); // F-44.148: the note remembers why an optional-client act was asked for its name
+      return { door: true, reply: DL.LINES[k], keys: [k], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: k, acts: rq.acts.map((a) => ({ ...a })), tries, ...(original ? { said: original } : {}), ...(unsaid ? { unsaid: true } : {}) }, ...(st.answered ? { answered: st.answered } : {}), why: 'name_asked' };
     };
     // R-44.40: the offer. ONE candidate from her rows within the pinned distance, or nothing. A QUESTION with a note; nothing runs.
     const offerFor = async (act, slot, said, rows) => {
@@ -1713,7 +1820,7 @@ async function preTurn(args, depsIn) {
     // rungs' placeholder drivers (a one-word 'x' with any heard client) are untouched; a one-word message cannot carry a job and a name.
     const saidKey = key(message);
     if (saidKey.split(/\s+/).filter(Boolean).length >= 2) {
-      heard = { ...heard, acts: heard.acts.map((a) => (a && typeof a === 'object' && spokenText(a.client_as_spoken) && !saidKey.includes(key(a.client_as_spoken)) ? (({ client_as_spoken: _c, ...rest }) => rest)(a) : a)) };
+      heard = { ...heard, acts: heard.acts.map((a) => (a && typeof a === 'object' && spokenText(a.client_as_spoken) && !saidKey.includes(key(a.client_as_spoken)) ? (({ client_as_spoken: _c, ...rest }) => ({ ...rest, [UNSAID]: true }))(a) : a)) }; // F-44.148: the stripped act is MARKED
     }
     { const ask = askName(heard, 0); if (ask) return ask; }
     if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');
@@ -2121,4 +2228,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
