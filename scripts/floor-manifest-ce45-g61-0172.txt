@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce45-g61-0172.txt
+# CE-45 · G6-1 · 0172 (F-44.168; A-45.8). F-19.16: a dirty path outside this list is a STOP.
+# BASE: 2f49ac0 (given under R-45.14: ELZ-1's cut 2a on eb3fe0a). Built at 1512f42; floored at e07f7fa; carried to eb3fe0a and then 2f49ac0, byte for byte. No new directory.
+db/migrations/0172_own_number_grants.sql
+docs/db/PUBLIC_SCHEMA.md
+scripts/b128_g61_migration_grants_bench.js
+scripts/floor-manifest-ce45-g61-0172.txt
+docs/handovers/TDW_CE45_G61_0172_HANDOVER.md
