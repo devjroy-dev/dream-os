@@ -220,6 +220,18 @@ async function mutated(rel, from, to, fn) {
   T('6.1 no em dash in any composed prompt (her register is learned from it)', every.every((s) => !s.includes('\u2014')));
   T('6.2 no line tells her to call herself an assistant ("I\'m ...\'s assistant" is gone)', every.every((s) => !/I'm [^"\n]{0,40}'s assistant/.test(s) && !/the assistant for/.test(s)));
   T('6.4 the couple turn\'s own fallback sentence (sent when the model never replies) carries no em dash (found by b117m --dry)', !/'Thanks \u2014 we/.test(read('src/agent/engine.js')) && (read('src/agent/engine.js').match(/'Thanks, we\\'ll be in touch soon!'/g) || []).length === 2);
+  // cut 1b (b117m --show-misses, 25 Sept: every r5 miss was the date answer followed by her last question again; every r6 miss a dash)
+  const inConv = (last) => build()({ vendor: DEV440, vendorUser: DEVUSER, isReturningBride: false, useEliza: true, conversation: { inConversation: true, priorCount: 3, lastAsked: last } });
+  const q = "Hi Sarah! I'm Dev Roy's assistant \u2014 is your event spread across functions like mehendi?";
+  T('6.5 1b: the quoted last question reaches her with its dash set as a comma (the quote no longer teaches the dash)', inConv(q).includes("Your last message to them was: \"Hi Sarah! I'm Dev Roy's assistant, is your event spread across functions like mehendi?\"") && !/[\u2013\u2014]/.test(inConv(q)));
+  T('6.6 1b: in conversation a date answer stands on its own; a first contact keeps answer-then-first-question', inConv(q).includes('the date answer stands on its own') && !build()({ vendor: DEV440, vendorUser: DEVUSER, conversation: { inConversation: false } }).includes('the date answer stands on its own'));
+  T('6.7 1b: her last question is not asked again in any wording, answered or not; and no dash of either kind', inConv(q).includes('Do not ask that question again, in any wording, even if they never answered it') && inConv(q).includes('No dashes of any kind, neither the long dash nor the short one'));
+  // cut 1b r2 (b117m 25 Sept, DeepSeek: 49/380, every miss the shape question re-asked after a date answer, led by her own list)
+  const f18 = facts.factsFromRows(upTo(ALL, '2026-09-24 18:17:37.16968+00').reverse(), 'Hi, are you available on 5 march 2028 for our wedding in delhi?');
+  T('6.8 r2: her own 14:40 and 15:00 rows show the shape question asked; the fact carries the day', f18.shapeAsked === true && f18.shapeAskedOn === '24 September 2026');
+  const wseg = (conv) => { const t = build()({ vendor: DEV440, vendorUser: DEVUSER, useEliza: true, conversation: conv }); return t.slice(t.indexOf('IF IT IS A WEDDING:'), t.indexOf('IF IT IS ANYTHING ELSE')); };
+  T('6.9 r2: with it asked, the shape question is LEFT OUT of her wedding list and she is told it was asked; the rest of the list stays', !/spread across functions like mehendi/.test(wseg(f18)) && wseg(f18).includes('ALREADY ASKED on 24 September 2026') && wseg(f18).includes('photos, video, or both'));
+  T('6.10 r2: not asked (a new client, or a statement that only names functions): the list is whole', /spread across functions like mehendi/.test(wseg({ inConversation: false })) && facts.factsFromRows([row('2026-09-24 15:00:34+00', 'outbound', 'agent', 'Noted, the studio covers all functions.')], 'x').shapeAsked === false);
   T('6.3 the soul carries no em dash and no calendar-access claim', !require(P('src/agent/souls/elizaSoul.js')).ELIZA_SOUL.includes('\u2014') && !/cannot see their calendar/.test(require(P('src/agent/souls/elizaSoul.js')).ELIZA_SOUL));
 
   sec('7 the money functions byte-identical to b115\'s pins');
@@ -252,6 +264,10 @@ async function mutated(rel, from, to, fn) {
   T('8.5 M5 the first-token matcher restored in the bride lane reddens 5.1', m5 === false);
   const m6 = await mutated('src/lib/vendor/coupleDateState.js', "if (row.status !== 'active' || row.discover_paused === true || row.date_check_enabled !== true) return { date: iso, state: 'check_off' };", "if (row.status !== 'active' || row.discover_paused === true) return { date: iso, state: 'check_off' };", async () => (await run({ ...ON, date_check_enabled: false }, verdictRow({ blocked: false, slots: [] }))).r.state);
   T('8.6 M6 the vendor\'s switch ignored reddens 3.3 (a date told free with the check off)', m6 === 'free');
+  const m7 = await mutated('src/agent/coupleSystemPrompt.js', ".replace(/\\s*[\\u2013\\u2014]\\s*/g, ', ')", "", async () => /[\u2013\u2014]/.test(build()({ vendor: DEV440, vendorUser: DEVUSER, useEliza: true, conversation: { inConversation: true, priorCount: 1, lastAsked: 'a \u2014 b' } })));
+  T('8.8 M7 (1b) the dash left in the quoted last question reddens 6.5', m7 === true);
+  const m8 = await mutated('src/agent/coupleThreadFacts.js', 'shapeAsked: !!shapeRow,', 'shapeAsked: false,', async () => /spread across functions like mehendi/.test((() => { const t = build()({ vendor: DEV440, vendorUser: DEVUSER, useEliza: true, conversation: fresh('src/agent/coupleThreadFacts.js').factsFromRows(upTo(ALL, '2026-09-24 18:17:37.16968+00').reverse(), 'Hi, are you available on 5 march 2028 for our wedding in delhi?') }); return t.slice(t.indexOf('IF IT IS A WEDDING:'), t.indexOf('IF IT IS ANYTHING ELSE')); })()));
+  T('8.9 M8 (r2) her own asked question ignored reddens 6.9: the shape question is back on her list', m8 === true);
   T('8.7 every mutated file is restored byte for byte', !read('src/agent/coupleThreadFacts.js').includes('inConversation: false,') && read('src/lib/brideInbound.js').includes('matchOptOutExact(trimmedBody)'));
 
   console.log(`\nb117a_elz1_couple_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);

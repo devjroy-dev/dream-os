@@ -1,0 +1,9 @@
+# CE-45 ELZ-1 · cut 1b r2 · r5 and r6 cured (R-45.26(3)); r2: the already-asked shape question left out of her list; b117m stratified as approved; cut 1 walk record · base 1512f42
+# floor-base unchanged: the differential on 1512f42 read identical results both sides.
+docs/handovers/TDW_CE45_ELZ1_1_HANDOVER.md
+docs/handovers/TDW_CE45_ELZ1_1b_HANDOVER.md
+scripts/b117a_elz1_couple_bench.js
+scripts/b117m_elz1_couple_measure.js
+scripts/floor-manifest-ce45-elz1-1b.txt
+src/agent/coupleSystemPrompt.js
+src/agent/coupleThreadFacts.js

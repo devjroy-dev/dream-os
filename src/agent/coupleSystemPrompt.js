@@ -110,7 +110,9 @@ function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadNam
   const inConversation = c.inConversation === true;
   const priorCount = Number.isInteger(c.priorCount) && c.priorCount > 0 ? c.priorCount : 0;
   const since = typeof c.since === 'string' && c.since ? c.since : null;
-  const lastAsked = typeof c.lastAsked === 'string' && c.lastAsked.trim() ? c.lastAsked.trim() : null;
+  // cut 1b: the quoted last question is a FACT about what was asked; its dashes are set as commas so the quote does not teach her
+  // the dash the founder's law forbids (b117m --show-misses, 25 Sept: Haiku copied the history's "assistant — ..." dash).
+  const lastAsked = typeof c.lastAsked === 'string' && c.lastAsked.trim() ? c.lastAsked.trim().replace(/\s*[\u2013\u2014]\s*/g, ', ') : null;
 
   const elizaHeader = `You answer WhatsApp messages for ${studio}, a ${vendorCategory} based in ${vendorCity}. ${travelsText} Your name, if anyone asks, is ${assistantName}.
 
@@ -133,7 +135,7 @@ Your answer, in your own rhythm: "${admissionLine}" Then carry straight on with 
   const voiceBlock = `HOW YOU SPEAK
 - You are ${studio}'s front desk. Speak for the studio ("we", "the studio", "${studio}"), never as the owner in person, and never sign as anyone.
 - Do not call yourself an assistant and do not give yourself a name unless they ask who you are.
-- No em dashes. Plain Indian English, plain text, no markdown, no bullet points.
+- No dashes of any kind, neither the long dash nor the short one, even if earlier messages in the thread used them. Where you would reach for a dash, use a comma or a full stop. Plain Indian English, plain text, no markdown, no bullet points.
 - The person writing may be a bride, a groom, a family member or a company, and the occasion may not be a wedding. Wherever the guidance above says "she" or "the couple", read it as whoever is writing.`;
 
   // ── FACT 3's meaning (R-45.25; the founder: never an "I don't have access" message) ──
@@ -141,13 +143,14 @@ Your answer, in your own rhythm: "${admissionLine}" Then carry straight on with 
 Call date_state with the date exactly as they wrote it. It answers with the date and one state:
 - "free": say ${studio} is free on that date and offer to pass their details on, for example "${studio} is free on 5 March 2028; shall I pass your details on?"
 - "taken", "check_off" or "unreadable": do NOT say the date is booked, taken or unavailable. Say you will check with ${studio} and get back to them, for example "Let me check with ${studio} and get back to you."
-Never speak about your own access, tools, systems, calendar or limits, and never tell them to check anything themselves. The date is the studio's; you are getting it to them.`;
+Never speak about your own access, tools, systems, calendar or limits, and never tell them to check anything themselves. The date is the studio's; you are getting it to them.${inConversation ? `
+They are already in conversation, so the date answer stands on its own: do not add an intake question after it in the same message.` : ''}`;
 
   // ── FACT 1 ──
   const conversationBlock = inConversation
     ? `THIS CLIENT IS ALREADY IN CONVERSATION WITH ${studio.toUpperCase()}
 They have ${priorCount} earlier message${priorCount === 1 ? '' : 's'} on this thread${since ? ` since ${since}` : ''}, including any message the studio sent them. Do NOT introduce yourself or the studio again and do not open with a welcome. Answer what they just wrote, directly.${lastAsked ? `
-Your last message to them was: "${lastAsked}". Do not ask that question again. If they did not answer it, carry on with what they wrote; ask the next thing only if it fits.` : ''}
+Your last message to them was: "${lastAsked}". Do not ask that question again, in any wording, even if they never answered it: a client who moved past a question has told you it can wait. Answer what they wrote, and add no question that repeats it.` : ''}
 A bare "hi" or "hello" gets a short, direct reply by name if you know it, for example "Hi${knownBrideName ? ' ' + knownBrideName : ''}! How can I help?"`
     : `THIS IS THE CLIENT'S FIRST MESSAGE TO ${studio.toUpperCase()}
 Greet them once, as the studio, in the same message as your first question.`;
@@ -207,6 +210,15 @@ Bad: "Great question!"`;
   catch { asks = null; }
   const a = asks || { key: 'other', made: null, wedding: ['what they are looking for from the studio', 'which functions and dates it is for'], general: ['what they are looking for from the studio', 'where it is'] };
   const list = (xs) => (Array.isArray(xs) ? xs : []).map((item, i) => `     ${i + 1}. ${item}`).join('\n');
+  // cut 1b r2 · FACT 1's alreadyAsked: when her OWN earlier rows show she has put the shape question, it is LEFT OUT of the list she is
+  // handed (she cannot re-ask what is not in front of her), and she is told it was asked. Nothing she could say is removed; the
+  // material she is given is chosen by the fact (R-45.26(2), the chair's reading).
+  const shapeAsked = c.shapeAsked === true;
+  const SHAPE_ITEM = /\b(single day|one day|spread across|functions)\b/i;
+  const weddingList = shapeAsked ? (Array.isArray(a.wedding) ? a.wedding : []).filter((item) => !SHAPE_ITEM.test(item)) : a.wedding;
+  const shapeAskedNote = shapeAsked
+    ? `\n   ALREADY ASKED${c.shapeAskedOn ? ` on ${c.shapeAskedOn}` : ''}: whether it is one day or spread across functions. It is not on this list. Do not ask it, in any wording; if they tell you, take it.`
+    : '';
   const notes = Array.isArray(a.notes) && a.notes.length ? `\n   ${a.notes.join('\n   ')}` : '';
   const openingQuestion = a.made
     ? `What's the occasion, and by when do you need the ${a.made}?`
@@ -257,8 +269,8 @@ WHAT TO FIND OUT, IN THIS ORDER, SKIPPING ANYTHING THEY ALREADY SAID
 ${studio} describes its work as "${vendorCategory}". Pick the questions that fit that work.
   1. The occasion, and when it is. Ask it first unless they already said it: "${openingQuestion}"
   2. Then, one per turn:
-   IF IT IS A WEDDING:
-${list(a.wedding)}
+   IF IT IS A WEDDING:${shapeAskedNote}
+${list(weddingList)}
    IF IT IS ANYTHING ELSE (a birthday, a pre-wedding shoot, a corporate event, a fashion shoot, a party):
 ${list(a.general)}${notes}
   3. Their approximate / ballpark budget, asked plainly, e.g. "And roughly what budget did you have in mind for this?"

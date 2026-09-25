@@ -44,7 +44,9 @@ likewise. Mutations M1 to M6 of production code each redden their cell. Money fu
 
 b117m --readers: 27 hand-labelled replies x 6 rules, false positives 0, misses 0. --dry: 19 recorded turns over a stub model on both routes,
 0 misses. --live: the founder's run, N = 20, both couple-lane models; tolerance r2, r3, r6 zero, r1, r4, r5 at most one in twenty.
-LIVE RATES: to be recorded here after his run.
+LIVE RATES (his run, 25 September 2026, --lane=eliza, the live lane; N = 20, 380 replies per model):
+claude-haiku-4-5-20251001: r1 0, r2 0, r3 0, r4 0, r5 37 OVER, r6 3 OVER. deepseek-v4-flash: r1 1, r2 0, r3 0, r4 0, r5 60 OVER, r6 0.
+r2, r3 and r4 held at zero across 760 replies; r1 within tolerance. r5 and r6 over: cured in cut 1b (its handover), which the chair granted.
 
 Re-aimed by label: b06_m4 (the stanza reads THEY; the name as the answer to "what's your name"), b06_relay_foundations ("From Rohan
 Studios:"), b08_p5_eliza (headers; the admission re-pinned to A7; the soul's punctuation; names R-45.25 and R-45.26), b111 2.2 (the bride
@@ -62,7 +64,22 @@ R-45.26. disambiguation.js was already studio-first and is untouched. The fallba
 
 ## 4 · Walk record
 
-To be recorded after the walk (the card's steps W0 to W6), with his exports read by script.
+Landed as 1512f42 on main, 25 September 2026; block 2 green (FLOOR = NAMED BASE, no delta); Railway ACTIVE. Walked the same day on the test
+couple's handset (9625759924, lead Sarah) against DEV440; his W6 export read by script (times UTC).
+
+W0: DEV440 count 1; Dev Roy Photography, photography, active, not paused, date_check_enabled true; couple.eliza_enabled true.
+W1: 08:10:26 relay "Hello again, Sarah!"; her "Hi" at 08:10:38 answered "Hi Sarah! How can I help?". PASS.
+W2: "Are you free on 5th March 2028?" answered "Dev Roy Photography is free on 5 March 2028! Shall I pass your details on?". PASS.
+W3: 5 March blocked; "Are you free on March 5 2028m" answered with the house form. PASS on the words (the typo leaves taken vs unreadable
+unwitnessed apart; both are the house form; b117a 3.2 and 3.5 prove each).
+W4: the switch off; "Are you free on March 15 2028?" answered with the house form. PASS.
+W5a: "Cancel the enquiry for now. We changed plans" answered warmly, not an opt-out. PASS; the reply carried an EN dash, cured in cut 1b.
+W5b: the bride line, "Cancel the mehendi booking": public.prospects for his number unchanged (discarded, 8 September), no opt-out. PASS by
+the record.
+Restore: the block deleted 08:20:13; date_check_enabled back to true by the founder.
+Every reply spoke the studio's name and said nothing of access, calendar or tools.
+Found on the walk: F-44.165 (the known-client read meets seven leads rows, six soft-deleted, and returns nothing; the vendor is never told);
+its cure rides cut 2.
 
 ## 5 · Errors
 

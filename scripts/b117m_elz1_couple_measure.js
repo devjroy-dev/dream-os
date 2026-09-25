@@ -24,11 +24,16 @@
 //   r3 the studio's name and never the owner's alone              r5 the trade's questions: the occasion first for a new client, and
 //   r6 no em dash, no "assistant", no persona name                   for someone in conversation, the functions question not asked again
 const path = require('path');
-const ROOT = path.resolve(__dirname, '..');
+// CE-45 ELZ-1 cut 1b: the file finds the tree from scripts/ (its home) OR from the repo root, so the diagnostic can run as a
+// dropped-in copy in the root and be deleted by the same block, leaving the tree untouched.
+const ROOT = require('fs').existsSync(path.join(__dirname, 'src', 'agent')) ? __dirname : path.resolve(__dirname, '..');
 const P = (r) => path.join(ROOT, r);
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.split('=')[1] : d; };
 const MODE = argv.includes('--live') ? 'live' : argv.includes('--dry') ? 'dry' : 'readers';
+// CE-45 ELZ-1 cut 1b (the chair's grant): --show-misses prints each missed reply's TEXT with its turn and rules (model output only;
+// never a key, never written to disk); the per-turn table is always printed under the rate lines.
+const SHOW = argv.includes('--show-misses');
 
 // ── THE READERS: each returns true when the reply KEEPS the rule ─────────────────────────────────────────────────────────────
 const STUDIO = 'Dev Roy Photography';
@@ -47,7 +52,8 @@ const R = {
     if (c.inConversation) return !/mehend|sangeet|single day|one day|spread across|functions/i.test(t) || /\b(mehendi|sangeet)\b/i.test(c.inbound || '');
     return /occasion|what'?s it for|when is it|by when/i.test(t) && !/mehend|sangeet/i.test(t);
   },
-  r6: (t) => !/\u2014|\bassistant\b|\bEliza\b/i.test(t),
+  // cut 1b: the EN dash too (U+2013), seen live on 25 Sept in "clearer – we're here"; a hyphen (U+002D) inside a word is not a dash.
+  r6: (t) => !/[\u2013\u2014]|\bassistant\b|\bEliza\b/i.test(t),
 };
 const RULES = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6'];
 
@@ -88,6 +94,9 @@ const LABELLED = [
   { t: "Of course — I'll pass that on.", c: IN, breaks: ['r6'] },
   { t: "I'm Eliza, and I'll pass this on to Dev Roy Photography.", c: IN, breaks: ['r1', 'r6'] },
   { t: "Our assistant will pass this on.", c: IN, breaks: ['r6'] },
+  // cut 1b: the live en dash (his W6 export, 25 Sept 08:20:40), and a hyphenated word that must pass
+  { t: "No problem at all, Sarah. Reach out whenever your plans are clearer – we're here whenever you need us.", c: IN, breaks: ['r6'] },
+  { t: 'Noted, a pre-wedding shoot. Photos, video, or both?', c: { inConversation: true, inbound: 'its a pre-wedding shoot' }, breaks: [] },
 ];
 
 function readersCheck() {
@@ -187,22 +196,55 @@ async function replayOnce(turn, lane) {
   } finally { Date.now = realNow; }
 }
 
-async function measure({ n, lane, models }) {
-  const quiet = console.log; const results = {};
+// cut 1b r2 (the chair's approval, the founder's cost): the turns that have EVER missed run at nHot, the rest at n; a cold turn that
+// misses at n is re-run alone at nHot before the verdict (its first counts are replaced, not added). A progress line per turn per
+// model shows a long run is alive. Only counts and turn ids are printed as it goes; reply text only under --show-misses.
+const HOT = new Set(['date_free_1817', 'date_taken_1817', 'date_check_off_1817']);
+async function measureTurn(turn, reps, lane) {
+  const quiet = console.log;
+  const out = { miss: Object.fromEntries(RULES.map((r) => [r, 0])), replies: 0, errors: 0, errKinds: {}, seen: {} };
+  for (let i = 0; i < reps; i += 1) {
+    // a failed reply is counted ONCE, retried twice after a pause, its KIND kept (never a key)
+    let reply = ''; let kind = null;
+    for (let attempt = 0; attempt < 3 && !reply; attempt += 1) {
+      if (attempt) await new Promise((res) => setTimeout(res, 3000 * attempt));
+      console.log = () => {}; console.warn = () => {}; const quietErr = console.error; console.error = () => {};
+      try { reply = await replayOnce(turn, lane); kind = reply ? null : 'empty reply'; }
+      catch (e) { kind = String((e && e.message) || e).replace(/(sk-|key)[\w-]{6,}/gi, '[redacted]').slice(0, 120); }
+      finally { console.log = quiet; console.error = quietErr; }
+    }
+    if (!reply) { out.errors += 1; out.errKinds[kind || 'unknown'] = (out.errKinds[kind || 'unknown'] || 0) + 1; continue; }
+    out.replies += 1;
+    const broke = RULES.filter((r) => !R[r](reply, turn.ctx));
+    for (const r of broke) out.miss[r] += 1;
+    if (SHOW && broke.length) { const k = `${turn.id} [${broke.join(',')}] ${reply.replace(/\s+/g, ' ')}`; out.seen[k] = (out.seen[k] || 0) + 1; }
+  }
+  return out;
+}
+async function measure({ n, nHot, lane, models }) {
+  const results = {};
   for (const m of models) {
     MODEL_ROW = { 'model.wa_couple.default': JSON.stringify(m.route) };
-    const miss = Object.fromEntries(RULES.map((r) => [r, 0])); let replies = 0; let errors = 0;
-    for (const turn of TURNS) {
-      for (let i = 0; i < n; i += 1) {
-        let reply = '';
-        console.log = () => {}; console.warn = () => {};
-        try { reply = await replayOnce(turn, lane); } catch (_e) { errors += 1; } finally { console.log = quiet; }
-        if (!reply) { errors += 1; continue; }
-        replies += 1;
-        for (const r of RULES) if (!R[r](reply, turn.ctx)) miss[r] += 1;
+    const perTurn = {};
+    for (const [i, turn] of TURNS.entries()) {
+      const reps = HOT.has(turn.id) ? nHot : n;
+      perTurn[turn.id] = { reps, ...(await measureTurn(turn, reps, lane)) };
+      const t = perTurn[turn.id]; const missed = RULES.filter((r) => t.miss[r]).map((r) => `${r} ${t.miss[r]}`).join(' ');
+      console.log(`  [${m.key}] ${i + 1}/${TURNS.length} ${turn.id} x${reps}: ${missed || 'clean'}${t.errors ? `, errors ${t.errors}` : ''}`);
+      if (!HOT.has(turn.id) && reps < nHot && RULES.some((r) => t.miss[r])) {
+        perTurn[turn.id] = { reps: nHot, rerun: true, ...(await measureTurn(turn, nHot, lane)) };
+        const u = perTurn[turn.id]; const again = RULES.filter((r) => u.miss[r]).map((r) => `${r} ${u.miss[r]}`).join(' ');
+        console.log(`  [${m.key}] ${turn.id} missed at x${reps}, re-run alone at x${nHot}: ${again || 'clean'}${u.errors ? `, errors ${u.errors}` : ''}`);
       }
     }
-    results[m.name] = { miss, replies, errors, perTurn: n, turns: TURNS.length };
+    const miss = Object.fromEntries(RULES.map((r) => [r, 0])); let replies = 0; let errors = 0; const byTurn = {}; const seen = {}; const errKinds = {};
+    for (const [tid, t] of Object.entries(perTurn)) {
+      replies += t.replies; errors += t.errors;
+      for (const r of RULES) if (t.miss[r]) { miss[r] += t.miss[r]; byTurn[tid] = byTurn[tid] || { reps: t.reps }; byTurn[tid][r] = t.miss[r]; }
+      for (const [k, v] of Object.entries(t.seen)) seen[k] = (seen[k] || 0) + v;
+      for (const [k, v] of Object.entries(t.errKinds)) errKinds[k] = (errKinds[k] || 0) + v;
+    }
+    results[m.name] = { miss, replies, errors, byTurn, seen, errKinds };
   }
   return results;
 }
@@ -216,8 +258,14 @@ function verdict(results, n) {
       const within = r.miss[k] <= limit; if (!within) ok = false;
       return `${k} ${r.miss[k]}/${r.replies}${within ? '' : ' OVER'}`;
     }).join('  ');
-    if (r.errors) ok = false;
+    // cut 1b: errors are replies that never came back after three tries; they are not rule breaks, so they are REPORTED with their
+    // kind and do not decide the verdict unless more than one in twenty failed (a measurement that mostly failed measured nothing).
+    if (r.errors * 20 > r.replies + r.errors) ok = false;
     console.log(`${name}: ${line}  errors ${r.errors}`);
+    for (const [k, v] of Object.entries(r.errKinds || {})) console.log(`  ERROR x${v} ${k}`);
+    // cut 1b: the per-turn table, misses per rule, out of n replies per turn (turns with no miss are omitted)
+    for (const [tid, rs] of Object.entries(r.byTurn || {})) console.log(`  ${tid}: ${Object.entries(rs).filter(([k]) => k !== 'reps').map(([k, v]) => `${k} ${v}/${rs.reps}`).join('  ')}`);
+    if (SHOW) for (const [k, v] of Object.entries(r.seen || {})) console.log(`  MISS x${v} ${k}`);
   }
   return ok;
 }
@@ -227,14 +275,16 @@ function verdict(results, n) {
   if (MODE === 'readers') process.exit(readersOk ? 0 : 1);
   if (!readersOk) { console.log('the readers are not trusted: nothing measured'); process.exit(1); }
   const n = Math.max(1, parseInt(arg('n', MODE === 'dry' ? '1' : '20'), 10) || 20);
+  const nHot = Math.max(n, parseInt(arg('n-hot', String(n)), 10) || n);
   const lane = arg('lane', 'eliza') === 'legacy' ? 'legacy' : 'eliza';
   const which = arg('model', 'both');
   const ALL = [{ name: 'claude-haiku-4-5-20251001', key: 'haiku', route: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' } },
     { name: 'deepseek-v4-flash', key: 'deepseek', route: { provider: 'deepseek', model: 'deepseek-v4-flash' } }];
   const models = ALL.filter((m) => which === 'both' || m.key === which);
-  console.log(`b117m ${MODE}: ${TURNS.length} recorded turns x ${n} x ${models.length} model(s), lane ${lane}`);
-  const results = await measure({ n, lane, models });
+  console.log(`b117m ${MODE}: ${TURNS.length} recorded turns (the three date turns x ${nHot}, the rest x ${n}) x ${models.length} model(s), lane ${lane}`);
+  const results = await measure({ n, nHot, lane, models });
   const ok = verdict(results, n);
-  console.log(ok ? 'WITHIN TOLERANCE' : 'OVER TOLERANCE: tighten the prompt and re-measure; no guard');
+  const errorsDecided = Object.values(results).some((r) => r.errors * 20 > r.replies + r.errors);
+  console.log(ok ? 'WITHIN TOLERANCE' : errorsDecided ? 'TOO MANY ERRORS: more than one reply in twenty never came back, so nothing was measured; run it again' : 'OVER TOLERANCE: tighten the prompt and re-measure; no guard');
   process.exit(ok ? 0 : 1);
 })().catch((e) => { console.error(e && e.message); process.exit(2); });

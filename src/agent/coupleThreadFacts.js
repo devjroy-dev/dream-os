@@ -15,6 +15,8 @@
 // once, not every row with the same words. TOTAL: never throws. On a failed read the fallback is the turn's own history: anything
 // in it means in conversation.
 const CEILING = 200;
+// The shape question in any of the wordings she has used ("single day", "one day", "spread across functions", "mehendi, sangeet").
+const SHAPE_Q = /\b(single day|one day|spread across|functions? like|mehendi|mehndi|sangeet)\b/i;
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function istDay(ts) {
@@ -36,12 +38,19 @@ function factsFromRows(rows, inboundBodyAsStored) {
     prior.push(r);
   }
   const lastAgent = prior.find((r) => r.direction === 'outbound' && r.sent_by === 'agent' && typeof r.body === 'string' && r.body.trim());
+  // cut 1b r2 (b117m 25 Sept: DeepSeek re-asked the shape question after a date answer in 49 of 380 replies, because the list she is
+  // handed still led with it). Read from HER OWN earlier rows only: has she already asked whether it is one day or spread across
+  // functions? The newest such row gives the day. A question mark is required, so a statement that merely names functions does not count.
+  const shapeRow = prior.find((r) => r.direction === 'outbound' && r.sent_by === 'agent' && typeof r.body === 'string'
+    && r.body.includes('?') && SHAPE_Q.test(r.body));
   const oldest = prior.length ? prior[prior.length - 1] : null;
   return {
     inConversation: prior.length > 0,
     priorCount: prior.length,
     since: oldest ? istDay(oldest.created_at) : null,
     lastAsked: lastAgent ? lastAgent.body.trim() : null,
+    shapeAsked: !!shapeRow,
+    shapeAskedOn: shapeRow ? istDay(shapeRow.created_at) : null,
   };
 }
 
@@ -57,8 +66,8 @@ async function threadFacts({ supabase, conversationId, inboundBodyAsStored, hist
     return factsFromRows(data, inboundBodyAsStored);
   } catch (_e) {
     const n = Number.isInteger(historyLength) && historyLength > 0 ? historyLength : 0;
-    return { inConversation: n > 0, priorCount: n, since: null, lastAsked: null };
+    return { inConversation: n > 0, priorCount: n, since: null, lastAsked: null, shapeAsked: false, shapeAskedOn: null };
   }
 }
 
-module.exports = { threadFacts, factsFromRows, istDay, CEILING };
+module.exports = { threadFacts, factsFromRows, istDay, CEILING, SHAPE_Q };
