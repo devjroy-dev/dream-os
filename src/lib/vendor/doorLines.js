@@ -80,7 +80,7 @@ const LINES = Object.freeze({
   // P6a-2 · a package attached by the door; every slot from the lead_package ROW attachPackage returned (R-44.33, R-44.34)
   B22: "Package attached: {client} · {package} · Rs {total}.",
   // no package of hers by that name; {list} is HER OWN live names joined with " · "
-  B23: "You have no package called {name}. Yours are: {list}.",
+  B23: "You have no package called {name}. Yours are: {list}. Reply with the number.",
   // two of her packages share the name (rendered by position, as B8 is)
   B24: "Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.",
   // the lead has no day-precision wedding date (computeSchedule's no_wedding_date)
@@ -103,7 +103,7 @@ const LINES = Object.freeze({
   B30: "Could not attach the package.",
   // an attach that names a client and NO package (R-44.36; LCV-10 Part B-2, second cut): the door never guesses, even with one package;
   // {list} is HER OWN live package names, sorted by name case-folded (F-44.108), joined with " · ". The door keeps its own note of it.
-  B31: "Which package? Yours are: {list}.",
+  B31: "Which package for {client}? {list}. Reply with the number.",
   // REUSE (F-44.102): his own byte from dreamos-pwa lib/worklist/packages.ts:116, `no_fee: 'Set the fee first.'`, in place of the general SUPERSEDED at CE-45 ELZ-1 cut 2a by his V5 (R-45.23): the package named, where to set its fee.
   // B30 when the attach refuses because the package has no fee.
   B33: "Could not attach the package. {package} has no fee yet. Set its fee in the app first.",
@@ -209,6 +209,10 @@ const LINES = Object.freeze({
   // (the dropped line was Victor's); B85 answers a "skip" that leaves nothing to save (resolution 'cancel')
   B84: "Reply \"save all\" to add them, or \"skip 2\" to leave one out.",
   B85: "Nothing was saved.",
+  // CE-45 ELZ-1 cut 2b (F-44.175; R-45.33, the founder's "OK", 26 September): a question the door cannot answer names where to look, never
+  // another list. A STOPGAP: ASK-1's read-only agent replaces both lines when its hand-off lands.
+  B86: "I can't look that up yet. Open {room} in the app to see {thing}.",
+  B87: "I can't look that up yet. Open the app to see it.",
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
   B75: "Couldn't put that on the calendar — nothing was changed.",
   // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
@@ -271,7 +275,7 @@ const LINE_HASHES = Object.freeze({
   B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653',
   B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
   B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c',
-  B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c',
+  B23: '583d20e906f253e15230693679cc9ad4b93f81b601be6e3434b825c2959819de',
   B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a',
   B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785',
   B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484',
@@ -282,7 +286,7 @@ const LINE_HASHES = Object.freeze({
   B32: 'b4679dd36af5037d808df12e3865c8db99b7b2c39ab6117c6b1bbe4c27b82878',
   B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
   B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
-  B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
+  B31: '1e5cb75ba7131c768dbd07546b5905b6cfe09021a97efc586c145341978406b2',
   B33: '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44',
   B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
   B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
@@ -323,6 +327,8 @@ const LINE_HASHES = Object.freeze({
   B83: 'ec1816251b9cfde6078edb4da2fa4b4499c9b7d68ec38ae17d6e09b17c7497e0',
   B84: '6f413c3f0f6dcf9e7383d3efeadf7b319d719c914b1f8fa2a4faaca0c9f3906d',
   B85: '2a100bbec87f53280ef40a2cb39dab5a0b74543df6e2bb10fd810795283f1868',
+  B86: '62c5c316aa796547501d1c4530f2771dc3207579bc77bfa8ca124e2b3098dee2',
+  B87: '8a10f87ecf94d4169d67bbb22a9f7efc80a1ff5785be2922b239e6f2a154fcee',
   B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
   B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74',
   B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
@@ -425,16 +431,22 @@ function twoPackages(name, candidates) {
 }
 
 // Byte 23's and byte 31's {list}: HER OWN package names, SORTED BY NAME CASE-FOLDED (F-44.108), joined with " · ". No usable name is null.
-const sortedNames = (names) => {
+// cut 2b: ONE sort, one home: sortedNames joins what sortedNameList orders (a list shown with " · " and a numbered one never disagree)
+const sortedNames = (names) => { const l = sortedNameList(names); return l ? l.join(' · ') : null; };
+// CE-45 ELZ-1 cut 2b (R-45.23, his V11 and V13): the package picks list their options NUMBERED, in the ONE sorted order sortedNames
+// uses, so the door reads a bare number against the same order the vendor was shown (sortedNameList). B23 and B31 only; B24 (two
+// packages of one name) keeps its bytes until cut 2c, where a number binds a package id.
+const sortedNameList = (names) => {
   if (!Array.isArray(names)) return null;
   const list = names.map(slot).filter((x) => x !== null).sort((a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0));
-  return list.length ? list.join(' · ') : null;
+  return list.length ? list : null;
 };
+const numberedNames = (names) => { const l = sortedNameList(names); return l ? l.map((n, i) => `${i + 1}. ${n}`).join(' ') : null; };
 function noSuchPackage(name, names) {
-  try { const list = sortedNames(names); return list === null ? null : render('B23', { name, list }); } catch (_e) { return null; }
+  try { const list = numberedNames(names); return list === null ? null : render('B23', { name, list }); } catch (_e) { return null; }
 }
-function whichPackage(names) {
-  try { const list = sortedNames(names); return list === null ? null : render('B31', { list }); } catch (_e) { return null; }
+function whichPackage(names, client) {
+  try { const list = numberedNames(names); return list === null ? null : render('B31', { client, list }); } catch (_e) { return null; }
 }
 
 // Byte 37, the show frame, rendered from the STORED row: body and phone are the row's bytes, the name is the lead's. A name that is
@@ -575,4 +587,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { namelessLine, newLeadsLine, dayLines, weekLines, membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { sortedNameList, numberedNames, namelessLine, newLeadsLine, dayLines, weekLines, membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

@@ -10,6 +10,8 @@
 //   • resume_confirmation           — ⚠ PROVISIONAL, NOT YET VETOED. See below.
 'use strict';
 
+// CE-45 ELZ-1 cut 2b (R-45.30, the founder's no-em-dash rule; the chair's ruling): the em dash in five of these lines set as a comma or a
+// full stop, words unchanged (the fallback sentence's precedent); each shown on the 2b card for his eye.
 const NUDGE_COPY = {
   // ── ITEM 4 · RATIFIED VERBATIM ────────────────────────────────────────────
   // The vendor {{2}} for tdw_morning_nudge_vendor, mirroring brideCron.js's
@@ -18,7 +20,7 @@ const NUDGE_COPY = {
   // Renders as: "Good morning {name}. Here's your day: <this>. Reply STOP
   // MORNINGS to pause these updates."
   vendor_out_of_window_summary:
-    "your morning briefing is ready — reply here to see today's bookings and dues",
+    "your morning briefing is ready, reply here to see today's bookings and dues",
 
   // ── ITEM 5 · RATIFIED VERBATIM, register (b) ──────────────────────────────
   // Sent on STOP MORNINGS. It MUST say it is not a full STOP — that sentence is
@@ -26,7 +28,7 @@ const NUDGE_COPY = {
   // pause was a full opt-out has been misled about what the estate will still
   // send them.
   opt_out_confirmation:
-    "Done — no more morning messages. Everything else stays as it is; this isn't a full STOP. Reply START MORNINGS whenever you want them back.",
+    "Done. No more morning messages. Everything else stays as it is; this isn't a full STOP. Reply START MORNINGS whenever you want them back.",
 
   // ── THE RESUME LINE · RATIFIED AS SHIPPED (founder, CE-63 relay ②) ────────
   // Authored by the executor as the mirror of the ratified pause line — a resume
@@ -36,7 +38,7 @@ const NUDGE_COPY = {
   // because a ratified line wearing a provisional flag is the stale-comment class
   // this block already exists to warn about.
   resume_confirmation:
-    "Morning messages are back on — you'll get the next one tomorrow. Reply STOP MORNINGS any time to pause them again.",
+    "Morning messages are back on. You'll get the next one tomorrow. Reply STOP MORNINGS any time to pause them again.",
 
   // ── F-05.25 · THE BARE-STOP ACKNOWLEDGMENT · RATIFIED (founder, 2026-07-23) ─
   // Ratified BY NAME after being witnessed twice on a live handset in the closing
@@ -94,7 +96,7 @@ const NUDGE_COPY = {
     "You won't get any more messages like this from us.",
 
   full_stop_confirmation:
-    "You're opted out — I won't message you first about anything. If you write to me I'll still answer; reply START to turn messages back on. If you only wanted to pause the daily updates, reply START and then STOP MORNINGS instead.",
+    "You're opted out. I won't message you first about anything. If you write to me I'll still answer; reply START to turn messages back on. If you only wanted to pause the daily updates, reply START and then STOP MORNINGS instead.",
 
   // The resume acknowledgment for a full STOP.
   // ── V-2 · THE CE-63 HOLD IS CLOSED BY RATIFICATION (founder, CE-67) ─────────
@@ -105,7 +107,7 @@ const NUDGE_COPY = {
   // the string stands BYTE-EXACT: nothing about it needed to change, because this
   // is the one state in which "I'll message you again" was always true.
   full_start_confirmation:
-    "You're back on — I'll message you again when there's something worth saying.",
+    "You're back on. I'll message you again when there's something worth saying.",
 };
 
 function getNudgeCopy(key) {

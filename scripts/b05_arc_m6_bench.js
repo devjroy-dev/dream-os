@@ -133,7 +133,8 @@ await ta('§4.2 the RIGHT plane passes the fence untouched', async () => {
 H('§5 — THE FOUNDER\'S BYTES');
 t('§5.1 the holding line is his paste, byte-exact, and labeled at site', () => {
   const s=read('src/lib/prospectCopy.js');
-  assert.ok(s.includes('Good to hear from you — thanks for reaching out! Tell me a bit about your business whenever you like.'));
+  // LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (R-45.30): his paste's em dash set as a comma, words unchanged, on the 2b card for his eye.
+  assert.ok(s.includes('Good to hear from you, thanks for reaching out! Tell me a bit about your business whenever you like.'));
   assert.ok(!/come back to you properly/.test(s),'the promise with no machinery survived');
   assert.ok(/promise-with-no-machinery|NOTHING BUILT TO COME BACK/.test(s),'the label must name the class');
 });

@@ -20,11 +20,11 @@ const PROSPECT_COPY = {
   // chartered at the first live campaign and is NOT built here. The replacement bytes
   // are HIS, pasted verbatim — nothing minted at this seam.
   holding_line:
-    "Good to hear from you — thanks for reaching out! Tell me a bit about your business whenever you like.",
+    "Good to hear from you, thanks for reaching out! Tell me a bit about your business whenever you like.",
 
   // Opt-out confirmation. STOP means STOP, per number, across all lines (compliance-correct).
   opt_out_confirmation:
-    "You're opted out — you won't hear from us again. Reply START any time if you change your mind.",
+    "You're opted out. You won't hear from us again. Reply START any time if you change your mind.",
 };
 
 function getProspectCopy(key) {

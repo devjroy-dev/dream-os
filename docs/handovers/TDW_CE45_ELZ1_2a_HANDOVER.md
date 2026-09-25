@@ -40,8 +40,11 @@ with the SAME failing cells and no error (A-45.11 read): b05_p4_crons (§5.3, §
 
 ## 3 · Walk record
 
-To be recorded: a date question from the test couple reaching DEV440's WhatsApp in his words; a capture from 9625759924 adding no leads
-row; a bride STOP on the bride line written to her couple_self thread (then START); one of V1 to V8 spoken.
+Landed as 2f49ac0 (blocks 1 to 3; FLOOR = NAMED BASE, no delta). The founder's walk, 25 September (UTC): W1 17:33:39 Sarah "Are you free on 5 march
+2029?" answered "Dev Roy Photography is booked on 5 March 2029, but let me confirm with them and get back to you." (R-45.25 as amended); Sarah recognised
+as returning (F-44.165's first face, live); his line reached DEV440's WhatsApp (his word: "sarah enquired reached my whatsapp"); the vendor_self RECORD
+lacked the line (F-44.174, cured in 2b). W2 17:37:37 a pre-wedding shoot message: DEV440's live leads for the number still 1 (the second face cured).
+W3 17:37:51 "Confirm booking of zzzz": V1 spoken. W4 the bride line: Stop, its confirmation, Start, its confirmation on her couple_self thread.
 
 ## 4 · Open
 

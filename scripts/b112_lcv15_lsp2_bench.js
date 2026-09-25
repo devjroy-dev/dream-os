@@ -303,7 +303,7 @@ async function main() {
     && (await quiet(() => WD.noteProposals({ supabase: d, agentId: AG, reply: 'x', proposalId: '', count: 3 }, { memory: memoryOf(d) }))).written === false);
   const vi = src(VIf);
   T('3.4 the stager appends B84 FROM doorLines to the preview and writes the note after the send, never the dropped Victor line', /lines\.join\('\\n'\) \+ '\\n\\n' \+ require\('\.\/vendor\/doorLines'\)\.LINES\.B84/.test(vi) && /noteProposals\(\{ supabase, agentId: imgAgent/.test(vi) && !/Reply "save all" to add them all, or tell me which to skip/.test(vi));
-  T('3.5 B84 and B85 are his bytes, hash-carried: LINES 81', DL.LINES.B84 === 'Reply "save all" to add them, or "skip 2" to leave one out.' && DL.LINES.B85 === 'Nothing was saved.' && Object.keys(DL.LINES).length === 81);
+  T('3.5 B84 and B85 are his bytes, hash-carried: LINES 81', DL.LINES.B84 === 'Reply "save all" to add them, or "skip 2" to leave one out.' && DL.LINES.B85 === 'Nothing was saved.' && Object.keys(DL.LINES).length === 83 /* RE-PINNED (CE-45 ELZ-1 cut 2b, labelled): B86 and B87 his (F-44.175's stopgap), LINES 83 */);
 
   sec('4 · F-44.147 THE POSSESSIVE, the 07:26:00 request replayed verbatim');
   d = makeDb(estate());

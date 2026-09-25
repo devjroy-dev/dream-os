@@ -197,6 +197,18 @@ function withDateLine(notif, line) {
   return notif ? `${notif}\n\n${line}` : line;
 }
 
+// CE-45 ELZ-1 cut 2b (F-44.174): the vendor_self record of the notice, written from the text that is sent. Only when he has a phone
+// (the send's own condition) and a vendor_self thread exists; creates nothing; never throws.
+async function recordVendorNotice(supabase, vendor, vendorUser, text) {
+  try {
+    if (!text || !vendorUser || !vendorUser.phone || !vendor || !vendor.id) return false;
+    const { data: c } = await supabase.from('conversations').select('id').eq('vendor_id', vendor.id).eq('kind', 'vendor_self').maybeSingle();
+    if (!c || !c.id) return false;
+    await supabase.from('messages').insert({ conversation_id: c.id, direction: 'outbound', channel: 'whatsapp', body: text, sent_by: 'system' });
+    return true;
+  } catch (e) { try { console.warn('[couple-agent] vendor notice not recorded:', e && e.message); } catch (_e) { /* */ } return false; }
+}
+
 async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic }) {
   // The row the door wrote holds what she ACTUALLY sent (γ refused: the audit row
   // is never rewritten to match a derived value). This is the string to filter on.
@@ -655,15 +667,9 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             ? `New enquiry from ${couplePhone}. ${summary}. Lead saved.\n\n${enrichment}`
             : `New enquiry from ${couplePhone}. ${summary}. Lead saved.`;
 
-          if (vendorSelfConvo) {
-            await supabase.from('messages').insert({
-              conversation_id: vendorSelfConvo.id,
-              direction: 'outbound',
-              channel: 'whatsapp',
-              body: notifMsg,
-              sent_by: 'system',
-            });
-          }
+          // CE-45 ELZ-1 cut 2b (F-44.174): the vendor_self RECORD is written once, at the end of the turn, from the SAME text the
+          // vendor is sent (the capture's notice joined with any date line); writing it here recorded less than was sent.
+          void vendorSelfConvo;
 
           // First-contact ping — vendor agent will see this lead as "active"
           // in the next turn for pronoun resolution. Best-effort.
@@ -754,15 +760,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         .eq('kind', 'vendor_self')
         .maybeSingle();
 
-      if (vendorSelfConvo) {
-        await supabase.from('messages').insert({
-          conversation_id: vendorSelfConvo.id,
-          direction: 'outbound',
-          channel: 'whatsapp',
-          body: returningBrideNotif,
-          sent_by: 'system',
-        });
-      }
+      // CE-45 ELZ-1 cut 2b (F-44.174): the record is written at the end of the turn, from the text actually sent.
+      void vendorSelfConvo;
 
       // Returning-bride ping — vendor agent will see this lead as "active"
       // in the next turn for pronoun resolution.
@@ -778,11 +777,16 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     }
   }
 
+  // CE-45 ELZ-1 cut 2b (F-44.174): ONE text, sent and recorded alike. The vendor's WhatsApp gets vendorNotification (vendorInbound);
+  // his vendor_self thread gets the same bytes here, so the door's next turn sees what he saw ("tell her ..." resolves).
+  const vendorNotification = withDateLine(isReturningBride ? returningBrideNotif : firstContactNotif, dateLineFor(toolCallsAudit, { leadName: existingLeadForCouple?.name || capturedLeadName || null, couplePhone }));
+  await recordVendorNotice(supabase, vendor, vendorUser, vendorNotification);
+
   return {
     reply: finalReply || 'Thanks, we\'ll be in touch soon!',
     toolCalls: toolCallsAudit,
     iterations,
-    vendorNotification: withDateLine(isReturningBride ? returningBrideNotif : firstContactNotif, dateLineFor(toolCallsAudit, { leadName: existingLeadForCouple?.name || capturedLeadName || null, couplePhone })),
+    vendorNotification,
     // D1-lite (BLOCK 06 M-0) — ADDITIVE. The name this turn resolved, else the
     // name already on file, else null. The door reads it to name the binder;
     // every existing reader of this object is untouched.

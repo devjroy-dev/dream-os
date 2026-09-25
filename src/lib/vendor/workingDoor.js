@@ -121,13 +121,13 @@ const CAL_QUESTION_ACTS = Object.freeze(['edit_event', 'cancel_event']);
 // P7 cut 3 (CE-45 LCV-14): the team and the payment reminder. assign_crew names a member (and a shoot by its client or its day), never needs a client;
 // payment_reminder names a client and is in NEEDS_CLIENT since 2a. Both LAND AT ONCE; neither ever touches money.
 const TEAM_ACTS = Object.freeze(['assign_crew', 'payment_reminder']);
-const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay', ...CALENDAR_ACTS, ...TEAM_ACTS]);
+const COVERED = Object.freeze([...MONEY_ACTS, 'invoice', 'lead', 'attach_package', 'relay', 'quote_send', ...CALENDAR_ACTS, ...TEAM_ACTS]); // quote_send: CE-45 ELZ-1 cut 2b
 // P7 cut 4 (CE-45 LCV-14): THE LOOKUPS the door answers on route 'search' (never jobs, so NOT in COVERED: a lookup writes nothing and asks nothing).
 // They switch LEFTOVER examples 3, 7 and 8 on through the stand-in's pool. tally, history and find WITH a client stay B34 (exit 'lookup').
 const LOOKUP_ACTS = Object.freeze(['find', 'whatsdue', 'date']);
 // P7 (CE-45 LCV-12, cut 2a; the chair's ruling (g) of 22 September): THE ACTS THAT NAME A CLIENT. allCovered and namelessOf read this table and
 // nothing else: a block, an unblock, an assignment and a lookup name no client, so askName never asks B35 for a day. b90 pins its members.
-const NEEDS_CLIENT = Object.freeze(['lead', 'booking_confirmed', 'advance_paid', 'milestone_paid', 'invoice', 'attach_package', 'relay', 'book_event', 'edit_event', 'cancel_event', 'payment_reminder']); // `lead` names one too: B18 asks for it (the lead exception above the untouched return)
+const NEEDS_CLIENT = Object.freeze(['lead', 'booking_confirmed', 'advance_paid', 'milestone_paid', 'invoice', 'attach_package', 'relay', 'quote_send', 'book_event', 'edit_event', 'cancel_event', 'payment_reminder']); // `lead` names one too: B18 asks for it (the lead exception above the untouched return)
 // THE ACT TABLE'S IMAGE: every hand the door can run, and nothing else. b90 pins that it never holds
 // donna_client, donna_stage, donna_money or donna_money_edit (item 1, option (i)).
 const HANDS = Object.freeze({
@@ -390,7 +390,13 @@ const NAME_ASKS = Object.freeze(['B18', 'B35']);
 // LCV-10 PART B-2 (second cut): THE DOOR KEEPS ITS OWN NOTE OF A PACKAGE IT ASKED FOR TOO, B24 and B31. Her answer is a package by the
 // door's own key() fold FIRST, whatever the listener heard; a heard act whose package_as_spoken is her whole message is her answer heard
 // twice (F-44.116's class); a different kind, or the attach RESTATED with another package, lapses; otherwise B31 once more, then B3.
-const PKG_ASKS = Object.freeze(['B24', 'B31']);
+const PKG_ASKS = Object.freeze(['B24', 'B31', 'B23']); // B23: CE-45 ELZ-1 cut 2b (F5, V11): a note of B31's kind
+// CE-45 ELZ-1 cut 2b: the notes whose question lists DISTINCT options in order, so a bare number picks one (V16's safe half)
+const NUMBER_PICK_PKG = Object.freeze(['B23', 'B31']);
+// A bare number, 1 to 99, alone in the message ("2", "2.", " 3) "); anything else is not a pick by number. TOTAL.
+function bareNumber(text) {
+  try { const m = /^\s*(\d{1,2})\s*[.)]?\s*$/.exec(String(text == null ? '' : text)); const n = m ? Number(m[1]) : null; return n && n >= 1 ? n : null; } catch (_e) { return null; }
+}
 // R-44.40: the "Did you mean" note. acts[0] carries the act with the CANDIDATE's own row name in the slot she misspelt; her YES runs it
 // through the same plans (money still ends in B1 or B2 and is only STAGED); NO is B3; anything else lapses on another kind or re-asks once.
 const OFFER_ASKS = Object.freeze(['B36']);
@@ -458,7 +464,7 @@ function validNote(n) {
     else if (PKG_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'attach_package' || !spokenText(acts[0].client_as_spoken)) return null; }
     else if (OFFER_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || typeof n.candidate_id !== 'string' || !n.candidate_id || namelessOf(acts).length || namelessLead(acts)) return null; }
     else if (MEMBER_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'assign_crew' || spokenText(acts[0].member_as_spoken)) return null; }
-    else if (RELAY_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || acts[0].act !== 'relay' || typeof n.draft_id !== 'string' || !n.draft_id) return null; }
+    else if (RELAY_ASKS.includes(n.asked)) { if (!allKindsCovered(acts) || !['relay', 'quote_send'].includes(acts[0].act) || typeof n.draft_id !== 'string' || !n.draft_id) return null; } // quote_send: CE-45 ELZ-1 cut 2b (a quote's frame is a relay's)
     // P7 cut 2b: a CAL note is ONE move or cancel naming its client (a move its new day too) on ONE shoot row; a SHOOT note is the same act on two or more rows
     else if (CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) {
       if (acts.length !== 1 || !CAL_QUESTION_ACTS.includes(acts[0].act) || !spokenText(acts[0].client_as_spoken)) return null;
@@ -470,7 +476,7 @@ function validNote(n) {
     }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
+    return { asked: n.asked, acts, tries, ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(RELAY_ASKS.includes(n.asked) && typeof n.quote_lp === 'string' && n.quote_lp ? { quote_lp: n.quote_lp } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
   } catch (_e) { return null; }
 }
 
@@ -609,6 +615,23 @@ async function planInvoice(supabase, vendor, agentId, act) {
 // { speak, key } for B8 or the seat's own no-number byte; { noLead, name } when no lead of hers carries the name (the caller
 // offers B36 or speaks B38); { relay: { leadId, client, phone } } to be composed and staged; or null (a failed read, anything
 // thrown). The phone is the LEAD ROW's own byte (public.leads.phone), never lifted from her words. TOTAL: never throws.
+// CE-45 ELZ-1 cut 2b (F2, the chair's ruling): a quote's figure and package name are FACTS. Code checks they appear VERBATIM in the
+// composed body; one re-compose on a miss; a second miss stages nothing (the caller speaks the glitch line). A relay without facts is
+// composed exactly as before. No word of hers is chosen by code.
+const QUOTE_REACHED = Object.freeze(['sent', 'window_closed_doorbell']);
+function factsPresent(body, facts) {
+  if (!facts) return true;
+  const b = typeof body === 'string' ? body : '';
+  return [facts.package, facts.total].every((f) => typeof f === 'string' && f && b.includes(f));
+}
+// The composer's SECOND argument (its deps: the listener and the model handle) is passed through untouched: dropping it composed with
+// no seat and broke every relay (caught by b101 and b114 in the seat's own differential before the cut).
+async function composeChecked(L, facts, args, composeDeps) {
+  const first = await L.draft.composeDraft({ ...args, ...(facts ? { facts } : {}) }, composeDeps);
+  if (!facts || (first && factsPresent(first.body, facts))) return first;
+  const second = await L.draft.composeDraft({ ...args, facts }, composeDeps);
+  return second && factsPresent(second.body, facts) ? second : null;
+}
 async function planRelay(supabase, vendor, act, L) {
   try {
     const name = spokenText(act && act.client_as_spoken);
@@ -629,6 +652,20 @@ async function planRelay(supabase, vendor, act, L) {
     const phone = typeof lead.phone === 'string' && lead.phone.trim() ? lead.phone.trim() : null;
     // a lead with no number: the seat's own ⑧a (relaySeat.js noNumberLine, vetoed 2026-08-11), nothing staged
     if (!phone) { const line = L.relay.noNumberLine(client); return typeof line === 'string' && line ? { speak: line, key: 'RELAY_NO_NUMBER', skipHarvest: true } : null; }
+    if (act && act.act === 'quote_send') {
+      // CE-45 ELZ-1 cut 2b (quote_send; P6b's second half, R-45.17): the lead's LIVE package, the newest if several. None: B39 (his V6).
+      const { data: lps, error: lpErr } = await supabase.from('lead_packages').select('id, snapshot, total, delivery_on, created_at')
+        .eq('lead_id', lead.id).eq('vendor_id', vendor.id).is('deleted_at', null).order('created_at', { ascending: false }).limit(1);
+      if (lpErr) return null;
+      const lp = Array.isArray(lps) ? lps[0] : null;
+      if (!lp) { const line = DL.render('B39', { client }); return line ? { speak: line, key: 'B39', skipHarvest: true } : null; }
+      const snap = lp.snapshot && typeof lp.snapshot === 'object' ? lp.snapshot : {};
+      const pkgName = typeof snap.name === 'string' && snap.name.trim() ? snap.name.trim() : null;
+      const total = rupees(lp.total);
+      if (!pkgName || !total) return null; // a package with no name or no fee cannot be quoted in figures (the fee is B33's to ask)
+      const delivery = lp.delivery_on ? longDateYear(lp.delivery_on) : null;
+      return { relay: { leadId: lead.id, client, phone, quote: { leadPackageId: lp.id, facts: { package: pkgName, total, ...(delivery ? { delivery } : {}) } } } };
+    }
     return { relay: { leadId: lead.id, client, phone } };
   } catch (_e) { return null; }
 }
@@ -1063,7 +1100,17 @@ async function fileReminder(supabase, vendor, plan, L) {
 //     invoices."; a zero total → B82; a failed read → his LEDGER_UNREADABLE REUSED from its home (victorLines.js), the invoice plane's fail-closed sentence
 // Every name, figure and date is a ROW's. A failed read is 'lookup_unsayable' (the glitch line), never an empty answer (C-44.4). TOTAL: never throws.
 const WEEK_WORDS = /^(this )?week$/;
-async function lookupDoor(supabase, vendor, heard, nowMs, L, st) {
+// CE-45 ELZ-1 cut 2b (F-44.175): routing by her words for a bare find. The room labels are the app's own (dreamos-pwa lib/worklist/rooms.ts
+// read at 612a5b76 and re-read at afe6b076, unchanged: calendar 'Calendar', clients 'Clients', packages 'Packages', invoices 'Invoices', team 'Team'). Checked in order; first wins.
+const LEADS_WORDS = /\b(leads?|enquir(?:y|ies)|inquir(?:y|ies))\b/i;
+const FIND_ROOMS = Object.freeze([
+  { re: /\b(blocked|block|blocks|calendar|busy|dates?|days?)\b/i, room: 'Calendar', thing: 'your blocked days' },
+  { re: /\b(clients?|customers?)\b/i, room: 'Clients', thing: 'your clients' },
+  { re: /\b(packages?)\b/i, room: 'Packages', thing: 'your packages' },
+  { re: /\b(invoices?|bills?)\b/i, room: 'Invoices', thing: 'your invoices' },
+  { re: /\b(team|crew|members?)\b/i, room: 'Team', thing: 'your team' },
+]);
+async function lookupDoor(supabase, vendor, heard, nowMs, L, st, message) {
   try {
     const acts = heard && Array.isArray(heard.acts) ? heard.acts : [];
     if (acts.length !== 1 || !acts[0] || typeof acts[0] !== 'object') return null;
@@ -1087,6 +1134,15 @@ async function lookupDoor(supabase, vendor, heard, nowMs, L, st) {
       if (!day.blocks.length && !day.events.length) { const line = DL.render('B71', { date: when }); return line ? answer(line, 'B71', 'lookup_day') : CHAIN(st.ear, 'lookup_unsayable'); }
       const line = DL.dayLines(when, day.blocks, day.events);
       return line ? answer(line, day.blocks.length ? 'B72' : 'B78', 'lookup_day') : CHAIN(st.ear, 'lookup_unsayable');
+    }
+    // CE-45 ELZ-1 cut 2b (F-44.175): the ear's `find` carries no slot for WHAT is sought ({"acts":[{"act":"find"}],"route":"search"} for
+    // "What are my blocked days", "What dates are blocked" and "Who are my clients" alike, his export of 25 September 19:38 to 19:39 UTC), and
+    // this branch answered every one with the new leads. Her own words now ROUTE (never a word she reads): leads or enquiries keep the list;
+    // anything else names the app room to look in (B86) or the app (B87). A stopgap until ASK-1's agent takes every question.
+    if (a.act === 'find' && !said && !LEADS_WORDS.test(String(message || ''))) {
+      const hit = FIND_ROOMS.find((r) => r.re.test(String(message || '')));
+      const line = hit ? DL.render('B86', { room: hit.room, thing: hit.thing }) : DL.LINES.B87;
+      return answer(line || DL.LINES.B87, line && hit ? 'B86' : 'B87', 'lookup_unowned');
     }
     if ((a.act === 'find' || a.act === 'lead') && !said) {
       const { data, error } = await L.newestLeads(supabase, vendor.id);
@@ -1241,7 +1297,7 @@ async function planAttach(supabase, vendor, act, nowMs, L) {
     const client = String(found.lead.name || '').trim();
     const pkgs = await packagesOf(supabase, vendor.id);
     if (!pkgs) return null;
-    if (!said) { const line = DL.whichPackage(pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B31', skipHarvest: true } : null; }
+    if (!said) { const line = DL.whichPackage(pkgs.map((p) => p && p.name), client); return line ? { speak: line, key: 'B31', skipHarvest: true } : null; }
     const hits = pkgs.filter((p) => p && key(p.name) === key(said));
     if (!hits.length) { const line = DL.noSuchPackage(said, pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B23' } : null; }
     if (hits.length > 1) {
@@ -1577,9 +1633,10 @@ async function preTurn(args, depsIn) {
       return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, answered: note.asked, why: 'note_declined' };
     }
     // P6b, THE FIRST CUT IS THE WHATSAPP LANE (the chair's scope): the pwa lane's send is the second cut's, so on 'pwa' no draft is staged,
-    // re-shown or sent from the door; a relay there reads B34 as before (exit relay_pwa) and the seat's ⑩ stays in place.
-    const relayLane = lane === 'whatsapp';
-    if (!note && !live && said !== null && relayLane) {
+    // re-shown or sent from the door (the exit relay_pwa and its B34 mapping were DELETED at CE-45 ELZ-1 cut 2b).
+    // CE-45 ELZ-1 cut 2b (P6b's second half; R-45.5, R-45.17): the relay stages, shows and sends on BOTH lanes; the door's own transport
+    // resolves the sender, so the app lane's gate (relayLane, the first cut's scope) is removed at its three sites.
+    if (!note && !live && said !== null) {
       // P6b (the chair's ruling on fork (b)): a bare yes or no with an OPEN staged draft and no note of it (the frame was displaced
       // as the last assistant row, or lapsed): a NO refuses the row; a YES re-shows the frame ONCE with a note, so her next yes sends.
       try {
@@ -1694,7 +1751,7 @@ async function preTurn(args, depsIn) {
           return { ...askAgain(line, line === DL.LINES.B3 ? 'B3' : 'B36', note.tries + 1), note: { asked: 'B36', acts: note.acts, tries: note.tries + 1, candidate_id: note.candidate_id, slot: note.slot, ...(note.said ? { said: note.said } : {}) } };
         }
       }
-    } else if (note && RELAY_ASKS.includes(note.asked) && relayLane) {
+    } else if (note && RELAY_ASKS.includes(note.asked)) {
       // P6b: YES sends the row the frame showed; anything else lapses on ANY act heard (handled fresh; a new relay supersedes the
       // row at stage time) or re-shows the frame once, then B3. The acts behind the question ride on after a send.
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
@@ -1702,6 +1759,15 @@ async function preTurn(args, depsIn) {
         st.wrote = true; st.skipHarvest = true; st.answered = 'B37';
         const sent = await sendDraft(note.draft_id);
         st.lines.push(sent.line); st.keys.push(sent.key);
+        // CE-45 ELZ-1 cut 2b (F3): a QUOTE that reached her marks its package quoted (quoted_at, quote_draft_id), written straight after
+        // the send's own record (couple_drafts.markSent inside sendApprovedDraft); the vendor's row only. A send that did not reach her
+        // marks nothing.
+        if (note.quote_lp && QUOTE_REACHED.includes(sent.result)) {
+          try {
+            await supabase.from('lead_packages').update({ quoted_at: new Date().toISOString(), quote_draft_id: note.draft_id })
+              .eq('id', note.quote_lp).eq('vendor_id', vendor.id);
+          } catch (e) { try { console.error(`[door:quote] quoted_at NOT written (the send stands): lead_package=${note.quote_lp} draft=${note.draft_id}:`, e && e.message); } catch (_e) { /* */ } }
+        }
         st.toolCalls.push({ name: 'donna_relay_send', input: { draft_id: note.draft_id }, result: sent.result });
         const rest = note.acts.slice(1);
         if (!rest.length) return doorAnswer(st, 'draft_answered');
@@ -1717,9 +1783,14 @@ async function preTurn(args, depsIn) {
         }
       }
     } else if (note && PKG_ASKS.includes(note.asked)) {
-      const said = message.trim();
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
       const pkgs = (await packagesOf(supabase, vendor.id)) || [];
+      // CE-45 ELZ-1 cut 2b (R-45.23's V16, the safe half): after B23 or B31 a bare number is the Nth option in the ONE order the
+      // vendor was shown (DL.sortedNameList); the name is still accepted; a number outside the list falls to the re-ask below (once,
+      // then B3). B24 is NOT read by number here: its options share one name, so a number must bind a package id (cut 2c).
+      const pickN = NUMBER_PICK_PKG.includes(note.asked) ? bareNumber(message) : null;
+      const shown = pickN ? (DL.sortedNameList(pkgs.map((p) => p && p.name)) || []) : [];
+      const said = pickN && pickN <= shown.length ? shown[pickN - 1] : message.trim();
       const own = pkgs.filter((p) => p && key(p.name) === key(said));
       if (own.length === 1) { fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, package_as_spoken: String(own[0].name) } : { ...a })) }; st.answered = note.asked; }
       else {
@@ -1727,7 +1798,7 @@ async function preTurn(args, depsIn) {
         const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && !echo(a) && (a.act !== 'attach_package' || (!!spokenText(a.package_as_spoken) && key(a.package_as_spoken) !== key(note.acts[0].package_as_spoken || ''))));
         if (!movedOn) {
           if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
-          const line = DL.whichPackage(pkgs.map((p) => p && p.name)) || DL.LINES.B3;
+          const line = DL.whichPackage(pkgs.map((p) => p && p.name), spokenText(note.acts[0] && note.acts[0].client_as_spoken)) || DL.LINES.B3;
           return { ...askAgain(line, line === DL.LINES.B3 ? 'B3' : 'B31', note.tries + 1), note: { asked: 'B31', acts: note.acts, tries: note.tries + 1 } };
         }
       }
@@ -1831,7 +1902,7 @@ async function preTurn(args, depsIn) {
     // table (row 13, C1 both variants): "Who are my new leads?" returned act `lead` with no client on route search, which met askName below and
     // would have asked B18 (the lead's name question) for a LOOKUP. Its acts are lookups only; until cut four covers them the turn reads
     // B34 (exit 'lookup', standKey); cut four makes this exit the lookups' door. Never reached on a note turn (fromNote decides above).
-    if (heard && heard.route === 'search') return (await lookupDoor(supabase, vendor, heard, nowMs, L, st)) || CHAIN(st.ear, 'lookup'); // P7 cut 4: the lookups' door
+    if (heard && heard.route === 'search') return (await lookupDoor(supabase, vendor, heard, nowMs, L, st, message)) || CHAIN(st.ear, 'lookup'); // P7 cut 4: the lookups' door
     // F-44.118 (the chair; kept by the founder's R-44.41 as a SAFETY FLOOR UNDER MONEY and not as a cure for context): on a turn not answering
     // a note, a heard client_as_spoken NOT PRESENT in her message under key() is a name she did not say (the ear carried the thread's last
     // lead onto "The booking is confirmed", 06:32:24 and 08:01:09 on 22 September) and is treated as UNSAID, so B18 or B35 is asked.
@@ -1909,9 +1980,8 @@ async function preTurn(args, depsIn) {
       }
     }
     // P6b: the ONE relay of the message (a second is not staged; one draft at a time is the store's own law, supersede-on-stage).
-    const relays = acts.filter((a) => a.act === 'relay');
+    const relays = acts.filter((a) => a.act === 'relay' || a.act === 'quote_send'); // cut 2b: a quote is a relay with facts
     let relayPlan = null;
-    if (relays.length && !relayLane) return CHAIN(st.ear, 'relay_pwa'); // the second cut's lane: B34 as before
     if (relays.length) {
       relayPlan = await planRelay(supabase, vendor, relays[0], L);
       if (!relayPlan) return CHAIN(st.ear, 'relay_unsayable');
@@ -2043,7 +2113,8 @@ async function preTurn(args, depsIn) {
     if (relayPlan && relayPlan.speak) { st.lines.push(relayPlan.speak); st.keys.push(relayPlan.key); if (relayPlan.skipHarvest) st.skipHarvest = true; }
     else if (relayPlan && relayPlan.relay) {
       // F-44.123: the instruction is the message that ASKED for the relay: carried on the note when her answer ran the job, else this turn's.
-      const composed = await L.draft.composeDraft({ route, message: st.said || message, client: relayPlan.relay.client, vendorName: (typeof vendor.business_name === 'string' && vendor.business_name) || (typeof vendor.name === 'string' && vendor.name) || null }, { ...(deps.composerCreate ? { llmCreate: deps.composerCreate } : {}), ...(deps.listener ? { listener: deps.listener } : {}) });
+      const qFacts = relayPlan.relay.quote ? relayPlan.relay.quote.facts : null;
+      const composed = await composeChecked(L, qFacts, { route, message: st.said || message, client: relayPlan.relay.client, vendorName: (typeof vendor.business_name === 'string' && vendor.business_name) || (typeof vendor.name === 'string' && vendor.name) || null }, { ...(deps.composerCreate ? { llmCreate: deps.composerCreate } : {}), ...(deps.listener ? { listener: deps.listener } : {}) });
       if (!composed || !composed.body) { st.lines.push(glitchLine() || DL.LINES.B3); st.keys.push('GLITCH'); st.skipHarvest = true; }
       else {
         st.wrote = true; if (!st.fallback) st.fallback = glitchLine();
@@ -2054,7 +2125,7 @@ async function preTurn(args, depsIn) {
           const line = DL.showFrame(row.body, relayPlan.relay.client, row.couple_phone);
           st.lines.push(line || glitchLine() || DL.LINES.B3); st.keys.push(line ? 'B37' : 'GLITCH'); st.skipHarvest = true;
           st.toolCalls.push({ name: HANDS.relay, input: { recipient: relayPlan.relay.client, message: row.body, seat: `${composed.seat.provider}/${composed.seat.model}`, verbatim: composed.verbatim === true }, result: 'staged' });
-          if (line) { st.relayNote = { asked: 'B37', acts: [noteAct(relays[0]), ...money.map(noteAct).filter(Boolean)].filter(Boolean), tries: 0, draft_id: String(row.id) }; relayAsked = true; }
+          if (line) { st.relayNote = { asked: 'B37', acts: [noteAct(relays[0]), ...money.map(noteAct).filter(Boolean)].filter(Boolean), tries: 0, draft_id: String(row.id), ...(relayPlan.relay.quote ? { quote_lp: String(relayPlan.relay.quote.leadPackageId) } : {}) }; relayAsked = true; }
         }
       }
     }
@@ -2149,7 +2220,6 @@ function standKeyOf(out, L, nowMs) {
   const acts = request && Array.isArray(request.acts) ? request.acts : null;
   if (why === 'yes_no_nothing_waiting') return { key: 'LEFTOVER' };
   if (why === 'lead_phone') return { key: 'B34' };
-  if (why === 'relay_pwa') return { key: 'B34' }; // P6b first cut: the pwa lane's send waits for the second cut
   if (why === 'uncovered' && acts) {
     if (!acts.length) return { key: 'LEFTOVER' };
     if (acts.some((a) => !a || !COVERED.includes(a.act))) return { key: 'B34' };

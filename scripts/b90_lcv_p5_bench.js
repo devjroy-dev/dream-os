@@ -1,4 +1,7 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (R-45.23, his V11 and V13): B23 and B31 list their options NUMBERED and end "Reply with the number.";
+// B31 names the client; B23 now leaves a package note (F5). Templates, rendered forms and hashes re-pinned; what each cell proves is unchanged.
+const __NUM = (s) => String(s).split(' · ').map((x, i) => `${i + 1}. ${x}`).join(' ');
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
 // re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b90_lcv_p5_bench.js · TDW CE-44 · LCV-2 · LC-Victor P5, THE WORKING DOOR FOR MONEY AND INVOICES. Rung b90.
@@ -209,7 +212,7 @@ async function main() {
     B21: 'That wedding date cannot be right. Say it like 5 December 2027.',
     // H1 (CE-44 LCV-8, P6a-2): B22 to B28 his at R-44.34 and R-44.35; B29 and B30 his bytes REUSED from the pwa (twins named in doorLines.js).
     B22: 'Package attached: {client} · {package} · Rs {total}.',
-    B23: 'You have no package called {name}. Yours are: {list}.',
+    B23: 'You have no package called {name}. Yours are: {list}. Reply with the number.',
     B24: 'Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.',
     B25: 'Could not attach the package. {client} has no wedding date yet. Add {client}\'s wedding date first.',
     B26: 'When is the delivery date for {client}?',
@@ -225,7 +228,7 @@ async function main() {
     // RE-PINNED (CE-44 LCV-10 PART B-2, first cut): B35 his at R-44.39 ("Yes to your recomendation"), hash-carried; B31 and B33 stay B-2's second cut's.
     B35: 'Which client? Say the name.',
     // RE-PINNED (CE-44 LCV-10 PART B-2, second cut): B31 (R-44.36) and B33 (F-44.102, REUSE of dreamos-pwa lib/worklist/packages.ts:116), hash-carried.
-    B31: 'Which package? Yours are: {list}.',
+    B31: 'Which package for {client}? {list}. Reply with the number.',
     B33: 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.', // cut 2a: V5, his (labelled at the top)
     // RE-PINNED (CE-44 LCV-10, the third B-2 cut): B36 his at R-44.40, hash-carried.
     B36: 'Did you mean {name}? Reply YES or NO.',
@@ -280,6 +283,9 @@ async function main() {
     // RE-PINNED (CE-45 LCV-15, LSP_2, labelled): B84 and B85, his (R-45.16, the screenshot save); b112 holds them
     B84: 'Reply "save all" to add them, or "skip 2" to leave one out.',
     B85: "Nothing was saved.",
+    // CE-45 ELZ-1 cut 2b (F-44.175, labelled): his stopgap lines, B86 and B87
+    B86: "I can't look that up yet. Open {room} in the app to see {thing}.",
+    B87: "I can't look that up yet. Open the app to see it.",
     D1: 'Booked: {client}. Client, event and invoice {number} are ready.',
     LEFTOVER: "I didn't catch a task in that. You can say things like:",
   };
@@ -294,7 +300,7 @@ async function main() {
     B16: 'a7fe91f49891ed319667b750d32ddcd55dabda117f328f7f0712f685c20b3830', B17: 'b332f4de8e4698181a5d67735814f183a25319abdfa568c3e56b4040f24e8927',
     B18: 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0', B19: 'ec10d50e073b11a83206a1c89c276be61f0e476bee762671d383820d74ecfaf8',
     B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653', B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
-    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c',
+    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '583d20e906f253e15230693679cc9ad4b93f81b601be6e3434b825c2959819de',
     B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785',
     B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
     B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986', B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
@@ -303,7 +309,7 @@ async function main() {
     B32: 'b4679dd36af5037d808df12e3865c8db99b7b2c39ab6117c6b1bbe4c27b82878',
     B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
     B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
-    B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
+    B31: '1e5cb75ba7131c768dbd07546b5905b6cfe09021a97efc586c145341978406b2',
     B33: '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44',
     B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
     B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
@@ -349,6 +355,8 @@ async function main() {
     B83: 'ec1816251b9cfde6078edb4da2fa4b4499c9b7d68ec38ae17d6e09b17c7497e0',
     B84: '6f413c3f0f6dcf9e7383d3efeadf7b319d719c914b1f8fa2a4faaca0c9f3906d',
     B85: '2a100bbec87f53280ef40a2cb39dab5a0b74543df6e2bb10fd810795283f1868',
+    B86: '62c5c316aa796547501d1c4530f2771dc3207579bc77bfa8ca124e2b3098dee2',
+    B87: '8a10f87ecf94d4169d67bbb22a9f7efc80a1ff5785be2922b239e6f2a154fcee',
     D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
     LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',
   };
@@ -400,8 +408,8 @@ async function main() {
   // H2 again (CE-45 LCV-12, P7 cut 2a): at ten, block_date, unblock_date and book_event join it; NEEDS_CLIENT is the table beside it (ruling (g)).
   // H2 again (CE-45 LCV-13, P7 cut 2b, labelled): at twelve, edit_event and cancel_event join it (asked YES or NO before they write).
   // H2 again (CE-45 LCV-14, P7 cut 3, labelled): at fourteen, assign_crew and payment_reminder join it (b106 holds them).
-  T('4.2 covered at P7 cut 3: booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package, relay, block_date, unblock_date, book_event, edit_event, cancel_event, assign_crew, payment_reminder; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,assign_crew,attach_package,block_date,book_event,booking_confirmed,cancel_event,edit_event,invoice,lead,milestone_paid,payment_reminder,relay,unblock_date');
-  T('4.2a NEEDS_CLIENT (P7 2a): the acts that must name a client, and a block or an unblock is not among them', WD.NEEDS_CLIENT.slice().sort().join() === 'advance_paid,attach_package,book_event,booking_confirmed,cancel_event,edit_event,invoice,lead,milestone_paid,payment_reminder,relay' && !WD.NEEDS_CLIENT.includes('block_date') && !WD.NEEDS_CLIENT.includes('unblock_date'));
+  T('4.2 covered at P7 cut 3 (and quote_send since ELZ-1 cut 2b, labelled): booking_confirmed, advance_paid, milestone_paid, invoice, lead, attach_package, relay, block_date, unblock_date, book_event, edit_event, cancel_event, assign_crew, payment_reminder; nothing else', WD.COVERED.slice().sort().join() === 'advance_paid,assign_crew,attach_package,block_date,book_event,booking_confirmed,cancel_event,edit_event,invoice,lead,milestone_paid,payment_reminder,quote_send,relay,unblock_date');
+  T('4.2a NEEDS_CLIENT (P7 2a): the acts that must name a client, and a block or an unblock is not among them', WD.NEEDS_CLIENT.slice().sort().join() === 'advance_paid,attach_package,book_event,booking_confirmed,cancel_event,edit_event,invoice,lead,milestone_paid,payment_reminder,quote_send,relay' /* LABELED AMENDMENT · CE-45 ELZ-1 cut 2b: quote_send covered */ && !WD.NEEDS_CLIENT.includes('block_date') && !WD.NEEDS_CLIENT.includes('unblock_date'));
   T('4.3 the door never names a forbidden hand anywhere in its source', !FORBIDDEN.some((h) => new RegExp(`'${h}'`).test(src('src/lib/vendor/workingDoor.js').replace(/^\s*\/\/.*$/gm, ''))));
 
   // ─── §5 THE DOOR'S DECISIONS ───────────────────────────────────────────────────────────────────

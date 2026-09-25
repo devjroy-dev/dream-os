@@ -1,4 +1,7 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (R-45.23, his V11 and V13): B23 and B31 list their options NUMBERED and end "Reply with the number.";
+// B31 names the client; B23 now leaves a package note (F5). Templates, rendered forms and hashes re-pinned; what each cell proves is unchanged.
+const __NUM = (s) => String(s).split(' · ').map((x, i) => `${i + 1}. ${x}`).join(' ');
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
 // re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b98_lcv10_package_bench.js · TDW CE-44 · LCV-10 · PART B-2, SECOND CUT: B31, B33; the note for B24 and B31; F-44.107; F-44.108; F-44.117. Rung b98.
@@ -157,9 +160,9 @@ const F1_SAID = 'Asha walk twelve';
 const F1_JSON = '{"acts":[{"act":"find","client_as_spoken":"Asha walk twelve"}],"route":"search"}';
 const F2_SAID = 'Asha Walk Twelve';
 const F2_JSON = '{"acts":[{"act":"find","client_as_spoken":"Asha Walk Twelve"}],"route":"search"}';
-const B3 = 'Okay. Nothing was changed.'; const B31 = 'Which package? Yours are: {list}.'; const B33 = 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.'; const B33R = (pkg) => `Could not attach the package. ${pkg} has no fee yet. Set its fee in the app first.`; /* cut 2a: V5 */ const B35 = 'Which client? Say the name.';
+const B3 = 'Okay. Nothing was changed.'; const B31 = 'Which package for {client}? {list}. Reply with the number.'; const B33 = 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.'; const B33R = (pkg) => `Could not attach the package. ${pkg} has no fee yet. Set its fee in the app first.`; /* cut 2a: V5 */ const B35 = 'Which client? Say the name.';
 const SORTED = 'Photographs and film · Pre wedding shoot · Walk P7 Album';
-const B31L = `Which package? Yours are: ${SORTED}.`;
+const B31L = `Which package for Dia Walk Thirteen? ${__NUM(SORTED)}. Reply with the number.`;
 const att = (client, pkg, date) => ({ act: 'attach_package', ...(client ? { client_as_spoken: client } : {}), ...(pkg ? { package_as_spoken: pkg } : {}), ...(date ? { date_as_spoken: date } : {}) });
 const money = (act, client, date) => ({ act, ...(client ? { client_as_spoken: client } : {}), ...(date ? { date_as_spoken: date } : {}) });
 const staged = (d) => (d.tables['public.pending_money_acts'] || []);
@@ -192,9 +195,9 @@ async function main() {
 
   // ─── §1 THE BYTES AND THE LISTS ────────────────────────────────────────────────────────────
   sec('1 B31 and B33, his, hash-carried; every {list} sorted (F-44.108)');
-  T('1.1 B31 and B33 are HIS bytes verbatim, their hashes the literals pinned here, equal to sha256 of the bytes', DL.LINES.B31 === B31 && DL.LINES.B33 === B33 && DL.LINE_HASHES.B31 === 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75' && sha(B31) === DL.LINE_HASHES.B31 && DL.LINE_HASHES.B33 === '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44' && sha(B33) === DL.LINE_HASHES.B33);
+  T('1.1 B31 and B33 are HIS bytes verbatim, their hashes the literals pinned here, equal to sha256 of the bytes', DL.LINES.B31 === B31 && DL.LINES.B33 === B33 && DL.LINE_HASHES.B31 === '1e5cb75ba7131c768dbd07546b5905b6cfe09021a97efc586c145341978406b2' && sha(B31) === DL.LINE_HASHES.B31 && DL.LINE_HASHES.B33 === '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44' && sha(B33) === DL.LINE_HASHES.B33);
   T('1.2 B33 WAS the reuse of his pwa byte (packages.ts:116, the pwa\'s no_fee line, at 320ad7e); since cut 2a it is his V5, pinned here (witnessed by the seat and the chair; the file is not in this repo, the byte is pinned)', B33 === 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.' /* cut 2a, labelled: the founder's V5 (R-45.23) SUPERSEDES the pwa reuse; the cell now pins his V5 byte */);
-  T('1.3 F-44.108: {list} is sorted by name case-folded in BOTH bytes, the rows\' order forgotten; "Bridal" and "bridal" stay adjacent', (DL.whichPackage || (() => 'NO whichPackage'))(['Walk P7 Album', 'Pre wedding shoot', 'Photographs and film']) === B31L && DL.noSuchPackage('Gold', ['zeta', 'Alpha', 'Bridal', 'bridal']).includes('Yours are: Alpha · Bridal · bridal · zeta.') && (DL.whichPackage || (() => 'NO whichPackage'))([]) === null && (DL.whichPackage || (() => 'NO whichPackage'))([null, ' ']) === null);
+  T('1.3 F-44.108: {list} is sorted by name case-folded in BOTH bytes, the rows\' order forgotten; "Bridal" and "bridal" stay adjacent', (DL.whichPackage || (() => 'NO whichPackage'))(['Walk P7 Album', 'Pre wedding shoot', 'Photographs and film'], 'Dia Walk Thirteen') === B31L && DL.noSuchPackage('Gold', ['zeta', 'Alpha', 'Bridal', 'bridal']).includes('Yours are: 1. Alpha 2. Bridal 3. bridal 4. zeta. Reply with the number.') && (DL.whichPackage || (() => 'NO whichPackage'))([]) === null && (DL.whichPackage || (() => 'NO whichPackage'))([null, ' ']) === null);
 
   // ─── §2 B31 ASKED, THE LEAD FIRST ──────────────────────────────────────────────────────────
   sec('2 B31 is asked for an attach naming no package; the lead is resolved BEFORE the package (F-44.107)');
@@ -202,13 +205,13 @@ async function main() {
   T('2.1 THE CARD: an attach naming a client and NO package: B31 with HER OWN names sorted, a note carrying the attach (client from the row, no package), nothing written', r.reply === B31L && r.out.door === true && noteIn(db).asked === 'B31' && canon(noteIn(db).acts) === canon([{ act: 'attach_package', client_as_spoken: 'Dia Walk Thirteen' }]) && lpsIn(db).length === 0);
   db = seeded(); db.tables['public.vendor_packages'] = [db.tables['public.vendor_packages'][1]];
   r = await turn(db, ASK[0], ASK[1]);
-  T('2.2 THE DOOR NEVER GUESSES: with exactly ONE package she is still asked B31 listing it', r.reply === 'Which package? Yours are: Walk P7 Album.' && lpsIn(db).length === 0);
+  T('2.2 THE DOOR NEVER GUESSES: with exactly ONE package she is still asked B31 listing it', r.reply === 'Which package for Dia Walk Thirteen? 1. Walk P7 Album. Reply with the number.' && lpsIn(db).length === 0);
   db = seeded(); r = await turn(db, 'Attach Gold to Nobody Walk Thirteen', req([att('Nobody Walk Thirteen', 'Gold')]));
   T('2.3 F-44.107: a misspelt CLIENT with a package that does not exist meets B32 first, never B23', r.keys === 'B32' && /No lead called Nobody Walk Thirteen/.test(r.reply));
   db = seeded(); r = await turn(db, 'Attach a package to Nobody Walk Thirteen', req([att('Nobody Walk Thirteen')]));
   T('2.4 F-44.107: a misspelt client with NO package named meets B32, never B31', r.keys === 'B32');
   db = seeded(); r = await turn(db, 'Attach Gold to Dia Walk Thirteen', req([att('Dia Walk Thirteen', 'Gold')]));
-  T('2.5 a real client and no such package is still B23, its list SORTED', r.reply === `You have no package called Gold. Yours are: ${SORTED}.` && r.keys === 'B23' && noteOf(db) === undefined);
+  T('2.5 a real client and no such package is still B23, its list SORTED', r.reply === `You have no package called Gold. Yours are: ${__NUM(SORTED)}. Reply with the number.` && r.keys === 'B23' && noteIn(db).asked === 'B23' /* cut 2b: B23 now leaves a note (F5) */);
   db = seeded(); db.tables['public.vendor_packages'].push(pkgRow({ id: 'p-album2', name: 'walk p7 album', total: 30000, delivery_basis: 'handover' }));
   r = await turn(db, 'Attach Walk P7 Album to Dia Walk Thirteen', req([att('Dia Walk Thirteen', 'Walk P7 Album')]));
   T('2.6 two of one name is B24 as before, and it KEEPS A NOTE now', r.keys === 'B24' && noteIn(db).asked === 'B24' && lpsIn(db).length === 0);
@@ -319,7 +322,7 @@ async function main() {
     T('5.1 SAY "Add a new lead Dia Walk Thirteen, wedding on 5 March 2027": filed', c1.keys === 'B17');
     const c2 = await turn(d, 'Attach a package to Dia Walk Thirteen', req([att('Dia Walk Thirteen')]));
     const c3 = await turn(d, 'Photographs and film', JSON.parse(NONE_JSON));
-    T(`5.2 SAY "Attach a package to Dia Walk Thirteen", then "Photographs and film": "Which package? Yours are: ${LIST}."; then "Package attached: Dia Walk Thirteen · Photographs and film · Rs 80,000."`, c2.reply === `Which package? Yours are: ${LIST}.` && c3.reply === 'Package attached: Dia Walk Thirteen · Photographs and film · Rs 80,000.');
+    T(`5.2 SAY "Attach a package to Dia Walk Thirteen", then "Photographs and film": "Which package for Dia Walk Thirteen? ${__NUM(LIST)}. Reply with the number."; then "Package attached: Dia Walk Thirteen · Photographs and film · Rs 80,000."`, c2.reply === `Which package for Dia Walk Thirteen? ${__NUM(LIST)}. Reply with the number.` && c3.reply === 'Package attached: Dia Walk Thirteen · Photographs and film · Rs 80,000.');
     const c4 = await turn(d, 'Attach Gold to Nobody Walk Thirteen', req([att('Nobody Walk Thirteen', 'Gold')]));
     T('5.3 SAY "Attach Gold to Nobody Walk Thirteen": "Could not attach the package. No lead called Nobody Walk Thirteen. Add Nobody Walk Thirteen as a lead first, here or in the app." (the lead before the package)', c4.reply === 'Could not attach the package. No lead called Nobody Walk Thirteen. Add Nobody Walk Thirteen as a lead first, here or in the app.');
     const c5 = await turn(d, 'Add a new lead Ravi Walk Thirteen, wedding on 5 March 2027', req([lead('Ravi Walk Thirteen', '5 March 2027')]));
@@ -335,7 +338,7 @@ async function main() {
     const c12 = await driveWA({ db: d, message: 'Attach a package to Ravi Walk Thirteen', request: req([att('Ravi Walk Thirteen')]) });
     const c13 = await driveWA({ db: d, message: 'Walk P7 Album', request: JSON.parse(NONE_JSON) });
     const c14 = await driveWA({ db: d, message: '5 June 2027', request: JSON.parse(NONE_JSON) });
-    T('5.7 ON WHATSAPP, SAY "Attach a package to Ravi Walk Thirteen", "Walk P7 Album", "5 June 2027": the question; "When is the delivery date for Ravi Walk Thirteen?"; "Package attached: Ravi Walk Thirteen · Walk P7 Album · Rs 25,000 · Delivery 5 June 2027.", the chain never called', one(c12) === `Which package? Yours are: ${LIST}.` && one(c13) === 'When is the delivery date for Ravi Walk Thirteen?' && one(c14) === 'Package attached: Ravi Walk Thirteen · Walk P7 Album · Rs 25,000 · Delivery 5 June 2027.' && lpsIn(d).length === 2);
+    T('5.7 ON WHATSAPP, SAY "Attach a package to Ravi Walk Thirteen", "Walk P7 Album", "5 June 2027": the question; "When is the delivery date for Ravi Walk Thirteen?"; "Package attached: Ravi Walk Thirteen · Walk P7 Album · Rs 25,000 · Delivery 5 June 2027.", the chain never called', one(c12) === `Which package for Ravi Walk Thirteen? ${__NUM(LIST)}. Reply with the number.` && one(c13) === 'When is the delivery date for Ravi Walk Thirteen?' && one(c14) === 'Package attached: Ravi Walk Thirteen · Walk P7 Album · Rs 25,000 · Delivery 5 June 2027.' && lpsIn(d).length === 2);
     const rows = d.tables['engine.messages'].filter((m) => m.role === 'assistant');
     T('5.8 the thread holds the card: fourteen turns, every one answered by code, the last three on whatsapp', rows.length === 14 && rows.every((m) => m.meta.listener.door === true) && rows.slice(-3).every((m) => m.meta.listener.lane === 'whatsapp'));
   }
@@ -346,7 +349,7 @@ async function main() {
   T('6.1 W-1 NONE: no path under src/engine, no soul, lens or prompt file, no migration', man.length > 0 && man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)));
   T('6.2 the manifest names exactly the nine paths this packet touches (C-44.7)', JSON.stringify(man.slice().sort()) === JSON.stringify([WALK_B, MAN, 'scripts/b98_lcv10_package_bench.js', 'scripts/b97_lcv10_name_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b90_lcv_p5_bench.js', 'src/lib/vendor/doorLines.js', WDf].sort()));
   // 6.3 RE-PINNED (the third B-2 cut): F-44.118's floor is IN the tree now (R-44.41), and B36 joined LINES; b99 holds both.
-  T('6.3 LINES holds 41 (B31, B33 from this cut, B36 from the third; B37 to B39 from P6b, CE-45 LCV-11, his); F-44.118\'s floor is present, scoped by R-44.41 (b99 holds it)', Object.keys(DL.LINES).length === 81 /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his (R-45.16, the screenshot save); b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): 79 since B80 to B83, his; b109 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): 75 since B69 to B74, B78, B79, his (ASK 7: each form its own key); b108 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 3, labelled): 67 since B56 to B62, B67, B68, his (B60 carried, unspoken); b106 holds them */ /* P7 2b (CE-45 LCV-13, labelled): 58 since B48 to B53 */ /* P7 2a: 52 since B40 to B46, B54, B75 to B77 */ && /saidKey\.includes/.test(src(WDf)));
+  T('6.3 LINES holds 41 (B31, B33 from this cut, B36 from the third; B37 to B39 from P6b, CE-45 LCV-11, his); F-44.118\'s floor is present, scoped by R-44.41 (b99 holds it)', Object.keys(DL.LINES).length === 83 /* RE-PINNED (CE-45 ELZ-1 cut 2b, labelled): B86 and B87 his (F-44.175's stopgap), LINES 83 */ /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his (R-45.16, the screenshot save); b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): 79 since B80 to B83, his; b109 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): 75 since B69 to B74, B78, B79, his (ASK 7: each form its own key); b108 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 3, labelled): 67 since B56 to B62, B67, B68, his (B60 carried, unspoken); b106 holds them */ /* P7 2b (CE-45 LCV-13, labelled): 58 since B48 to B53 */ /* P7 2a: 52 since B40 to B46, B54, B75 to B77 */ && /saidKey\.includes/.test(src(WDf)));
 
   // ─── §7 FUZZ ───────────────────────────────────────────────────────────────────────────────
   sec('7 fuzz');
@@ -369,11 +372,11 @@ async function main() {
      ["    const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);\n    if (!found || !found.ok) {\n      if (found && found.reason === 'not_found') return { noLead: true, name }; // B32's place (with the founder)", "    const pk0 = await packagesOf(supabase, vendor.id); if (pk0 && said && !pk0.some((p) => p && key(p.name) === key(said))) { const line = DL.noSuchPackage(said, pk0.map((p) => p && p.name)); return line ? { speak: line, key: 'B23' } : null; }\n    const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);\n    if (!found || !found.ok) {\n      if (found && found.reason === 'not_found') return { noLead: true, name }; // B32's place (with the founder)"]], [],
     async (rq) => flow(rq, [['Attach Gold to Nobody Walk Thirteen', req([att('Nobody Walk Thirteen', 'Gold')])]]), (x) => x.out[0].keys === 'B23');
   await mut('8.2 M2 the door GUESSING the one package she holds instead of asking B31 (reddens 2.2)', WDf,
-    [["    if (!said) { const line = DL.whichPackage(pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B31', skipHarvest: true } : null; }\n    const hits = pkgs.filter((p) => p && key(p.name) === key(said));", "    const hits = !said && pkgs.length === 1 ? pkgs : pkgs.filter((p) => p && key(p.name) === key(said));"]], [],
+    [["    if (!said) { const line = DL.whichPackage(pkgs.map((p) => p && p.name), client); return line ? { speak: line, key: 'B31', skipHarvest: true } : null; }\n    const hits = pkgs.filter((p) => p && key(p.name) === key(said));", "    const hits = !said && pkgs.length === 1 ? pkgs : pkgs.filter((p) => p && key(p.name) === key(said));"]], [],
     async (rq) => flow(rq, [ASK], () => { const d = seeded(); d.tables['public.vendor_packages'] = [d.tables['public.vendor_packages'][0]]; return d; }), (x) => x.out[0].keys === 'B22');
   await mut('8.3 M3 the list UNSORTED, the rows\' order back (reddens 1.3, 2.1)', 'src/lib/vendor/doorLines.js',
     [[".sort((a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0));", ';']], [],
-    async (rq) => (rq('src/lib/vendor/doorLines.js').whichPackage || (() => 'NO whichPackage'))(['Walk P7 Album', 'Pre wedding shoot', 'Photographs and film']), (v) => v !== B31L);
+    async (rq) => (rq('src/lib/vendor/doorLines.js').whichPackage || (() => 'NO whichPackage'))(['Walk P7 Album', 'Pre wedding shoot', 'Photographs and film'], 'Dia Walk Thirteen'), (v) => v !== B31L);
   await mut('8.4 M4 the package note never persisted: her package name after B31 is LEFTOVER (reddens 3.1, 5.2)', WDf,
     [['      if (tries <= 1) st.note = { asked: w.key, acts:', '      if (false) st.note = { asked: w.key, acts:']], [],
     async (rq) => flow(rq, [ASK, ['Photographs and film', JSON.parse(NONE_JSON)]]), (x) => x.out[1].keys === 'LEFTOVER');

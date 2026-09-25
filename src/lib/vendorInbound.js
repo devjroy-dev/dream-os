@@ -762,7 +762,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
 
           // Unclear or low confidence — ask one more time with the same vendors
           await sendWhatsApp(phone,
-            `Sorry, didn't catch that — ${buildDisambiguationQuestion(candidateVendors || []).replace(/^Hi! /, '')}`
+            `Sorry, didn't catch that. ${buildDisambiguationQuestion(candidateVendors || []).replace(/^Hi! /, '')}`
           );
           console.log(`[routing:disambiguation_unclear] ${phone} reply="${body.slice(0, 40)}"`);
           return;

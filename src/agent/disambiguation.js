@@ -22,9 +22,32 @@ function buildDisambiguationQuestion(vendors) {
   return `Hi! Should I send this to ${names.join(', ')}, or ${last}?`;
 }
 
+function pickKey(s) {
+  return String(s == null ? '' : s).toLowerCase().replace(/\s+/g, ' ').trim().replace(/^[\s"'.,!?]+|[\s"'.,!?]+$/g, '');
+}
+// Exported for b118b. TOTAL: never throws; null when zero or several options match exactly.
+function exactPick(replyText, candidateVendors) {
+  try {
+    const said = pickKey(replyText);
+    if (!said || !Array.isArray(candidateVendors)) return null;
+    const hits = candidateVendors.filter((v) => v && pickKey(vendorDisplayName(v)) === said);
+    return hits.length === 1 ? hits[0] : null;
+  } catch (_e) { return null; }
+}
+
 async function interpretDisambiguationReply({ replyText, candidateVendors, anthropic }) {
   if (!replyText || !candidateVendors || candidateVendors.length === 0) {
     return { matched_vendor_id: null, confidence: 'none' };
+  }
+
+  // CE-45 ELZ-1 cut 2b (F-44.173): an EXACT answer picks before any model is asked. On 25 September Sarah answered "Dev Roy
+  // Photography" twice to "...Dev Roy Photography, Dev Roy Photography 1, or Make Up by Swati Roy?" and was refused both times: the
+  // model read one name beginning another as uncertain. Whole string, case-folded, spaces collapsed, edge punctuation dropped; it
+  // picks only when EXACTLY ONE option's name equals her words. Anything else goes to the model as before.
+  const exact = exactPick(replyText, candidateVendors);
+  if (exact) {
+    console.log(`[disambiguation] reply="${String(replyText).slice(0, 40)}" -> exact=${exact.id}`);
+    return { matched_vendor_id: exact.id, confidence: 'high' };
   }
 
   const vendorList = candidateVendors
@@ -77,6 +100,7 @@ Examples:
 }
 
 module.exports = {
+  exactPick, // CE-45 ELZ-1 cut 2b (F-44.173)
   buildDisambiguationQuestion,
   interpretDisambiguationReply,
   vendorDisplayName,

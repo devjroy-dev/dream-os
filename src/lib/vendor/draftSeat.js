@@ -62,7 +62,18 @@ function composerSeat(route, listener) {
 
 // Compose the body for her instruction to `client`, from `vendorName` (the vendors row's business_name, exactly as the row holds it; c-45's
 // r2 ruling). Returns { body, seat } or null. `deps`: { llmCreate, listener, timeoutMs } for the bench.
-async function composeDraft({ route, message, client, vendorName }, deps = {}) {
+// CE-45 ELZ-1 cut 2b (quote_send; F2): the quote's facts, handed to the writer as facts it must state exactly and may not change.
+// The door checks they appear verbatim (workingDoor composeChecked). Empty for a relay without facts.
+function factsText(facts) {
+  if (!facts || typeof facts !== 'object') return '';
+  const lines = [];
+  if (facts.package) lines.push(`package: ${facts.package}`);
+  if (facts.total) lines.push(`total: ${facts.total}`);
+  if (facts.delivery) lines.push(`delivery date: ${facts.delivery}`);
+  return lines.length ? `This is a QUOTE. State these facts exactly as written, never changed or rounded:\n${lines.join('\n')}\n` : '';
+}
+
+async function composeDraft({ route, message, client, vendorName, facts = null }, deps = {}) {
   try {
     const seat = composerSeat(route, deps.listener);
     if (!seat) return null;
@@ -71,7 +82,7 @@ async function composeDraft({ route, message, client, vendorName }, deps = {}) {
     // VERBATIM: her own quoted words are the body; no model is called.
     let verbatim = null;
     try { verbatim = require('./relaySeat').verbatimBody(text); } catch (_e) { verbatim = null; }
-    if (verbatim) return { body: verbatim, seat, verbatim: true };
+    if (verbatim && !facts) return { body: verbatim, seat, verbatim: true }; // cut 2b: a quote is always composed around its facts
     const create = deps.llmCreate || llmCreate;
     const name = typeof client === 'string' && client.trim() ? client.trim() : null;
     const vendor = typeof vendorName === 'string' && vendorName.trim() ? vendorName.trim() : null;
@@ -81,7 +92,7 @@ async function composeDraft({ route, message, client, vendorName }, deps = {}) {
       system: SYSTEM,
       tools: [DRAFT_TOOL],
       tool_choice: { type: 'tool', name: DRAFT_TOOL.name },
-      messages: [{ role: 'user', content: `${vendor ? `The vendor's business: ${vendor}\n` : ''}${name ? `The client's name: ${name}\n` : ''}Her instruction: ${text}` }],
+      messages: [{ role: 'user', content: `${vendor ? `The vendor's business: ${vendor}\n` : ''}${name ? `The client's name: ${name}\n` : ''}${factsText(facts)}Her instruction: ${text}` }],
     }), Number.isFinite(deps.timeoutMs) ? deps.timeoutMs : COMPOSE_TIMEOUT_MS);
     const call = ((resp && resp.content) || []).find((b) => b && b.type === 'tool_use' && b.name === DRAFT_TOOL.name);
     const body = call && call.input && typeof call.input.message === 'string' ? call.input.message.trim() : '';
