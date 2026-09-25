@@ -1,8 +1,10 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b98_lcv10_package_bench.js · TDW CE-44 · LCV-10 · PART B-2, SECOND CUT: B31, B33; the note for B24 and B31; F-44.107; F-44.108; F-44.117. Rung b98.
 //
 // B31 "Which package? Yours are: {list}." (R-44.36): an attach naming a client and no package, the door never guesses even when she holds one.
-// B33 "Set the fee first." (F-44.102, REUSE of dreamos-pwa lib/worklist/packages.ts:116) in place of B30 for no_fee. F-44.107: THE LEAD IS
+// B33 (F-44.102, then the REUSE of dreamos-pwa lib/worklist/packages.ts:116; his V5 since CE-45 ELZ-1 cut 2a) in place of B30 for no_fee. F-44.107: THE LEAD IS
 // RESOLVED BEFORE THE PACKAGE, so a misspelt client meets B32 and B23 is never reached for a lead that does not exist. F-44.108: every {list}
 // sorted by name case-folded. THE PACKAGE NOTE (asked B24 or B31): her answer is a package by the door's own key() fold FIRST; a heard act
 // echoing her message is her answer heard twice; a different kind or the attach restated with another package lapses; else B31 once more
@@ -155,7 +157,7 @@ const F1_SAID = 'Asha walk twelve';
 const F1_JSON = '{"acts":[{"act":"find","client_as_spoken":"Asha walk twelve"}],"route":"search"}';
 const F2_SAID = 'Asha Walk Twelve';
 const F2_JSON = '{"acts":[{"act":"find","client_as_spoken":"Asha Walk Twelve"}],"route":"search"}';
-const B3 = 'Okay. Nothing was changed.'; const B31 = 'Which package? Yours are: {list}.'; const B33 = 'Set the fee first.'; const B35 = 'Which client? Say the name.';
+const B3 = 'Okay. Nothing was changed.'; const B31 = 'Which package? Yours are: {list}.'; const B33 = 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.'; const B33R = (pkg) => `Could not attach the package. ${pkg} has no fee yet. Set its fee in the app first.`; /* cut 2a: V5 */ const B35 = 'Which client? Say the name.';
 const SORTED = 'Photographs and film · Pre wedding shoot · Walk P7 Album';
 const B31L = `Which package? Yours are: ${SORTED}.`;
 const att = (client, pkg, date) => ({ act: 'attach_package', ...(client ? { client_as_spoken: client } : {}), ...(pkg ? { package_as_spoken: pkg } : {}), ...(date ? { date_as_spoken: date } : {}) });
@@ -190,8 +192,8 @@ async function main() {
 
   // ─── §1 THE BYTES AND THE LISTS ────────────────────────────────────────────────────────────
   sec('1 B31 and B33, his, hash-carried; every {list} sorted (F-44.108)');
-  T('1.1 B31 and B33 are HIS bytes verbatim, their hashes the literals pinned here, equal to sha256 of the bytes', DL.LINES.B31 === B31 && DL.LINES.B33 === B33 && DL.LINE_HASHES.B31 === 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75' && sha(B31) === DL.LINE_HASHES.B31 && DL.LINE_HASHES.B33 === '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34' && sha(B33) === DL.LINE_HASHES.B33);
-  T('1.2 B33 is the REUSE of his pwa byte: dreamos-pwa lib/worklist/packages.ts:116 reads `no_fee: \'Set the fee first.\'` at 320ad7e (witnessed by the seat and the chair; the file is not in this repo, the byte is pinned)', B33 === 'Set the fee first.');
+  T('1.1 B31 and B33 are HIS bytes verbatim, their hashes the literals pinned here, equal to sha256 of the bytes', DL.LINES.B31 === B31 && DL.LINES.B33 === B33 && DL.LINE_HASHES.B31 === 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75' && sha(B31) === DL.LINE_HASHES.B31 && DL.LINE_HASHES.B33 === '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44' && sha(B33) === DL.LINE_HASHES.B33);
+  T('1.2 B33 WAS the reuse of his pwa byte (packages.ts:116, the pwa\'s no_fee line, at 320ad7e); since cut 2a it is his V5, pinned here (witnessed by the seat and the chair; the file is not in this repo, the byte is pinned)', B33 === 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.' /* cut 2a, labelled: the founder's V5 (R-45.23) SUPERSEDES the pwa reuse; the cell now pins his V5 byte */);
   T('1.3 F-44.108: {list} is sorted by name case-folded in BOTH bytes, the rows\' order forgotten; "Bridal" and "bridal" stay adjacent', (DL.whichPackage || (() => 'NO whichPackage'))(['Walk P7 Album', 'Pre wedding shoot', 'Photographs and film']) === B31L && DL.noSuchPackage('Gold', ['zeta', 'Alpha', 'Bridal', 'bridal']).includes('Yours are: Alpha · Bridal · bridal · zeta.') && (DL.whichPackage || (() => 'NO whichPackage'))([]) === null && (DL.whichPackage || (() => 'NO whichPackage'))([null, ' ']) === null);
 
   // ─── §2 B31 ASKED, THE LEAD FIRST ──────────────────────────────────────────────────────────
@@ -214,7 +216,7 @@ async function main() {
   T('2.7 an attach naming NEITHER client nor package is B35 first (the name), the note carrying the attach', r.reply === B35 && noteIn(db).asked === 'B35');
   db = seeded(); db.tables['public.vendor_packages'].push(pkgRow({ id: 'p-nofee', name: 'No fee yet', total: null, delivery_basis: 'on_the_day' }));
   r = await turn(db, 'Attach No fee yet to Dia Walk Thirteen', req([att('Dia Walk Thirteen', 'No fee yet')]));
-  T('2.8 THE CARD: a package with no fee: attachPackage refuses no_fee and the door speaks B33, HIS byte, recorded refused:no_fee; nothing written', r.reply === B33 && r.keys === 'B33' && r.said.toolCalls[0].result === 'refused:no_fee' && lpsIn(db).length === 0);
+  T('2.8 THE CARD: a package with no fee: attachPackage refuses no_fee and the door speaks B33, HIS byte, recorded refused:no_fee; nothing written', r.reply === B33R('No fee yet') && r.keys === 'B33' && r.said.toolCalls[0].result === 'refused:no_fee' && lpsIn(db).length === 0);
 
   // ─── §3 THE PACKAGE NOTE IS READ ───────────────────────────────────────────────────────────
   sec('3 the answer to B31 or B24: a package by the door\'s own key() fold first');
@@ -319,13 +321,13 @@ async function main() {
     const c3 = await turn(d, 'Photographs and film', JSON.parse(NONE_JSON));
     T(`5.2 SAY "Attach a package to Dia Walk Thirteen", then "Photographs and film": "Which package? Yours are: ${LIST}."; then "Package attached: Dia Walk Thirteen · Photographs and film · Rs 80,000."`, c2.reply === `Which package? Yours are: ${LIST}.` && c3.reply === 'Package attached: Dia Walk Thirteen · Photographs and film · Rs 80,000.');
     const c4 = await turn(d, 'Attach Gold to Nobody Walk Thirteen', req([att('Nobody Walk Thirteen', 'Gold')]));
-    T('5.3 SAY "Attach Gold to Nobody Walk Thirteen": "Could not attach the package. No lead called Nobody Walk Thirteen. Add the lead first." (the lead before the package)', c4.reply === 'Could not attach the package. No lead called Nobody Walk Thirteen. Add the lead first.');
+    T('5.3 SAY "Attach Gold to Nobody Walk Thirteen": "Could not attach the package. No lead called Nobody Walk Thirteen. Add Nobody Walk Thirteen as a lead first, here or in the app." (the lead before the package)', c4.reply === 'Could not attach the package. No lead called Nobody Walk Thirteen. Add Nobody Walk Thirteen as a lead first, here or in the app.');
     const c5 = await turn(d, 'Add a new lead Ravi Walk Thirteen, wedding on 5 March 2027', req([lead('Ravi Walk Thirteen', '5 March 2027')]));
     const c6 = await turn(d, 'Attach a package to Ravi Walk Thirteen', req([att('Ravi Walk Thirteen')]));
     const c7 = await turn(d, 'No', JSON.parse(NONE_JSON));
     T('5.4 SAY "Add a new lead Ravi Walk Thirteen, wedding on 5 March 2027", "Attach a package to Ravi Walk Thirteen", "No": filed; the question; "Okay. Nothing was changed."', c5.keys === 'B17' && c6.keys === 'B31' && c7.reply === B3 && lpsIn(d).length === 1);
     const c8 = await turn(d, 'Attach Walk Thirteen No Fee to Ravi Walk Thirteen', req([att('Ravi Walk Thirteen', 'Walk Thirteen No Fee')]));
-    T('5.5 SAY "Attach Walk Thirteen No Fee to Ravi Walk Thirteen": "Set the fee first." (his own pwa byte), nothing attached', c8.reply === B33 && lpsIn(d).length === 1);
+    T('5.5 SAY "Attach Walk Thirteen No Fee to Ravi Walk Thirteen": his V5, naming Walk Thirteen No Fee (cut 2a), nothing attached', c8.reply === B33R('Walk Thirteen No Fee') && lpsIn(d).length === 1);
     const c9 = await turn(d, 'The booking is confirmed', req([money('booking_confirmed')]));
     const c10 = await turn(d, 'Dia walk thirteen', req([{ act: 'find', client_as_spoken: 'Dia walk thirteen' }], 'search'));
     const c11 = await turn(d, 'No', JSON.parse(NONE_JSON));
@@ -376,7 +378,7 @@ async function main() {
     [['      if (tries <= 1) st.note = { asked: w.key, acts:', '      if (false) st.note = { asked: w.key, acts:']], [],
     async (rq) => flow(rq, [ASK, ['Photographs and film', JSON.parse(NONE_JSON)]]), (x) => x.out[1].keys === 'LEFTOVER');
   await mut('8.5 M5 no_fee back to B30 (reddens 2.8, 5.5)', WDf,
-    [["    if (code === 'no_fee') return { line: DL.LINES.B33, key: 'B33', call: { name: HANDS.attach_package, input, result: 'refused:no_fee' }, landed: false }; // F-44.102, his own byte\n", '']], [],
+    [["    if (code === 'no_fee') return { line: DL.render('B33', { package: a.packageName }) || DL.LINES.B30, key: DL.render('B33', { package: a.packageName }) ? 'B33' : 'B30', call: { name: HANDS.attach_package, input, result: 'refused:no_fee' }, landed: false }; // F-44.102, his own byte\n", '']] /* cut 2a, labelled: the anchor moved with V5's {package} */, [],
     async (rq) => flow(rq, [['x', req([att('Dia Walk Thirteen', 'No fee yet')])]], () => { const d = seeded(); d.tables['public.vendor_packages'].push(pkgRow({ id: 'p-nofee', name: 'No fee yet', total: null, delivery_basis: 'on_the_day' })); return d; }), (x) => x.out[0].keys === 'B30');
   await mut('8.6 M6 F-44.117 removed: his "Asha walk twelve" heard as `find` lapses the note and reads B34 again, 06:33:29 exactly (reddens 4.1, 5.6)', WDf,
     [["      const isAnswer = (a) => route === 'search' || key(a.client_as_spoken) === key(name);", '      const isAnswer = () => false;']], [],

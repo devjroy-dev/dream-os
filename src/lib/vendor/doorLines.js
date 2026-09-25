@@ -41,9 +41,9 @@ const LINES = Object.freeze({
   // her no to a staged money act
   B3: "Okay. Nothing was changed.",
   // a booking on a name with no lead (F-44.5)
-  B4: "Could not confirm the booking. No lead called {name}. Add the lead first.",
+  B4: "Could not confirm the booking. No lead called {name}. Add {name} as a lead first, here or in the app.",
   // a booking whose lead has no live package
-  B5: "Could not confirm the booking. {client} has no package yet. Attach a package first.",
+  B5: "Could not confirm the booking. {client} has no package yet. Attach a package to {client} first.",
   // an advance or payment with no date said
   B6: "When did the payment come in?",
   // a date the door cannot read
@@ -84,7 +84,7 @@ const LINES = Object.freeze({
   // two of her packages share the name (rendered by position, as B8 is)
   B24: "Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.",
   // the lead has no day-precision wedding date (computeSchedule's no_wedding_date)
-  B25: "Could not attach the package. {client} has no wedding date yet. Add the date first.",
+  B25: "Could not attach the package. {client} has no wedding date yet. Add {client}'s wedding date first.",
   // a handover package and no delivery date said, or one equal to the wedding date (R-44.34 (b), R-44.35, F-44.92)
   B26: "When is the delivery date for {client}?",
   // a handover package attached; the delivery date from the ROW
@@ -104,14 +104,14 @@ const LINES = Object.freeze({
   // an attach that names a client and NO package (R-44.36; LCV-10 Part B-2, second cut): the door never guesses, even with one package;
   // {list} is HER OWN live package names, sorted by name case-folded (F-44.108), joined with " · ". The door keeps its own note of it.
   B31: "Which package? Yours are: {list}.",
-  // REUSE (F-44.102): his own byte from dreamos-pwa lib/worklist/packages.ts:116, `no_fee: 'Set the fee first.'`, in place of the general
+  // REUSE (F-44.102): his own byte from dreamos-pwa lib/worklist/packages.ts:116, `no_fee: 'Set the fee first.'`, in place of the general SUPERSEDED at CE-45 ELZ-1 cut 2a by his V5 (R-45.23): the package named, where to set its fee.
   // B30 when the attach refuses because the package has no fee.
-  B33: "Set the fee first.",
+  B33: "Could not attach the package. {package} has no fee yet. Set its fee in the app first.",
   // R-44.40 (the founder, 22 September: "Did you mean {name}? Reply YES or NO." is GREEN, HIS): when a client or package she named matches
   // no row of hers and EXACTLY ONE of her rows sits within the pinned distance, the door asks this and ACTS ON NOTHING until her YES.
   B36: "Did you mean {name}? Reply YES or NO.",
   // an attach whose client is no lead of hers (R-44.36, HIS, verbatim: "yes to your open earlirr questions")
-  B32: "Could not attach the package. No lead called {name}. Add the lead first.",
+  B32: "Could not attach the package. No lead called {name}. Add {name} as a lead first, here or in the app.",
   // an act HEARD that the door does not cover yet, a mixed message holding one, or a lead carrying a phone-shaped
   // number (R-44.38, HIS: the chair proposed the byte and his word was "yes"). Nothing is written on such a turn.
   B34: "I cannot do that by message yet. Use the app for it.",
@@ -126,7 +126,7 @@ const LINES = Object.freeze({
   // a message asked for a name no client of hers carries (his, 22 September 2026, "1 is fine"; B15's shape). No-hits only.
   B38: "Could not send the message. No client called {name}.",
   // a quote asked for a lead with no live package (his, 22 September 2026, "ok"). CARRIED in this cut, spoken when quote_send is covered.
-  B39: "Could not send the quote. {client} has no package yet. Attach a package first.",
+  B39: "Could not send the quote. {client} has no package yet. Attach a package to {client} first.",
   // ── P7 (CE-45 LCV-12), THE CALENDAR'S BYTES, all his, ruled 23 September 2026 ("All proposed lines accepted", "yes to all", "ok"). B47 is NOT a byte here: it is
   // the checker's own clash sentence, conflict.message, spoken verbatim (his by B4's blessing). B48 to B53 are 2b's, B56 to B62 cut three's, B67 to B74 cut four's.
   // P7 cut 2a · a day blocked by the door (his, 23 September 2026, "All proposed lines accepted"); {date} full month, {reason} the RETURNED row's own; no reason drops " · {reason}" through blockedLine() below, as byte 13 drops " for {client}"
@@ -170,7 +170,7 @@ const LINES = Object.freeze({
   B59: "{member}'s already on the {client} shoot.",
   // CARRIED, UNSPOKEN (the chair's ruling of 23 September on ASK 2; the bytes from his veto sheet of 22 September, held by the chair): rendered nowhere
   // in P7, no exit reaches it, as B39 and B77 were carried before their cut
-  B60: "No one called {name} on your team. Add them first.",
+  B60: "No one called {name} on your team. Add {name} to your team in the app first.",
   // two active members share the name: rendered BY POSITION through membersLine() below, as B8 is; three or more take R-45.9's derived form
   B61: "Two on your team are called {name}: {name} ({role}) · {name} ({role}). Say which one.",
   // an assignment naming no member. The door keeps its OWN note (MEMBER_ASKS): her whole next message is the member
@@ -212,7 +212,7 @@ const LINES = Object.freeze({
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
   B75: "Couldn't put that on the calendar — nothing was changed.",
   // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
-  B76: "No lead called {name}. Add the lead first.",
+  B76: "No lead called {name}. Add {name} as a lead first, here or in the app.",
   // an assignment by date alone with no shoot on that day (his "ok", 23 September 2026). CARRIED in 2a, spoken from cut three
   B77: "No shoot on {date}.",
   // a booking made (vetoed CE-43, TDW_CE43_LC2_P3_HANDOVER.md:173; homeless until P5)
@@ -245,12 +245,15 @@ const EXAMPLE_ACTS = Object.freeze([
   'find', 'whatsdue', 'lead', 'relay', 'assign_crew', 'assign_crew',
 ]);
 
+// CE-45 ELZ-1 cut 2a · R-45.23, the founder's V1 to V8 ("yes to all", 25 September 2026): every "do X first" line names WHAT is
+// missing, WHERE it is set and FOR WHOM. B4, B5, B25, B32, B33, B39, B60, B76 re-hashed below; B33 gains {package}. V9 to V16 (the
+// numbered picks) ride cut 2b with the number answer, so no line asks for a number the door cannot yet read.
 const LINE_HASHES = Object.freeze({
   B1: '1fb5297d3c1193543d8385e514fe42b1856be16deb6cabf2e83cf036169ed4ba',
   B2: 'cd29bd0dfbde4e0dba9cf4df73e12bc7b69880aea0337562e77d96228e8259eb',
   B3: 'a6a5c9b1c22d6a82413e6bb856363e8a98e902a4b092368a16ef21bb6b30066d',
-  B4: '2dff7d6656c93fa39dd45da087484bb39ef3751b00a0c2e1ca7d4b3503068684',
-  B5: 'c628ff61df8eec8e034ec24ac22d2e6b54e060eeb460260d32a6f2d9fa84d190',
+  B4: '1a395c37bf80588e2a5be318c0c0939d1f955ea6a26dacaf36403da829916a7a',
+  B5: '923fe7d7eebe9443d522a0037be01125e1958af1d047372dfc6d742220a6be45',
   B6: '728d219fdb8a4ce07778dcf346665975d7ab651f7501efa6ff3f8a7144eb3029',
   B7: '44b5c385d187f3cc29ce05c210a524a8be162ab127f2bf97cbe22bc90dd8e331',
   B8: 'ecf5d241deae90b77bc9d840928aacc2a1fc781f3fd2b6ea9cb2a25db7675166',
@@ -270,21 +273,21 @@ const LINE_HASHES = Object.freeze({
   B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c',
   B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c',
   B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a',
-  B25: '54da33cf13d4a3bb0d19333f1f5fa540fbf196af9f1cdd2b2e1b454c8a3f475f',
+  B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785',
   B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484',
   B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
   B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
   B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
   B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
-  B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
+  B32: 'b4679dd36af5037d808df12e3865c8db99b7b2c39ab6117c6b1bbe4c27b82878',
   B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
   B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
   B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
-  B33: '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34',
+  B33: '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44',
   B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
   B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
   B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
-  B39: '1702a3c82a88f751752869986ba88c70a73b0fc6e93d14a8b13cff40442eac76',
+  B39: '647f8a34d7a0bd592db1940cd31841febd0bd237a6b7439079110808ba910a96',
   B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',
   B41: '6d882045d5fca760cce1f3dd1393bc6b6f3b23cea11f59a810dc910a51ea0b03',
   B42: 'a41ef8b9fe7281b7cd06c2ad7e99cac57ac6c6a5f85e611915b543560247b651',
@@ -303,7 +306,7 @@ const LINE_HASHES = Object.freeze({
   B57: '992956ec3f4de01d0a5de21e3703a4c3d0cf3e1f6e9b627aac4e14329639a9e4',
   B58: '73b92a93a9b8c1fb51dad5aff7d87309bbca7909b86fe9402f26b8d2c250fc20',
   B59: '306e713bae4ef8766639d333200a49e3149fe7c1c2a7e47a3b45336b01485a03',
-  B60: '95a4dfa8101a8f0af4b9db1c173d41ce1fc72392746dd175c3dbfb5236276f4a',
+  B60: '17edb3d32c82b222c51e47f734f001c9d3e4a7ac9b24093be0adec83d52ec3a7',
   B61: '646620f66e3229cbd4d7bf322d8a6a0ec211531822c0a4af6b9d6e2c31b2627e',
   B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265',
   B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc',
@@ -323,7 +326,7 @@ const LINE_HASHES = Object.freeze({
   B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
   B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74',
   B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
-  B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
+  B76: '90befbeea38250f99dc0743161e1b191aa45aea7bf3938cb9e7ccd8ee8178bb8',
   B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
   LEFTOVER: '05f4c9a3b74e98344db56fe642a0774eae8bddb61ff5f672699eaa33fea087ae',

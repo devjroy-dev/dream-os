@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (F-44.165): the couple turn's lead reads gained .is('deleted_at', null).order().limit(1) before
+// .maybeSingle(); this double learns .is (a pass-through) and a limit whose answer can still take .maybeSingle(). What the cells prove is unchanged.
 // scripts/b06_relay_foundations_bench.js
 // ── TDW_06 · THE RELAY SEAM · SITTING ONE — THE FOUNDATIONS ──────────────────
 //
@@ -79,7 +81,7 @@ function fakeSupabase(rows = {}, opts = {}) {
       const data = rows[table] || [];
       const q = {
         select() { return q; }, eq() { return q; }, gte() { return q; },
-        in() { return q; }, order() { return q; }, limit() { return q; },
+        in() { return q; }, order() { return q; }, limit() { return q; }, is() { return q; }, // cut 2a (F-44.165), labelled below
         insert() { return q; }, update() { return q; },
         maybeSingle() {
           if (opts.errorOn === table) return Promise.resolve({ data: null, error: { message: 'boom' } });
@@ -426,6 +428,7 @@ function winSupabase({ convos = [], inbounds = {}, convoErr = false, msgErr = fa
         eq(col, val) { filters.push({ kind: 'eq', col, val }); return q; },
         in(col, val) { filters.push({ kind: 'in', col, val }); return q; },
         order(_col, o) { desc = !!(o && o.ascending === false); return q; },
+        is() { return q; }, // cut 2a (F-44.165): a pass-through
         limit() { return q; },
         maybeSingle() {
           if (err) return Promise.resolve({ data: null, error: { message: 'boom' } });

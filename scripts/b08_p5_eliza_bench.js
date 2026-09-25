@@ -28,6 +28,8 @@
 //   SOURCE, each named, each producing a clean red. A mutation whose anchor has
 //   moved EXITS 2 with a stated reason rather than passing quietly.
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (F-44.165): the couple turn's lead reads gained .is('deleted_at', null).order().limit(1) before
+// .maybeSingle(); this double learns .is (a pass-through) and a limit whose answer can still take .maybeSingle(). What the cells prove is unchanged.
 
 const assert = require('assert');
 const fs     = require('fs');
@@ -158,7 +160,8 @@ function fakeSupabase({ elizaEnabled = false, route = null, returningLead = fals
     from(table) {
       const api = {
         select: () => api, eq: (col, val) => { api._eq = api._eq || {}; api._eq[col] = val; return api; },
-        gte: () => api, order: () => api, limit: async () => ({ data: [] }),
+        gte: () => api, order: () => api, is: () => api, // cut 2a (F-44.165): labelled at the top
+        limit: () => Object.assign(Promise.resolve({ data: [] }), { maybeSingle: () => api.maybeSingle() }),
         insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'x' } }) }) }),
         update: () => api,
         async maybeSingle() {

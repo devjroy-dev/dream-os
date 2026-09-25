@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b93_lcv9_chain_out_bench.js · TDW CE-44 · LCV-9 · PART ONE: THE CHAIN LEAVES THE WORKING ROOMS. Rung b93.
 //
 // R-44.37 (the founder, 21 September 2026): "listen- theres no point in waiting for victor ( stop gap arrangement)---why
@@ -179,7 +181,7 @@ function exits(DL, LH, GLITCH) {
     // ROW RE-AIMED AGAIN (CE-45 LCV-14, P7 cut 4 fix, labelled): tally with no client is ANSWERED since the fix (B80, b109); the lookup the door does not answer is history.
     { why: 'lookup', message: 'What happened with the Walk P8 Dated booking?', ear: earOf(req([{ act: 'history', client_as_spoken: 'Walk P8 Dated' }], 'search')), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a lookup the door does not answer (history), since cut four' },
     { why: 'lookup_unsayable', message: 'Who are my new leads?', ear: earOf(req([{ act: 'find' }], 'search')), is: (r) => r === GLITCH, byte: 'GLITCH', label: 'the new leads unreadable (a failed read is never "No new leads.")', dbOpts: { errorRead: ['public.leads'] } },
-    { why: 'book_no_lead', message: 'Book the Walk P8 Nolead shoot on 20 March 2027', ear: earOf(req([{ act: 'book_event', client_as_spoken: 'Walk P8 Nolead', date_as_spoken: '20 March 2027' }])), is: (r) => r === 'No lead called Walk P8 Nolead. Add the lead first.', byte: 'B76', label: 'a booking for a name that is no lead (B76, his)' },
+    { why: 'book_no_lead', message: 'Book the Walk P8 Nolead shoot on 20 March 2027', ear: earOf(req([{ act: 'book_event', client_as_spoken: 'Walk P8 Nolead', date_as_spoken: '20 March 2027' }])), is: (r) => r === 'No lead called Walk P8 Nolead. Add Walk P8 Nolead as a lead first, here or in the app.', byte: 'B76', label: 'a booking for a name that is no lead (B76, his)' },
     { why: 'calendar_unsayable', message: 'Book the Walk P8 Dated shoot on 20 March 2027', ear: earOf(req([{ act: 'book_event', client_as_spoken: 'Walk P8 Dated', date_as_spoken: '20 March 2027' }])), deps: { lifecycle: { ...LH, resolveLead: async () => { throw new Error('read failed'); } } }, is: (r) => r === GLITCH, byte: 'GLITCH', label: 'a calendar act the door cannot read (the leads read throws)' },
     // ADDED (CE-45 LCV-13, P7 cut 2b, labelled): a move asked beside another act is one question too many; B34, nothing written
     { why: 'cal_mixed', message: 'Block 20 March 2027 and move the Walk P8 Dated shoot to 22 November 2027', ear: earOf(req([{ act: 'block_date', date_as_spoken: '20 March 2027' }, { act: 'edit_event', client_as_spoken: 'Walk P8 Dated', date_as_spoken: '22 November 2027' }])), is: (r) => r === DL.LINES.B34, byte: 'B34', label: 'a move beside another act (P7 2b, one question at a time)' },
@@ -198,7 +200,7 @@ function exits(DL, LH, GLITCH) {
     // ROW RE-AIMED (CE-44 LCV-10 PART B-2, second cut): no package named is now the door's B31; this exit is driven by a lead the door cannot resolve with NO package in the rows at all (packagesOf null), still attach_unsayable.
     { why: 'attach_unsayable', message: 'Attach a package to Walk P8 Dated', ear: earOf(req([{ act: 'attach_package', client_as_spoken: 'Walk P8 Dated', package_as_spoken: 'Gold' }])), is: (r) => r === DL.LINES.B30, byte: 'B30', label: 'the package rows unreadable (the resolver returns nothing)', dbOpts: { errorRead: ['public.vendor_packages'] } },
     // ROW RE-AIMED (the third B-2 cut): 'Walk P8 Datd' is one letter from 'Walk P8 Dated' and now draws R-44.40's offer; this exit is driven by a name near nothing.
-    { why: 'attach_no_lead', message: 'Attach Photographs and film to Walk P8 Nobody Here', ear: earOf(req([{ act: 'attach_package', client_as_spoken: 'Walk P8 Nobody Here', package_as_spoken: 'Photographs and film' }])), is: (r) => r === 'Could not attach the package. No lead called Walk P8 Nobody Here. Add the lead first.', byte: 'B32' },
+    { why: 'attach_no_lead', message: 'Attach Photographs and film to Walk P8 Nobody Here', ear: earOf(req([{ act: 'attach_package', client_as_spoken: 'Walk P8 Nobody Here', package_as_spoken: 'Photographs and film' }])), is: (r) => r === 'Could not attach the package. No lead called Walk P8 Nobody Here. Add Walk P8 Nobody Here as a lead first, here or in the app.', byte: 'B32' },
     { why: 'invoice_unresolved', message: 'Raise the invoice for Nobody Here', ear: earOf(req([{ act: 'invoice', client_as_spoken: 'Nobody Here' }])), is: (r) => r === 'Could not make the invoice. No client called Nobody Here.', byte: 'B15', label: 'no binder: B15' },
     { why: 'invoice_unresolved', message: 'Raise the invoice for Walk45', ear: earOf(req([{ act: 'invoice', client_as_spoken: 'Walk45' }])), dbOpts: { errorRead: ['engine.records'] }, is: (r) => r === GLITCH, byte: 'GLITCH', label: 'a FAILED read is not a name that does not exist' },
     { why: 'money_unsayable', message: 'Triple is confirmed', ear: earOf(req([{ act: 'booking_confirmed', client_as_spoken: 'Triple' }])), is: (r) => r === LH.LINES.F29, byte: 'F29', label: 'three leads of one name, a booking' },
@@ -240,14 +242,14 @@ async function main() {
   sec('1 the bytes, verbatim, each hash a literal here');
   const RULED = {
     B15: ['Could not make the invoice. No client called {name}.', 'f5a96043bb86272066b085f699a88d0aa4adbeb04871d6b95ea59e7f56db5ab0'],
-    B32: ['Could not attach the package. No lead called {name}. Add the lead first.', '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704'],
+    B32: ['Could not attach the package. No lead called {name}. Add {name} as a lead first, here or in the app.', 'b4679dd36af5037d808df12e3865c8db99b7b2c39ab6117c6b1bbe4c27b82878'],
     B34: ['I cannot do that by message yet. Use the app for it.', '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb'],
   };
   for (const k of Object.keys(RULED)) T(`1.1 ${k} is the founder's byte verbatim and its hash is the literal pinned here`, DL.LINES[k] === RULED[k][0] && sha(RULED[k][0]) === RULED[k][1] && DL.LINE_HASHES[k] === RULED[k][1]);
   T('1.1b B15 is R-44.27\'s byte as TDW_CE44_LCV3_SEAT_CLOSE.md :77 records it', /`Could not make the invoice\. No client called \{name\}\.`/.test(src('docs/handovers/TDW_CE44_LCV3_SEAT_CLOSE.md')));
   // 1.2 RE-PINNED (CE-44 LCV-10 PART B-2, first cut): B35 is his (R-44.39) and present; B31 and B33 are still free until B-2's second cut.
   // 1.2 RE-PINNED AGAIN (CE-44 LCV-10 PART B-2, second cut): B31 and B33 are his too now; all three present and hash-carried.
-  T('1.2 B31, B33 and B35 are HIS, present and hash-carried', DL.LINES.B31 === 'Which package? Yours are: {list}.' && DL.LINES.B33 === 'Set the fee first.' && DL.LINES.B35 === 'Which client? Say the name.' && DL.LINE_HASHES.B35 === '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773' && DL.LINE_HASHES.B31 === 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75' && DL.LINE_HASHES.B33 === '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34');
+  T('1.2 B31, B33 and B35 are HIS, present and hash-carried', DL.LINES.B31 === 'Which package? Yours are: {list}.' && DL.LINES.B33 === 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.' /* cut 2a: V5, his */ && DL.LINES.B35 === 'Which client? Say the name.' && DL.LINE_HASHES.B35 === '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773' && DL.LINE_HASHES.B31 === 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75' && DL.LINE_HASHES.B33 === '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44' /* cut 2a: V5 */);
   T('1.3 the glitch line is read from its ONE home and is the founder\'s vetoed byte', GLITCH === 'There was a small glitch, please try again or use the app screens for this action');
 
   // ─── §2 ───────────────────────────────────────────────────────────────────────────────────

@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b92_lcv_p6a_bench.js · TDW CE-44 · LCV-7 · LC-Victor P6a-1, THE DOOR LEARNS `lead`. Rung b92.
 //
 // WHAT IT HOLDS (the design accepted at TDW_CE44_LCV6_SEAT_CLOSE.md §5 and the chair's rulings of 21 September,
@@ -493,7 +495,7 @@ async function main() {
     B22: 'Package attached: {client} · {package} · Rs {total}.',
     B23: 'You have no package called {name}. Yours are: {list}.',
     B24: 'Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.',
-    B25: 'Could not attach the package. {client} has no wedding date yet. Add the date first.',
+    B25: 'Could not attach the package. {client} has no wedding date yet. Add {client}\'s wedding date first.',
     B26: 'When is the delivery date for {client}?',
     B27: 'Package attached: {client} · {package} · Rs {total} · Delivery {date}.',
     B28: 'That delivery date cannot be right. Say it like 5 December 2027.',
@@ -501,19 +503,19 @@ async function main() {
     B30: 'Could not attach the package.',
   };
   const HASHES2 = {
-    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c', B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: '54da33cf13d4a3bb0d19333f1f5fa540fbf196af9f1cdd2b2e1b454c8a3f475f', B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d', B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
+    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c', B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785', B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d', B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
     // B29's twin is dreamos-pwa lib/worklist/packages.ts:126 (refusals.already_booked); B30's is :73 (attachFailed). A dream-os
     // bench cannot read the pwa on his machine, so each pin is the hash literal and the twin is named, not tested.
     B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d', B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
   };
   for (const k of Object.keys(RULED2)) T(`11.1 ${k} is his byte verbatim and its hash is the literal pinned here`, DL.LINES[k] === RULED2[k] && DL.LINE_HASHES[k] === HASHES2[k] && sha(RULED2[k]) === HASHES2[k]);
   const close = src('docs/handovers/TDW_CE44_LCV6_SEAT_CLOSE.md');
-  T('11.2 B22 to B28 are byte-identical to the LCV-6 seat close §4, the record of his word', ['B22', 'B23', 'B24', 'B25', 'B26', 'B27', 'B28'].every((k) => close.includes(`  ${k}  ${RULED2[k]}\n`)));
+  T('11.2 B22 to B28 are byte-identical to the LCV-6 seat close §4, the record of his word', ['B22', 'B23', 'B24', 'B26', 'B27', 'B28'].every((k) => close.includes(`  ${k}  ${RULED2[k]}\n`)) /* cut 2a, labelled: B25 left this record when the founder's V3 (R-45.23) superseded it; its new byte is pinned in 11.1 and b118a */);
   // 11.3 RE-PINNED (CE-44 LCV-9 PART ONE): it asserted B31 and B32 free while his word was pending. His word came at R-44.36
   // ("yes to your open earlirr questions"). B32 rides Part One (the chair's ruling) and is spoken ONLY by the stand-in, chain
   // out; planAttach still returns noLead and preTurn still answers door false, so 14.16 stands. B31 enters with Part Two.
   // 11.3 RE-PINNED (CE-44 LCV-10 PART B-2, second cut): B31 is HIS now (R-44.36) and b98 holds it; this cell keeps B32's pin.
-  T('11.3 B32 is HIS and present, hash-carried, and spoken only through standIn; B31 is present too (b98 holds it)', DL.LINES.B32 === 'Could not attach the package. No lead called {name}. Add the lead first.' && DL.LINE_HASHES.B32 === '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704' && 'B31' in DL.LINES && (src('src/lib/vendor/workingDoor.js').match(/'B32'/g) || []).length === 2);
+  T('11.3 B32 is HIS and present, hash-carried, and spoken only through standIn; B31 is present too (b98 holds it)', DL.LINES.B32 === 'Could not attach the package. No lead called {name}. Add {name} as a lead first, here or in the app.' && DL.LINE_HASHES.B32 === 'b4679dd36af5037d808df12e3865c8db99b7b2c39ab6117c6b1bbe4c27b82878' && 'B31' in DL.LINES && (src('src/lib/vendor/workingDoor.js').match(/'B32'/g) || []).length === 2);
   T('11.4 byte 24 renders by position for exactly two, byte 23 lists her own names with " · "', DL.twoPackages('bridal', [{ name: 'Bridal', total: '80,000' }, { name: 'bridal', total: '1,20,000' }]) === 'Two packages are called bridal: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.'
     && DL.twoPackages('x', [{ name: 'a', total: '1' }]) === null && DL.twoPackages('x', [{ name: 'a', total: null }, { name: 'b', total: '1' }]) === null
     && DL.noSuchPackage('Gold', ['A', ' ', null, 'B']) === 'You have no package called Gold. Yours are: A · B.' && DL.noSuchPackage('Gold', []) === null);
@@ -596,12 +598,12 @@ async function main() {
   o = await run(db, 'Attach Photographs and film to Walk P5 Book', [att('Walk P5 Book', 'Photographs and film')]);
   T('14.10 THE CARD: a BOOKED lead is B29, from attachPackage\'s own 422 already_booked; nothing written', o.reply === RULED2.B29 && o.toolCalls[0].result === 'refused:already_booked' && lpsIn(db).length === 0);
   o = await run(db, 'Attach Photographs and film to Walk P6 Undated', [att('Walk P6 Undated', 'Photographs and film')]);
-  T('14.11 THE CARD: an undated lead is B25 with the name from the ROW, from computeSchedule\'s no_wedding_date', o.reply === 'Could not attach the package. Walk P6 Undated has no wedding date yet. Add the date first.' && o.toolCalls[0].result === 'refused:no_wedding_date' && lpsIn(db).length === 0);
+  T('14.11 THE CARD: an undated lead is B25 with the name from the ROW, from computeSchedule\'s no_wedding_date', o.reply === 'Could not attach the package. Walk P6 Undated has no wedding date yet. Add Walk P6 Undated\'s wedding date first.' && o.toolCalls[0].result === 'refused:no_wedding_date' && lpsIn(db).length === 0);
   o = await run(db, 'x', [att('Walk Month', 'Photographs and film')]);
   T('14.12 a month-precision date is no wedding date (F24): B25', o.keys.join() === 'B25');
   o = await run(db, 'x', [att('Walk P7 Dated', 'No fee yet')]);
   // 14.13 RE-PINNED (CE-44 LCV-10 PART B-2, second cut; F-44.102): no_fee now speaks HIS OWN byte B33, recorded refused:no_fee; every other refusal is still B30 (14.20, 14.21).
-  T('14.13 attachPackage\'s no_fee refusal speaks B33, his own pwa byte, recorded refused:no_fee; nothing written', o.reply === 'Set the fee first.' && o.toolCalls[0].result === 'refused:no_fee' && lpsIn(db).length === 0);
+  T('14.13 attachPackage\'s no_fee refusal speaks B33, his own pwa byte, recorded refused:no_fee; nothing written', o.reply === 'Could not attach the package. No fee yet has no fee yet. Set its fee in the app first.' /* cut 2a: V5 names the package */ && o.toolCalls[0].result === 'refused:no_fee' && lpsIn(db).length === 0);
   o = await run(db, 'x', [att('Twin', 'Photographs and film')]);
   T('14.14 two leads of one name reuse B8\'s shape as it stands', o.reply === 'Two clients are called Twin: Twin (1 April 2027) · twin (2 May 2027). Say which one.' && lpsIn(db).length === 0);
   o = await run(db, 'Attach a package to Walk P7 Dated', [{ act: 'attach_package', client_as_spoken: 'Walk P7 Dated' }]);
@@ -690,7 +692,7 @@ async function main() {
   T('16.7 every act resolved before the first write: an unresolvable invoice sends the WHOLE message to the chain and NOTHING is attached', o.door === false && lpsIn(db).length === 0);
   db = makeDb(world2());
   o = await run(db, 'x', [{ act: 'lead', client_as_spoken: 'Walk P7 Flow' }, { act: 'booking_confirmed', client_as_spoken: 'Walk P7 Flow' }]);
-  T('16.8 the rebuilt plan reads the lead just filed: B5 (no package yet), never "No lead called" beside "Lead added"', o.reply === 'Lead added: Walk P7 Flow.\n\nCould not confirm the booking. Walk P7 Flow has no package yet. Attach a package first.');
+  T('16.8 the rebuilt plan reads the lead just filed: B5 (no package yet), never "No lead called" beside "Lead added"', o.reply === 'Lead added: Walk P7 Flow.\n\nCould not confirm the booking. Walk P7 Flow has no package yet. Attach a package to Walk P7 Flow first.');
 
   // ─── §17 NO CHIP; THE WHATSAPP LANE ──────────────────────────────────────────────────────────
   sec('17 no chip on an attach, on both lanes; the WhatsApp step of the card');
@@ -805,7 +807,7 @@ async function main() {
     [['      st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws\n', ''], ["  } catch (_e) { return B30('refused:exception'); }", '  } finally { /* guard removed */ }']], [],
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')], { attachPackage: async () => { throw new Error('boom'); } }), (x) => x.r.door === false);
   await mut('20.17 N17 planAttach without its guard throws on a hostile act (reddens 19.1)', WDf,
-    [['    return { attach: { leadId: found.lead.id, client, body } };\n  } catch (_e) { return null; }', '    return { attach: { leadId: found.lead.id, client, body } };\n  } finally { /* guard removed */ }']], [],
+    [['    return { attach: { leadId: found.lead.id, client, body, packageName: pkg.name } }; // cut 2a: B33 names the package (V5)\n  } catch (_e) { return null; }', '    return { attach: { leadId: found.lead.id, client, body, packageName: pkg.name } }; // cut 2a: B33 names the package (V5)\n  } finally { /* guard removed */ }']] /* cut 2a, labelled: the anchor moved with V5 */, [],
     async (rq) => { let t = 0; for (const a of hostileActs) { try { await quiet(() => rq(WDf).planAttach(makeDb(world2()), V, a, NOW, realL)); } catch (_e) { t += 1; } } return t; }, (t) => t > 0);
   await mut('20.18 N18 attach staged into pending_money_acts instead of landing (R-44.33): caught by 14.4 and 14.23', WDf,
     [['      const f = await fileAttach(supabase, vendor, ap, L);', "      await pma.stage(supabase, { vendorId: vendor.id, act: 'advance_paid', request: {}, lane }); const f = await fileAttach(supabase, vendor, ap, L);"]], [],

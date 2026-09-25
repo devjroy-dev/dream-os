@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b107_lcv14_kind_client_bench.js · TDW CE-45 · LCV-14 · LC-Victor P7 CUT 3 FIX 1: F-44.133, THE DOOR READS THE CLIENT OUT OF THE KIND (the chair's ruling (i),
 // 23 September 2026). On an assign_crew with no client_as_spoken, a kind_as_spoken that is not one of eventWrite's CALENDAR_KINDS, minus one trailing
 // calendar kind word, is the client, resolved through the ONE home. Rung b107. b106's harness and definitions carried byte for byte below this header
@@ -364,7 +366,7 @@ async function main() {
   {
     const d = db(atStep5());
     const x = await turnX(d, 'Assign Walk Seventeen Theta to the Walk Seventeen Zeta shoot', req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', kind_as_spoken: 'Walk Seventeen Zeta shoot' }]));
-    T('2.7 the client read from the kind goes through the ONE home: a name that is no lead → B76', x.reply === 'No lead called Walk Seventeen Zeta. Add the lead first.');
+    T('2.7 the client read from the kind goes through the ONE home: a name that is no lead → B76', x.reply === 'No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app.');
     const y = await turnX(d, 'Assign Walk Seventeen Theta to the Walk Seventeen Alpa shoot', req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', kind_as_spoken: 'Walk Seventeen Alpa shoot' }]));
     T('2.8 … and a near name → B36 (slot client), nothing written', y.reply === B36('Walk Seventeen Alpha') && noteIn(d).slot === 'client' && crewOf(d, SHOOT).length === 0);
     const z = await turnX(db(atStep5()), 'Add Walk Seventeen Theta to the team', /* a fresh estate: 2.8 left an offer note on d */ req([{ act: 'assign_crew', member_as_spoken: 'Walk Seventeen Theta', kind_as_spoken: 'shoot' }]));
@@ -391,7 +393,7 @@ async function main() {
     T('4.1 the money functions hash to their f24ffd9 (and 69f4b99) text', Object.keys(MONEY).every((k) => typeof WD[k] === 'function' && sha(WD[k].toString()) === MONEY[k]));
     const cur = src(WDf); const a = cur.indexOf('    // 1 · the pending check, BEFORE the listener'); const b = cur.indexOf('    const liveAtStart');
     T('4.2 the live-row block hashes to its f24ffd9 text', a > 0 && b > a && sha(cur.slice(a, b)) === '5289029740782e70dcfb678590d0f8eebaa363a0c8e806c3496b97714edf2e18');
-    T('4.3 doorLines.js is 69f4b99\'s blob: no byte moved (LINES 67); listenerDoor.js is f24ffd9\'s: no listener byte (the ruling)', blob(DLf) === '9c1e73ad27a29b8cc3e86ba7ceef5a12b3ca1a34' /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): B84 and B85, his (b112 3.5); at e813d3f b2d15fd5ea6b */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): B80 to B83 (b109 1.1); at 7687acd d8ba5ab4ed4a */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): doorLines.js moved by the eight lookup bytes (b108 1.1); at 69f4b99 it was f41dd59d314d */ && blob(LDf) === '6d86a8ffd2e15d865e66d65023b4b902fea93693' && Object.keys(DL.LINES).length === 81 /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his; b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled) */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled) */);
+    T('4.3 doorLines.js is 69f4b99\'s blob: no byte moved (LINES 67); listenerDoor.js is f24ffd9\'s: no listener byte (the ruling)', blob(DLf) === 'c1b4905477fc6565afa43af53b000c59d41593c2' /* RE-PINNED (CE-45 ELZ-1 cut 2a, labelled: R-45.23's V1 to V8 moved eight bytes; b107's own cut moved none, which the rest of the cell still proves by the LINES count) */ /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): B84 and B85, his (b112 3.5); at e813d3f b2d15fd5ea6b */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): B80 to B83 (b109 1.1); at 7687acd d8ba5ab4ed4a */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): doorLines.js moved by the eight lookup bytes (b108 1.1); at 69f4b99 it was f41dd59d314d */ && blob(LDf) === '6d86a8ffd2e15d865e66d65023b4b902fea93693' && Object.keys(DL.LINES).length === 81 /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his; b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled) */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled) */);
     const man = (() => { try { return src(MAN).split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')); } catch (_e) { return []; } })();
     T('4.4 the manifest names workingDoor.js and b107, and neither doorLines.js nor listenerDoor.js', man.includes(WDf) && man.includes('scripts/b107_lcv14_kind_client_bench.js') && !man.includes(DLf) && !man.includes(LDf));
   }

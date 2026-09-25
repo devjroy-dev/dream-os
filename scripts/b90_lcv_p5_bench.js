@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b90_lcv_p5_bench.js · TDW CE-44 · LCV-2 · LC-Victor P5, THE WORKING DOOR FOR MONEY AND INVOICES. Rung b90.
 //
 // WHAT IT HOLDS (the chair's rulings on P5's read-first and pre-cut note, each a cell):
@@ -187,8 +189,8 @@ async function main() {
     B1: 'Mark this payment? {client} · {which payment} · Rs {amount} · {date}. Reply YES or NO.',
     B2: 'Confirm this booking? {client} · {package} · Rs {total}. Reply YES or NO.',
     B3: 'Okay. Nothing was changed.',
-    B4: 'Could not confirm the booking. No lead called {name}. Add the lead first.',
-    B5: 'Could not confirm the booking. {client} has no package yet. Attach a package first.',
+    B4: 'Could not confirm the booking. No lead called {name}. Add {name} as a lead first, here or in the app.',
+    B5: 'Could not confirm the booking. {client} has no package yet. Attach a package to {client} first.',
     B6: 'When did the payment come in?',
     B7: 'I could not read that date. Say it like 5 December.',
     B8: 'Two clients are called {name}: {name} ({date}) · {name} ({date}). Say which one.',
@@ -209,7 +211,7 @@ async function main() {
     B22: 'Package attached: {client} · {package} · Rs {total}.',
     B23: 'You have no package called {name}. Yours are: {list}.',
     B24: 'Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.',
-    B25: 'Could not attach the package. {client} has no wedding date yet. Add the date first.',
+    B25: 'Could not attach the package. {client} has no wedding date yet. Add {client}\'s wedding date first.',
     B26: 'When is the delivery date for {client}?',
     B27: 'Package attached: {client} · {package} · Rs {total} · Delivery {date}.',
     B28: 'That delivery date cannot be right. Say it like 5 December 2027.',
@@ -218,20 +220,20 @@ async function main() {
     // RE-PINNED (CE-44 LCV-9 PART ONE, R-44.37): the cut in which the chain leaves brings B15 (R-44.27, his; "owed by the
     // last packet" meant this one, the chair's ruling), B32 (R-44.36, his) and B34 (R-44.38, his "yes"). B31 and B33 are Part Two's.
     B15: 'Could not make the invoice. No client called {name}.',
-    B32: 'Could not attach the package. No lead called {name}. Add the lead first.',
+    B32: 'Could not attach the package. No lead called {name}. Add {name} as a lead first, here or in the app.',
     B34: 'I cannot do that by message yet. Use the app for it.',
     // RE-PINNED (CE-44 LCV-10 PART B-2, first cut): B35 his at R-44.39 ("Yes to your recomendation"), hash-carried; B31 and B33 stay B-2's second cut's.
     B35: 'Which client? Say the name.',
     // RE-PINNED (CE-44 LCV-10 PART B-2, second cut): B31 (R-44.36) and B33 (F-44.102, REUSE of dreamos-pwa lib/worklist/packages.ts:116), hash-carried.
     B31: 'Which package? Yours are: {list}.',
-    B33: 'Set the fee first.',
+    B33: 'Could not attach the package. {package} has no fee yet. Set its fee in the app first.', // cut 2a: V5, his (labelled at the top)
     // RE-PINNED (CE-44 LCV-10, the third B-2 cut): B36 his at R-44.40, hash-carried.
     B36: 'Did you mean {name}? Reply YES or NO.',
     // RE-PINNED (CE-45 LCV-11, P6b first cut): B37 the show frame (August, his; its last line ruled 22 September 2026, R-44.24 applied),
     // B38 (his, "1 is fine") and B39 (his, "ok"; carried, spoken in the second cut), hash-carried.
     B37: 'Here is the draft:\n\n"{body}"\n\nSend this to {client} ({phone})? Reply YES or NO.',
     B38: 'Could not send the message. No client called {name}.',
-    B39: 'Could not send the quote. {client} has no package yet. Attach a package first.',
+    B39: 'Could not send the quote. {client} has no package yet. Attach a package to {client} first.',
     // P7 cut 2a (CE-45 LCV-12): the calendar's eleven, his, ruled 23 September 2026 (B41 to B45 REUSED from blockHands.js :156 to :167; B75 from calendarSignals.js :134)
     B40: "Blocked: {date} · {reason}.",
     B41: "{date} was already blocked. Nothing changed.",
@@ -249,14 +251,14 @@ async function main() {
     B53: "Two shoots for {client}: {date} · {date}. Say the date.",
     B54: "Which day? Say it like 5 December.",
     B75: "Couldn't put that on the calendar — nothing was changed.",
-    B76: "No lead called {name}. Add the lead first.",
+    B76: "No lead called {name}. Add {name} as a lead first, here or in the app.",
     B77: "No shoot on {date}.",
     // P7 cut 3 (CE-45 LCV-14, labelled): nine of his join the ruled set (B60 carried, unspoken); one cell each in the RULED loop; b106 holds them
     B56: "Added to the team: {member}.",
     B57: "{member} is already on your team.",
     B58: "Assigned: {member} · {client} · shoot · {date}.",
     B59: "{member}'s already on the {client} shoot.",
-    B60: "No one called {name} on your team. Add them first.",
+    B60: "No one called {name} on your team. Add {name} to your team in the app first.",
     B61: "Two on your team are called {name}: {name} ({role}) · {name} ({role}). Say which one.",
     B62: "Who? Say the name.",
     B67: "Reminder sent to {client}: {milestone} · Rs {amount} · due {date}.",
@@ -283,8 +285,8 @@ async function main() {
   };
   const HASHES = {
     B1: '1fb5297d3c1193543d8385e514fe42b1856be16deb6cabf2e83cf036169ed4ba', B2: 'cd29bd0dfbde4e0dba9cf4df73e12bc7b69880aea0337562e77d96228e8259eb',
-    B3: 'a6a5c9b1c22d6a82413e6bb856363e8a98e902a4b092368a16ef21bb6b30066d', B4: '2dff7d6656c93fa39dd45da087484bb39ef3751b00a0c2e1ca7d4b3503068684',
-    B5: 'c628ff61df8eec8e034ec24ac22d2e6b54e060eeb460260d32a6f2d9fa84d190', B6: '728d219fdb8a4ce07778dcf346665975d7ab651f7501efa6ff3f8a7144eb3029',
+    B3: 'a6a5c9b1c22d6a82413e6bb856363e8a98e902a4b092368a16ef21bb6b30066d', B4: '1a395c37bf80588e2a5be318c0c0939d1f955ea6a26dacaf36403da829916a7a',
+    B5: '923fe7d7eebe9443d522a0037be01125e1958af1d047372dfc6d742220a6be45', B6: '728d219fdb8a4ce07778dcf346665975d7ab651f7501efa6ff3f8a7144eb3029',
     B7: '44b5c385d187f3cc29ce05c210a524a8be162ab127f2bf97cbe22bc90dd8e331', B8: 'ecf5d241deae90b77bc9d840928aacc2a1fc781f3fd2b6ea9cb2a25db7675166',
     B9: '3253966dab22fb365c4f8ed5e0676c1c6196f6df7e3f47a122d1e32d00a0faa2', B10: 'c82103b3177a6a44cafcf364be426df89901ab0407fd3776092a84b3afcad81d',
     B11: '90f1edf7055b45d6c898df911ba442b70b47119f2523a5c8b7bfdd8dd00cb8ed', B12: '7723dc04452784fe3c6e7b1e9d145fa1323048aaa39da70a9d52aeae2c22ee09',
@@ -293,20 +295,20 @@ async function main() {
     B18: 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0', B19: 'ec10d50e073b11a83206a1c89c276be61f0e476bee762671d383820d74ecfaf8',
     B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653', B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
     B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '5c68d52e310188c9a5d678ba495885cae0ad96236fc7d101435c5fa0e0ce4c2c',
-    B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: '54da33cf13d4a3bb0d19333f1f5fa540fbf196af9f1cdd2b2e1b454c8a3f475f',
+    B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785',
     B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
     B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986', B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
     B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
     B15: 'f5a96043bb86272066b085f699a88d0aa4adbeb04871d6b95ea59e7f56db5ab0',
-    B32: '136ff0b0c57e5145267570a25752ed723c9f1fad59eca74ee37e884d1607a704',
+    B32: 'b4679dd36af5037d808df12e3865c8db99b7b2c39ab6117c6b1bbe4c27b82878',
     B34: '3dc0787ed3e775e75d9d838cf0a87f7ef66d43e499fa665c107a466dfa76b4eb',
     B35: '7b73fec4bc3c30e66b5e33232961ccb26549d42d440d466e6e8de54402c1c773',
     B31: 'b84530f75e2567ea8b74b1b4901fa9a2f67ba70c3707e8135d4b4a539e612a75',
-    B33: '7f0c3cc354957b993bbf52493a43434f9c0795ef44491ed1605c3a060ec69f34',
+    B33: '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44',
     B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
     B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
     B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
-    B39: '1702a3c82a88f751752869986ba88c70a73b0fc6e93d14a8b13cff40442eac76',
+    B39: '647f8a34d7a0bd592db1940cd31841febd0bd237a6b7439079110808ba910a96',
     B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',
     B41: '6d882045d5fca760cce1f3dd1393bc6b6f3b23cea11f59a810dc910a51ea0b03',
     B42: 'a41ef8b9fe7281b7cd06c2ad7e99cac57ac6c6a5f85e611915b543560247b651',
@@ -322,13 +324,13 @@ async function main() {
     B53: 'fd391aa7f9c88cfb1a5bdc18a3544be87c514728adc6caacf883b1c2cf9651e3',
     B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
     B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
-    B76: '24806f0f4b20434cfa74fab706e5d2c4be7f238202ecb483ae58c6daef31c0ab',
+    B76: '90befbeea38250f99dc0743161e1b191aa45aea7bf3938cb9e7ccd8ee8178bb8',
     B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
     B56: 'd434900fe046a14f2bc58dec7d35f367f4fac70d99b08a849b7cf2be1b064b5a',
     B57: '992956ec3f4de01d0a5de21e3703a4c3d0cf3e1f6e9b627aac4e14329639a9e4',
     B58: '73b92a93a9b8c1fb51dad5aff7d87309bbca7909b86fe9402f26b8d2c250fc20',
     B59: '306e713bae4ef8766639d333200a49e3149fe7c1c2a7e47a3b45336b01485a03',
-    B60: '95a4dfa8101a8f0af4b9db1c173d41ce1fc72392746dd175c3dbfb5236276f4a',
+    B60: '17edb3d32c82b222c51e47f734f001c9d3e4a7ac9b24093be0adec83d52ec3a7',
     B61: '646620f66e3229cbd4d7bf322d8a6a0ec211531822c0a4af6b9d6e2c31b2627e',
     B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265',
     B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc',
@@ -503,9 +505,9 @@ async function main() {
   r = await run(db, 'yes', req([]));
   T('5.27 on yes, advance_paid speaks D1 THEN D3 or D4 (R-44.21, two of his bytes in that order)', r.out.reply.startsWith('Booked: Meera. Client, event and invoice TDW/DEV440/23 are ready.\n\nPayment marked: Meera') && promoted[1].kind === 'advance_paid');
   r = await run(db, 'Kavya is confirmed', req([{ act: 'booking_confirmed', client_as_spoken: 'Kavya' }]));
-  T('5.28 F-44.5 on the door\'s path: a booking on a name with no lead speaks B4 and makes nothing', r.out.reply === 'Could not confirm the booking. No lead called Kavya. Add the lead first.' && promoted.length === 2);
+  T('5.28 F-44.5 on the door\'s path: a booking on a name with no lead speaks B4 and makes nothing', r.out.reply === 'Could not confirm the booking. No lead called Kavya. Add Kavya as a lead first, here or in the app.' && promoted.length === 2);
   r = await run(db, 'Tara is confirmed', req([{ act: 'booking_confirmed', client_as_spoken: 'Tara' }]));
-  T('5.29 a lead with no package speaks B5', r.out.reply === 'Could not confirm the booking. Tara has no package yet. Attach a package first.');
+  T('5.29 a lead with no package speaks B5', r.out.reply === 'Could not confirm the booking. Tara has no package yet. Attach a package to Tara first.');
   r = await run(db, 'Priya is confirmed', req([{ act: 'booking_confirmed', client_as_spoken: 'Priya' }]));
   T('5.30 two leads sharing the name speak B8 with their full-month dates, and harvest is skipped', r.out.reply === 'Two clients are called Priya: Priya (5 December 2026) · Priya (9 January 2027). Say which one.' && r.out.skipHarvest === true);
   db = makeDb(world());

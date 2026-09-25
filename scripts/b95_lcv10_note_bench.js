@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b95_lcv10_note_bench.js · TDW CE-44 · LCV-10 · PART B-1: THE DOOR KEEPS ITS OWN NOTE OF A DATE IT ASKED FOR. Rung b95.
 //
 // F-44.111 (allocated): a two-digit year after a month name was unreadable. WITNESSED, the founder's walk of Part A, 21 September 2026,
@@ -326,7 +328,7 @@ async function main() {
   db = seeded(); db.tables['public.leads'] = db.tables['public.leads'].filter((l) => l.id !== 'l-tara');
   db.tables['engine.messages'].push({ id: 'q', conversation_id: 'c-1', role: 'assistant', content: 'q', meta: { listener: { door: true, note: { asked: 'B26', acts: [att('Tara Walk Ten', 'Walk P7 Album')], tries: 0 } } }, created_at: new Date(clock += 1000).toISOString() });
   r = await turn(db, '5 June 2027', JSON.parse(NONE_JSON));
-  T('3.16 the rows are read AS THEY STAND on the answering turn: the lead gone since the question, the door says so with B32 through the stand-in and attaches nothing', r.reply === 'Could not attach the package. No lead called Tara Walk Ten. Add the lead first.' && lpsIn(db).length === 0);
+  T('3.16 the rows are read AS THEY STAND on the answering turn: the lead gone since the question, the door says so with B32 through the stand-in and attaches nothing', r.reply === 'Could not attach the package. No lead called Tara Walk Ten. Add Tara Walk Ten as a lead first, here or in the app.' && lpsIn(db).length === 0);
 
   // ─── §4 THE NOTE NEVER WRITES MONEY ────────────────────────────────────────────────────────
   sec('4 the note never writes money: it plans the money act afresh and STAGES it exactly as today');

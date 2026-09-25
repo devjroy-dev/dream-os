@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b106_lcv14_team_reminder_bench.js · TDW CE-45 · LCV-14 · LC-Victor P7 CUT 3: THE TEAM AND THE PAYMENT REMINDER. assign_crew and payment_reminder join
 // COVERED; MEMBER_ASKS ['B62']; the offer's slot three-way (member); planAssign's three shapes; add-then-assign on two lines; planReminder's own invoice read
 // and the room's window-first-else-earliest pick; sendOneReminder AS IT STANDS with source 'vendor_tap' (ASK 5); B56 to B62, B67, B68 his, B60 carried and
@@ -329,9 +331,9 @@ async function main() {
   T('1.1 COVERED holds assign_crew and payment_reminder (fourteen kinds); NEEDS_CLIENT holds payment_reminder and not assign_crew', WD.COVERED.includes('assign_crew') && WD.COVERED.includes('payment_reminder') && WD.COVERED.length === 14 && WD.NEEDS_CLIENT.includes('payment_reminder') && !WD.NEEDS_CLIENT.includes('assign_crew'));
   T('1.2 HANDS names them assign_crew and payment_reminder_send (the kickoff)', WD.HANDS && WD.HANDS.assign_crew === 'assign_crew' && WD.HANDS.payment_reminder === 'payment_reminder_send');
   T('1.3 MEMBER_ASKS is [B62], its own list beside NAME_ASKS (ASK 1); NAME_ASKS unmoved', J(WD.MEMBER_ASKS) === 'B62' && J(WD.NAME_ASKS) === 'B18,B35');
-  const NINE = { B56: 'd434900fe046a14f2bc58dec7d35f367f4fac70d99b08a849b7cf2be1b064b5a', B57: '992956ec3f4de01d0a5de21e3703a4c3d0cf3e1f6e9b627aac4e14329639a9e4', B58: '73b92a93a9b8c1fb51dad5aff7d87309bbca7909b86fe9402f26b8d2c250fc20', B59: '306e713bae4ef8766639d333200a49e3149fe7c1c2a7e47a3b45336b01485a03', B60: '95a4dfa8101a8f0af4b9db1c173d41ce1fc72392746dd175c3dbfb5236276f4a', B61: '646620f66e3229cbd4d7bf322d8a6a0ec211531822c0a4af6b9d6e2c31b2627e', B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265', B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc', B68: '60ad19c5dfdfc5e50b4a72bb470f722649049554cfb64ea2ab6866f82585e415' };
+  const NINE = { B56: 'd434900fe046a14f2bc58dec7d35f367f4fac70d99b08a849b7cf2be1b064b5a', B57: '992956ec3f4de01d0a5de21e3703a4c3d0cf3e1f6e9b627aac4e14329639a9e4', B58: '73b92a93a9b8c1fb51dad5aff7d87309bbca7909b86fe9402f26b8d2c250fc20', B59: '306e713bae4ef8766639d333200a49e3149fe7c1c2a7e47a3b45336b01485a03', B60: '17edb3d32c82b222c51e47f734f001c9d3e4a7ac9b24093be0adec83d52ec3a7', B61: '646620f66e3229cbd4d7bf322d8a6a0ec211531822c0a4af6b9d6e2c31b2627e', B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265', B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc', B68: '60ad19c5dfdfc5e50b4a72bb470f722649049554cfb64ea2ab6866f82585e415' };
   T('1.4 LINES 67; the nine hashes literal (B56 to B62, B67, B68); each byte hashes to its literal', DL.LINES && Object.keys(DL.LINES).length === 81 /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his (R-45.16, the screenshot save); b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): 75 → 79, B80 to B83; b109 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): 67 → 75, the eight lookup bytes; b108 holds them */ && Object.keys(NINE).every((k) => DL.LINE_HASHES[k] === NINE[k] && sha(DL.LINES[k] || '') === NINE[k]));
-  T('1.5 B60 is CARRIED and UNSPOKEN: the byte is his from the chair\'s sheet ("No one called {name} on your team. Add them first."), and the door never names it', DL.LINES.B60 === 'No one called {name} on your team. Add them first.' && !/B60/.test(src(WDf)));
+  T('1.5 B60 is CARRIED and UNSPOKEN: the byte is his from the chair\'s sheet ("No one called {name} on your team. Add {name} to your team in the app first."), and the door never names it', DL.LINES.B60 === 'No one called {name} on your team. Add {name} to your team in the app first.' && !/B60/.test(src(WDf)));
   const R202 = (src('src/api/vendor/reminders.js').split('\n')[201] || '');
   T('1.6 the "already" line REUSED byte for byte from reminders.js :202 (the room\'s own)', typeof WD.ALREADY_LINE === 'string' && R202.includes(`'${WD.ALREADY_LINE}'`));
   T('1.7 the offer\'s slot is THREE-WAY in ONE table (package, member, else client), read by offerFor and the B36 re-ask (RE-PINNED, LSP_3b: and F-44.149\'s offered-name yes)', WD.slotField && WD.slotField('member') === 'member_as_spoken' && WD.slotField('package') === 'package_as_spoken' && WD.slotField('x') === 'client_as_spoken' && (src(WDf).match(/slotField\(/g) || []).length === 3 /* RE-PINNED (CE-45 LCV-15, LSP_3b, labelled): 2 to 3, F-44.149 reads the offered name through the same table; b114 3.1 holds it */);
@@ -380,7 +382,7 @@ async function main() {
     const e = await turnX(d, 'Add Walk Seventeen Kappa to the team for the 8 January 2027 wedding', req([assign('Walk Seventeen Kappa', null, '8 January 2027')]));
     T('3.8 a day with no shoot → B77 "No shoot on 8 January 2027."; nothing written', e.reply === 'No shoot on 8 January 2027.' && crewOf(d, SHOOT).length === 2);
     const f = await turnX(d, 'Assign Walk Seventeen Theta to the Walk Seventeen Zeta shoot', req([assign('Walk Seventeen Theta', 'Walk Seventeen Zeta')]));
-    T('3.9 a client that is no lead → B76 (his one line for book, move, cancel and remind)', f.reply === 'No lead called Walk Seventeen Zeta. Add the lead first.');
+    T('3.9 a client that is no lead → B76 (his one line for book, move, cancel and remind)', f.reply === 'No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app.');
     const g = await turnX(d, 'Assign to the Walk Seventeen Alpha shoot', req([assign(null, 'Walk Seventeen Alpha')]));
     const h = await turnX(d, 'Yes', req([]));
     const i = await turnX(d, 'Yes', req([]));
@@ -459,7 +461,7 @@ async function main() {
     const h = await turnX(d5, 'Send Sarah a reminder for the payment', req([remind('Sarah')]));
     T('4.7 THE ESTATE AS THE FIXTURE READ IT (Sarah\'s invoice paid, no pending milestone) → B68 "Nothing is due from Sarah." before any gate; nothing claimed or sent', h.reply === 'Nothing is due from Sarah.' && reminders(d5).length === 0);
     const i = await turnX(d5, 'Remind Walk Seventeen Zeta about the payment', req([remind('Walk Seventeen Zeta')]));
-    T('4.8 a name that is no lead → B76', i.reply === 'No lead called Walk Seventeen Zeta. Add the lead first.');
+    T('4.8 a name that is no lead → B76', i.reply === 'No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app.');
     const j = await turnX(d5, 'Send a reminder for the payment', req([remind(null)]));
     T('4.9 a reminder naming no client → B35 (NEEDS_CLIENT since 2a)', j.reply === B35);
     capOn(); waSent.length = 0;

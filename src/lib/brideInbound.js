@@ -83,6 +83,34 @@ const OPTED_OUT_REFUSAL_REPLY =
 // it — the Meta route, the dead-letter replay, and any future ingress — instead
 // of each door remembering to. The body is unchanged below; this is the whole
 // wiring. F-05.41's two turns 1.1s apart become two turns, in order, one Rs 45,000.
+// ── CE-45 ELZ-1 cut 2a · F-44.145's PERSISTENCE HALF · THE BRIDE'S OPT-OUT TURN, ON HER OWN THREAD ─────────────────────────────
+// The twin of vendorInbound.js persistOptOutTurn (LSP_1b, F-44.141). Called only where the opt-out branch acknowledges. For a bride
+// who has a user, a couple and a couple_self thread, it writes her inbound row (with its sid, so RF-1's dedupe holds) and the
+// confirmation as an outbound row. It creates no user, couple or thread (a first-ever message that is STOP stays unrecorded, as the
+// vendor lane declares). NEVER THROWS: a failure is logged and the opt-out stands.
+async function persistBrideOptOutTurn({ supabase, webhookCore, phone, body, reply, sent, messageSid }) {
+  try {
+    const { data: u } = await supabase.from('users').select('id').eq('phone', phone).maybeSingle();
+    if (!u || !u.id) return { persisted: false, why: 'no_user' };
+    const { data: cp } = await supabase.from('couples').select('id').eq('user_id', u.id).maybeSingle();
+    if (!cp || !cp.id) return { persisted: false, why: 'not_a_couple' };
+    const { data: c } = await supabase.from('conversations').select('id').eq('couple_id', cp.id).eq('kind', 'couple_self').maybeSingle();
+    if (!c || !c.id) return { persisted: false, why: 'no_couple_self' };
+    await supabase.from('messages').insert(webhookCore.inboundRow({
+      conversation_id: c.id, direction: 'inbound', channel: 'whatsapp', body, sent_by: 'couple',
+    }, messageSid || null));
+    await supabase.from('messages').insert({
+      conversation_id: c.id, direction: 'outbound', channel: 'whatsapp', body: reply, sent_by: 'agent',
+      twilio_sid: sent && sent.sid ? sent.sid : null,
+    });
+    await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', c.id);
+    return { persisted: true };
+  } catch (e) {
+    try { console.error('[bride-webhook] opt-out turn not persisted (the opt-out stands):', e && e.message); } catch (_e) { /* */ }
+    return { persisted: false, why: 'error' };
+  }
+}
+
 async function processBrideInbound(inputs, deps) {
   return withTurnLock(turnKey('bride', inputs && inputs.phone), () => _processBrideInbound(inputs, deps));
 }
@@ -193,12 +221,15 @@ async function _processBrideInbound(inputs, deps) {
       try {
         if (fullStopWord === 'stop') {
           await recordFullStop({ supabase, phone });
-          await sendWhatsApp(phone, getNudgeCopy('full_stop_confirmation'), [], undefined, ACK_BYPASS);
+          const sentStop = await sendWhatsApp(phone, getNudgeCopy('full_stop_confirmation'), [], undefined, ACK_BYPASS);
+          // CE-45 ELZ-1 cut 2a (F-44.145's persistence half): her STOP and our confirmation on her own thread, as the vendor lane does.
+          await persistBrideOptOutTurn({ supabase, webhookCore, phone, body, reply: getNudgeCopy('full_stop_confirmation'), sent: sentStop, messageSid: internalReplay ? null : sidForPersist });
           console.log(`[bride-webhook] FULL STOP recorded for ${phone} (lane=bride)`);
         } else {
           const r = await recordFullStart({ supabase, phone });
           if (r.changed) {
-            await sendWhatsApp(phone, getNudgeCopy('full_start_confirmation'), [], undefined, ACK_BYPASS);
+            const sentStart = await sendWhatsApp(phone, getNudgeCopy('full_start_confirmation'), [], undefined, ACK_BYPASS);
+            await persistBrideOptOutTurn({ supabase, webhookCore, phone, body, reply: getNudgeCopy('full_start_confirmation'), sent: sentStart, messageSid: internalReplay ? null : sidForPersist });
             console.log(`[bride-webhook] FULL START recorded for ${phone} (lane=bride)`);
             return;
           }
@@ -1071,4 +1102,5 @@ module.exports = {
   processBrideInbound, metaInputsFrom,
   resolveBrideMedia, BRIDE_MEDIA_BUCKET, BRIDE_MEDIA_PREFIX,
   BRIDE_MEDIA_ALLOW_MIMES, BRIDE_MEDIA_MAX_BYTES,
+  persistBrideOptOutTurn,                                  // CE-45 ELZ-1 cut 2a (F-44.145) — exported so b118a drives the shipped helper
 };

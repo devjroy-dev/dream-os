@@ -65,7 +65,9 @@ function store({ rows = [], lead = null, vendorRow = null } = {}) {
         in: () => api,
         insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'x' } }) }) }),
         update: () => api,
-        async limit(n) {
+        is: () => api, // cut 2a (F-44.165): the lead reads filter deleted_at; a pass-through here
+        limit(n) { const p = api._limit(n); p.maybeSingle = () => api.maybeSingle(); return p; }, // cut 2a: .limit(1).maybeSingle()
+        async _limit(n) {
           if (table !== 'messages') return { data: [] };
           const mine = rows.filter((r) => r.conversation_id === q.eqs.conversation_id)
             .filter((r) => (q.gte ? Date.parse(r.created_at) >= Date.parse(q.gte) : true))

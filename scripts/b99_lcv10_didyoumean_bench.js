@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b99_lcv10_didyoumean_bench.js · TDW CE-44 · LCV-10 · THE THIRD B-2 CUT: B36 "Did you mean" (R-44.40) in ONE HOME; F-44.118's floor under R-44.41. Rung b99.
 //
 // R-44.40 (the founder, 22 September): "Did you mean {name}? Reply YES or NO." is HIS. ONE HOME, nearestName, for every name lookup the door
@@ -321,7 +323,7 @@ async function main() {
     const c6 = await turn(d, 'No', JSON.parse(NONE_JSON));
     T('4.2 SAY "The booking is confirmed for Isha Walk Fourten" (one letter off); "Yes"; "No": "Did you mean Isha Walk Fourteen? Reply YES or NO."; "Confirm this booking? Isha Walk Fourteen · Photographs and film · Rs 80,000. Reply YES or NO."; B3; the row declined, Isha still new', c4.reply === DYM('Isha Walk Fourteen') && c5.reply === B2ISHA && c6.reply === B3 && staged(d)[0].state === 'declined' && d.tables['public.leads'][0].state === 'new');
     const c7 = await turn(d, 'The booking is confirmed for Nobody Walk Fourteen', req([money('booking_confirmed', 'Nobody Walk Fourteen')]));
-    T('4.3 SAY "The booking is confirmed for Nobody Walk Fourteen" (near nothing): "Could not confirm the booking. No lead called Nobody Walk Fourteen. Add the lead first." and NO offer', c7.reply === 'Could not confirm the booking. No lead called Nobody Walk Fourteen. Add the lead first.');
+    T('4.3 SAY "The booking is confirmed for Nobody Walk Fourteen" (near nothing): "Could not confirm the booking. No lead called Nobody Walk Fourteen. Add Nobody Walk Fourteen as a lead first, here or in the app." and NO offer', c7.reply === 'Could not confirm the booking. No lead called Nobody Walk Fourteen. Add Nobody Walk Fourteen as a lead first, here or in the app.');
     const c8 = await turn(d, 'Attach Walk P7 Album to Isah Walk Fourteen', req([att('Isah Walk Fourteen', 'Walk P7 Album')]));
     const c9 = await turn(d, 'No', JSON.parse(NONE_JSON));
     T('4.4 SAY "Attach Walk P7 Album to Isah Walk Fourteen" (two letters swapped); "No": "Did you mean Isha Walk Fourteen? Reply YES or NO."; B3; nothing attached', c8.reply === DYM('Isha Walk Fourteen') && c9.reply === B3 && lpsIn(d).length === 1);

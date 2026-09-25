@@ -79,4 +79,18 @@ function dateStateFact(r) {
   } catch (_e) { return JSON.stringify({ date: null, state: 'unsure' }); }
 }
 
-module.exports = { dateState, dateStateFact, stateOfVerdict, STATES };
+// ── CE-45 ELZ-1 cut 2a · THE VENDOR IS TOLD (F-44.165's house-form half; the chair's ruling; the founder's line 1, F4) ─────────────
+// When Eliza gives a client the house form (date_state anything but "free"), the vendor hears it on his own WhatsApp. HIS BYTES,
+// hash-carried (b118a): {client} is the lead's name, else the last four digits of the number (the couple turn's own convention,
+// "...9924"); {date} is the date as "5 March 2028", or the words she used when the date was unreadable.
+const VENDOR_DATE_LINE = '{client} asked if you\'re free on {date}. I told them you\'d check and get back to them. To answer, send "Tell {client}" and your message.';
+function vendorDateLine({ client, date }) {
+  try {
+    const c = typeof client === 'string' && client.trim() ? client.trim() : null;
+    const d = typeof date === 'string' && date.trim() ? date.trim() : null;
+    if (!c || !d) return null;
+    return VENDOR_DATE_LINE.split('{client}').join(c).split('{date}').join(d);
+  } catch (_e) { return null; }
+}
+
+module.exports = { dateState, dateStateFact, stateOfVerdict, STATES, VENDOR_DATE_LINE, vendorDateLine };

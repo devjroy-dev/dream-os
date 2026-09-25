@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b97_lcv10_name_bench.js · TDW CE-44 · LCV-10 · PART B-2, FIRST CUT: THE DOOR KEEPS ITS OWN NOTE OF A NAME IT ASKED FOR; B35; F-44.116. Rung b97.
 //
 // R-44.39 (the founder, "Yes to your recomendation"): B35 "Which client? Say the name." for a booking, payment, invoice or attach naming no
@@ -246,7 +248,7 @@ async function main() {
   T('3.6 heard as the noted act with the name (the thread carried it): the same, B2', r.reply === B2ASHA);
   db = seeded(); await turn(db, 'x', req([money('booking_confirmed')]));
   r = await turn(db, 'Nobody Walk Twelve', JSON.parse(NONE_JSON));
-  T('3.7 a name that is no lead: the plans answer B4, as they answer any booking on no lead; no note left', r.reply === 'Could not confirm the booking. No lead called Nobody Walk Twelve. Add the lead first.' && noteOf(db) === undefined);
+  T('3.7 a name that is no lead: the plans answer B4, as they answer any booking on no lead; no note left', r.reply === 'Could not confirm the booking. No lead called Nobody Walk Twelve. Add Nobody Walk Twelve as a lead first, here or in the app.' && noteOf(db) === undefined);
   db = seeded(); await turn(db, 'x', req([{ act: 'lead', client_as_spoken: 'Meera Walk Twelve', date_as_spoken: '5 March 2027' }, money('booking_confirmed')]));
   r = await turn(db, 'Asha Walk Twelve', JSON.parse(NONE_JSON));
   T('3.8 B35 answered fills EVERY nameless act but `lead`: the named lead files and the booking on Asha is staged, in one turn', r.keys === 'B17,B2' && leadsIn(db).length === 1 && staged(db).length === 1);
@@ -289,7 +291,7 @@ async function main() {
   T('4.6 a live staged money row wins over a name note: her No declines the money question', r.reply === B3 && r.out.why !== 'note_declined' && staged(db)[0].state === 'declined');
   db = seeded(); await turn(db, 'x', req([money('booking_confirmed')]));
   await turn(db, 'Hello', JSON.parse(NONE_JSON));
-  T('4.7 SAID PLAINLY, the ruling\'s cost: "Hello" typed after B35 IS the name, so B4 answers about a lead called Hello; no note remains', lastDoor(db).content === 'Could not confirm the booking. No lead called Hello. Add the lead first.' && noteOf(db) === undefined);
+  T('4.7 SAID PLAINLY, the ruling\'s cost: "Hello" typed after B35 IS the name, so B4 answers about a lead called Hello; no note remains', lastDoor(db).content === 'Could not confirm the booking. No lead called Hello. Add Hello as a lead first, here or in the app.' && noteOf(db) === undefined);
 
   // ─── §5 F-44.116 IN THE DATE NOTE, FROM THE RECORD ─────────────────────────────────────────
   sec('5 F-44.116: his "whenever" of 22 September, heard as the attach with date "whenever", is a re-ask and not a restatement');

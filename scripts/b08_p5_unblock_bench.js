@@ -50,6 +50,8 @@
 //   named, each producing a clean red. A mutation whose anchor has moved EXITS 2
 //   with a stated reason rather than passing quietly.
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (F-44.165): the couple turn's lead reads gained .is('deleted_at', null).order().limit(1) before
+// .maybeSingle(); this double learns .is (a pass-through) and a limit whose answer can still take .maybeSingle(). What the cells prove is unchanged.
 
 const assert = require('assert');
 const fs     = require('fs');
@@ -168,7 +170,8 @@ function fakeSupabase({ existingLeadRow = null, history = [] } = {}) {
       eq: (c, v) => { q._eq[c] = v; return q; },
       gte: () => q,
       order: () => q,
-      limit: async () => ({ data: table === 'messages' ? history : [] }),
+      is: () => q, // cut 2a (F-44.165): labelled at the top
+      limit: () => Object.assign(Promise.resolve({ data: table === 'messages' ? history : [] }), { maybeSingle: () => q.maybeSingle() }),
       insert: (row) => { W.inserts.push({ table, row }); return {
         select: () => ({ single: async () => ({ data: { id: 'newlead1' } }) }),
         then: (r) => r({ error: null }),

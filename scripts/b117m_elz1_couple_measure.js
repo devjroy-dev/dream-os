@@ -173,7 +173,9 @@ function store(rows, dateState) {
       const api = {
         select: () => api, eq: (k, v) => { q.eqs[k] = v; return api; }, gte: (k, v) => { q.gte = v; return api; }, order: () => api, in: () => api,
         insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'x' } }) }) }), update: () => api,
-        async limit(n) {
+        is: () => api, // cut 2a (F-44.165): the lead reads filter deleted_at; a pass-through here
+        limit(n) { const p = api._limit(n); p.maybeSingle = () => api.maybeSingle(); return p; }, // cut 2a: .limit(1).maybeSingle()
+        async _limit(n) {
           if (table !== 'messages') return { data: [] };
           return { data: rows.filter((r) => (q.gte ? Date.parse(r.created_at) >= Date.parse(q.gte) : true)).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).slice(0, n) };
         },

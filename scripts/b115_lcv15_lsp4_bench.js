@@ -24,12 +24,14 @@ function body(t, name) {
 }
 function compileAt(rel, text) { const file = P(rel); const m = new Module(file, module); m.filename = file; m.paths = Module._nodeModulePaths(path.dirname(file)); m._compile(text, file); return m.exports; }
 const EN = 'src/agent/engine.js';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (F-44.165: the two lead reads filter deleted_at and read the newest; the vendor hears
+// the house form): runCoupleAgenticTurn re-pinned again; the cap 770 -> 800 (the two helpers sit outside the pinned body).
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 1c (R-45.25 amended by the founder: date_state's tool description names the five states
 // free, booked, unsure, check_off, unreadable): runCoupleAgenticTurn re-pinned again; was ced902e22c42 at 1512f42.
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26, the chair's ruling on r2: "b115's pins move by label"): runCoupleAgenticTurn
 // (FACT 1's read, the date_state tool) and relayAttributionPrefix (F-44.157, the studio first) re-pinned to cut 1's bytes; was
 // 3c6235d33869 and cd1ef9aa05b6 at cd71986. markRelayProvenance, mergeSameRole and every money pin unchanged.
-const PIN = {"runCoupleAgenticTurn":"a98506ab5791d555d64bd6e64cdc7d7625fca1d0ecb253132b82b54a00ec4839","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
+const PIN = {"runCoupleAgenticTurn":"40b81b978954164038495f95bffce70d3213fe8fce506d29b0e03512775c3daf","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
 const DELETED = ['src/agent/tools.js', 'src/agent/systemPrompt.js', 'src/agent/classifier.js', 'src/lib/vendor/replyToCouple.js'];
 const ISLAND = ['handleOnboarding', 'executeTool', 'commit_event_proposals', 'WA_MUTATING_TOOLS'];
 
@@ -42,7 +44,7 @@ const ISLAND = ['handleOnboarding', 'executeTool', 'commit_event_proposals', 'WA
   T('1.2 no file under src names handleOnboarding, executeTool, commit_event_proposals or WA_MUTATING_TOOLS outside a comment', live.length === 0);
   T('1.3 CONTROL: the grep finds them where comments still name them (an empty answer is not a broken grep)', hits.length > 0);
   // LABELED · ELZ-1 cut 1: the cap moves from 740 to 770 lines with R-45.26 (the fact read and the fourth tool); one export still.
-  T('1.4 engine.js is the couple lane alone: 770 lines or fewer, one exported name', en.split('\n').length <= 770 && JSON.stringify(Object.keys(require(P(EN)))) === '["runCoupleAgenticTurn"]');
+  T('1.4 engine.js is the couple lane alone: 800 lines or fewer, one exported name', en.split('\n').length <= 800 && JSON.stringify(Object.keys(require(P(EN)))) === '["runCoupleAgenticTurn"]');
 
   sec('2 the couple lane, byte-identical (C-44.7, hashes from cd71986)');
   for (const f of ['runCoupleAgenticTurn', 'relayAttributionPrefix', 'markRelayProvenance', 'mergeSameRole']) T(`2.1 ${f} is byte-identical to its pin (cd71986; the couple turn and the prefix at ELZ-1 cut 1)`, sha(body(en, f)) === PIN[f]);

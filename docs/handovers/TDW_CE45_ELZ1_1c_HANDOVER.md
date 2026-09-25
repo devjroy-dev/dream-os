@@ -36,7 +36,9 @@ scripts/b115_lcv15_lsp4_bench.js: runCoupleAgenticTurn re-pinned (a98506ab5791),
 ## 4 · Proof
 
 b117a 56/56; b115 25; b117m readers 34 x 6 clean; --dry drove all 20 turns (24 replies at 2 and 1). Differential on e07f7fa over the 26
-benches reading a touched file: identical results both sides. b117m --live (block 2M, his keys, BEFORE block 3): RATES TO BE RECORDED.
+benches reading a touched file: identical results both sides. b117m --live (block 2M, his keys, BEFORE block 3, kept): claude-haiku-4-5-20251001 (the live model) 0 on every rule, errors 0;
+deepseek-v4-flash r4 3/160 (walk_booked_1249: her earlier "free" repeated without a date_state call, F-44.171's accepted class), r5 1/160
+(date_booked_1817: the shape question after a booked answer), all else 0, errors 0. WITHIN TOLERANCE. Landed as eb3fe0a.
 
 ## 5 · Open
 

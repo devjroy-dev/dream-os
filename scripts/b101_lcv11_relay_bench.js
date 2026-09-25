@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b101_lcv11_relay_bench.js · TDW CE-45 · LCV-11 · LC-Victor P6b, THE FIRST CUT: a message to a client routed from the door on the
 // WhatsApp lane; phone_as_spoken (F-44.96); B37, B38 spoken and B39 carried; the composer on the listener's seat (R-45.1). Rung b101.
 //
@@ -231,7 +233,7 @@ async function main() {
 
   sec('1 the bytes, his, hash-carried');
   T('1.1 B37 is the frame with "Reply YES or NO." and its hash literal is the sha256 of its bytes', DL.LINES.B37 === 'Here is the draft:\n\n"{body}"\n\nSend this to {client} ({phone})? Reply YES or NO.' && DL.LINE_HASHES.B37 === sha(DL.LINES.B37));
-  T('1.2 B38 and B39 are his bytes and their hashes hold', DL.LINES.B38 === 'Could not send the message. No client called {name}.' && DL.LINES.B39 === 'Could not send the quote. {client} has no package yet. Attach a package first.' && DL.LINE_HASHES.B38 === sha(DL.LINES.B38) && DL.LINE_HASHES.B39 === sha(DL.LINES.B39));
+  T('1.2 B38 and B39 are his bytes and their hashes hold', DL.LINES.B38 === 'Could not send the message. No client called {name}.' && DL.LINES.B39 === 'Could not send the quote. {client} has no package yet. Attach a package to {client} first.' && DL.LINE_HASHES.B38 === sha(DL.LINES.B38) && DL.LINE_HASHES.B39 === sha(DL.LINES.B39));
   T('1.3 showFrame renders the row: name and stored phone verbatim, the body untouched', FRAME_ASHA === `Here is the draft:\n\n"${BODY}"\n\nSend this to Asha Walk Fifteen (${PHONE})? Reply YES or NO.`);
   T('1.4 a name that IS the phone (F-06.186) and no name at all render the phone alone, one sentence', showFrame('b', '+918595986978', '+918595986978') === 'Here is the draft:\n\n"b"\n\nSend this to +918595986978? Reply YES or NO.' && showFrame('b', null, '+918595986978') === showFrame('b', '+918595986978', '+918595986978') && showFrame('b', null, '+918595986978') !== null);
   T('1.5 ONE HOME: relaySeat.showBlock speaks B37 byte for byte, and the August frame is gone from the tree (mismatchBlock ⑨, unreached, keeps its own bytes)', RS.showBlock(BODY, 'Asha Walk Fifteen', PHONE) === FRAME_ASHA && !src(RSf).includes('Here is the draft:\\n\\n"${body}"') && /function showBlock\(body, name, phone\) \{[\s\S]*?return require\('\.\/doorLines'\)\.showFrame\(body, name, phone\);\n\}/.test(src(RSf)));

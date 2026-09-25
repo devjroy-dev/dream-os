@@ -20,7 +20,7 @@ const { buildEnquiryEnrichment } = require('../lib/vendor/enquiryEnrichment');
 // CE-45 ELZ-1 cut 1 (R-45.26): the studio's name (FACT 4), the thread's whole record (FACT 1), a date's state (FACT 3).
 const { studioName }            = require('./studioName');
 const { threadFacts }           = require('./coupleThreadFacts');
-const { dateState, dateStateFact } = require('../lib/vendor/coupleDateState');
+const { dateState, dateStateFact, vendorDateLine } = require('../lib/vendor/coupleDateState');
 
 
 const MAX_ITERATIONS = 5;
@@ -174,6 +174,29 @@ function mergeSameRole(acc, msg) {
 // with another — so the filter is given the value it was always asking for.
 // DEFAULTS to `inboundMessage`: every caller that passes the body unchanged
 // (vendorInbound :464/:572/:792) is byte-identical, asserted at the bench.
+// ── CE-45 ELZ-1 cut 2a · THE VENDOR HEARS THE HOUSE FORM (the chair's ruling on F-44.165; the founder's line, F4) ───────────────
+// When a turn's date_state read anything but "free", the vendor is told on his WhatsApp, recognised client or not ("let me check"
+// must reach someone). The LAST date read of the turn decides. {client}: the lead's name, else "...NNNN"; {date}: the day as
+// "5 March 2028", else the words she used. Joined after any capture or returning notification. TOTAL: never throws.
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function dateLineFor(audit, { leadName, couplePhone }) {
+  try {
+    const reads = (Array.isArray(audit) ? audit : []).filter((t) => t && t.name === 'date_state');
+    const last = reads[reads.length - 1];
+    if (!last || last.state === 'free') return null;
+    const client = (typeof leadName === 'string' && leadName.trim()) ? leadName.trim() : `...${String(couplePhone || '').slice(-4)}`;
+    let date = null;
+    if (typeof last.dateIso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(last.dateIso)) {
+      const [y, m, d] = last.dateIso.split('-').map(Number); date = `${d} ${MONTHS_LONG[m - 1]} ${y}`;
+    } else if (last.input && typeof last.input.date_as_spoken === 'string') date = last.input.date_as_spoken.trim();
+    return vendorDateLine({ client, date });
+  } catch (_e) { return null; }
+}
+function withDateLine(notif, line) {
+  if (!line) return notif || null;
+  return notif ? `${notif}\n\n${line}` : line;
+}
+
 async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic }) {
   // The row the door wrote holds what she ACTUALLY sent (γ refused: the audit row
   // is never rewritten to match a derived value). This is the string to filter on.
@@ -212,11 +235,17 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     .reduce(mergeSameRole, []);          // F-06.151 — merge, never drop
 
   // Detect returning bride — lead already exists for (vendor_id, couplePhone)
+  // CE-45 ELZ-1 cut 2a (F-44.165): soft-deleted leads are not the client, and duplicates must not blank the answer. DEV440 held
+  // seven rows for one number, six deleted; .maybeSingle() over seven errored to null, so a named, booked client was a stranger.
+  // The live rows only, the newest first, one row.
   const { data: existingLeadForCouple } = await supabase
     .from('leads')
     .select('id, name, intent_summary, intent_summary_at')
     .eq('vendor_id', vendor.id)
     .eq('phone', couplePhone)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   const isReturningBride = !!existingLeadForCouple?.name;
@@ -469,11 +498,16 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         // Upsert lead — dedup on (vendor_id, phone)
         const resolvedName = input.name || knownBrideName || null;
         if (resolvedName) capturedLeadName = resolvedName; // D1-lite — see :90
+        // CE-45 ELZ-1 cut 2a (F-44.165's second face): the same read, the same cure; over duplicates it returned null and a capture
+        // from a known client INSERTED ANOTHER LEAD.
         const { data: existingLead } = await supabase
           .from('leads')
           .select('id')
           .eq('vendor_id', vendor.id)
           .eq('phone', couplePhone)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (existingLead) {
@@ -661,7 +695,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
       } else if (toolUse.name === 'date_state') {
         const ds = await dateState({ supabase, vendor, dateAsSpoken: toolUse.input && toolUse.input.date_as_spoken, nowMs: Date.now() });
         const fact = dateStateFact(ds);
-        toolCallsAudit.push({ name: 'date_state', input: toolUse.input, result: fact });
+        toolCallsAudit.push({ name: 'date_state', input: toolUse.input, result: fact, state: ds && ds.state, dateIso: ds && ds.date });
         toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: fact });
 
       } else if (toolUse.name === 'respond_to_couple') {
@@ -748,7 +782,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     reply: finalReply || 'Thanks, we\'ll be in touch soon!',
     toolCalls: toolCallsAudit,
     iterations,
-    vendorNotification: isReturningBride ? returningBrideNotif : firstContactNotif,
+    vendorNotification: withDateLine(isReturningBride ? returningBrideNotif : firstContactNotif, dateLineFor(toolCallsAudit, { leadName: existingLeadForCouple?.name || capturedLeadName || null, couplePhone })),
     // D1-lite (BLOCK 06 M-0) — ADDITIVE. The name this turn resolved, else the
     // name already on file, else null. The door reads it to name the binder;
     // every existing reader of this object is untouched.

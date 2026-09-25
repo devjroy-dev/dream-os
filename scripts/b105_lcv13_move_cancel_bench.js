@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
+// re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b105_lcv13_move_cancel_bench.js · TDW CE-45 · LCV-13 · LC-Victor P7 CUT 2b: MOVE AND CANCEL A SHOOT (asked YES or NO), CAL_ASKS and SHOOT_ASKS, the shoot resolver, B48 to B53 and B76, THE DAY-SHEET RELOCATION (daySheet.js readDaySpine), on b104's harness verbatim (lines 3 to 275 of b104 carried byte for byte; the PGRST116 double, C-44.3). b104's own header follows:
 // makeDb, world, doubles and withMutated carried byte for byte; the PGRST116 double, C-44.3). b101's header follows for its conventions:
 //   THE FIRST CUT: a message to a client routed from the door on the
@@ -397,7 +399,7 @@ async function main() {
   T('2.15 the shoot deleted between the question and her YES → B75 (the writer\'s "Event not found."), nothing claimed', x.reply === "Couldn't put that on the calendar — nothing was changed.");
   d = makeDb(estate());
   x = await turnC(d, 'Move the Walk Seventeen Zeta shoot to 1 June 2027', mv('Walk Seventeen Zeta', '1 June 2027'));
-  T('2.16 a name that is no lead → B76 "No lead called Walk Seventeen Zeta. Add the lead first." (his one line), nothing written', x.reply === 'No lead called Walk Seventeen Zeta. Add the lead first.' && writesOf(d) === 0);
+  T('2.16 a name that is no lead → B76 "No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app." (his one line), nothing written', x.reply === 'No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app.' && writesOf(d) === 0);
   x = await turnC(d, 'Move the Walk Seventeen Alpa shoot to 22 November 2027', mv('Walk Seventeen Alpa', '22 November 2027'));
   const t17 = x.reply === 'Did you mean Walk Seventeen Alpha? Reply YES or NO.';
   x = await turnC(d, 'Yes', NONE);
@@ -555,7 +557,7 @@ async function main() {
     x = await turnC(d, 'No', NONE, P2);
     T('7.10 THE CARD, STEP 10: "No" → "Okay. Nothing was changed." and the 22 November shoot stands', x.reply === 'Okay. Nothing was changed.' && ev(d, 'e-alpha-8').state === 'upcoming');
     x = await turnC(d, 'Move the Walk Seventeen Zeta shoot to 1 June 2027', mv('Walk Seventeen Zeta', '1 June 2027'), P2);
-    T('7.11 THE CARD, STEP 11: "Move the Walk Seventeen Zeta shoot to 1 June 2027" → "No lead called Walk Seventeen Zeta. Add the lead first."', x.reply === 'No lead called Walk Seventeen Zeta. Add the lead first.');
+    T('7.11 THE CARD, STEP 11: "Move the Walk Seventeen Zeta shoot to 1 June 2027" → "No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app."', x.reply === 'No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app.');
     let sheet = null; try { sheet = await drive(loadRouter(src('src/api/vendor/day.js')), d, '2027-11-22'); } catch (_e) { sheet = null; }
     T('7.12 THE CARD, STEP 12 (the app): the day sheet for 22 November 2027 shows the Walk Seventeen Alpha shoot, and the lead\'s wedding date still reads 8 January 2027', !!sheet && sheet.body.events.some((e) => e.title === 'Walk Seventeen Alpha' && e.kind === 'shoot') && lead(d, ALPHA).wedding_date === '2027-01-08');
     x = await turnC(d, 'Block 24 March 2027, personal', req([{ act: 'block_date', date_as_spoken: '24 March 2027', reason_as_spoken: 'personal' }]), { lane: 'whatsapp' });

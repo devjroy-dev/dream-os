@@ -1269,7 +1269,7 @@ async function planAttach(supabase, vendor, act, nowMs, L) {
       if (d.iso === lead.wedding_date) return ask(); // the wedding date heard as the delivery date: misheard, ask
       body.delivery_on = d.iso;
     }
-    return { attach: { leadId: found.lead.id, client, body } };
+    return { attach: { leadId: found.lead.id, client, body, packageName: pkg.name } }; // cut 2a: B33 names the package (V5)
   } catch (_e) { return null; }
 }
 
@@ -1295,7 +1295,7 @@ async function fileAttach(supabase, vendor, plan, L) {
     }
     const code = b && typeof b.code === 'string' ? b.code : null;
     if (code === 'already_booked') return { line: DL.LINES.B29, key: 'B29', call: { name: HANDS.attach_package, input, result: 'refused:already_booked' }, landed: false };
-    if (code === 'no_fee') return { line: DL.LINES.B33, key: 'B33', call: { name: HANDS.attach_package, input, result: 'refused:no_fee' }, landed: false }; // F-44.102, his own byte
+    if (code === 'no_fee') return { line: DL.render('B33', { package: a.packageName }) || DL.LINES.B30, key: DL.render('B33', { package: a.packageName }) ? 'B33' : 'B30', call: { name: HANDS.attach_package, input, result: 'refused:no_fee' }, landed: false }; // F-44.102, his own byte
     if (code === 'no_wedding_date' || code === 'no_handover_date') {
       const k = code === 'no_wedding_date' ? 'B25' : 'B26';
       const line = DL.render(k, { client: a.client });
