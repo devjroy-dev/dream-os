@@ -1,0 +1,11 @@
+# CE-45 ELZ-1 · cut 1c · the date answers after the 1b r2 walk: booked/unsure split (R-45.25 amended), every date question calls date_state (F-44.171 accepted), no-dash rule first · base e07f7fa
+# floor-base unchanged: the differential on e07f7fa read identical results both sides.
+docs/handovers/TDW_CE45_ELZ1_1b_HANDOVER.md
+docs/handovers/TDW_CE45_ELZ1_1c_HANDOVER.md
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b117a_elz1_couple_bench.js
+scripts/b117m_elz1_couple_measure.js
+scripts/floor-manifest-ce45-elz1-1c.txt
+src/agent/coupleSystemPrompt.js
+src/agent/engine.js
+src/lib/vendor/coupleDateState.js

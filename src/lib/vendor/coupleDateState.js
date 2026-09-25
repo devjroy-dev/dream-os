@@ -11,25 +11,28 @@
 // known answer is refused by that route (it 404s), so here it is check_off. verdictOf is IMPORTED, never restated (b58's lesson:
 // a copy of the thing it guards tests the copy).
 //
-// THE FOUR STATES (the chair's ruling on F1-r2):
+// THE FIVE STATES (the chair's ruling on F1-r2; "taken" split in cut 1c by R-45.25 as the founder amended it, 25 Sept: "booked
+// reads fine" for a day the calendar shows blocked or sold, with the house form after it; never for anything less certain):
 //   free       the check is on and the whole day is open: not blocked, no slot sold out, nothing held
-//   taken      blocked, sold out, part of the day held, or it could not be checked just now (she never says booked: R-45.25)
+//   booked     the calendar shows the day BLOCKED or a slot SOLD OUT (she may say booked, then the house form)
+//   unsure     part of the day held, or it could not be checked just now (the house form alone, never "booked")
 //   check_off  the vendor has not switched the date check on (or is inactive, paused, or the route would refuse)
 //   unreadable the words are not a date the estate can read
 // NO WRITE: public.date_checks is the public door's record of strangers' checks (recordCheck, its sole writer); a couple's question
-// on WhatsApp is not one. TOTAL: never throws; every failure is 'taken' (unknown is not free) or 'unreadable'.
+// on WhatsApp is not one. TOTAL: never throws; every failure is 'unsure' (unknown is neither free nor booked) or 'unreadable'.
 const { resolveSpokenDate } = require('./spokenDate');
 
-const STATES = Object.freeze(['free', 'taken', 'check_off', 'unreadable']);
+const STATES = Object.freeze(['free', 'booked', 'unsure', 'check_off', 'unreadable']);
 
 // The verdict (availability.js verdictOf's shape) to a state. Exported for b117a.
 function stateOfVerdict(v) {
   try {
-    if (!v || typeof v !== 'object') return 'taken';
-    if (v.blocked === null || v.blocked === undefined) return 'taken';
-    if (v.blocked === true || v.sold === true || v.any_held === true) return 'taken';
-    return v.blocked === false ? 'free' : 'taken';
-  } catch (_e) { return 'taken'; }
+    if (!v || typeof v !== 'object') return 'unsure';
+    if (v.blocked === null || v.blocked === undefined) return 'unsure';
+    if (v.blocked === true || v.sold === true) return 'booked';
+    if (v.any_held === true) return 'unsure';
+    return v.blocked === false ? 'free' : 'unsure';
+  } catch (_e) { return 'unsure'; }
 }
 
 async function dateState({ supabase, vendor, dateAsSpoken, nowMs } = {}) {
@@ -40,7 +43,7 @@ async function dateState({ supabase, vendor, dateAsSpoken, nowMs } = {}) {
     const d = resolveSpokenDate(said, { direction: 'future', nowMs: Number.isFinite(nowMs) ? nowMs : Date.now() });
     if (!d || !d.ok || typeof d.iso !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d.iso)) return { date: null, state: 'unreadable' };
     iso = d.iso;
-    if (!supabase || !vendor || !vendor.id) return { date: iso, state: 'taken' };
+    if (!supabase || !vendor || !vendor.id) return { date: iso, state: 'unsure' };
 
     // The route's gates, read fresh from the row (the vendor object a caller holds may be partial).
     const { data: row, error } = await supabase
@@ -48,24 +51,24 @@ async function dateState({ supabase, vendor, dateAsSpoken, nowMs } = {}) {
       .select('id, status, discover_paused, date_check_enabled')
       .eq('id', vendor.id)
       .maybeSingle();
-    if (error || !row) return { date: iso, state: 'taken' };
+    if (error || !row) return { date: iso, state: 'unsure' };
     if (row.status !== 'active' || row.discover_paused === true || row.date_check_enabled !== true) return { date: iso, state: 'check_off' };
 
     const { describeDate } = require('./occupancy');
     const out = await describeDate({ supabase, vendorId: row.id, date: iso });
-    if (!out) return { date: iso, state: 'taken' };
+    if (!out) return { date: iso, state: 'unsure' };
     if (out.occupancy === 'off' && out.blocked !== null) return { date: iso, state: 'check_off' }; // the route 404s here
     const { verdictOf } = require('../../api/public/availability');
     return { date: iso, state: stateOfVerdict(verdictOf(out)) };
   } catch (_e) {
-    return { date: iso, state: iso ? 'taken' : 'unreadable' };
+    return { date: iso, state: iso ? 'unsure' : 'unreadable' };
   }
 }
 
 // The fact as it is handed back to her: the date as a day she can say, and the state. No sentence.
 function dateStateFact(r) {
   try {
-    const state = r && STATES.includes(r.state) ? r.state : 'taken';
+    const state = r && STATES.includes(r.state) ? r.state : 'unsure';
     let date = null;
     if (r && typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date)) {
       const [y, m, d] = r.date.split('-').map(Number);
@@ -73,7 +76,7 @@ function dateStateFact(r) {
       date = `${d} ${MONTHS[m - 1]} ${y}`;
     }
     return JSON.stringify({ date, state });
-  } catch (_e) { return JSON.stringify({ date: null, state: 'taken' }); }
+  } catch (_e) { return JSON.stringify({ date: null, state: 'unsure' }); }
 }
 
 module.exports = { dateState, dateStateFact, stateOfVerdict, STATES };

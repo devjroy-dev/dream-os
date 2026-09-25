@@ -310,7 +310,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     {
       // CE-45 ELZ-1 cut 1 · FACT 3 (R-45.25; F1-r2 ruled): the date's state, from the /v page's one reader. A fact, never a sentence.
       name: 'date_state',
-      description: 'Look up whether the studio is free on a date the client asked about. Pass the date exactly as the client wrote it. Returns the date and one state: free, taken, check_off or unreadable.',
+      description: 'Look up whether the studio is free on a date the client asked about. Pass the date exactly as the client wrote it. Returns the date and one state: free, booked, unsure, check_off or unreadable.',
       input_schema: {
         type: 'object',
         properties: { date_as_spoken: { type: 'string', description: 'The date in the client\'s own words, e.g. "5 march 2028" or "12th Feb".' } },

@@ -29,7 +29,12 @@ docs/handovers/TDW_CE45_ELZ1_1_HANDOVER.md: cut 1's walk record and live rates.
 
 b117a 47/47. Differential on 1512f42 over the 14 benches that read a touched file: identical results both sides. The error path proven with a
 failing stub: 19 failures counted once, the fake key printed as [redacted], the verdict "too many errors". b117m --live at N = 20 on the
-founder's keys BEFORE the git line (block 2M): RATES TO BE RECORDED HERE.
+founder's keys BEFORE the git line (block 2M): for 1b as first built see §3r2; for r2, block 3 ran BEFORE 2M (the
+founder's slip, recorded); 2M then ran on 9bdcddc, stratified: claude-haiku r1 0, r2 0, r3 0, r4 0, r5 2/140, r6 0; deepseek-v4-flash all
+0/140; errors 0. WITHIN TOLERANCE. The r2 walk (25 Sept, UTC): the shape question gone after a date answer (PASS); "Hi" answered directly
+(PASS); a blocked date told FREE at 12:47:41 and 12:48:37 because she answered from her own earlier "free" without calling date_state
+(F-44.171, minted, then accepted by the founder as low-likelihood); "booked" at 12:49:14 (R-45.25 then amended by the founder to allow it on
+a booked day); an em dash at 12:50:08. Cured in cut 1c.
 
 ## 3r2 · r2: the measurement that failed 1b as first built, and the cure
 

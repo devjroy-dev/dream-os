@@ -178,7 +178,9 @@ async function mutated(rel, from, to, fn) {
   const occOff = await run(ON, verdictRow({ blocked: false, slots: [], occupancy: 'off' }));
   const unread = await run(ON, null, 'sometime next year maybe');
   T('3.1 check on and the day open: free, for 5 March 2028 as she wrote it', free.r.state === 'free' && free.r.date === '2028-03-05');
-  T('3.2 blocked, sold out, part of the day held, or could not check: taken (she never says booked)', [blocked, part, sold, unknown].every((x) => x.r.state === 'taken'));
+  // LABELED AMENDMENT · CE-45 ELZ-1 cut 1c (R-45.25 as the founder amended it, 25 Sept: "booked reads fine"): "taken" split into
+  // "booked" (the calendar shows the day blocked or sold) and "unsure" (part held, or could not check). This read all four as taken.
+  T('3.2 1c: blocked or sold out is booked; part of the day held or could not check is unsure (never booked)', blocked.r.state === 'booked' && sold.r.state === 'booked' && part.r.state === 'unsure' && unknown.r.state === 'unsure');
   T('3.3 the switch off, or the vendor paused: check_off', off.r.state === 'check_off' && paused.r.state === 'check_off');
   T('3.4 an occupancy-off trade with a known answer: check_off, as the /v route refuses it', occOff.r.state === 'check_off');
   T('3.5 words that are not a date: unreadable, and the reader is never called', unread.r.state === 'unreadable' && unread.r.date === null);
@@ -195,7 +197,7 @@ async function mutated(rel, from, to, fn) {
     script: [{ name: 'date_state', input: { date_as_spoken: '5 march 2028' } }, { name: 'respond_to_couple', input: { message: 'x' } }] });
   DESCRIBE = verdictRow({ blocked: false, slots: [] });
   const second = r310.calls[1] && r310.calls[1].params.messages.slice(-1)[0];
-  T('3.10 driven: the turn offers date_state beside its two tools, and the tool result reaching the model is the fact alone', r310.calls[0].params.tools.map((t) => t.name).join(',') === 'capture_couple_lead,date_state,respond_to_couple' && !!second && Array.isArray(second.content) && /^\{"date":"5 March 2028","state":"(free|taken|check_off)"\}$/.test(second.content[0].content));
+  T('3.10 driven: the turn offers date_state beside its two tools, and the tool result reaching the model is the fact alone', r310.calls[0].params.tools.map((t) => t.name).join(',') === 'capture_couple_lead,date_state,respond_to_couple' && !!second && Array.isArray(second.content) && /^\{"date":"5 March 2028","state":"(free|booked|unsure|check_off)"\}$/.test(second.content[0].content));
 
   sec('4 FACT 4 · the studio\'s name at every reader (F-44.157)');
   const { studioName } = fresh('src/agent/studioName.js');
@@ -232,6 +234,12 @@ async function mutated(rel, from, to, fn) {
   const wseg = (conv) => { const t = build()({ vendor: DEV440, vendorUser: DEVUSER, useEliza: true, conversation: conv }); return t.slice(t.indexOf('IF IT IS A WEDDING:'), t.indexOf('IF IT IS ANYTHING ELSE')); };
   T('6.9 r2: with it asked, the shape question is LEFT OUT of her wedding list and she is told it was asked; the rest of the list stays', !/spread across functions like mehendi/.test(wseg(f18)) && wseg(f18).includes('ALREADY ASKED on 24 September 2026') && wseg(f18).includes('photos, video, or both'));
   T('6.10 r2: not asked (a new client, or a statement that only names functions): the list is whole', /spread across functions like mehendi/.test(wseg({ inConversation: false })) && facts.factsFromRows([row('2026-09-24 15:00:34+00', 'outbound', 'agent', 'Noted, the studio covers all functions.')], 'x').shapeAsked === false);
+  // cut 1c (the 1b r2 walk, 25 Sept, Haiku live): (a) F-44.171 accepted as low-likelihood, cured by one sentence; (b) the amended
+  // R-45.25 words; (c) the no-dash rule first
+  const both = [true, false].map((ret) => build()({ vendor: DEV440, vendorUser: DEVUSER, isReturningBride: ret, leadName: ret ? 'Sarah' : null, useEliza: true, conversation: { inConversation: true, priorCount: 2 } }));
+  T('6.11 1c (a): both branches tell her to call date_state for EVERY date question, even one answered a moment ago', both.every((t) => t.includes('Every time they ask about a date, call date_state with the date exactly as they wrote it, even if you answered the same date a moment ago')));
+  T('6.12 1c (b): "booked" is offered only for the booked state, with the house form after it; never taken, unavailable or not free', both.every((t) => t.includes('- "booked": the studio\'s calendar shows that day as booked.') && t.includes('is booked on 5 March 2028, but let me confirm with them and get back to you') && t.includes('- "unsure", "check_off" or "unreadable": do NOT say booked.') && t.includes('Never use the words taken, unavailable or not free for a date.')));
+  T('6.13 1c (c): the no-dash rule is the FIRST line of HOW YOU SPEAK', both.every((t) => t.includes('HOW YOU SPEAK\n- No dashes of any kind')));
   T('6.3 the soul carries no em dash and no calendar-access claim', !require(P('src/agent/souls/elizaSoul.js')).ELIZA_SOUL.includes('\u2014') && !/cannot see their calendar/.test(require(P('src/agent/souls/elizaSoul.js')).ELIZA_SOUL));
 
   sec('7 the money functions byte-identical to b115\'s pins');
@@ -256,7 +264,7 @@ async function mutated(rel, from, to, fn) {
   T('8.1 M1 the thread\'s record ignored (inConversation false) reddens 1.2: the 20:30 "Hi" is a first contact again', m1 === false);
   const m2 = await mutated('src/agent/coupleSystemPrompt.js', "const tradeRaw       = (typeof vendor?.category === 'string' && vendor.category.trim()) ? vendor.category.trim() : '';", "const tradeRaw       = '';", async () => trade('Choreographer').includes('describes its work as "Choreographer"'));
   T('8.2 M2 the raw trade text dropped reddens 2.1', m2 === false);
-  const m3 = await mutated('src/lib/vendor/coupleDateState.js', "if (v.blocked === true || v.sold === true || v.any_held === true) return 'taken';", "if (v.blocked === true || v.sold === true) return 'taken';", async () => (await run(ON, verdictRow({ blocked: false, slots: [{ capacity: 2, held: 1 }] }))).r.state);
+  const m3 = await mutated('src/lib/vendor/coupleDateState.js', "    if (v.any_held === true) return 'unsure';\n", "", async () => (await run(ON, verdictRow({ blocked: false, slots: [{ capacity: 2, held: 1 }] }))).r.state); // 1c: the anchor moved with the split
   T('8.3 M3 part of the day held read as free reddens 3.2 (a couple told a held day is free)', m3 === 'free');
   const m4 = await mutated('src/agent/studioName.js', "return clean(vendor && vendor.business_name) || clean(vendorUser && vendorUser.name) || fallback;", "return clean(vendorUser && vendorUser.name) || clean(vendor && vendor.business_name) || fallback;", async () => build()({ vendor: DEV440, vendorUser: DEVUSER, conversation: {} }).includes("Dev Roy's"));
   T('8.4 M4 the person first again reddens 4.2 ("Dev Roy\'s" returns)', m4 === true);
@@ -268,6 +276,10 @@ async function mutated(rel, from, to, fn) {
   T('8.8 M7 (1b) the dash left in the quoted last question reddens 6.5', m7 === true);
   const m8 = await mutated('src/agent/coupleThreadFacts.js', 'shapeAsked: !!shapeRow,', 'shapeAsked: false,', async () => /spread across functions like mehendi/.test((() => { const t = build()({ vendor: DEV440, vendorUser: DEVUSER, useEliza: true, conversation: fresh('src/agent/coupleThreadFacts.js').factsFromRows(upTo(ALL, '2026-09-24 18:17:37.16968+00').reverse(), 'Hi, are you available on 5 march 2028 for our wedding in delhi?') }); return t.slice(t.indexOf('IF IT IS A WEDDING:'), t.indexOf('IF IT IS ANYTHING ELSE')); })()));
   T('8.9 M8 (r2) her own asked question ignored reddens 6.9: the shape question is back on her list', m8 === true);
+  const m9 = await mutated('src/agent/coupleSystemPrompt.js', 'Every time they ask about a date, call date_state', 'Call date_state', async () => build()({ vendor: DEV440, vendorUser: DEVUSER, useEliza: true, conversation: { inConversation: true, priorCount: 2 } }).includes('Every time they ask about a date, call date_state with the date exactly as they wrote it, even if you answered the same date a moment ago'));
+  T('8.10 M9 (1c) the every-time sentence removed reddens 6.11', m9 === false);
+  const m10 = await mutated('src/lib/vendor/coupleDateState.js', "    if (v.blocked === true || v.sold === true) return 'booked';", "    if (v.blocked === true || v.sold === true) return 'unsure';", async () => (await run(ON, verdictRow({ blocked: true, slots: [] }))).r.state);
+  T('8.11 M10 (1c) a blocked day read as unsure reddens 3.2 (the founder\'s "booked" never reached)', m10 === 'unsure');
   T('8.7 every mutated file is restored byte for byte', !read('src/agent/coupleThreadFacts.js').includes('inConversation: false,') && read('src/lib/brideInbound.js').includes('matchOptOutExact(trimmedBody)'));
 
   console.log(`\nb117a_elz1_couple_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);

@@ -42,11 +42,18 @@ const R = {
   r1: (t, c) => !c.inConversation || !(/you'?ve reached|\bwelcome to\b|\bI'?m (the )?(assistant|front desk)\b|\bI'?m [^.?!]{0,40}'s (assistant|front desk)\b|\bthis is [^.?!]{0,40}(assistant|front desk)\b/i.test(t) || /\bI'?m [A-Z][a-z]+(,|\.|!| (from|at|with|here)\b)/.test(t)),
   r2: (t) => !/\b(access|calendar|my tools|tools|system|systems|limitations?|I (can'?t|cannot|am not able to|am unable to|don'?t have) (see|check|confirm|access|view|look))\b/i.test(t),
   r3: (t) => !/\bDev Roy\b(?! Photography)/.test(t),
+  // cut 1c (R-45.25 as the founder amended it): "booked" is RIGHT on a booked day when the house form follows; wrong on a free,
+  // unsure, check-off or unreadable day. "taken", "unavailable", "not free" are wrong on every day.
   r4: (t, c) => {
     if (!c.dateState) return true;
-    const says = { free: /\bfree\b|\bavailable\b/i.test(t), check: /\bcheck\b[^.?!]*\bget back\b|\bget back\b[^.?!]*\bcheck\b/i.test(t), refused: /\b(booked|taken|unavailable|not available|not free|already (committed|engaged))\b/i.test(t) };
-    if (c.dateState === 'free') return says.free && !says.refused;
-    return says.check && !says.refused && !says.free;
+    const refused = /\b(taken|unavailable|not available|not free|already (committed|engaged))\b/i.test(t);
+    const booked = /\bbooked\b/i.test(t);
+    const free = /\bfree\b|\bavailable\b/i.test(t) && !refused;
+    const house = /\b(check|confirm)\b[^.?!]*\bget back\b|\bget back\b[^.?!]*\b(check|confirm)\b/i.test(t);
+    if (refused) return false;
+    if (c.dateState === 'free') return free && !booked;
+    if (c.dateState === 'booked') return house && !free;
+    return house && !booked && !free;
   },
   r5: (t, c) => {
     if (c.inConversation) return !/mehend|sangeet|single day|one day|spread across|functions/i.test(t) || /\b(mehendi|sangeet)\b/i.test(c.inbound || '');
@@ -70,7 +77,7 @@ const LABELLED = [
   { t: 'Hi Sarah! How can I help?', c: IN, breaks: [] },
   { t: 'Dev Roy Photography is free on 5 March 2028; shall I pass your details on?', c: D('free'), breaks: [] },
   { t: 'Good news, Dev Roy Photography is available on 5 March 2028. Shall I pass your details on?', c: D('free'), breaks: [] },
-  { t: 'Let me check with Dev Roy Photography and get back to you.', c: D('taken'), breaks: [] },
+  { t: 'Let me check with Dev Roy Photography and get back to you.', c: D('unsure'), breaks: [] },
   { t: "Let me check with Dev Roy Photography about 5 March 2028 and I'll get back to you today.", c: D('check_off'), breaks: [] },
   { t: "Hi! You've reached Dev Roy Photography. What's the occasion, and when is it?", c: NEW, breaks: [] },
   { t: "Hi! You've reached Dev Roy Photography. What's the occasion, and by when do you need the outfit?", c: NEW, breaks: [] },
@@ -79,11 +86,18 @@ const LABELLED = [
   // single-rule breaks, one each
   { t: "Hi again! You've reached Dev Roy Photography. How can I help?", c: IN, breaks: ['r1'] },
   // her own limits in other words ("the diary"): a break of r2. First labelled kept by the seat; the reader was right (C-44.4's point).
-  { t: "I can't see the diary from here, but Dev Roy Photography will confirm. Let me check and get back to you.", c: D('taken'), breaks: ['r2'] },
-  { t: "I'm glad you asked! Let me check with Dev Roy Photography and get back to you.", c: D('taken'), breaks: [] },
-  { t: 'Let me check the calendar and get back to you.', c: D('taken'), breaks: ['r2'] },
+  { t: "I can't see the diary from here, but Dev Roy Photography will confirm. Let me check and get back to you.", c: D('unsure'), breaks: ['r2'] },
+  { t: "I'm glad you asked! Let me check with Dev Roy Photography and get back to you.", c: D('unsure'), breaks: [] },
+  { t: 'Let me check the calendar and get back to you.', c: D('unsure'), breaks: ['r2'] },
   { t: 'Dev Roy will get back to you shortly.', c: IN, breaks: ['r3'] },
-  { t: 'Sorry, 5 March 2028 is already booked.', c: D('taken'), breaks: ['r4'] },
+  { t: 'Sorry, 5 March 2028 is already booked.', c: D('booked'), breaks: ['r4'] },
+  // cut 1c: the walk's own 12:49:14 reply is RIGHT on a booked day (the founder: "booked reads fine"); the same words on an unsure day
+  // are wrong; "booked" with no house form, or "taken" on any day, is wrong
+  { t: 'Dev Roy Photography is booked on 5 March 2028, but let me confirm with them and get back to you.', c: D('booked'), breaks: [] },
+  { t: 'Dev Roy Photography is booked on 5 March 2028, but let me confirm with them and get back to you.', c: D('unsure'), breaks: ['r4'] },
+  { t: 'Dev Roy Photography is booked on 5 March 2028.', c: D('booked'), breaks: ['r4'] },
+  { t: '5 March 2028 is taken, but let me check with Dev Roy Photography and get back to you.', c: D('booked'), breaks: ['r4'] },
+  { t: 'Let me check with Dev Roy Photography and get back to you.', c: D('booked'), breaks: [] },
   { t: 'Dev Roy Photography is free on 5 March 2028!', c: D('check_off'), breaks: ['r4'] },
   { t: 'Let me check with Dev Roy Photography and get back to you.', c: D('free'), breaks: ['r4'] },
   { t: 'Is it a single day, or spread across functions like mehendi and sangeet?', c: IN, breaks: ['r5'] },
@@ -127,15 +141,29 @@ const SARAH = [ // his screenshots (14:40 UTC, transcribed) and his export (9dd7
   row('2026-09-24 16:35:01.291319+00', 'outbound', 'vendor_relay', 'Hi Sarah!'),
   row('2026-09-24 18:17:37.16968+00', 'inbound', 'couple', 'Hi, are you available on 5 march 2028 for our wedding in delhi?'),
 ];
+const WALK = [ // his 1b r2 walk export (25 Sept, UTC)
+  row('2026-09-25 12:46:57.759523+00', 'inbound', 'couple', 'Are you free on 5th March 2028?'),
+  row('2026-09-25 12:47:03.989225+00', 'outbound', 'agent', 'Dev Roy Photography is free on 5 March 2028. Shall I pass your details on?'),
+  row('2026-09-25 12:47:41.493003+00', 'inbound', 'couple', 'Are you free on 5th March 2028?'),
+  row('2026-09-25 12:47:44.696154+00', 'outbound', 'agent', 'Yes, Dev Roy Photography is free on 5 March 2028. Shall I pass your details on?'),
+  row('2026-09-25 12:48:37.364729+00', 'inbound', 'couple', 'Are you free on 5th March 2028?'),
+  row('2026-09-25 12:48:40.9077+00', 'outbound', 'agent', 'Dev Roy Photography is free on 5 March 2028. Shall I pass your details on?'),
+  row('2026-09-25 12:49:00.183959+00', 'inbound', 'couple', 'Hi'),
+  row('2026-09-25 12:49:03.408614+00', 'outbound', 'agent', 'Hi Sarah! How can I help?'),
+  row('2026-09-25 12:49:09.699431+00', 'inbound', 'couple', 'Are you free on 5 march 2028'),
+];
 const upTo = (at) => SARAH.filter((r) => Date.parse(r.created_at) <= Date.parse(at));
 const DATEQ = 'Hi, are you available on 5 march 2028 for our wedding in delhi?';
-const VERDICT = { free: { blocked: false, slots: [] }, taken: { blocked: true, slots: [] }, check_off: null };
+const VERDICT = { free: { blocked: false, slots: [] }, booked: { blocked: true, slots: [] }, check_off: null };
 const TRADES = ['Photographer', 'Makeup artist', 'Bridal designer', 'Jeweller', 'Decorator', 'Banquet venue', 'Caterer', 'Wedding planner', 'DJ', 'Choreographer', 'Hairstylist', 'Content creator', 'Mehendi artist', 'Wedding invitations'];
 const TURNS = [
   { id: 'sarah_hi_2030', at: '2026-09-24 15:00:34+00', inbound: 'Hi', rows: upTo('2026-09-24 15:00:30.512624+00'), ctx: { inConversation: true, inbound: 'Hi' } },
-  ...['free', 'taken', 'check_off'].map((s) => ({ id: `date_${s}_1817`, at: '2026-09-24 18:17:40+00', inbound: DATEQ, rows: upTo('2026-09-24 18:17:37.16968+00'), dateState: s, ctx: { inConversation: true, inbound: DATEQ, dateState: s } })),
+  ...['free', 'booked', 'check_off'].map((s) => ({ id: `date_${s}_1817`, at: '2026-09-24 18:17:40+00', inbound: DATEQ, rows: upTo('2026-09-24 18:17:37.16968+00'), dateState: s, ctx: { inConversation: true, inbound: DATEQ, dateState: s } })),
   { id: 'cancel_first_word', at: '2026-09-24 18:30:00+00', inbound: 'Cancel the enquiry for now, we changed plans', rows: [...upTo('2026-09-24 18:17:37.16968+00'), row('2026-09-24 18:29:55+00', 'inbound', 'couple', 'Cancel the enquiry for now, we changed plans')], ctx: { inConversation: true, inbound: 'Cancel the enquiry for now' } },
   ...TRADES.map((trade) => ({ id: `new_${trade.toLowerCase().replace(/\s+/g, '_')}`, at: '2026-09-25 10:00:05+00', inbound: 'Hi', trade, rows: [row('2026-09-25 10:00:00+00', 'inbound', 'couple', 'Hi')], ctx: { inConversation: false, inbound: 'Hi' } })),
+  // cut 1c: the 1b r2 walk's own rows (his export, 25 Sept 12:46:57 to 12:49:09 UTC), the date blocked at 12:47:28
+  { id: 'walk_booked_1249', at: '2026-09-25 12:49:12+00', inbound: 'Are you free on 5 march 2028', dateState: 'booked',
+    rows: [...SARAH, ...WALK], ctx: { inConversation: true, inbound: 'Are you free on 5 march 2028', dateState: 'booked' } },
 ];
 
 function store(rows, dateState) {
@@ -176,6 +204,7 @@ if (MODE === 'dry') {
     let msg = 'Hi Sarah! How can I help?';
     const st = (lastTxt.match(/"state":"(\w+)"/) || [])[1];
     if (st === 'free') msg = 'Dev Roy Photography is free on 5 March 2028; shall I pass your details on?';
+    else if (st === 'booked') msg = 'Dev Roy Photography is booked on 5 March 2028, but let me confirm with them and get back to you.';
     else if (st) msg = 'Let me check with Dev Roy Photography and get back to you.';
     else if (/THIS IS THE CLIENT'S FIRST MESSAGE/.test(sys)) msg = (sys.match(/Good \(first message\): "([^"]+)"/) || [])[1] || 'x';
     else if (/Cancel/.test(JSON.stringify(last))) msg = 'No problem at all. We are here whenever you need anything.';
@@ -199,7 +228,9 @@ async function replayOnce(turn, lane) {
 // cut 1b r2 (the chair's approval, the founder's cost): the turns that have EVER missed run at nHot, the rest at n; a cold turn that
 // misses at n is re-run alone at nHot before the verdict (its first counts are replaced, not added). A progress line per turn per
 // model shows a long run is alive. Only counts and turn ids are printed as it goes; reply text only under --show-misses.
-const HOT = new Set(['date_free_1817', 'date_taken_1817', 'date_check_off_1817']);
+// cut 1c: date_taken_1817 renamed date_booked_1817 (the same blocked day, now the booked state); walk_booked_1249 added (the chair's
+// ruling: the booked-date hot turn from the 1b r2 walk's own rows).
+const HOT = new Set(['date_free_1817', 'date_booked_1817', 'date_check_off_1817', 'walk_booked_1249']);
 async function measureTurn(turn, reps, lane) {
   const quiet = console.log;
   const out = { miss: Object.fromEntries(RULES.map((r) => [r, 0])), replies: 0, errors: 0, errKinds: {}, seen: {} };
@@ -281,7 +312,7 @@ function verdict(results, n) {
   const ALL = [{ name: 'claude-haiku-4-5-20251001', key: 'haiku', route: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' } },
     { name: 'deepseek-v4-flash', key: 'deepseek', route: { provider: 'deepseek', model: 'deepseek-v4-flash' } }];
   const models = ALL.filter((m) => which === 'both' || m.key === which);
-  console.log(`b117m ${MODE}: ${TURNS.length} recorded turns (the three date turns x ${nHot}, the rest x ${n}) x ${models.length} model(s), lane ${lane}`);
+  console.log(`b117m ${MODE}: ${TURNS.length} recorded turns (the ${HOT.size} date turns x ${nHot}, the rest x ${n}) x ${models.length} model(s), lane ${lane}`);
   const results = await measure({ n, nHot, lane, models });
   const ok = verdict(results, n);
   const errorsDecided = Object.values(results).some((r) => r.errors * 20 > r.replies + r.errors);
