@@ -1,0 +1,21 @@
+# scripts/floor-manifest-ce45-igd1-cut2aii.txt
+# CE-45 · IGD-1 · CUT 2a-ii (dream-os): the room's Instagram door and switch, the quiet time's door, the connect's messages flavour,
+# the reply transport (Graph v26.0), 0174, rung b119b and 0174's rehearsal, the handover. BASE: 951146c.
+# F-19.16: a dirty path outside this list is a STOP. No new folder this cut (src/lib/instagram/ exists since 2a-i).
+db/migrations/0174_ig_dm_switch.sql
+docs/db/PUBLIC_SCHEMA.md
+docs/handovers/TDW_CE45_IGD1_2aii_HANDOVER.md
+scripts/b119b_igd1_ig_room_bench.js
+scripts/floor-manifest-ce45-igd1-cut2aii.txt
+scripts/lib/b119br_0174_plant.sql
+scripts/lib/b119br_0174_rehearse.sh
+src/api/vendor/ig.js
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/instagram.js
+src/api/vendor/solutions/quiet.js
+src/lib/instagram/igMeta.js
+src/lib/instagram/igRoom.js
+src/lib/instagram/igSend.js
+src/lib/pwaPaths.js
+src/lib/vendor/igConnection.js
+src/lib/vendor/igOAuth.js

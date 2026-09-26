@@ -49,10 +49,14 @@ const RETURN_PATH = require('../../lib/pwaPaths').vendorPath('portfolio');
 // 4b-3b (ruling 13(b), F-42.192's precedent): the INSIGHTS flavour returns to the
 // Posts & ads room, where its "Connect Instagram" was tapped — the same one home.
 const POSTS_RETURN_PATH = require('../../lib/pwaPaths').vendorPath('posts');
+// CE-45 IGD-1 cut 2a-ii: the MESSAGES flavour returns to the room "WhatsApp and Instagram" (/vendor/number), where it was tapped.
+const NUMBER_RETURN_PATH = require('../../lib/pwaPaths').vendorPath('number');
+const igMeta = require('../../lib/instagram/igMeta');
 
 function backToPortfolio(res, params, flavour) {
   const q = new URLSearchParams(params);
-  const home = flavour === igOAuth.FLAVOURS.insights ? POSTS_RETURN_PATH : RETURN_PATH;
+  const home = flavour === igOAuth.FLAVOURS.insights ? POSTS_RETURN_PATH
+    : flavour === igOAuth.FLAVOURS.messages ? NUMBER_RETURN_PATH : RETURN_PATH;
   return res.redirect(`${PWA_BASE}${home}?${q.toString()}`);
 }
 
@@ -184,6 +188,20 @@ router.get('/callback', asyncHandler(async (req, res) => {
     } else {
       ig = 'no_scope';
       console.warn('[ig:callback] insights scope not on the token for vendor', v.vendorId, probe.ok ? probe.evidence : probe.error);
+    }
+  }
+
+  // CE-45 IGD-1 cut 2a-ii · THE MESSAGES FLAVOUR PROVES ITS GRANT BEFORE STORING IT, as insights does: one read of her conversations
+  // (GET /me/conversations?platform=instagram needs instagram_business_manage_messages; Meta's Conversations API page, read 26 Sept
+  // 2026). Granted: messages_granted_at lands and the room can read "on". Refused: the connect stands, the room keeps saying connect.
+  if (flavour === igOAuth.FLAVOURS.messages) {
+    const probe = await igMeta.probeMessagesScope({ fetchImpl: fetch, token: long.accessToken });
+    if (probe.granted) {
+      const g = await igConn.markMessagesGranted(supabase, v.vendorId);
+      if (!g.ok) console.error('[ig:callback] messages grant not stored for vendor', v.vendorId, g.error);
+    } else {
+      ig = 'no_scope';
+      console.warn('[ig:callback] messages scope not on the token for vendor', v.vendorId, probe.status || probe.why);
     }
   }
 

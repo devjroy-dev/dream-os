@@ -141,7 +141,12 @@ const IG_SCOPE = 'instagram_business_basic';
 // one account read proves the token carries it. Meta's reference for the
 // Instagram-Login path names exactly this pair on graph.instagram.com.
 const INSIGHTS_SCOPE = 'instagram_business_manage_insights';
-const FLAVOURS = Object.freeze({ basic: 'basic', insights: 'insights' });
+// CE-45 IGD-1 cut 2a-ii · THE MESSAGES SCOPE, INCREMENTAL on the insights precedent (read-first E4 and F8, ruled): the room
+// "WhatsApp and Instagram" mints a third authorize carrying basic + messages, tagged `messages` in the signed state; the callback
+// records the grant (vendor_ig_connections.messages_granted_at, 0174) only after one read proves the token carries it.
+const MESSAGES_SCOPE = 'instagram_business_manage_messages';
+const FLAVOURS = Object.freeze({ basic: 'basic', insights: 'insights', messages: 'messages' });
+const SIGNED_FLAVOURS = [FLAVOURS.insights, FLAVOURS.messages];
 
 // ── TOKEN LIFECYCLE, DERIVED AND WRITTEN DOWN ───────────────────────────────
 // short-lived  ≈ 1 hour, issued by the code exchange
@@ -213,7 +218,7 @@ function mintState(vendorId, opts = {}) {
   // the brief's, so the callback knows which room to return to and whether the
   // grant is to be proven and stored. Signed with the rest: a flavour cannot be
   // edited in flight any more than the vendor id can.
-  const flavour  = opts.flavour === FLAVOURS.insights ? FLAVOURS.insights : null;
+  const flavour  = SIGNED_FLAVOURS.includes(opts.flavour) ? opts.flavour : null;
   const body     = { v: vendorId, n: nonce, t: issuedAt };
   if (flavour) body.s = flavour;
   const payload  = b64url(JSON.stringify(body));
@@ -247,7 +252,7 @@ function verifyState(state) {
   if (Date.now() - Number(parsed.t) > STATE_TTL_MS) {
     return { ok: false, error: 'This connection link expired. Please start again.' };
   }
-  return { ok: true, vendorId: parsed.v, nonce: parsed.n, flavour: parsed.s === FLAVOURS.insights ? FLAVOURS.insights : FLAVOURS.basic };
+  return { ok: true, vendorId: parsed.v, nonce: parsed.n, flavour: SIGNED_FLAVOURS.includes(parsed.s) ? parsed.s : FLAVOURS.basic };
 }
 
 /**
@@ -256,7 +261,8 @@ function verifyState(state) {
 function authorizeUrl(state, opts = {}) {
   // The insights flavour asks for BOTH scopes: Meta's incremental consent shows
   // the vendor only what is new, and a token minted here carries the union.
-  const scope = opts.flavour === FLAVOURS.insights ? `${IG_SCOPE},${INSIGHTS_SCOPE}` : IG_SCOPE;
+  const scope = opts.flavour === FLAVOURS.insights ? `${IG_SCOPE},${INSIGHTS_SCOPE}`
+    : opts.flavour === FLAVOURS.messages ? `${IG_SCOPE},${MESSAGES_SCOPE}` : IG_SCOPE;
   const q = new URLSearchParams({
     client_id:     process.env.IG_APP_ID || '',
     redirect_uri:  process.env.IG_REDIRECT_URI || '',
@@ -603,6 +609,7 @@ module.exports = {
   fetchMediaInsights,
   fetchFollowersCount,
   probeInsightsScope,
+  MESSAGES_SCOPE,
   AUTHORIZE_URL,
   TOKEN_URL,
   GRAPH_HOST,

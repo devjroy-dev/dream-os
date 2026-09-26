@@ -109,6 +109,12 @@ async function markInsightsGranted(supabase, vendorId, at = new Date().toISOStri
  * an expiry) with the grant stored. SAFE columns only — the job reads each token
  * through tokenForCall, one at a time, never as a column of secrets.
  */
+// CE-45 IGD-1 cut 2a-ii · the messages grant, proved by one read on the token (igMeta.probeMessagesScope), stored on 0174's column.
+async function markMessagesGranted(supabase, vendorId, at = new Date().toISOString()) {
+  const { error } = await supabase.from(TABLE).update({ messages_granted_at: at, updated_at: at }).eq('vendor_id', vendorId);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 async function listInsightsConnections(supabase) {
   const { data, error } = await supabase.from(TABLE).select(SAFE_COLUMNS)
     .not('ig_user_id', 'is', null).not('token_expires_at', 'is', null).not('insights_granted_at', 'is', null);
@@ -218,6 +224,7 @@ async function findByIgUserId(supabase, igUserId) {
 }
 
 module.exports = {
+  markMessagesGranted,
   TABLE,
   SAFE_COLUMNS,
   getConnection,

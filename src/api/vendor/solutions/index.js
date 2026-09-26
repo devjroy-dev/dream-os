@@ -496,5 +496,8 @@ router.use('/google', require('./google'));
 router.use('/storefront', require('./storefront'));
 // G6 · CE-45 G6-1 2a · her own number: the room's answer and Meta's code (number.js; FK1).
 router.use('/number', require('./number'));
+// CE-45 IGD-1 cut 2a-ii · the room "WhatsApp and Instagram": its Instagram door and switch, and the quiet time (both dark by the lane).
+router.use('/instagram', require('./instagram'));
+router.use('/quiet', require('./quiet'));
 
 module.exports = router;

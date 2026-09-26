@@ -74,6 +74,9 @@ const VENDOR_PATHS = Object.freeze({
   // address lives here, never as a literal in a router). The pwa spells it at
   // lib/solutions/routes.ts POSTS_HREF.
   posts: '/vendor/posts',
+  // CE-45 IGD-1 cut 2a-ii: the room "WhatsApp and Instagram" (dreamos-pwa app/vendor/(shell)/number), where the messages
+  // flavour of the Instagram connect returns (ig.js).
+  number: '/vendor/number',
 });
 
 function vendorPath(key) {
