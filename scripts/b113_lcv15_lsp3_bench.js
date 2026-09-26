@@ -47,7 +47,8 @@ const PIN = {"planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496d
   sec('2 the STAYS');
   T(`2.1 all ${STAYS.length} live exports are present and callable`, STAYS.every((n) => typeof R[n] === 'function'));
   T('2.2 sendApproved (the door\'s one send leg) is byte-identical to 90f607d', sha(body(src(RS), 'sendApproved')) === PIN.sendApproved);
-  T('2.3 relayToCouple.js and coupleDrafts.js are untouched (their blobs at 90f607d)', execSync('git diff --quiet 90f607d -- src/lib/vendor/relayToCouple.js src/lib/vendor/coupleDrafts.js; echo $?', { cwd: ROOT, encoding: 'utf8' }).trim() === '0');
+  // LABELED AMENDMENT · CE-45 ELZ-1 F-44.176: relayToCouple.js gained the shared line's studio prefix (his (a)); coupleDrafts.js still untouched since 90f607d.
+  T('2.3 coupleDrafts.js is untouched (its blob at 90f607d); relayToCouple.js changed only by F-44.176 (the shared-line prefix)', execSync('git diff --quiet 90f607d -- src/lib/vendor/coupleDrafts.js; echo $?', { cwd: ROOT, encoding: 'utf8' }).trim() === '0' && /function sharedLinePrefix\(vendor, from, environment\)/.test(require('fs').readFileSync(require('path').join(ROOT, 'src/lib/vendor/relayToCouple.js'), 'utf8')));
   T('2.4 the historic rows\' cost literal \'relay_confirm\' stays in admin/router.js', /const AGENT_COST_SENT_BY = \['agent', 'relay_confirm'\];/.test(src('src/admin/router.js')));
 
   sec('3 chat.js');

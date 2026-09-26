@@ -250,7 +250,7 @@ async function main() {
   T('1.2 …a draft is stored for Sarah\'s phone, staged, nothing sent', draftsIn(d).length === 1 && d0(d).couple_phone === SARAH_PHONE && d0(d).state === 'staged');
   const before = sent.length;
   r = await turn(d, 'YES', NONE);
-  T('1.3 her YES sends the stored bytes to Sarah\'s phone through the seat\'s one send leg (sendApprovedDraft), the row sent', r.reply === `Sent to Sarah (${SARAH_PHONE}).` && sent.length === before + 1 && sent[sent.length - 1].to === SARAH_PHONE && sent[sent.length - 1].text === BODY && d0(d).state === 'sent');
+  T('1.3 her YES sends the stored bytes to Sarah\'s phone through the seat\'s one send leg (sendApprovedDraft), the row sent', r.reply === `Sent to Sarah (${SARAH_PHONE}).` && sent.length === before + 1 && sent[sent.length - 1].to === SARAH_PHONE && sent[sent.length - 1].text === `Walk Studio: ${BODY}` /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */ && d0(d).state === 'sent');
   d = makeDb(estate()); r = await turn(d, 'Tell Sarah hi', req([relay('Sarah')]));
   T('1.4 GUARD: a relay heard WITH its client is untouched (the same frame)', r.keys === 'B37' && r.reply === SARAH_FRAME());
   d = uuidDb(estate()); r = await turn(d, 'Add nobody crew to walk seventeen alpha shoot', req([{ act: 'assign_crew', kind_as_spoken: 'shoot', client_as_spoken: 'walk seventeen alpha', member_as_spoken: 'nobody crew' }]));

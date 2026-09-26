@@ -127,6 +127,26 @@ async function findOrCreateCoupleThread(supabase, vendorId, couplePhone) {
  * @param {object} [args.env]
  * @returns {Promise<{ok: boolean, kind: string, reason?: string, threadId?: string, twilioSid?: string|null}>}
  */
+// CE-45 ELZ-1 · F-44.176 (the founder's (a), 26 September: "make sure that this prefix is only there when the tdw shared line is used. not
+// for vendor own number"): a message the vendor sends a couple FROM TDW'S SHARED LINE opens with the studio's name, so she knows who wrote
+// (Sarah, 26 Sept 04:45:20 UTC: "Who sent this message"). HIS BYTES: "{studio}: " before the approved text. The prefix is decided by the
+// NUMBER THE SEND LEAVES FROM: only when `from` is the shared line (VENDOR_WHATSAPP_NUMBER); a send from the vendor's own number gets none.
+// No studio name on the row: no prefix (never "this vendor:"). A text that already opens with the studio's name is not prefixed twice.
+// The window-closed path (sendContentTemplate) is untouched: its approved template already names the vendor ({{vendor}}).
+function sharedLinePrefix(vendor, from, environment) {
+  try {
+    const shared = environment && environment.VENDOR_WHATSAPP_NUMBER;
+    if (!from || !shared || String(from) !== String(shared)) return '';
+    const name = ((vendor && (vendor.business_name || vendor.name)) || '').toString().trim();
+    return name ? `${name}: ` : '';
+  } catch (_e) { return ''; }
+}
+function withSharedLinePrefix(text, vendor, from, environment) {
+  const pre = sharedLinePrefix(vendor, from, environment);
+  if (!pre) return text;
+  return text.toLowerCase().startsWith(pre.slice(0, -2).toLowerCase()) ? text : `${pre}${text}`;
+}
+
 async function relayToCouple(supabase, { vendor, couplePhone, body, sendWhatsApp, env } = {}) {
   const environment = env || process.env;
 
@@ -170,9 +190,11 @@ async function relayToCouple(supabase, { vendor, couplePhone, body, sendWhatsApp
   const threadId = found.threadId;
 
   // ── 4 · THE SEND, LANE-PINNED, RETURN READ ────────────────────────────────
+  // F-44.176: the bytes that leave, and the bytes the thread records, are ONE string (the record matches the send).
+  const sentText = withSharedLinePrefix(text, vendor, from, environment);
   let out;
   try {
-    out = await sendWhatsApp(couplePhone, text, [], from);
+    out = await sendWhatsApp(couplePhone, sentText, [], from);
   } catch (e) {
     return { ok: false, kind: 'send_failed', reason: `send_threw: ${e && e.message}`, threadId };
   }
@@ -203,7 +225,7 @@ async function relayToCouple(supabase, { vendor, couplePhone, body, sendWhatsApp
       conversation_id: threadId,
       direction: 'outbound',
       channel: 'whatsapp',
-      body: text,
+      body: sentText,
       sent_by: 'vendor_relay',
       twilio_sid: twilioSid,
     });
@@ -632,6 +654,7 @@ async function sendContentTemplate(supabase, { vendor, couplePhone, brideName, b
 }
 
 module.exports = {
+  sharedLinePrefix, withSharedLinePrefix, // CE-45 ELZ-1 F-44.176, exported for b119
   relayToCouple,
   ringDoorbell,
   sendContentTemplate,

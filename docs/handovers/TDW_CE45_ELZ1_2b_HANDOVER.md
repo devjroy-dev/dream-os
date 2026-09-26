@@ -34,7 +34,11 @@ Self-caught before any cut: e-140 (the composer's deps dropped by composeChecked
 
 ## 3 · Walk record
 
-To be recorded.
+Landed as 727ed5c. The founder's walk, 26 September (UTC): W1 PASS, the quote (pending_couple_drafts 43252ae5-e4fe-44bb-b1b9-c996432756b7,
+"Hi Sarah, here's your quote for Photographs and film: Rs 80,000, with delivery on 5 February 2027. ...", sent 04:38:15.402; lead_packages
+quoted_at 04:38:15.487 and quote_draft_id this draft). W2 PASS on the send ("Hi Sarah, your photos are ready! 📸", 04:40:45). W6 PASS (vendor_self
+04:43:23 holds his date line, the text his WhatsApp received). Sarah at 04:45:20: "Who sent this message" (F-44.176, cured in its own cut).
+W3, W4 and W5 close on his screenshots.
 
 ## 4 · Open
 

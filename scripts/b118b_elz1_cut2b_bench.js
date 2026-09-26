@@ -243,7 +243,7 @@ async function main() {
   const nSent = sent.length;
   r = await turn(db, 'yes', NONE);
   const lp = db.tables['public.lead_packages'][0];
-  T('1.2 F3: her YES sends the STORED bytes, and the package is marked quoted with THIS draft (quoted_at, quote_draft_id)', sent.length === nSent + 1 && sent[sent.length - 1].text === GOOD && !!lp.quoted_at && lp.quote_draft_id === String(d0(db).id));
+  T('1.2 F3: her YES sends the STORED bytes, and the package is marked quoted with THIS draft (quoted_at, quote_draft_id)', sent.length === nSent + 1 && sent[sent.length - 1].text === `Walk Studio: ${GOOD}` /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */ && !!lp.quoted_at && lp.quote_draft_id === String(d0(db).id));
   db = makeDb(withPkg()); composed.length = 0;
   r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: seqComposer([NOFIG, GOOD]) });
   T('1.3 F2: a body missing the figure is RE-COMPOSED once; the second, carrying both facts, is the one stored', r.keys === 'B37' && composed.length === 2 && d0(db).body === GOOD);
@@ -273,7 +273,7 @@ async function main() {
   T('2.1 on the pwa lane a relay is composed, STORED and framed B37, exactly as on WhatsApp', r.keys === 'B37' && draftsIn(db).length === 1 && r.reply === FRAME_ASHA);
   const nS3 = sent.length;
   r = await turn(db, 'yes', NONE, { lane: 'pwa' });
-  T('2.2 her YES in the app sends the stored bytes', sent.length === nS3 + 1 && sent[sent.length - 1].text === BODY);
+  T('2.2 her YES in the app sends the stored bytes (with the shared line\'s studio prefix, F-44.176)', sent.length === nS3 + 1 && sent[sent.length - 1].text === `Walk Studio: ${BODY}` /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */);
   T('2.3 relay_pwa is ABSENT from src: no reason, no mapping (a grep of every src file, comments aside)', !require('child_process').execSync("grep -rn --include=*.js \"'relay_pwa'\" src || true", { cwd: P('.'), encoding: 'utf8' }).trim());
 
   sec('3 V11 and V13, the numbered package picks (V16\'s safe half)');

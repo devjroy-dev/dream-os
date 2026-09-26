@@ -611,7 +611,7 @@ await t('§3.2 THE LANE IS PINNED EXPLICITLY — the 4th arg is the vendor numbe
 });
 
 await t('§3.3 MUTATION — un-pinning the lane turns §3.2 RED', async () => {
-  const m = mutate('src/lib/vendor/relayToCouple.js', 'await sendWhatsApp(couplePhone, text, [], from)', 'await sendWhatsApp(couplePhone, text, [])', 'a3pin');
+  const m = mutate('src/lib/vendor/relayToCouple.js', 'await sendWhatsApp(couplePhone, sentText, [], from)', 'await sendWhatsApp(couplePhone, sentText, [])', 'a3pin'); // F-44.176, labelled: the send line sends sentText; the mutation is unchanged
   assert.ok(m, 'DECLARED FAIL — lane-pin anchor absent in relayToCouple.js');
   const send = transport();
   const db = makeDb(openWorld());
@@ -1798,7 +1798,7 @@ await t('§13.6 R-29.35 AUTO-SEND — her reply opens the window and the approve
   const { arrivalAutoSend } = require(SRC('src/lib/vendor/coupleArrival.js'));
   const out = await arrivalAutoSend(makeDb(world), PHONE, { sendWhatsApp: send, env: ENV });
   assert.strictEqual(out.kind, 'sent', 'the second affirmative is still required');
-  assert.ok(send.calls.some((c) => c.body === BODY), 'the sent bytes are not the approved bytes');
+  assert.ok(send.calls.some((c) => c.body === `S: ${BODY}`), 'the sent bytes are not the approved bytes'); /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */
 });
 
 await t('§13.7 R-29.35 — an EXPIRED approval never auto-sends', async () => {
