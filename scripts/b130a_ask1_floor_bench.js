@@ -230,8 +230,17 @@ async function main() {
   { const st = S.makeStore(); const said = async () => ({ content: [{ type: 'text', text: "I'm your assistant. You have 2 packages." }] }); const x = await A.answerQuestion({ supabase: st.client, vendorId: S.VA, message: 'q', seat: { provider: 'anthropic', model: 'm' } }, { llmCreate: said }); T('13.7 a self-naming reply fails closed', x.ok === false && x.error === 'persona'); }
   { const st = S.makeStore(); let n = 0; const many = async () => { n += 1; return n === 1 ? { content: Array.from({ length: 6 }, (_v, i) => ({ type: 'tool_use', id: `u${i}`, name: 'packages', input: {} })) } : { content: [{ type: 'text', text: 'ok' }] }; }; st.reset(); const x = await A.answerQuestion({ supabase: st.client, vendorId: S.VA, message: 'q', seat: { provider: 'anthropic', model: 'm' } }, { llmCreate: many, nowMs: S.NOW_MS }); T('13.8 at most 4 tool calls run per round; the rest are refused, not run', x.ok && x.calls.filter((c) => c.result.ok).length === 4 && x.calls.filter((c) => c.result.error === 'too_many_calls').length === 2); }
 
+  sec('§15 cut 1b (F-44.182): the cached prefix, the truncation cure, the result cap');
+  const cacheCheck = (AA) => { const p = AA.requestParams('m', [{ role: 'user', content: 'q' }]); const t = p.tools; return !!(Array.isArray(p.system) && p.system.length === 1 && p.system[0].type === 'text' && p.system[0].text === AA.SYSTEM && p.system[0].cache_control && p.system[0].cache_control.type === 'ephemeral' && t[t.length - 1].cache_control && t[t.length - 1].cache_control.type === 'ephemeral' && t.filter((x) => x.cache_control).length === 1 && !JSON.stringify(p.messages).includes('cache_control')); };
+  T('15.1 the system prompt is a content block marked ephemeral, the last tool marked, nothing per-call marked', cacheCheck(A));
+  { const a = JSON.stringify(A.requestParams('m', [{ role: 'user', content: 'q1' }])); const b = JSON.stringify(A.requestParams('m', [{ role: 'user', content: 'q2' }])); const cut = (x) => x.slice(0, x.indexOf('"messages"')); T('15.2 the prefix is byte-identical from call to call (a changing byte would break the cache)', cut(a) === cut(b) && cut(a).length > 1000); }
+  { const p = A.requestParams('m', []); const chars = JSON.stringify(p.tools).length + p.system[0].text.length; T(`15.3 PROXY: the prefix is ${chars} characters, over 4,096 tokens at 4 characters a token (the API's own count is b130m --probe's)`, chars > 4096 * 4); }
+  { const st = S.makeStore(); const cut = async () => ({ stop_reason: 'max_tokens', usage: { output_tokens: 700 }, content: [{ type: 'text', text: 'Free in October 2026:\n1 October 2026\n2 Oct' }] }); const x = await A.answerQuestion({ supabase: st.client, vendorId: S.VA, message: 'q', seat: { provider: 'anthropic', model: 'm' } }, { llmCreate: cut, nowMs: S.NOW_MS }); T('15.4 a reply cut at the token ceiling is a failure (truncated), never a partial answer', x.ok === false && x.error === 'truncated' && x.usage.output_tokens === 700); }
+  { const st = S.makeStore(); let n = 0; let seen = null; const big = async (_p, params) => { n += 1; if (n === 1) return { content: [{ type: 'tool_use', id: 'b1', name: 'packages', input: {} }] }; seen = params.messages[params.messages.length - 1].content[0].content; return { content: [{ type: 'text', text: 'ok' }] }; }; const x = await A.answerQuestion({ supabase: st.client, vendorId: S.VA, message: 'q', seat: { provider: 'anthropic', model: 'm' } }, { llmCreate: big, runTool: async () => ({ ok: true, blob: 'x'.repeat(9000) }), nowMs: S.NOW_MS }); T('15.5 a tool result over the cap reaches the model as too_long, never cut mid-way', x.ok && JSON.parse(seen).error === 'too_long'); }
+  T('15.6 the worked examples carry no dash and declare their facts invented', !/[\u2013\u2014]/.test(A.EXAMPLES) && /INVENTED/.test(A.EXAMPLES) && A.SYSTEM.endsWith(A.EXAMPLES));
+
   sec('§14 mutations of production code (each must redden its cell)');
-  const before = Object.fromEntries([ATf, WDf].map((f) => [f, sha(src(f))]));
+  const before = Object.fromEntries([ATf, WDf, AAf].map((f) => [f, sha(src(f))]));
   const muts = [
     ['M1 a tool\'s vendor filter removed (packages): reddens 1.1', ATf, ".from('vendor_packages').select('name, description, line_items, total, deposit_pct, middle_pct, middle_enabled, delivery_basis, delivery_days, is_default').eq('vendor_id', ctx.vendorId)", ".from('vendor_packages').select('name, description, line_items, total, deposit_pct, middle_pct, middle_enabled, delivery_basis, delivery_days, is_default')",
       async (M) => { const st = S.makeStore(); await M.runTool({ supabase: st.client, vendorId: S.VA, nowMs: S.NOW_MS }, 'packages', {}); return st.calls.every(scoped); }],
@@ -247,6 +256,10 @@ async function main() {
       async (M) => { const st = S.makeStore(); const x = await M.runTool({ supabase: st.client, vendorId: S.VA, nowMs: S.NOW_MS }, 'owed', {}); return x.owed_total === 'Rs 2,13,000'; }],
     ['M7 a writer imported by the tools: reddens 7.1 and 7.2', ATf, "const { istTodayISO } = require('./istClock');", "const { istTodayISO } = require('./istClock');\nconst { blockDate } = require('./availability');",
       async () => JSON.stringify(reqsOf(ATf)) === JSON.stringify(PIN[ATf].slice().sort()) && !WRITE_TOKENS.test(code(src(ATf)))],
+    ['M8 the system prompt\'s cache marker removed: reddens 15.1', AAf, "const CACHED_SYSTEM = Object.freeze([{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }]);", "const CACHED_SYSTEM = Object.freeze([{ type: 'text', text: SYSTEM }]);",
+      async (M) => cacheCheck(M)],
+    ['M9 the truncation check removed: reddens 15.4', AAf, "        if (resp && resp.stop_reason === 'max_tokens') return { ok: false, error: 'truncated' };\n", '',
+      async (M) => { const st = S.makeStore(); const cut = async () => ({ stop_reason: 'max_tokens', content: [{ type: 'text', text: 'Free in October 2026:\n1 Oct' }] }); const x = await M.answerQuestion({ supabase: st.client, vendorId: S.VA, message: 'q', seat: { provider: 'anthropic', model: 'm' } }, { llmCreate: cut, nowMs: S.NOW_MS }); return x.ok === false && x.error === 'truncated'; }],
   ];
   for (const [name, rel, from, to, check] of muts) {
     const orig = src(rel);
@@ -263,8 +276,8 @@ async function main() {
     finally { fs.writeFileSync(P(rel), orig); fresh(rel); keepTrap(); }
     T(`14 ${name}`, reddened, note);
   }
-  const dirt = execSync('git status --porcelain -- src/lib/vendor/askTools.js src/lib/vendor/workingDoor.js', { cwd: ROOT, encoding: 'utf8' });
-  const restored = [ATf, WDf].every((f) => sha(src(f)) === before[f]);
+  const dirt = execSync('git status --porcelain -- src/lib/vendor/askTools.js src/lib/vendor/workingDoor.js src/lib/vendor/askAgent.js', { cwd: ROOT, encoding: 'utf8' });
+  const restored = [ATf, WDf, AAf].every((f) => sha(src(f)) === before[f]);
   T('14.8 every mutated file restored to its pre-mutation sha256 (A-45.4\'s dirt check gates the verdict)', restored, dirt.trim());
 
   console.log(`\nb130a_ask1_floor_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);

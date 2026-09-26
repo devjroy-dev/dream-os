@@ -16,6 +16,14 @@
 //             agent questions, strat 'missed' N = 10 each, the rest N = 1, on claude-haiku-4-5-20251001 and deepseek-v4-flash,
 //             each question against a fresh fixture. PRINTS RATES ONLY (and --show-misses prints missed replies' TEXT, model
 //             output only). Options: --model=haiku|deepseek|both, --n-missed=10, --n-rest=1, --limit=K (first K questions).
+//   --probe   (cut 1b, F-44.182) THE CACHE, PROVEN: the API's own token count of the fixed prefix against the model's minimum
+//             (Haiku 4.5: 4,096, Anthropic's page read 26 September 2026), then TWO identical live calls with the usage printed:
+//             cache_creation_input_tokens on the first, cache_read_input_tokens on the second, and each call's dollar cost. Two
+//             short calls, max_tokens 16. --model=haiku|deepseek.
+// A-45.15 FOR --live (as the chair relayed it): the projected cost is printed FIRST and the run REFUSES to start without
+//   --budget=<USD>; every run is RECORDED as it goes (one JSON line per run, in /tmp/b130m/<model>.jsonl); the run STOPS at the first
+//   credit or billing error and when the spend reaches the budget; --resume runs only what did not run (keyed by question id and
+//   repetition), and the verdict is read over everything recorded. Cost per run is computed from the API's own usage fields.
 // TOLERANCE (the chair): m2 and m3 at ZERO misses; m1, m4 and m5 at most ONE in twenty, per rule per model. Above it the prompt is
 // tightened and re-measured before cut 2 opens; never a guard (F-G).
 //
@@ -33,7 +41,7 @@ process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'bench-inert';
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.split('=')[1] : d; };
-const MODE = argv.includes('--live') ? 'live' : argv.includes('--dry') ? 'dry' : 'readers';
+const MODE = argv.includes('--probe') ? 'probe' : argv.includes('--live') ? 'live' : argv.includes('--dry') ? 'dry' : 'readers';
 const SHOW = argv.includes('--show-misses');
 const S = require('./lib/ask1_store');
 const BANK = JSON.parse(require('fs').readFileSync(P('scripts/lib/ask1_bank.json'), 'utf8'));
@@ -55,6 +63,12 @@ function factsIn(reply) {
   const noDates = t.replace(DATE_RE, ' ').replace(AMOUNT_RE, ' ').replace(TIME_RE, ' ');
   const counts = (noDates.match(COUNT_RE) || []);
   return { dates, amounts, times, counts };
+}
+// For --show-misses on m2: the facts in the reply that the turn's tool results (and her own words) do not hold, each named by kind.
+function unfound(reply, c) {
+  const pool = norm(`${JSON.stringify(c.calls.map((x) => x.result))} ${c.text}`).toLowerCase().replace(/\s/g, '');
+  const f = factsIn(reply); const has = (x) => pool.includes(String(x).toLowerCase().replace(/\s/g, ''));
+  return [...f.dates.filter((x) => !has(x)).map((x) => `date ${x}`), ...f.amounts.filter((x) => !has(x)).map((x) => `amount ${x}`), ...f.times.filter((x) => !has(x)).map((x) => `time ${x}`), ...f.counts.filter((x) => !has(x)).map((x) => `count ${x}`)];
 }
 const R = {
   m1: (reply, c) => {
@@ -156,37 +170,103 @@ async function dry() {
   const runs = missed * Number(arg('n-missed', 10)) + rest * Number(arg('n-rest', 1));
   console.log(`b130m --dry: ${ok} of ${n} bank questions ran the real loop with zero writes; ${(rounds / n).toFixed(2)} model calls a question with this stub`);
   console.log(`measured request size: about ${Math.round(tokIn)} input tokens a question (no cache credit assumed); output assumed 250 a call`);
-  console.log(`COST LINE: haiku about $${haiku.toFixed(4)} a question; --live runs ${runs} questions a model: haiku about $${(haiku * runs).toFixed(2)}; deepseek ${ds === null ? 'price unknown (set DEEPSEEK_USD_PER_M_IN and _OUT from its page)' : `about $${(ds * runs).toFixed(2)}`}`);
+  const A = require(P('src/lib/vendor/askAgent.js')); const pre = A.requestParams('m', []); const prefix = (JSON.stringify(pre.tools).length + pre.system[0].text.length) / 4;
+  const perCall = tokIn / (rounds / n); const tail = Math.max(0, perCall - prefix); const calls = rounds / n;
+  const warm = calls * (prefix * 0.10 + tail * 1.0 + 250 * 5.0) / 1e6; // the prefix READ from the cache on every call (a warm run)
+  console.log(`CACHED (F-44.182): prefix about ${Math.round(prefix)} tokens read at 0.1x on every call once warm; haiku about $${warm.toFixed(4)} a question warm, the first call of a cold run paying the 1.25x write once`);
+  console.log(`COST LINE (no cache, the ceiling): haiku about $${haiku.toFixed(4)} a question; --live runs ${runs} questions a model: haiku about $${(haiku * runs).toFixed(2)} (warm cache about $${(warm * runs).toFixed(2)}); deepseek ${ds === null ? 'price unknown (set DEEPSEEK_USD_PER_M_IN and _OUT from its page)' : `about $${(ds * runs).toFixed(2)}`}`);
   return ok === n;
 }
 
-async function live() {
+// ── cost from the API's own usage (prices per million tokens) ──────────────────────────────────────────────────────
+const PRICES = {
+  haiku: { in: 1.0, write: 1.25, read: 0.10, out: 5.0, src: "Anthropic's pricing table, read 26 September 2026" },
+  deepseek: (() => { const i = Number(process.env.DEEPSEEK_USD_PER_M_IN); const o = Number(process.env.DEEPSEEK_USD_PER_M_OUT); return Number.isFinite(i) && Number.isFinite(o) ? { in: i, write: i, read: Number(process.env.DEEPSEEK_USD_PER_M_HIT || i / 50), out: o, src: 'DEEPSEEK_USD_PER_M_IN/_OUT/_HIT from its page on the day' } : null; })(),
+};
+function costOf(m, u) {
+  const p = PRICES[m]; if (!p || !u) return null;
+  const n = (k) => Number(u[k]) || 0;
+  return (n('input_tokens') * p.in + n('cache_creation_input_tokens') * p.write + n('cache_read_input_tokens') * p.read + n('output_tokens') * p.out) / 1e6;
+}
+const MODELS = { haiku: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', min: 4096 }, deepseek: { provider: 'deepseek', model: 'deepseek-v4-flash', min: null } };
+// A-45.15 as standing: the run STOPS at the first credit, quota OR AUTH error (a bad or revoked key is never retried 549 times).
+const CREDIT = /credit balance|insufficient|billing|payment required|quota|402|exceeded your current|balance is too low|401|403|authentication|unauthori[sz]ed|invalid x-api-key|invalid api key|permission denied/i;
+
+async function probe() {
+  const m = arg('model', 'haiku'); const seat = MODELS[m]; if (!seat) { console.log('--model=haiku|deepseek'); return false; }
+  const A = require(P('src/lib/vendor/askAgent.js'));
   const { llmCreate } = require(P('src/lib/llm.js'));
-  const models = { haiku: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' }, deepseek: { provider: 'deepseek', model: 'deepseek-v4-flash' } };
-  const which = arg('model', 'both'); const use = which === 'both' ? ['haiku', 'deepseek'] : [which];
-  const limit = Number(arg('limit', 0)); let qs = agentQuestions(); if (limit > 0) qs = qs.slice(0, limit);
-  let allOk = true;
-  for (const m of use) {
-    const tally = { m1: [0, 0], m2: [0, 0], m3: [0, 0], m4: [0, 0], m5: [0, 0] }; let errors = 0; let runs = 0;
-    for (const q of qs) {
-      const N = q.strat === 'missed' ? Number(arg('n-missed', 10)) : Number(arg('n-rest', 1));
-      for (let i = 0; i < N; i += 1) {
-        runs += 1;
-        const { r, writes } = await runOne(q, models[m], llmCreate);
-        if (!r.ok) { errors += 1; continue; }
-        const c = { ...q, calls: r.calls, writes };
-        for (const k of Object.keys(R)) { const kept = R[k](r.reply, c); tally[k][0] += kept ? 1 : 0; tally[k][1] += 1; if (!kept && SHOW) console.log(`  MISS ${m} ${k} ${q.id} "${q.text}" -> ${r.reply.replace(/\n/g, ' / ')}`); }
-      }
-      process.stdout.write(`\r  ${m}: ${runs} runs`);
-    }
-    console.log('');
-    for (const k of Object.keys(tally)) {
-      const [kept, all] = tally[k]; const missN = all - kept; const zero = k === 'm2' || k === 'm3';
-      const ok = zero ? missN === 0 : missN * 20 <= all; if (!ok) allOk = false;
-      console.log(`  ${m} ${k}: ${kept}/${all} kept (${missN} missed) ${ok ? 'within' : 'OVER'} tolerance`);
-    }
-    console.log(`  ${m} errors (the glitch line would speak): ${errors} of ${runs}`);
+  const params = { ...A.requestParams(seat.model, [{ role: 'user', content: 'What are my packages?' }]), max_tokens: 16 };
+  let ok = true;
+  if (seat.provider === 'anthropic') {
+    const Anthropic = require('@anthropic-ai/sdk'); const C = Anthropic.default || Anthropic;
+    const counted = await new C().messages.countTokens({ model: seat.model, system: params.system, tools: params.tools, messages: [{ role: 'user', content: 'x' }] });
+    const prefix = counted.input_tokens;
+    console.log(`prefix (tools + system, by the API's own count, plus a one-token message): ${prefix} tokens; ${m}'s minimum cacheable prefix: ${seat.min}; ${prefix > seat.min ? 'ABOVE' : 'BELOW'} it`);
+    if (!(prefix > seat.min)) ok = false;
+  } else console.log('DeepSeek caches a repeated prefix on its own; llm.js strips cache_control for it; no minimum is published on its page');
+  for (const k of [1, 2]) {
+    const r = await llmCreate(seat.provider, params);
+    const u = r && r.usage ? r.usage : {};
+    const c = costOf(m, u);
+    console.log(`call ${k}: input ${u.input_tokens || 0}, cache_creation ${u.cache_creation_input_tokens || 0}, cache_read ${u.cache_read_input_tokens || 0}, output ${u.output_tokens || 0}; cost ${c === null ? 'price unknown' : `$${c.toFixed(6)}`}`);
+    if (seat.provider === 'anthropic' && k === 1 && !(u.cache_creation_input_tokens > 0 || u.cache_read_input_tokens > 0)) ok = false;
+    if (seat.provider === 'anthropic' && k === 2 && !(u.cache_read_input_tokens > 0)) ok = false;
   }
+  console.log(ok ? 'PROBE GREEN: the prefix is above the minimum, written on call 1 (or already warm) and READ on call 2' : 'PROBE RED: the cache is not proven; do not run --live');
+  return ok;
+}
+
+async function live() {
+  const fs = require('fs'); const os = require('os');
+  const { llmCreate } = require(P('src/lib/llm.js'));
+  const which = arg('model', ''); if (!MODELS[which]) { console.log('--live needs --model=haiku or --model=deepseek (one model a run)'); return false; }
+  const budget = Number(arg('budget', 'NaN')); const price = PRICES[which];
+  const limit = Number(arg('limit', 0)); let qs = agentQuestions(); if (limit > 0) qs = qs.slice(0, limit);
+  const plan = []; for (const q of qs) { const N = q.strat === 'missed' ? Number(arg('n-missed', 10)) : Number(arg('n-rest', 1)); for (let i = 0; i < N; i += 1) plan.push({ q, key: `${q.id}#${i}` }); }
+  const dir = path.join(os.tmpdir(), 'b130m'); fs.mkdirSync(dir, { recursive: true }); const file = path.join(dir, `${which}.jsonl`);
+  const done = new Map(); if (argv.includes('--resume') && fs.existsSync(file)) fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).forEach((l) => { try { const r = JSON.parse(l); if (r.key && r.final && r.ok === true) done.set(r.key, r); } catch (_e) { /* a torn line */ } }); // --resume runs only what has no KEPT result: an errored run runs again
+  if (!argv.includes('--resume') && fs.existsSync(file)) fs.renameSync(file, `${file}.${Date.now()}.old`);
+  const todo = plan.filter((p) => !done.has(p.key));
+  const per = Number(arg('per-question-usd', which === 'haiku' ? 0.0045 : 0.0012));
+  console.log(`PROJECTED: ${todo.length} runs to go of ${plan.length} (${done.size} already recorded), about $${(todo.length * per).toFixed(2)} at about $${per} a question (${price ? price.src : 'price unknown'}); record: ${file}`);
+  if (!Number.isFinite(budget) || budget <= 0) { console.log('REFUSED: --live needs --budget=<USD> (A-45.15). Nothing was called.'); return false; }
+  if (!price) { console.log('REFUSED: no price for this model (set DEEPSEEK_USD_PER_M_IN and _OUT from its page on the day). Nothing was called.'); return false; }
+  let spent = [...done.values()].reduce((a, r) => a + (r.cost || 0), 0); let stop = null;
+  for (const { q, key } of todo) {
+    if (spent >= budget) { stop = `the budget $${budget} is reached ($${spent.toFixed(4)} spent)`; break; }
+    let rec;
+    try {
+      const { r, writes } = await runOne(q, { provider: MODELS[which].provider, model: MODELS[which].model }, llmCreate);
+      const cost = costOf(which, r.usage) || 0; spent += cost;
+      if (!r.ok && CREDIT.test(String(r.error))) { stop = `a credit, quota or auth error: ${String(r.error).slice(0, 160)}`; fs.appendFileSync(file, `${JSON.stringify({ key, id: q.id, final: false, error: r.error })}\n`); break; }
+      rec = { key, id: q.id, final: true, ok: r.ok, error: r.ok ? null : r.error, reply: r.ok ? r.reply : null, calls: (r.calls || []).map((c) => ({ name: c.name, result: c.result })), writes, usage: r.usage, cost };
+    } catch (e) {
+      if (CREDIT.test(String(e && e.message))) { stop = `a credit, quota or auth error: ${String(e.message).slice(0, 160)}`; break; }
+      rec = { key, id: q.id, final: true, ok: false, error: String(e && e.message).slice(0, 200), cost: 0 };
+    }
+    fs.appendFileSync(file, `${JSON.stringify(rec)}\n`); done.set(key, rec);
+    process.stdout.write(`\r  ${which}: ${done.size}/${plan.length} recorded, $${spent.toFixed(4)} spent`);
+  }
+  console.log('');
+  if (stop) console.log(`STOPPED: ${stop}. ${plan.length - done.size} runs did not run; --resume runs only those.`);
+  // THE VERDICT, over everything recorded for this plan.
+  const byId = new Map(qs.map((q) => [q.id, q]));
+  const tally = { m1: [0, 0], m2: [0, 0], m3: [0, 0], m4: [0, 0], m5: [0, 0] }; let errors = 0; let runs = 0; let cache = 0;
+  for (const p of plan) {
+    const r = done.get(p.key); if (!r) continue; runs += 1;
+    if (r.usage && r.usage.cache_read_input_tokens > 0) cache += 1;
+    if (!r.ok) { errors += 1; if (SHOW) console.log(`  ERROR ${which} ${r.id} "${byId.get(r.id).text}" -> ${r.error}`); continue; }
+    const q = byId.get(r.id); const c = { ...q, calls: r.calls, writes: r.writes };
+    for (const k of Object.keys(R)) { const kept = R[k](r.reply, c); tally[k][0] += kept ? 1 : 0; tally[k][1] += 1; if (!kept && SHOW) console.log(`  MISS ${which} ${k} ${q.id} [${q.family}/${q.expect.kind}${k === 'm1' ? `; wanted ${q.expect.tools.join('|') || 'any tool'}, called ${(c.calls || []).map((x) => x.name).join(',') || 'none'}` : ''}${k === 'm2' ? `; not in the results: ${unfound(r.reply, c).join('; ')}` : ''}] "${q.text}" -> ${String(r.reply).replace(/\n/g, ' / ')}`); }
+  }
+  let allOk = !stop;
+  for (const k of Object.keys(tally)) {
+    const [kept, all] = tally[k]; const missN = all - kept; const zero = k === 'm2' || k === 'm3';
+    const ok = zero ? missN === 0 : missN * 20 <= all; if (!ok) allOk = false;
+    console.log(`  ${which} ${k}: ${kept}/${all} kept (${missN} missed) ${ok ? 'within' : 'OVER'} tolerance`);
+  }
+  console.log(`  ${which}: ${runs} runs recorded; errors (the glitch line would speak) ${errors}; runs that READ the cache ${cache}; spent $${spent.toFixed(4)}`);
   return allOk;
 }
 
@@ -194,6 +274,7 @@ async function live() {
   const readersOk = readersCheck();
   if (MODE === 'readers') process.exit(readersOk ? 0 : 1);
   if (!readersOk) { console.log('the readers are not proven; nothing else runs'); process.exit(1); }
-  const ok = MODE === 'dry' ? await dry() : await live();
+  if (MODE === 'probe') process.exit((await probe()) ? 0 : 1);
+  const ok = MODE === 'dry' ? await dry() : MODE === 'probe' ? await probe() : await live();
   process.exit(ok ? 0 : 1);
 })().catch((e) => { console.log(`b130m ERROR ${e && e.message}`); process.exit(2); });

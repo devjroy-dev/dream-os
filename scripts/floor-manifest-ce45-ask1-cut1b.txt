@@ -1,0 +1,7 @@
+# CE-45 ASK-1 · cut 1b r2 · the cached prefix, the truncation cure, the result cap (F-44.182), A-45.15 as standing · both lanes OFF · base 5fa06cb
+# floor-base unchanged; touched: askAgent.js; readers of it: b130a, b130m only.
+docs/handovers/TDW_CE45_ASK1_CUT1B_HANDOVER.md
+scripts/b130a_ask1_floor_bench.js
+scripts/b130m_ask1_measure.js
+scripts/floor-manifest-ce45-ask1-cut1b.txt
+src/lib/vendor/askAgent.js
