@@ -2036,6 +2036,9 @@ async function preTurn(args, depsIn) {
     // table (row 13, C1 both variants): "Who are my new leads?" returned act `lead` with no client on route search, which met askName below and
     // would have asked B18 (the lead's name question) for a LOOKUP. Its acts are lookups only; until cut four covers them the turn reads
     // B34 (exit 'lookup', standKey); cut four makes this exit the lookups' door. Never reached on a note turn (fromNote decides above).
+    // CE-45 ASK-1 cut 1 (R-45.33; K6 RULED (b)): with her lane's switch ON, a question turn goes to the question agent through standIn
+    // (the ear's act is never the question, E1); OFF, the lookups' door exactly as before. The switch is read on question turns only.
+    if (heard && heard.route === 'search') { const ask = await askContext({ supabase, vendor, agentId, lane, message, threadId, route }, deps); if (ask) return { ...CHAIN(st.ear, 'question'), ask }; }
     if (heard && heard.route === 'search') return (await lookupDoor(supabase, vendor, heard, nowMs, L, st, message)) || CHAIN(st.ear, 'lookup'); // P7 cut 4: the lookups' door
     // F-44.118 (the chair; kept by the founder's R-44.41 as a SAFETY FLOOR UNDER MONEY and not as a cure for context): on a turn not answering
     // a note, a heard client_as_spoken NOT PRESENT in her message under key() is a name she did not say (the ear carried the thread's last
@@ -2047,7 +2050,7 @@ async function preTurn(args, depsIn) {
       heard = { ...heard, acts: heard.acts.map((a) => (a && typeof a === 'object' && spokenText(a.client_as_spoken) && !saidKey.includes(key(a.client_as_spoken)) ? (({ client_as_spoken: _c, ...rest }) => ({ ...rest, [UNSAID]: true }))(a) : a)) }; // F-44.148: the stripped act is MARKED
     }
     { const ask = askName(heard, 0); if (ask) return ask; }
-    if (!allCovered(heard)) return CHAIN(st.ear, 'uncovered');
+    if (!allCovered(heard)) return (questionTurn(heard) && await uncoveredAsk({ supabase, vendor, agentId, lane, message, threadId, route }, deps, st)) || CHAIN(st.ear, 'uncovered'); // CE-45 ASK-1 cut 1: no act, or a question act (beside an action or not), is the agent's when her lane's switch is ON; an action-only turn stays B34
     // F-44.96's guard stood here until P6b's first cut: the ear now hears phone_as_spoken and the door files the number itself.
     } else st.answered = note.asked;
 
@@ -2393,12 +2396,49 @@ function standKeyOf(out, L, nowMs) {
   if (why === 'money_unsayable') { const k = say.act === 'milestone_paid' ? 'D8' : 'F29'; const line = L.lifecycle.LINES[k]; if (typeof line === 'string' && line) return { key: k, line }; }
   return { key: 'GLITCH' };
 }
+// ── CE-45 ASK-1 cut 1 · THE QUESTION AGENT'S SEAM (R-45.33; K2 and K6 as ruled) ────────────────────────────────────────────
+// preTurn marks a question turn with `ask` (the context below, every value one preTurn already holds) ONLY when the lane's switch
+// reads ON; standIn, the one place both lanes speak a turn the door did not take, hands that turn to src/lib/vendor/askAgent.js.
+// The switch is TWO keys in laneFlags' census, one per lane, both default OFF (F-E: one home). The agent answers in words from its
+// read tools; a failure of any kind reads the founder's glitch line. Every action path, note and the YES/NO machinery sit ABOVE
+// the two exits that set `ask`, so none of them can reach the agent (E2, by construction).
+const QUESTION_ACTS = Object.freeze(['find', 'whatsdue', 'date', 'history', 'tally']);
+const ASK_FLAGS = Object.freeze({ pwa: 'vendor.ask_agent.pwa', whatsapp: 'vendor.ask_agent.whatsapp' });
+function questionTurn(request) {
+  const acts = request && Array.isArray(request.acts) ? request.acts : [];
+  return !acts.length || acts.some((a) => a && QUESTION_ACTS.includes(a.act));
+}
+async function askContext({ supabase, vendor, agentId, lane, message, threadId, route }, deps) {
+  try {
+    const flag = ASK_FLAGS[lane];
+    if (!flag) return null;
+    const on = deps && typeof deps.askOn === 'function' ? await deps.askOn(lane) : await require('../laneFlags').readLaneFlag(supabase, flag);
+    if (on !== true) return null;
+    const r = route && typeof route === 'object' ? route : {};
+    return { vendorId: vendor.id, agentId, lane, message, threadId: threadId || null, seat: { provider: r.provider, model: r.model } };
+  } catch (_e) { return null; }
+}
+// The uncovered exit's hand-off (one line at the exit, so the exit's own line keeps its shape): the context, or null to fall to the exit.
+async function uncoveredAsk(args, deps, st) {
+  const ask = await askContext(args, deps);
+  return ask ? { ...CHAIN(st.ear, 'uncovered'), ask } : null;
+}
+async function askAnswer(supabase, out, deps, answer) {
+  let got = null;
+  try { got = await (deps.ask || require('./askAgent')).answerQuestion({ supabase, ...out.ask }, deps.askDeps || {}); } catch (_e) { got = null; }
+  const record = { calls: (got && Array.isArray(got.calls) ? got.calls : []).map((c) => ({ name: c.name, input: c.input, ok: !!(c.result && c.result.ok === true), ...(c.result && c.result.ok !== true ? { error: c.result.error } : {}) })), ...(got && got.ok === true ? {} : { error: (got && got.error) || 'failed' }) };
+  const meter = { askUsage: (got && got.usage) || null, askModel: (out.ask.seat && out.ask.seat.model) || null, askRecord: record };
+  if (got && got.ok === true && typeof got.reply === 'string' && got.reply.trim()) return { ...answer('ASK', got.reply, out), ...meter };
+  let line = null; try { line = glitchLine(); } catch (_e) { line = null; }
+  return { ...answer('GLITCH', line || DL.LINES.B3, out), ...meter };
+}
 async function standIn(args, depsIn) {
   const answer = (key, line, out) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: (out && out.ear) || null, why: (out && out.why) || 'unreachable', stood: true });
   try {
     const { supabase, out } = (args && typeof args === 'object') ? args : {};
     const deps = (depsIn && typeof depsIn === 'object') ? depsIn : {};
     if (out && out.door === true) return out;
+    if (out && out.ask && typeof out.ask === 'object') return await askAnswer(supabase, out, deps, answer); // CE-45 ASK-1 cut 1
     const k = standKey(out, lazy(deps), Number.isFinite(deps.nowMs) ? deps.nowMs : undefined);
     if (k.key === 'LEFTOVER') return answer('LEFTOVER', DL.leftover([...COVERED, ...LOOKUP_ACTS], deps.rand), out); // P7 cut 4: examples 3, 7, 8 on
     if (k.key === 'GLITCH') return answer('GLITCH', glitchLine() || DL.LINES.B3, out);
@@ -2464,15 +2504,18 @@ async function persistDoorTurn(args, depsIn) {
     const ear = out && out.ear;
     const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null; // F-44.58's mark
     const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null; // F-44.100's mark, its OWN key
-    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}) };
+    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}), ...(out.askRecord ? { ask: out.askRecord } : {}) };
     res.assistantId = await memory.saveMessage(conversationId, 'assistant', out.reply, (out.toolCalls && out.toolCalls.length) ? out.toolCalls : undefined, { listener });
     if (res.assistantId) {
       try { await supabase.schema('engine').from('messages').update({ room: 'business' }).eq('id', res.assistantId); } catch (e) { console.warn('[door:room]', e && e.message); }
     }
     const row = ear && ear.usage ? meter.harvestMeterRow({ usage: ear.usage }, ear.seat && ear.seat.model) : meter.harvestMeterRow({ usage: {} }, 'door');
     await meter.writeHarvestUsage(supabase, agentId, { ...row, conversation_id: conversationId });
+    // CE-45 ASK-1 cut 1: the question agent's spend, priced on ITS OWN model, as an UNCOUNTED row (conversation_id NULL): the row above
+    // stays the turn's one counted row (R-44.21 (b)), and a sum would price the agent's tokens on the ear's model when the seats differ.
+    if (out && out.askUsage && typeof out.askUsage === 'object') await meter.writeHarvestUsage(supabase, agentId, meter.harvestMeterRow({ usage: out.askUsage }, out.askModel || 'ask'));
   } catch (e) { try { console.warn('[door:persist]', e && e.message); } catch (_e) { /* */ } }
   return res;
 }
 
-module.exports = { proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS };
+module.exports = { proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS, QUESTION_ACTS, ASK_FLAGS, questionTurn, askContext };

@@ -127,6 +127,14 @@ const LANE_FLAGS = {
   // counts on his glass.
   'onboarding.gate_enabled': false,
 
+  // CE-45 ASK-1 (R-45.33; F-E, one home): THE QUESTION AGENT, ONE KEY PER LANE, BOTH OFF. With a lane's key ON, a question the door
+  // does not own (the ear's route 'search', or an uncovered turn holding no act or a question act) is answered by the read-only
+  // question agent (src/lib/vendor/askAgent.js) through workingDoor.standIn; OFF, that lane reads exactly what it read before.
+  // Armed as this file's law says: ONE admin_config row by hand after the push (value true), never by editing these literals.
+  // The one reader of both: workingDoor.askContext.
+  'vendor.ask_agent.pwa': false,
+  'vendor.ask_agent.whatsapp': false,
+
   // `vendor.working_chain_enabled` (CE-44 LCV-9, R-44.37) is RETIRED: CE-45 LCV-15 LSP_1 deleted the chain's calls in the
   // working rooms, so the switch had no other position (the chair's ruling, Q6). Its key is no longer in this census.
 };

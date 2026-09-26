@@ -612,7 +612,22 @@ async function getById(supabase, draftId) {
   return { draft: data, reason: 'found' };
 }
 
+// CE-45 ASK-1 cut 1 (R-45.33): THE STORE'S ONE READER OF WHAT WENT OUT, for the question agent's `sent` tool (askTools.js). A SELECT
+// scoped to the vendor, state 'sent' only, optionally between two ISO instants; the table keeps its one home here (b06 7.3).
+// Returns { ok: true, rows } or { ok: false } (a failed read is never an empty list). Writes nothing.
+async function sentFor(supabase, vendorId, { from = null, to = null } = {}) {
+  try {
+    let q = supabase.from(TABLE).select('couple_phone, body, resolved_at, created_at').eq('vendor_id', vendorId).eq('state', 'sent');
+    if (from) q = q.gte('resolved_at', from);
+    if (to) q = q.lte('resolved_at', to);
+    const { data, error } = await q.order('resolved_at', { ascending: false });
+    if (error || !Array.isArray(data)) return { ok: false };
+    return { ok: true, rows: data };
+  } catch (_e) { return { ok: false }; }
+}
+
 module.exports = {
+  sentFor,
   stage,
   markDoorbell,
   approvedFor,

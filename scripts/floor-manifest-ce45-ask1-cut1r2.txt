@@ -1,0 +1,19 @@
+# CE-45 ASK-1 · cut 1 (carried onto 2c, then 7a38025; r2) · the question agent, both lanes OFF · rungs b130a, b130m · base 7a38025
+# floor-base unchanged: the differential at 7a38025 read the 39 radius rungs, b132, and the 34 rungs naming any module the tools read or touch (b131 among them) exit- and cell-identical to base; b130a and b130m new; b131 4.2 re-aimed by label (d8).
+docs/handovers/TDW_CE45_ASK1_CUT1_HANDOVER.md
+scripts/b110_lcv15_lsp1_bench.js
+scripts/b113_lcv15_lsp3_bench.js
+scripts/b130a_ask1_floor_bench.js
+scripts/b130m_ask1_measure.js
+scripts/b131_elz1_f176_prefix_bench.js
+scripts/b93_lcv9_chain_out_bench.js
+scripts/b94_lcv10_bench.js
+scripts/floor-manifest-ce45-ask1-cut1r2.txt
+scripts/lib/ask1_bank.json
+scripts/lib/ask1_store.js
+src/lib/laneFlags.js
+src/lib/vendor/askAgent.js
+src/lib/vendor/askTools.js
+src/lib/vendor/coupleDrafts.js
+src/lib/vendor/spokenRange.js
+src/lib/vendor/workingDoor.js

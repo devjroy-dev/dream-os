@@ -138,7 +138,9 @@ async function driveWA(text, lane) {
   T('3.2 CONTROL: the grep itself finds the key where comments name it (an empty answer is not a broken grep, C-44.4)', hits.length > 0);
   const LF = require(P('src/lib/laneFlags.js'));
   T('3.3 the key is absent from the LANE_FLAGS census', !(KEY in LF.LANE_FLAGS));
-  T('3.4 workingDoor.js exports no CHAIN_FLAG and reads no lane flag', !('CHAIN_FLAG' in W) && !/readLaneFlag/.test(code(src(WD))));
+  // RE-AIMED (CE-45 ASK-1 cut 1, labelled; F-E ruled): the door reads ONE lane flag family, the question agent's two keys (ASK_FLAGS), in ONE
+  // place (askContext) and never the retired chain key; the cell keeps its claim (no CHAIN_FLAG, no chain key read) and pins the one new read.
+  T('3.4 workingDoor.js exports no CHAIN_FLAG and reads no lane flag but ASK_FLAGS, once, in askContext', !('CHAIN_FLAG' in W) && (code(src(WD)).match(/readLaneFlag/g) || []).length === 1 && /async function askContext[\s\S]{0,400}readLaneFlag\(supabase, flag\)/.test(code(src(WD))) && JSON.stringify(W.ASK_FLAGS) === JSON.stringify({ pwa: 'vendor.ask_agent.pwa', whatsapp: 'vendor.ask_agent.whatsapp' }) && !code(src(WD)).includes(KEY));
 
   // §4
   sec('4 the deleted paths are absent (A-45.1)');
