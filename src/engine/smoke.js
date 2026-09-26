@@ -20,16 +20,14 @@ try {
   const loop = require('./dist/core/loop.js');
   const donna = require('./dist/core/donna.js');
   ok('loop.runTurn is a function', typeof loop.runTurn === 'function');
-  // CE-45 LSP_5 (L5-c, c-45.51): runDonnaTurn and snapshotText are deleted; the live exports are pinned instead.
-  ok('donna.rebuildSnapshot is a function', typeof donna.rebuildSnapshot === 'function');
-  ok('donna.patchNote is a function', typeof donna.patchNote === 'function');
+  ok('donna.runDonnaTurn is a function', typeof donna.runDonnaTurn === 'function');
+  ok('donna.snapshotText is a function', typeof donna.snapshotText === 'function');
 
   // The scar tissue that must survive the port: the open-binder default.
   // (Binders flying off = this missing. Verified present in the landed SOURCE.)
-  // RETIRED in CE-45 LSP_5 (K5, flagged to the chair): the two open-binder cells read donna.ts for ATTRIBUTE_ATOMS and
-  // currentBinderId, which lived only inside runDonnaTurn's write loop (e07f7fa donna.ts :508 to :734). runDonnaTurn had no
-  // live caller before this cut (LSP_5 read-first §1; LSP_3 removed its last) and is deleted by L5-c. Printed, never counted.
-  console.log('  RETIRED  open-binder default present (ATTRIBUTE_ATOMS, currentBinderId): lived only in the deleted runDonnaTurn');
+  const src = fs.readFileSync(path.join(__dirname, 'src/core/donna.ts'), 'utf8');
+  ok('open-binder default present (ATTRIBUTE_ATOMS)', src.includes('ATTRIBUTE_ATOMS'));
+  ok('open-binder default present (currentBinderId)', src.includes('currentBinderId'));
 
   console.log(fail
     ? '\nFAIL \u2014 ' + fail + ' check(s) failed.'

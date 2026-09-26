@@ -14,17 +14,6 @@
 //
 // Runnable from any working directory; every path resolves off this file.
 'use strict';
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["§7.2 the gauntlet instrument is untouched","K8: scripts/b06_gauntlet.js is deleted whole (its live subjects pinned by b06_f0667, b06_advisor §1.5, b116 1.6); there is no instrument left to stay untouched, and reading it now throws"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const fs   = require('fs');
 const path = require('path');
 const { stripComments, NAIVE_RETIRED } = require('./lib/stripComments');
@@ -347,7 +336,8 @@ for (const f of SOULS) {
   if (fs.existsSync(p) && /TDW_07 P4b/.test(fs.readFileSync(p, 'utf8'))) soulClean = false;
 }
 ok('§7.1 W-1 — zero P4b bytes in any soul, lens or loop file', soulClean);
-__RETIRED("§7.2 the gauntlet instrument is untouched");
+ok('§7.2 the gauntlet instrument is untouched by this sitting',
+  !/TDW_07 P4b/.test(raw('scripts/b06_gauntlet.js')));
 
 console.log(`\n${fail === 0 ? 'GREEN' : 'RED'}  b07_p4b_body_bench ${pass}/${pass + fail}`);
 process.exit(fail === 0 ? 0 : 1);

@@ -16,17 +16,6 @@
 // SOURCE rather than restating it — a bench that re-implemented the seam would prove
 // its own copy and nothing else (b06_m2_bench §7.3's house pattern).
 'use strict';
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["§1.1 EXAMPLE 1","K6: donnaSoul.ts is deleted with Donna's turn"],["§1.2 EXAMPLE 2","K6: donnaSoul.ts is deleted with Donna's turn"],["§1.3 EACH EXAMPLE","K6: donnaSoul.ts is deleted with Donna's turn"],["§1.4 THE COMPOSED CACHED PREFIX","K6: donnaSoul.ts is deleted with Donna's turn"],["§1.5 THE FIXTURE-DISJOINTNESS LAW, DIRECTION ONE","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"],["§1.5b THE COLLISION","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"],["§1.6 THE FIXTURE-DISJOINTNESS LAW, DIRECTION TWO","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"],["§1.6b THE INHERITED BREACH","K6: donnaSoul.ts is deleted with Donna's turn"],["§2.2 THE CARRIER IS ADDITIVE","L5-b/L5-c: the carrier sites (DonnaTurn.tool_calls, loop.ts's Fork C seam and composer, Donna's hold call site) are deleted with Donna's turn"],["§2.3 :706 PERSISTS plain","L5-b/L5-c: the carrier sites (DonnaTurn.tool_calls, loop.ts's Fork C seam and composer, Donna's hold call site) are deleted with Donna's turn"],["§2.4 FAIL-CLOSED, THE GREP-SHAPED","L5-b/L5-c: the carrier sites (DonnaTurn.tool_calls, loop.ts's Fork C seam and composer, Donna's hold call site) are deleted with Donna's turn"],["§2.5 FAIL-CLOSED, THE BEHAVIOURAL","L5-b/L5-c: the carrier sites (DonnaTurn.tool_calls, loop.ts's Fork C seam and composer, Donna's hold call site) are deleted with Donna's turn"],["§2.6 UNLABELED","L5-b/L5-c: the carrier sites (DonnaTurn.tool_calls, loop.ts's Fork C seam and composer, Donna's hold call site) are deleted with Donna's turn"],["§2.7 THE PROVENANCE HOLD AUTHORS NO PLAIN","L5-b/L5-c: the carrier sites (DonnaTurn.tool_calls, loop.ts's Fork C seam and composer, Donna's hold call site) are deleted with Donna's turn; the hold itself stays pinned by b6_floors §1 to §4"],["§3.1 donnaLead authors","K6: tools/donnaLead.ts is deleted"],["§3.4 F-06.85 BOTH DIRECTIONS","K6: tools/donnaLead.ts is deleted"],["§3.5 F-06.85, THE SEAM DIRECTION","L5-b/L5-c: the carrier sites (DonnaTurn.tool_calls, loop.ts's Fork C seam and composer, Donna's hold call site) are deleted with Donna's turn"],["§4.1 THE FALSIFIED SENTENCE","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"],["§4.2 BOTH BRANCHES RE-AIMED","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"],["§13.1 THE FLAG IS A CLASS","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"],["§13.2 ONE LOAD-BEARING SITE","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"],["§13.3 THE CENSUS LINE","K8: the rig (scripts/b06_gauntlet.js) is deleted whole"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const assert = require('assert');
 const fs = require('fs'); const path = require('path');
 const ROOT = path.resolve(__dirname, '..'); const P = (r) => path.join(ROOT, r);
@@ -172,21 +161,101 @@ const EX1_RECEIPT = "Matched the existing lead 'Kavya Menon'. Not written — th
 const EX1_VOICE = "Listen Harvey — Kavya's already on file, and the record disagrees with what you've just given. It holds Kochi, 12 September 2027; you said Goa, 9 October. Nothing was overwritten. Which is right — or are these two different weddings?";
 const EX2_VOICE = "Listen Harvey — three live ones. Ritu Sharma, filed 2 August, touched 27 August — she's the one moving. Aman Khatri, nothing since 20 July. Divya Nair, filed 27 August, new. One follow-up due Friday, on Ritu. Nothing else has stirred.";
 
-__RETIRED("§1.1 EXAMPLE 1");
+t('§1.1 EXAMPLE 1 is present in the soul literal BYTE-EXACT — receipt half and voiced half', () => {
+  const lit = soulLiteral(read(SOUL));
+  assert.ok(lit.includes(EX1_RECEIPT), "Example 1's receipt bytes are not verbatim in the literal");
+  assert.ok(lit.includes(EX1_VOICE), "Example 1's voiced bytes are not verbatim in the literal");
+});
 
-__RETIRED("§1.2 EXAMPLE 2");
+t('§1.2 EXAMPLE 2 is present BYTE-EXACT', () => {
+  assert.ok(soulLiteral(read(SOUL)).includes(EX2_VOICE), "Example 2's briefing bytes are not verbatim in the literal");
+});
 
-__RETIRED("§1.3 EACH EXAMPLE");
+t('§1.3 EACH EXAMPLE SITS BENEATH THE LAW IT WORKS (CE-91: no law outranks a worked example)', () => {
+  const lit = soulLiteral(read(SOUL));
+  const relayLaw = lit.indexOf('WHAT YOU REPORT IS WHAT THE PAPER SAYS');
+  const weekLaw = lit.indexOf('HOW YOU TAKE THE TEMPERATURE OF THE WEEK');
+  assert.ok(relayLaw >= 0 && weekLaw > relayLaw, 'the two laws are missing or out of order — re-derive');
+  assert.ok(lit.indexOf(EX1_VOICE) > relayLaw && lit.indexOf(EX1_VOICE) < weekLaw,
+    'Example 1 is not sited inside the relay law\'s stretch');
+  assert.ok(lit.indexOf(EX2_VOICE) > weekLaw, 'Example 2 is not sited beneath the week law');
+});
 
-__RETIRED("§1.4 THE COMPOSED CACHED PREFIX");
+t('§1.4 THE COMPOSED CACHED PREFIX CARRIES BOTH EXAMPLES BYTE-EXACT — what the model reads, not what the file holds', () => {
+  const dist = P('src/engine/dist/core/donnaSoul.js');
+  assert.ok(fs.existsSync(dist), 'engine dist absent — run npm run build; this cell reads what the model reads');
+  const { DONNA_SOUL } = require(dist);
+  assert.ok(DONNA_SOUL.includes(EX1_RECEIPT) && DONNA_SOUL.includes(EX1_VOICE), 'Example 1 did not survive compilation into the prefix');
+  assert.ok(DONNA_SOUL.includes(EX2_VOICE), 'Example 2 did not survive compilation into the prefix');
+  const src = read(DONNA);
+  assert.ok(/const DONNA_STATIC_PREFIX =\n    DONNA_SOUL \+/.test(src),
+    'DONNA_STATIC_PREFIX no longer opens on DONNA_SOUL — the examples may not be in the cached prefix at all');
+});
 
-__RETIRED("§1.5 THE FIXTURE-DISJOINTNESS LAW, DIRECTION ONE");
+t('§1.5 THE FIXTURE-DISJOINTNESS LAW, DIRECTION ONE — no example name/city reaches the gauntlet\'s SCRIPTED FIXTURES', () => {
+  // ── SCOPE, DERIVED AND LABELED (executor, disclosed at delivery). The law governs
+  // FIXTURES: the scripted worlds the instrument drives a model through. It cannot
+  // govern the rig's BANKED VERBATIM SPECIMENS — frozen captures of real production
+  // replies, held as evidence — for amendment #3's exact reason: editing banked evidence
+  // to satisfy a later law falsifies the record. The one such block is the 2026-07-23
+  // 19:50:30 specimen (message cc4e1f32), excluded here BY NAME, never silently. Two of
+  // the founder's example FIRST names occur inside it; filed at §1.5b, not papered.
+  const rig = read(RIG);
+  const specStart = rig.indexOf('THE SPECIMEN, VERBATIM (2026-07-23 19:50:30');
+  assert.ok(specStart > 0, 'the banked specimen block moved — re-derive this cell\'s exclusion before trusting it');
+  const specEnd = rig.indexOf('const SPEC_HANDS', specStart);
+  const fixtures = rig.slice(0, specStart) + rig.slice(specEnd);
+  for (const n of ['Kavya Menon', 'Ritu Sharma', 'Ritu', 'Aman Khatri', 'Aman', 'Divya Nair', 'Kochi', 'Menon', 'Khatri', 'Nair']) {
+    assert.ok(!new RegExp(`\\b${n}\\b`).test(fixtures),
+      `the example name/city "${n}" has entered the gauntlet's scripted fixtures — the example teaches the shape, the instrument tests transfer; they must not share a world`);
+  }
+});
 
-__RETIRED("§1.5b THE COLLISION");
+t('§1.5b THE COLLISION INSIDE THE BANKED SPECIMEN, FILED NOT PAPERED — "Kavya" and "Divya" were in the rig BEFORE the veto', () => {
+  // FILED, UNNUMBERED, UP TO THE CHAIR. The founder's Example 1 names a Kavya and his
+  // Example 2 a Divya; the rig's frozen 2026-07-23 production capture already contained
+  // both, as FIRST NAMES OF OTHER PEOPLE. The bytes are locked and the specimen is
+  // evidence, so NEITHER side may be edited — the collision is recorded here so it is a
+  // fact rather than a silence. Assessed and stated: the channel this law protects is a
+  // model TAUGHT on the instrument's fixtures; a banked specimen is a string the ARM is
+  // tested against, never a world a model is driven through. The SURNAMES are disjoint,
+  // which is what any name-fidelity arm actually keys on.
+  const rig = read(RIG);
+  assert.ok(/Kavya/.test(rig) && /Keka and Divya/.test(rig),
+    'the banked specimen changed — if it was edited that is a falsified record; if replaced, re-derive this filing');
+  assert.ok(!/Kavya Menon|Divya Nair/.test(rig), 'a FULL example name reached the rig — that is the breach this law actually forbids');
+});
 
-__RETIRED("§1.6 THE FIXTURE-DISJOINTNESS LAW, DIRECTION TWO");
+t('§1.6 THE FIXTURE-DISJOINTNESS LAW, DIRECTION TWO — no gauntlet trap name reaches THE VETOED EXAMPLE BLOCKS', () => {
+  // SCOPED TO THE EXAMPLE BLOCKS, which is what constraint (1) governs: this sitting's
+  // authored pass. The soul's PRE-EXISTING prose is a separate, INHERITED matter, filed
+  // at §1.6b rather than quietly folded in here.
+  const lit = soulLiteral(read(SOUL));
+  const blocks = [
+    lit.slice(lit.indexOf('\nHarvey: "Log an update to Kavya Menon'), lit.indexOf('false certainty wearing your voice.')),
+    lit.slice(lit.indexOf('\nHarvey: "Give me the week\'s shape'), lit.indexOf('it is noise.')),
+  ].join('\n');
+  assert.ok(blocks.length > 500, 'the example blocks could not be located — re-derive');
+  for (const n of ['Meera', 'Meher', 'Vera', 'Priya', 'Tanya', 'Nisha', 'Riya', 'Zoya', 'Sana', 'Nena', 'Jaipur', 'Udaipur', 'Rahul', 'Keka', 'Rao', 'Ananya']) {
+    assert.ok(!new RegExp(`\\b${n}\\b`).test(blocks),
+      `the gauntlet trap name "${n}" has entered a vetoed example — a model taught on the instrument's own fixtures is a model the instrument can no longer test`);
+  }
+});
 
-__RETIRED("§1.6b THE INHERITED BREACH");
+t('§1.6b THE INHERITED BREACH, FILED NOT PAPERED — donnaSoul\'s PRE-EXISTING prose already names Meera and Vera', () => {
+  // FILED, UNNUMBERED, UP TO THE CHAIR, AND NOT THIS SITTING'S TO CURE. The
+  // temperature-of-the-week law has read "where Meera's stands, what Vera has paid"
+  // since long before this sitting — and "Meera Gauntlet" and "Vera Gauntlet" are two of
+  // the rig's own trap fixtures. Direction two was ALREADY violated at the tip this
+  // sitting opened on. Found by RUNNING the disjointness cell against the whole literal,
+  // which is R-7's standing law earning its keep on its first outing. Curing it means
+  // opening W-1 on prose the founder's veto owns, on a sitting whose W-1 opening was
+  // granted for two named example blocks and nothing else. So: asserted, named, handed
+  // up. THIS CELL EXISTS TO GO RED THE DAY IT IS CURED.
+  const lit = soulLiteral(read(SOUL));
+  assert.ok(/where Meera's stands, what Vera has paid/.test(lit),
+    'the inherited breach is gone — if cured, retire this cell with attribution; if the prose merely moved, re-derive');
+});
 
 t('§1.7 ZERO RELATIVE-TIME WORDS AND ZERO MONEY in the shipped example bytes (constraints 2 and 3)', () => {
   const both = `${EX1_RECEIPT}\n${EX1_VOICE}\n${EX2_VOICE}`;
@@ -210,22 +279,95 @@ t('§2.1 ToolOutcome carries the optional plain field, and it is OPTIONAL — a 
 // moved past (CE-80's floor-method precedent). NOTHING IS SOFTENED: every clause
 // these cells asserted still holds, and each pin below is STRICTER than its
 // predecessor because it now also names the key or step that arrived.
-__RETIRED("§2.2 THE CARRIER IS ADDITIVE");
+t('§2.2 THE CARRIER IS ADDITIVE AT ALL FOUR SITES — every existing consumer of `result` is untouched', () => {
+  const d = read(DONNA), l = read(LOOP);
+  // ⚑ AMENDED (see the header note above): `refused` joined `plain` as a second
+  // additive key. Both are now named, so a future sitting that drops EITHER reds here.
+  assert.ok(/tool_calls: \{ name: string; input: unknown; result: string; plain\?: string \| null; refused\?: RefusedFact\[\] \| null \}\[\];/.test(d), 'DonnaTurn.tool_calls did not widen');
+  assert.ok(/onAction\?: \(a: \{ name: string; input: unknown; result: string; plain\?: string \| null \}\) => void,/.test(d), 'onAction did not widen');
+  assert.ok(/const record = \(name: string, input: unknown, result: string, plain\?: string \| null, refused\?: RefusedFact\[\] \| null\)/.test(d), 'record() did not widen');
+  assert.ok(/donna_calls\?: \{ name: string; input: unknown; result: string; plain\?: string \| null \}\[\]/.test(l), 'donna_calls did not widen');
+  assert.ok(/result: string;/.test(d) && /result: dc\.result/.test(l), '`result` stopped riding — the witness machinery reads it and must be undisturbed');
+});
 
-__RETIRED("§2.3 :706 PERSISTS plain");
+t('§2.3 :706 PERSISTS plain ADDITIVELY — the key appears only when a door authored one', () => {
+  // ⚑ AMENDED: the persistence carries `refused` too, and BOTH are spread-guarded —
+  // a key appears only when a door authored it. The pin names both spreads.
+  const persisted = read(LOOP);
+  assert.ok(/donna_calls: donna\.tool_calls\.map\(\(dc\) => \(\{ name: dc\.name, input: dc\.input, result: dc\.result, \.\.\.\(dc\.plain \? \{ plain: dc\.plain \} : \{\}\), \.\.\.\(dc\.refused && dc\.refused\.length \? \{ refused: dc\.refused \} : \{\}\) \}\)\)/.test(persisted),
+    'the :706 persistence does not carry plain and refused additively');
+});
 
-__RETIRED("§2.4 FAIL-CLOSED, THE GREP-SHAPED");
+t('§2.4 FAIL-CLOSED, THE GREP-SHAPED NEGATIVE: the Fork C seam NEVER reads `result` and has NO fallback to it', () => {
+  const l = read(LOOP);
+  const i = l.indexOf('const plainReceipts = donna.tool_calls');
+  assert.ok(i > 0, 'the Fork C composition is absent — re-derive');
+  const seam = l.slice(i, l.indexOf('continue;', i));
+  assert.ok(/dc\.plain/.test(seam), 'the seam does not read plain');
+  assert.ok(!/dc\.result/.test(seam), 'W-1/F-06.102 BREACH: the Fork C seam reads `result` — the machinery donor is back in Victor\'s composer');
+  assert.ok(!/\|\|\s*dc\./.test(seam) && !/\?\?\s*dc\./.test(seam), 'the seam has a fallback — R-8 forbids one; a door with nothing plain to say contributes nothing');
+});
 
-__RETIRED("§2.5 FAIL-CLOSED, THE BEHAVIOURAL");
+t('§2.5 FAIL-CLOSED, THE BEHAVIOURAL PROOF: the SHIPPED expression, extracted and run — a hand with no plain contributes NOTHING', () => {
+  const l = read(LOOP);
+  // ⚑ AMENDED: the composition is now preceded by the relay seam's dedupe step
+  // (`carriedAtSeam`), so the extraction starts there and the sandbox is handed the
+  // seam's two outputs. The CLEAN-TURN values are used — `echoedPlain` empty and
+  // `voicedOut === voiced` — which is exactly the state every pre-cure turn was in,
+  // so this cell still proves what it always proved, on a strictly larger slice of
+  // shipped bytes.
+  const i = l.indexOf('const carriedAtSeam = new Set(echoedPlain);');
+  const j = l.indexOf('results.push({ type: \'tool_result\'', i);
+  const shipped = l.slice(i, j);
+  const run = (calls, voiced) => new Function('donna', 'voiced', 'echoedPlain', 'voicedOut', `${shipped}\nreturn composedForVictor;`)({ tool_calls: calls }, voiced, [], voiced);
+  // a door with a plain clause: it reaches the composer
+  assert.ok(run([{ name: 'donna_lead', result: 'MACHINERY (id=abc) — wedding_city', plain: 'the city stays Kochi (you said Goa)' }], 'Listen Harvey — done.')
+    .includes('the city stays Kochi (you said Goa)'), 'the plain clause did not reach the composer');
+  // the SAME hand's `result` never does — this is F-06.102's whole cure
+  assert.ok(!run([{ name: 'donna_lead', result: 'MACHINERY (id=abc) — wedding_city', plain: 'the city stays Kochi (you said Goa)' }], 'Listen Harvey — done.')
+    .includes('id=abc'), 'F-06.102 BREACH: `result` reached the composer beside the plain clause');
+  // a door with NO plain: the composer receives her voiced sentence and nothing else
+  assert.strictEqual(run([{ name: 'donna_lead', result: 'MACHINERY (id=abc)' }], 'Listen Harvey — done.'), 'Listen Harvey — done.',
+    'a hand with no plain clause contributed something — the fail-closed law is broken');
+  // zero hands: byte-identical to the pre-Fork-C behaviour
+  assert.strictEqual(run([], 'Listen Harvey — nothing pending.'), 'Listen Harvey — nothing pending.',
+    'a zero-hand turn is no longer byte-identical to the pre-Fork-C seam');
+});
 
-__RETIRED("§2.6 UNLABELED");
+t('§2.6 UNLABELED (F-06.52): the composition carries NO framing header, NO banner, NO machinery vocabulary', () => {
+  const l = read(LOOP);
+  // ⚑ AMENDED: the composition is now preceded by the relay seam's dedupe step
+  // (`carriedAtSeam`), so the extraction starts there and the sandbox is handed the
+  // seam's two outputs. The CLEAN-TURN values are used — `echoedPlain` empty and
+  // `voicedOut === voiced` — which is exactly the state every pre-cure turn was in,
+  // so this cell still proves what it always proved, on a strictly larger slice of
+  // shipped bytes.
+  const i = l.indexOf('const carriedAtSeam = new Set(echoedPlain);');
+  const j = l.indexOf('results.push({ type: \'tool_result\'', i);
+  const shipped = l.slice(i, j);
+  const run = (calls, voiced) => new Function('donna', 'voiced', 'echoedPlain', 'voicedOut', `${shipped}\nreturn composedForVictor;`)({ tool_calls: calls }, voiced, [], voiced);
+  const out = run([{ name: 'donna_lead', result: 'x', plain: 'the city stays Kochi (you said Goa)' }], 'Listen Harvey — done.');
+  assert.ok(!/\[[^\]]*\]/.test(out), 'a bracketed label reached the composition — F-06.52\'s exact donor shape');
+  assert.ok(!/receipt|the door|tool result|hand result|snapshot|Operator/i.test(out), 'machinery vocabulary reached the composition');
+  assert.ok(out.startsWith('Listen Harvey —'), 'her voiced sentence is no longer first — the receipt must arrive BESIDE her words, never instead of or ahead of them');
+});
 
-__RETIRED("§2.7 THE PROVENANCE HOLD AUTHORS NO PLAIN");
+t('§2.7 THE PROVENANCE HOLD AUTHORS NO PLAIN — the first seam that tested fail-closed, and it held', () => {
+  const d = read(DONNA);
+  assert.ok(/record\(tu\.name, tu\.input, heldMoney\.display\);/.test(d),
+    'the provenance hold passes a plain clause — a hold wrote nothing and its sentence is aimed at Donna, not Harvey');
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 H('§3 — THE DOORS (R-2): what may go in `plain`, and what may never');
 
-__RETIRED("§3.1 donnaLead authors");
+t('§3.1 donnaLead authors the F-06.92 clause family and NOTHING ELSE — the receipt, never the display', () => {
+  const s = read(LEAD);
+  assert.ok(/const plainClause = notWritten\.length \? notWrittenNote\.trim\(\) : undefined;/.test(s),
+    'donnaLead\'s plain clause is not derived from notWrittenNote');
+  assert.ok(!/plain: `/.test(s), 'donnaLead composes a plain clause from a template rather than from the receipt — re-derive');
+  assert.strictEqual((s.match(/plain: plainClause/g) || []).length, 2, 'the plain clause is not on both return sites');
+});
 
 t('§3.2 AND ITS PLAIN CLAUSE IS MACHINERY-FREE, PROVEN ON THE SHIPPED RENDER (F-06.102, both directions)', () => {
   // The live shapes, rebuilt from the shipped template strings with the example's values.
@@ -257,16 +399,39 @@ t('§3.3 donnaFind\'s read-class plain is ARRIVAL EVIDENCE ONLY — no money, no
     'a row with no derivable stamp contributes something — it must contribute nothing rather than a guess');
 });
 
-__RETIRED("§3.4 F-06.85 BOTH DIRECTIONS");
+t('§3.4 F-06.85 BOTH DIRECTIONS: donnaLead names the example, donnaSoul names the mechanism', () => {
+  assert.ok(/donnaSoul|WORKED EXAMPLE 1/.test(read(LEAD)), 'donnaLead does not point at the worked example it is now bound to');
+  const head = read(SOUL).slice(0, read(SOUL).indexOf('export const DONNA_SOUL'));
+  assert.ok(/notWrittenNote/.test(head) && /notWrittenTail/.test(head), 'the soul header does not name the mechanism Example 1 is conditioned on');
+});
 
-__RETIRED("§3.5 F-06.85, THE SEAM DIRECTION");
+t('§3.5 F-06.85, THE SEAM DIRECTION: loop.ts:710 names the attribution branches it just falsified', () => {
+  const l = read(LOOP);
+  const i = l.indexOf('FORK C (TDW_06 Donna cure sitting');
+  assert.ok(i > 0, 'the Fork C header is absent');
+  const head = l.slice(i, l.indexOf('const plainReceipts', i));
+  assert.ok(/handAttribution/.test(head) && /NEVER RECEIVED THE DATES/.test(head),
+    'the seam does not name the arm sentence it killed — F-06.85\'s whole point is that the next sitting is FORCED to re-read it');
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 H('§4 — THE ATTRIBUTION AMENDMENT (R-4): #1, #2, #4 follow the seam; #3 stays banked history');
 
-__RETIRED("§4.1 THE FALSIFIED SENTENCE");
+t('§4.1 THE FALSIFIED SENTENCE IS GONE FROM THE RIG — no branch still claims the composer receives the voiced text alone', () => {
+  assert.ok(!/NEVER RECEIVED THE DATES \(loop\.ts:710 hands him the voiced text alone\)/.test(read(RIG)),
+    'the rig still asserts a mechanism that Fork C made false');
+});
 
-__RETIRED("§4.2 BOTH BRANCHES RE-AIMED");
+t('§4.2 BOTH BRANCHES RE-AIMED — DROPPED and STRANDED each name Fork C and convict BOTH mouths', () => {
+  const rig = read(RIG);
+  const dropped = rig.slice(rig.indexOf('DATES DROPPED IN THE RELAY'), rig.indexOf('DATES SURVIVED THE RELAY'));
+  const stranded = rig.slice(rig.indexOf('DATES STRANDED'), rig.indexOf('DATES DROPPED IN THE RELAY'));
+  for (const [n, s] of [['DROPPED', dropped], ['STRANDED', stranded]]) {
+    assert.ok(/Fork C \(loop\.ts:710\)/.test(s), `the ${n} branch does not name the seam it now depends on`);
+    assert.ok(/HER relay's loss/.test(s) && /VICTOR'S composition/.test(s), `the ${n} branch does not convict both mouths`);
+    assert.ok(/Both mouths/.test(s), `the ${n} branch has not lost its exclusivity`);
+  }
+});
 
 t('§4.3 AMENDMENT #3 DID NOT FOLLOW — the FINDINGS_LOG keeps the sentence as banked evidence', () => {
   assert.ok(/NEVER RECEIVED THE DATES/.test(read('docs/FINDINGS_LOG.md')),
@@ -304,7 +469,26 @@ t('§5.1 THE VOCABULARY HAS ONE HOME, AND IT IS PRODUCTION\'S', () => {
   for (const k of ['ACTION_CLAIM_RE', 'JOT_CLAIM_RE', 'COMPLETED_ACT_RE', 'NARRATED_LOOKUP_RE']) {
     assert.ok(chat[k] instanceof RegExp, `${k} is not exported from chat.js`);
   }
-  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): scripts/b06_gauntlet.js (the rig) is deleted whole (K8); the statements that read it are removed, never faked; the chat.js half holds.
+  const rig = read(RIG);
+  // ── LABELED AMENDMENT (TDW_06 CLOSING ARC, the through-door movement; count PRESERVED).
+  // WHY: this cell pinned the destructure's LITERAL SHAPE — the five names in that exact
+  // order inside one `const { … } = require(`. The through-door movement EXTENDS that same
+  // destructure (the door's Stage-2 bindings ride the same one require), and the literal
+  // stopped matching while the LAW it protects was never touched. A cell that reds on a
+  // widening of the thing it approves of is asking the wrong question.
+  // THE SURVIVING SUBJECT IS UNCHANGED AND NOW STRICTER: each of the four families must be
+  // REQUIRED from chat.js by name, and the rig must DEFINE none of them. The old form
+  // asserted the four names in one fixed sequence; this asserts each one individually
+  // (so dropping any single name now reds, where before only a shape change did) and keeps
+  // the two-homes guard on all four rather than on `ACTION_CLAIM_RE` alone.
+  const CHAT_REQUIRE_RE = /=\s*require\(path\.join\(ROOT,\s*'src\/api\/vendor-engine\/chat\.js'\)\)/;
+  assert.ok(CHAT_REQUIRE_RE.test(rig), 'the rig does not require anything from production chat.js');
+  const destructure = rig.slice(rig.lastIndexOf('const {', rig.search(CHAT_REQUIRE_RE)), rig.search(CHAT_REQUIRE_RE));
+  assert.ok(/\bactionKind\b/.test(destructure), 'actionKind is not required from production');
+  for (const k of ['ACTION_CLAIM_RE', 'JOT_CLAIM_RE', 'COMPLETED_ACT_RE', 'NARRATED_LOOKUP_RE']) {
+    assert.ok(new RegExp('\\b' + k + '\\b').test(destructure), `${k} is not required from production — the rig has lost the one home`);
+    assert.ok(!new RegExp('const ' + k + ' = new RegExp').test(rig), `the rig still DEFINES ${k} — there are two homes, which is one too many`);
+  }
 });
 
 t('§5.2 THE MOVE WAS BYTE-IDENTICAL — the four families are unchanged from their pre-move source', () => {
@@ -430,7 +614,9 @@ t('§5.6b F-06.104 CLOSED — the block\'s FOUNDING lie is heard: "Done. 18 Dece
 });
 
 t('§5.6c THE MASKING LAW HONORED BY CONSTRUCTION — the shared four are byte-identical and no gauntlet arm reads the new constant', () => {
-  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): scripts/b06_gauntlet.js (the rig) is deleted whole (K8); the statements that read it are removed, never faked; the chat.js half holds.
+  const rig = read(RIG);
+  assert.ok(!/MUTATION_CLAIM_RE/.test(rig),
+    'a gauntlet arm now reads F-06.104\'s constant — it is Stage-1-scoped BY RULING, and a shared reader is exactly how an adjacent gap gets masked (CE-81/NOTE_12 §9)');
   const code = read(CHAT).split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.strictEqual((code.match(/const MUTATION_CLAIM_RE = new RegExp/g) || []).length, 1, 'the constant is defined more than once');
   // LABELED AMENDMENT (M-2b, 2026-07-29 — the bench follows the law, CE-80's discipline).
@@ -906,7 +1092,10 @@ t('§7.5 F-06.123 — THE VERDICT RIDES THE ROW WHOLE, and it is ZERO DDL', () =
 });
 
 t('§7.6 THE NEW CONSTANTS ARE STAGE-1-SCOPED — the masking law, still honoured by construction', () => {
-  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): scripts/b06_gauntlet.js (the rig) is deleted whole (K8); the statements that read it are removed, never faked; the chat.js half holds.
+  const rig = read(RIG);
+  for (const sym of ['PRESENCE_ASSERT_RE', 'PARTICIPLE_COMPLETION_RE', 'AGENTIVE_CLAIM_RE', 'ABSENCE_ASSERT_RE']) {
+    assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant has become shared meaning`);
+  }
   const c = read(CHAT);
   // the four SHARED families are still the rig's, unwidened by this movement
   for (const fam of ['ACTION_CLAIM_RE = new RegExp', 'COMPLETED_ACT_RE = new RegExp', 'JOT_CLAIM_RE = new RegExp', 'NARRATED_LOOKUP_RE = new RegExp']) {
@@ -1011,7 +1200,10 @@ t('§8.5 F-06.111 — no vacuous `every` in §8, the constants stay Stage-1-scop
   const self = read('scripts/b06_forkc_wireguard_bench.js');
   const eight = self.slice(self.indexOf('§8.1 F-06.124'), self.indexOf('§8.5 F-06.111'));
   assert.strictEqual((eight.match(/\.every\(/g) || []).length, 0, '§8 uses .every(), vacuously true over an empty array');
-  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): scripts/b06_gauntlet.js (the rig) is deleted whole (K8); the statements that read it are removed, never faked; the chat.js half holds.
+  const rig = read(RIG);
+  for (const sym of ['AGENTIVE_CLAIM_RE', 'PARTICIPLE_COMPLETION_RE', 'PRESENCE_ASSERT_RE', 'ABSENCE_ASSERT_RE']) {
+    assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant became shared meaning`);
+  }
   const guard = read(CHAT);
   // LABELED AMENDMENT (M-2): "nothing arms" was true for four movements and is now
   // superseded by ruling. The surviving subject: the CLASSIFIER stays pure — copy and
@@ -1204,6 +1396,7 @@ t('§10.5 EVERY EARLIER MOVEMENT SURVIVES M-2d', () => {
 
 t('§10.6 THE MASKING LAW UNDER M-2d — the SHARED FOUR were NOT widened, and nothing arms', () => {
   const c = read(CHAT);
+  const rig = read(RIG);
   // the ruling said COMPLETED_ACT_RE gains the stative shapes; COMPLETED_ACT_RE is SHARED
   // with the rig (b06_gauntlet:190/:1609), so the outcome shipped as its own Stage-1
   // constant on F-06.104's precedent instead. Assert the four are untouched.
@@ -1211,7 +1404,7 @@ t('§10.6 THE MASKING LAW UNDER M-2d — the SHARED FOUR were NOT widened, and n
     'COMPLETED_ACT_RE was WIDENED — it is shared with the rig and the masking law forbids it');
   for (const sym of ['STATIVE_COMPLETION_RE', 'BOOKING_CLAIM_RE', 'DOORLINE_CLAIM_RE', 'BOOKING_DEED_RE']) {
     assert.ok(c.includes(sym), `the shipped ladder does not contain ${sym}`);
-    // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the rig is deleted whole (K8); its half of this loop is removed, never faked.
+    assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant became shared meaning`);
   }
   const self = read('scripts/b06_forkc_wireguard_bench.js');
   const ten = self.slice(self.indexOf('§10.1 F-06.127'), self.indexOf('§10.6 THE MASKING LAW'));
@@ -1591,11 +1784,27 @@ t('\u00a712.13 EVERY SEAT RECORDS WHAT IT DELIVERED (SPLIT, LSP_1: both PWA seat
 H('\u00a713 \u2014 R-1: THE S5-OFF-AGGREGATION MICRO (CE-99\u2019s ruling, FORK 7 \u2192 7b)');
 // ═══════════════════════════════════════════════════════════════════════════════
 
-__RETIRED("§13.1 THE FLAG IS A CLASS");
+t('\u00a713.1 THE FLAG IS A CLASS, DECLARED AT THE SCENARIO \u2014 not a string the reader must learn', () => {
+  const rig = read(RIG);
+  assert.ok(/\{ id: 'S5',[^\n]*excludeFromLaneVerdict: true,/.test(rig), 'S5 does not declare itself foreign-seated');
+  assert.strictEqual((rig.match(/excludeFromLaneVerdict: true/g) || []).length, 1, 'a second scenario left aggregation unruled');
+  assert.ok(!/x\.sc\.id === 'S5'|sc\.id !== 'S5'/.test(rig.slice(rig.indexOf('const counted'), rig.indexOf('console.log(`  LANE'))),
+    'the aggregation reads the id instead of the class \u2014 7a, which was refused');
+});
 
-__RETIRED("§13.2 ONE LOAD-BEARING SITE");
+t('\u00a713.2 ONE LOAD-BEARING SITE, and the dead accumulation is NAMED so nobody trusts it', () => {
+  const rig = read(RIG);
+  assert.strictEqual((rig.match(/laneOk = counted\.length > 0 && counted\.every/g) || []).length, 1, 'the aggregation site multiplied');
+  assert.ok(/laneOk = laneOk && ok;/.test(rig), 'the per-scenario accumulation vanished \u2014 it is dead, not removable without re-deriving its readers');
+  assert.ok(/is DEAD \u2014 this line\s*\n?\s*\/\/ OVERWRITES it wholesale|DEAD/.test(rig.slice(rig.indexOf('R-1 (CE-105 chartered'), rig.indexOf('const counted'))),
+    'the dead accumulation is not disclosed in-file');
+});
 
-__RETIRED("§13.3 THE CENSUS LINE");
+t('\u00a713.3 THE CENSUS LINE STAYS PRINTED \u2014 the verdict stops counting it, the record never stops showing it', () => {
+  const rig = read(RIG);
+  assert.ok(/\$\{sc\.id\} \$\{ok \? 'PASS' : 'FAIL'\}/.test(rig), 'the per-scenario census line was removed \u2014 the ruling preserved it');
+  assert.ok(/foreign-seated, excluded from the verdict/.test(rig), 'the LANE line does not disclose the exclusion');
+});
 
 
 // ═══════════════════════════════════════════════════════════════════════════════

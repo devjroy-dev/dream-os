@@ -49,16 +49,20 @@
 'use strict';
 
 const {
-  STOP_WORDS, START_WORDS,
+  isStopWord, isStartWord, STOP_WORDS, START_WORDS,
   findOrCreateProspectByPhone, updateProspect,
 } = require('./prospects');
 
-// CE-45 · LCV-16 · LSP_5 · §7 (ruled 25 September 2026): matchFullStopWord, the FIRST-TOKEN matcher that stood here,
-// is deleted with its export. LSP_1b moved the vendor lane to matchOptOutExact and ELZ-1's cut 1 (F-44.145) moved the
-// bride lane; no src file called it. The words still have ONE home, prospects.js (isStopWord / isStartWord / the sets).
+// Re-exported so callers read the words from ONE place and a future edit to the
+// marketing lane's set reaches all three lanes by construction.
+function matchFullStopWord(text) {
+  if (isStopWord(text))  return 'stop';
+  if (isStartWord(text)) return 'start';
+  return null;
+}
 
 // ── CE-45 LCV-15 LSP_1b · F-44.141's CURE · THE WHOLE-MESSAGE MATCH ─────────────────────────────────────────────
-// matchFullStopWord (deleted in LSP_5) read the FIRST TOKEN, so on the vendor lane "Cancel Walk Seventeen Alpha's shoot" was an
+// matchFullStopWord above reads the FIRST TOKEN, so on the vendor lane "Cancel Walk Seventeen Alpha's shoot" was an
 // opt-out: the vendor was marked opted_out, told so, and her cancel never reached the door (witnessed twice on 24
 // September 2026). matchOptOutExact matches only when the WHOLE message is one word of the same two lists
 // (prospects.js's STOP_WORDS and START_WORDS, one home): "STOP", "Cancel.", "  start  " match; "Cancel the shoot",
@@ -109,4 +113,4 @@ async function recordFullStart({ supabase, phone }) {
 // The bench asserts every getNudgeCopy send on both cores carries it (§9.11).
 const ACK_BYPASS = { isOptedOut: async () => false };
 
-module.exports = { matchOptOutExact, recordFullStop, recordFullStart, ACK_BYPASS };
+module.exports = { matchFullStopWord, matchOptOutExact, recordFullStop, recordFullStart, ACK_BYPASS };

@@ -39,17 +39,6 @@
 // composedTail for persistence, the wire for live; copy minted for founder veto)
 // · the §0.2 report it executes · Q-R-3's mechanical-signal aesthetic.
 'use strict';
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["the assignment keys on donna.session","L5-c: pendingToolUseId lived in runDonnaTurn and DonnaSession, both deleted; b116 2.3 pins their absence"],["donna.ts arms pendingToolUseId","L5-c: pendingToolUseId lived in runDonnaTurn and DonnaSession, both deleted; b116 2.3 pins their absence"],["listen-ALONE: pendingDonnaQuestion carries her exact sentence","L5-c: pendingDonnaQuestion was set only by Donna's turn, deleted; the field stays sited on the TurnResult type (kept by the chair) and is pinned by the source cell above"],["work+listen mixed: the field stays ABSENT (she was not left waiting)","L5-c: pendingDonnaQuestion was set only by Donna's turn, deleted; the field stays sited on the TurnResult type (kept by the chair) and is pinned by the source cell above"],["a resumed exchange that RESOLVES her clears the field (absent at return)","L5-c: pendingDonnaQuestion was set only by Donna's turn, deleted; the field stays sited on the TurnResult type (kept by the chair) and is pinned by the source cell above"],["a turn with no Donna carries nothing","L5-c: pendingDonnaQuestion was set only by Donna's turn, deleted; the field stays sited on the TurnResult type (kept by the chair) and is pinned by the source cell above"],["…and the turn itself is whole (reply + conversation witnessed by the double)","L5-c: pendingDonnaQuestion was set only by Donna's turn, deleted; the field stays sited on the TurnResult type (kept by the chair) and is pinned by the source cell above"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const fs = require('fs');
 const path = require('path');
@@ -249,19 +238,108 @@ const FILED_CALL = { name: 'dear_donna_talk', input: { message: 'Log the lead.' 
   const srcHasSentinel  = new RegExp(SENTINEL).test(read('src/engine/src/core/loop.ts'));
   const distHasSentinel = fs.existsSync(DIST) && new RegExp(SENTINEL).test(read('src/engine/dist/core/loop.js'));
   const distStale = fs.existsSync(DIST) && (srcHasSentinel !== distHasSentinel);
-  // CE-45 LCV-16 LSP_5 (A-45.2, found by A-45.12): the staleness gate read pendingDonnaQuestion, which stays on the TurnResult TYPE (kept) but
-  // compiles away now nothing sets it, so it skipped §4 as "stale" on a fresh dist and hid five cells. The five drove Donna's open
-  // question through runTurn; her turn is deleted (L5-c), so they are RETIRED, visibly. The source cell (the field is still sited) runs.
-  const loopSrc = read('src/engine/src/core/loop.ts'); // as the removed skip branch declared it
-  __RETIRED("the assignment keys on donna.session"); // turn 2's rows, reached here now the branch that held them is gone
-  __RETIRED("donna.ts arms pendingToolUseId");
-  T('TurnResult carries pendingDonnaQuestion (D-6 siting, source)', /pendingDonnaQuestion\?: string;/.test(loopSrc));
-  __RETIRED("listen-ALONE: pendingDonnaQuestion carries her exact sentence");
-  __RETIRED("work+listen mixed: the field stays ABSENT (she was not left waiting)");
-  __RETIRED("a resumed exchange that RESOLVES her clears the field (absent at return)");
-  __RETIRED("a turn with no Donna carries nothing");
-  __RETIRED("…and the turn itself is whole (reply + conversation witnessed by the double)");
+  if (!fs.existsSync(DIST) || distStale) {
+    if (distStale) {
+      console.log('  … dist is STALE — src/engine/dist/core/loop.js disagrees with loop.ts on the');
+      console.log('    cure sentinel (compiled before the source moved; F-04.83, the founder-terminal');
+      console.log("    27/28). §4's 5 behavioural assertions SKIPPED, stated. THE FIX, one line:");
+      console.log('      npm run build && node scripts/b6_open_question_bench.js');
+      console.log('    (Railway rebuilds dist on every deploy — production is not this desk.)');
+    } else {
+      console.log("  … dist absent (clean clone) — §4's 5 behavioural assertions SKIPPED, stated;");
+      console.log('    the engine gates (tsc + build + smoke) carry behaviour. Source assertions run:');
+    }
+    const loopSrc = read('src/engine/src/core/loop.ts');
+    T('TurnResult carries pendingDonnaQuestion (D-6 siting, source)', /pendingDonnaQuestion\?: string;/.test(loopSrc));
+    T('the assignment keys on donna.session.pendingToolUseId (source)', /pendingDonnaQuestion = donna\.session\.pendingToolUseId \? said : '';/.test(loopSrc));
+    const donnaSrc = read('src/engine/src/core/donna.ts');
+    T('donna.ts arms pendingToolUseId ONLY on listen-ALONE (work.length === 0) — unchanged', /if \(work\.length === 0\) \{[\s\S]{0,220}pendingToolUseId = listen\.id;/.test(donnaSrc));
+  } else {
+    // ── the per-table supabase double (thenable builder; scripted rows) ──
+    function mkDb() {
+      let msgN = 0;
+      const answer = (q) => {
+        const t = q._t, op = q._op, mode = q._mode;
+        if (op === 'select') {
+          if (t === 'agents')         return { data: { id: 'agent-oq', tier: 'trial', display_name: 'Bench', profession_preset: null, timezone: null, mode: 'advisory' }, error: null };
+          if (t === 'conversations')  return { data: null, error: null }; // no prior thread -> fresh
+          if (t === 'agent_owner')    return { data: null, error: null };
+          if (t === 'agent_snapshot') return { data: { note: { items: [], rebuilt_at: '2026-07-18T00:00:00Z' } }, error: null };
+          if (t === 'messages')       return { data: [], error: null };
+          return { data: mode ? null : [], error: null };
+        }
+        if (op === 'insert') {
+          if (t === 'conversations') return { data: { id: 'conv-oq-1' }, error: null };
+          if (t === 'messages')      return { data: { id: `msg-oq-${++msgN}` }, error: null };
+          return { data: mode ? { id: 'row-oq' } : null, error: null };
+        }
+        return { data: null, error: null }; // update / upsert
+      };
+      const mkq = (t) => {
+        const q = { _t: t, _op: 'select', _mode: null };
+        const self = new Proxy(q, { get(target, prop) {
+          if (prop === 'then') { const r = answer(target); return (res) => res(r); }
+          if (prop === 'insert' || prop === 'update' || prop === 'upsert') return (body) => { target._op = String(prop); target._body = body; return self; };
+          if (prop === 'maybeSingle' || prop === 'single') return () => { target._mode = String(prop); return Promise.resolve(answer(target)); };
+          if (prop in target) return target[prop];
+          return () => self; // select/eq/is/not/in/order/limit/ilike/neq — chain on
+        } });
+        return self;
+      };
+      const db = { from: (t) => mkq(t), schema: () => db };
+      return db;
+    }
+    engineDbShim = { supabase: mkDb() };
+    // dist may be require-cached as noop from §1's fence — clear engine entries.
+    for (const k of Object.keys(require.cache)) if (/engine[\\/]dist[\\/]/.test(k)) delete require.cache[k];
+    const { runTurn } = require(path.join(ROOT, 'src/engine/dist/core/loop.js'));
 
+    const msgOf = (blocks, usage) => ({ content: blocks, usage: usage || { input_tokens: 1, output_tokens: 1 } });
+    const streamOf = (msg) => ({ on() {}, finalMessage: async () => msg });
+    const scriptedTransports = (harveyScript, donnaScript) => {
+      let h = 0, d = 0;
+      return {
+        transport:      { provider: 'anthropic', stream: () => streamOf(harveyScript[Math.min(h++, harveyScript.length - 1)]), create: async () => harveyScript[Math.min(h++, harveyScript.length - 1)] },
+        donnaTransport: { provider: 'anthropic', stream: () => streamOf(donnaScript[Math.min(d++, donnaScript.length - 1)]),  create: async () => donnaScript[Math.min(d++, donnaScript.length - 1)] },
+      };
+    };
+    const HV_DISPATCH = (m, id) => msgOf([{ type: 'tool_use', id, name: 'dear_donna_talk', input: { message: m } }]);
+    const HV_PROSE    = (t)     => msgOf([{ type: 'text', text: t }]);
+    const DN_LISTEN   = (m, id) => msgOf([{ type: 'tool_use', id, name: 'listen_harvey_talk', input: { message: m } }]);
+    const DN_FINDLISTEN = (m)   => msgOf([
+      { type: 'tool_use', id: 'dn-find-1', name: 'donna_find', input: { query: 'x' } },
+      { type: 'tool_use', id: 'dn-listen-2', name: 'listen_harvey_talk', input: { message: m } },
+    ]);
+
+    // A — listen-ALONE: she asked and is waiting; the turn ends on prose.
+    {
+      const t = scriptedTransports([HV_DISPATCH('Find her.', 'h1'), HV_PROSE('You are clear to log fresh.')], [DN_LISTEN(QUESTION, 'd1')]);
+      const r = await runTurn({ agentId: 'agent-oq', message: 'Log Tara Seal Test.', ...t });
+      T('listen-ALONE: pendingDonnaQuestion carries her exact sentence', r.pendingDonnaQuestion === QUESTION);
+    }
+    // B — work + listen MIXED: donna.ts's else-branch, pendingToolUseId never arms.
+    {
+      const t = scriptedTransports([HV_DISPATCH('Find her.', 'h1'), HV_PROSE('Nothing on file.')], [DN_FINDLISTEN('Nothing on file for that name.')]);
+      const r = await runTurn({ agentId: 'agent-oq', message: 'Find Meera.', ...t });
+      T('work+listen mixed: the field stays ABSENT (she was not left waiting)', r.pendingDonnaQuestion === undefined);
+    }
+    // C — asked, then RESOLVED: two exchanges; the second clears the first's pending.
+    {
+      const t = scriptedTransports(
+        [HV_DISPATCH('Find her.', 'h1'), HV_DISPATCH('Yes — a fresh lead.', 'h2'), HV_PROSE('Filed.')],
+        [DN_LISTEN(QUESTION, 'd1'), DN_FINDLISTEN('Noted — nothing more open.')]);
+      const r = await runTurn({ agentId: 'agent-oq', message: 'Log Tara Seal Test.', ...t });
+      T('a resumed exchange that RESOLVES her clears the field (absent at return)', r.pendingDonnaQuestion === undefined);
+    }
+    // D — no Donna at all: a plain advisory answer.
+    {
+      const t = scriptedTransports([HV_PROSE('Here is my counsel.')], [HV_PROSE('unused')]);
+      const r = await runTurn({ agentId: 'agent-oq', message: 'Advise me.', ...t });
+      T('a turn with no Donna carries nothing', r.pendingDonnaQuestion === undefined);
+      T('…and the turn itself is whole (reply + conversation witnessed by the double)', r.reply === 'Here is my counsel.' && r.conversation_id === 'conv-oq-1');
+    }
+    engineDbShim = null;
+  }
 
   console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
   process.exit(fail === 0 ? 0 : 1);

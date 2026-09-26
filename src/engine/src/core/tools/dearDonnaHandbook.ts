@@ -8,8 +8,21 @@
 // from the index he can see; this returns that section's text for him to advise from.
 import type Anthropic from '@anthropic-ai/sdk';
 
-// CE-45 · LCV-16 · LSP_5 · L5-c: DEAR_DONNA_HANDBOOK_TOOL (the business room's variant) left with that room.
-// ADVISOR_HANDBOOK_TOOL below keeps the name `dear_donna_handbook`; loop.ts serves it.
+export const DEAR_DONNA_HANDBOOK_TOOL: Anthropic.Tool = {
+  name: 'dear_donna_handbook',
+  description:
+    "Pull a specific section of your own reference (the Codex) when grounding a business task — a pricing call, a platform or growth decision, a negotiation. Name the section by its number from the index in front of you: a section like '§7.1', a whole chapter like 'Chapter 7', or an appendix like 'Appendix C'. Returns that section's text for you to advise from in your own voice. Use it to perform a task well, never to lecture; consult quietly, then speak as if you simply knew it. Do not consult on routine clerical instructions.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      ref: {
+        type: 'string',
+        description: "The section to pull, e.g. '§7.1', '§9.3', 'Chapter 21', 'Appendix C'.",
+      },
+    },
+    required: ['ref'],
+  },
+};
 
 // TDW_06 0081 · F-06.5 CURE (a): the ADVISOR-ROOM variant. Same hand, scope-legible
 // description. Live, an advisor-Victor pulled his TRADE codex expecting SMM sections —

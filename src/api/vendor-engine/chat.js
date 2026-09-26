@@ -40,7 +40,7 @@ const {
   extractSpokenDates, // F-42.147 — the date check rides the trigger, not the verb
 } = require('../../lib/wireGuardVictor');
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
-const { logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4) · CE-45 LSP_5 L5-d: fetchRecentActivity and formatActivityBlock left with fetchRecentBlock
+const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
 const { resolveModel, fallbackSurfaceFor, waLaneMode, resolveVendorRoom } = require('../../lib/modelRouter');   // TDW_02 P5 · CE-41 F-41.46 · seat G R-41.104/.107
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { OCCUPYING_KINDS, isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set + the one rule (Q-B3-10, CE-ratified)
@@ -2853,9 +2853,36 @@ async function fetchCalendarSnapshot(req) {
   }
 }
 
-// CE-45 · LCV-16 · LSP_5 · L5-d: fetchScratchpad deleted (its only callers were the advisor path's dead reads).
+// The owner's note-to-self scratchpad — read for Donna's vision (door-fed; Harvey never sees it).
+// owner_notes is public-schema, vendor-keyed; the door has req.vendor, so the door reads it and
+// threads it to Donna via runTurn({ scratchpad }). Descriptive block only — the disposition to
+// surface relevant notes to Harvey lives in Donna's soul, not here.
+async function fetchScratchpad(req) {
+  try {
+    const { data, error } = await req.app.locals.supabase
+      .from('owner_notes')
+      .select('id, body, created_at')
+      .eq('vendor_id', req.vendor.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error || !data || !data.length) return '';
+    const lines = data.map((n) => `- ${n.body}`);
+    return `[The owner's scratchpad — notes he has left for himself, in his own hand.]\n${lines.join('\n')}`;
+  } catch (e) {
+    console.warn('[vendor-e chat:scratchpad]', e.message);
+    return '';
+  }
+}
 
-// CE-45 · LCV-16 · LSP_5 · L5-d: fetchRecentBlock deleted (its only callers were the advisor path's dead reads).
+// TDW_02 P4 (Amendment One CE-4): the RECENT ACTIVITY block, door-built, so the
+// engine sees cross-surface actions AND harvest_patch rows — Victor never
+// re-asks a harvested fact. Mechanical context; zero soul change. Fail-safe ''.
+async function fetchRecentBlock(req) {
+  try {
+    const rows = await fetchRecentActivity(req.app.locals.supabase, req.vendor.id);
+    return formatActivityBlock(rows, 'pwa');
+  } catch (e) { console.warn('[vendor-e chat:recent-activity]', e.message); return ''; }
+}
 
 // TDW_06 P6b (F-06.2, CE-ratified): the advisor room yields COUNSEL, not vendor facts —
 // harvest must not mine an advisory turn for lead/binder patches. Gate on the turn's
@@ -3175,8 +3202,57 @@ async function buildMeta({ supabase, agentId, tier }) {
     return null; // a broken meter NEVER blocks a turn
   }
 }
-
-// CE-45 · LCV-16 · LSP_5 · L5-d: fetchMoneyFacts deleted (its only callers were the advisor path's dead reads).
+// ═══ TDW_10 · R-26.15 ① — THE SPENT-ALLOWANCE SENTENCE, FOUNDER-RULED ═══════
+// AMENDED BY RULING, NOT BY DEFECT, and the distinction matters to the record.
+// F-10.100's ratified acceptance required this line BYTE-UNCHANGED, and it shipped
+// that way. The founder then ruled it, and a ruling outranks an acceptance number
+// the same chair set. The old bytes, kept here so the diff is readable:
+//
+//   「 You've used this day's conversations on the signature tier (250/250). The
+//     desk reopens at midnight — or step up a tier and keep going. 」
+//
+// THREE THINGS LEFT, each for its own reason:
+//
+//   THE FIGURES. `(250/250)` invited an argument with a number instead of stating
+//   a fact. The meter already renders the count above the input bar; a vendor who
+//   wants the arithmetic has it, and the sentence does not need to litigate.
+//
+//   THE TIER WORD. It rendered the RAW database token mid-sentence — 「 on the
+//   basic tier 」, lowercase, because `meta.tier` is the column value. That was a
+//   known founder question held open beside F-10.100. 「 your tier 」 retires the
+//   whole class rather than patching a capitalisation, and it stays true through
+//   any future rename — which is the lesson 0115 paid for.
+//
+//   ⚠ 「 step up a tier 」 — RETIRED BY FOUNDER RULING (R-26.15 ②), AND THE REASON
+//   IS A MECHANISM, SO F-06.85 BINDS IT HERE. Tokens are coming. He will not sell
+//   an upgrade he is about to replace. This seat's SHAPE is deliberately preserved
+//   for a 「 buy tokens 」 line to take later — so a future sitting reading a bare
+//   two-sentence refusal does not restore an upgrade prompt thinking it was an
+//   omission. It was a decision. Read this comment before adding a sale here.
+//
+// WHAT SURVIVES, and it is load-bearing: the `window === 'day'` branch. It is the
+// only thing standing between a monthly-capped vendor and a promise of a midnight
+// that never comes for her — the same class of falsehood F-10.100(b) retired at a
+// zero cap, one window over.
+//
+// IDENTICAL ON BOTH LANES. No route line, unlike the zero-cap sentence below:
+// that one is a sale and needs somewhere to go; this one is a WAIT. There is
+// nothing to tap, because there is nothing to do but come back.
+// ── TDW · THE VICTOR SITTING (CE-40) · F-39.73's CURE at BOTH PWA SEATS ─────
+// One home for the door's half of the fact block, called identically by the SSE
+// and JSON routes so the two surfaces cannot answer money differently — the same
+// principle `buildLlmForTurn` carries a few hundred lines above. Never throws;
+// a failure returns null and the caller passes `undefined`, which the engine
+// treats as the pre-cure world (regression law).
+async function fetchMoneyFacts(req) {
+  try {
+    const { buildMoneyFacts } = require('../../lib/vendor/moneyFacts');
+    return await buildMoneyFacts(req.app.locals.supabase, req.vendor.id);
+  } catch (e) {
+    console.warn('[money:pwa fact-block]', e && e.message);
+    return null;
+  }
+}
 
 // ── CE-44 · LC-2 · packet 4a · THE BOOKED-CLIENT FACT (c-43.20) ────────────
 // The same door-half shape as its neighbour above and for the same wall: the
@@ -3185,11 +3261,36 @@ async function buildMeta({ supabase, agentId, tier }) {
 // routes so the two surfaces cannot refuse differently. Never throws; a failure
 // returns null and the caller passes `undefined` — V12 then never fires and the
 // arms are the pre-cure world (fail-SAFE, read-first-ruled).
-const { runLifecycleSignals } = require('../../lib/vendor/lifecycleHands');
+const { runLifecycleSignals } = require('../../lib/vendor/lifecycleHands'); // CE-44 packet 4a · seam 5
 
-// CE-45 · LCV-16 · LSP_5 · L5-d: fetchBookedFacts deleted (its only callers were the advisor path's dead reads).
+async function fetchBookedFacts(req) {
+  try {
+    const { buildBookedFacts } = require('../../lib/vendor/bookedFacts');
+    return await buildBookedFacts(req.app.locals.supabase, req.vendor.id);
+  } catch (e) {
+    console.warn('[booked:pwa fact-block]', e && e.message);
+    return null;
+  }
+}
 
-// CE-45 · LCV-16 · LSP_5 · L5-d: fetchExpenseFacts deleted (its only callers were the advisor path's dead reads).
+// F-42.97 (CE-42 V-2) — the EXPENSE half, called identically by both routes for
+// the same reason its sibling is: the SSE and JSON surfaces must not be able to
+// answer about spending differently. Never throws; a failure returns null and the
+// caller passes `undefined`, which the engine treats as the pre-cure world.
+//
+// SEPARATE FROM fetchMoneyFacts ON PURPOSE. The two books fail independently, and
+// an unreadable expense book must not take a readable invoice book down with it —
+// each block carries its own founder-vetoed unreadable line and its own empty
+// handle set, so the fail-closed clause runs per plane.
+async function fetchExpenseFacts(req) {
+  try {
+    const { buildExpenseFacts } = require('../../lib/vendor/expenseFacts');
+    return await buildExpenseFacts(req.app.locals.supabase, req.vendor.id);
+  } catch (e) {
+    console.warn('[expenses:pwa fact-block]', e && e.message);
+    return null;
+  }
+}
 
 const CAPPED_LINE = (meta) =>
   meta.window === 'day'
@@ -3348,18 +3449,32 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         doorHarvest(req, message, doorOut);
         return;
       }
-      // CE-45 · LCV-16 · LSP_5 · L5-d: the six estate fact reads that stood here left with the business room;
-      // runTurn is reached only for the Advisor room (doorTurn answers every other turn), which never read them.
+      const calendarSnapshot = await fetchCalendarSnapshot(req);
+      const scratchpad = await fetchScratchpad(req);
+      const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
+      const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
+      const expenseFacts = await fetchExpenseFacts(req); // F-42.97 — the expense book, door-read
+      const bookedFacts = await fetchBookedFacts(req); // CE-44 packet 4a (c-43.20) — the booked-client fact, door-read
       const result = await runTurn({
         roomAssert, // G2 (R-41.107): the Advisor page's own bar, this turn only, no write
         agentId: req.agentId,
         message,
+        calendarSnapshot,
+        scratchpad,
+        recentActivity,
+        moneyFacts: moneyFacts ? moneyFacts.block : undefined,
+        expenseFacts: expenseFacts ? expenseFacts.block : undefined,
+        // CE-44 packet 4a: the WHOLE fact, not just its block — `binderIds` is a
+        // control and rides to the arms ungated, the block sits behind estateInRoom.
+        bookedFacts: bookedFacts ? { block: bookedFacts.block, binderIds: bookedFacts.binderIds } : undefined,
         // 04.5 P6 (Fork B): the door normalises, the engine compares — one home for the
         // predicate, so the planner VOICE and the planner GAP LINE cannot diverge.
         vendorCategory: normaliseCategoryForTurn(req.vendor.category),
         tierOverride: llmWiring.tierOverride,
         modelOverride: llmWiring.modelOverride,
         transport: llmWiring.transport,
+        donnaTransport: llmWiring.donnaTransport,
+        donnaModelOverride: llmWiring.donnaModelOverride,
         onEvent: (e) => { const safe = translateBeat(e, req.vendor.id); if (safe) send(safe); },
       });
       if (result.provider_downgrade) {
@@ -3483,8 +3598,13 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         documents: doorOut.documents.length ? doorOut.documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
       });
     }
-    // CE-45 · LCV-16 · LSP_5 · L5-d: the six estate fact reads left with the business room (see the SSE site).
-    const result    = await runTurn({ roomAssert, agentId: req.agentId, message, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport }); // CE-45 LSP_5: donnaTransport and donnaModelOverride left with Donna's turn
+    const calendarSnapshot = await fetchCalendarSnapshot(req);
+    const scratchpad = await fetchScratchpad(req);
+    const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
+    const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
+    const expenseFacts = await fetchExpenseFacts(req); // F-42.97 — the expense book, door-read
+    const bookedFacts = await fetchBookedFacts(req); // CE-44 packet 4a (c-43.20) — the booked-client fact, door-read
+    const result    = await runTurn({ roomAssert, agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, expenseFacts: expenseFacts ? expenseFacts.block : undefined, bookedFacts: bookedFacts ? { block: bookedFacts.block, binderIds: bookedFacts.binderIds } : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
     if (result.provider_downgrade) {
       logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
     }

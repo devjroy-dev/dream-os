@@ -109,8 +109,56 @@ async function loadThread(conversationId: string, limit = 20): Promise<ThreadMes
     .map((r) => ({ role: r.role as 'user' | 'assistant', content: r.content as string }));
 }
 
-// CE-45 · LCV-16 · LSP_5 · L5-c (the chair's ruling, 26 September 2026): donnaMessages (Donna's exchange, replayed into the business
-// room's prompt) is deleted. Its only caller was loop.ts's business read, deleted under L5-b.
+// ── Donna messages — the Harvey<->Donna exchange, as a snapshot Harvey re-reads ──
+// The OWNER thread (loadThread) persists Harvey<->owner. The Harvey<->Donna exchange
+// lives in each turn's tool_calls and was NOT replayed — so every turn Harvey lost what
+// Donna had told him, and drafted half-blind (the credit-committee drift, 2026-06-13).
+// This composes the last `limit` Donna exchanges into one snapshot, both sides:
+//   Harvey asked: <his dear_donna_talk message>
+//   Donna:        <her listen_harvey_talk hand-back>
+// Donna's raw donna_brief_read reads stay on HER side (nested in donna_calls) — she has
+// already condensed them into the hand-back; Harvey carries the condensed picture, not
+// the ocean. Scoped to THIS conversation. Composed, not raw-replayed — a snapshot.
+export async function donnaMessages(conversationId: string, limit = 50): Promise<string> {
+  const { data } = await supabase
+    .from('messages')
+    .select('tool_calls, created_at')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'assistant')
+    .not('tool_calls', 'is', null)
+    .order('created_at', { ascending: true });
+
+  type TCall = { name?: string; input?: { message?: string }; result?: unknown };
+  const lines: string[] = [];
+  for (const row of data ?? []) {
+    const calls = Array.isArray(row.tool_calls) ? (row.tool_calls as TCall[]) : [];
+    // Pair them in order: a dear_donna_talk (Harvey's ask) is followed by the matching
+    // listen_harvey_talk (Donna's voiced hand-back).
+    for (let i = 0; i < calls.length; i++) {
+      const c = calls[i];
+      if (c?.name === 'dear_donna_talk') {
+        const ask = (c.input?.message ?? '').trim();
+        // find the listen_harvey_talk that follows
+        let saidVal = '';
+        for (let j = i + 1; j < calls.length; j++) {
+          if (calls[j]?.name === 'listen_harvey_talk') {
+            saidVal = typeof calls[j].result === 'string' ? (calls[j].result as string).trim() : '';
+            break;
+          }
+        }
+        if (ask) lines.push(`Harvey asked: ${ask}`);
+        if (saidVal) lines.push(saidVal.startsWith('Listen Harvey') ? saidVal : `Donna: ${saidVal}`);
+      }
+    }
+  }
+  if (!lines.length) return '';
+  const recent = lines.slice(-limit); // last `limit` exchange-lines, chronological
+  // TDW_06 F-06.52 — framing only; every surfaced line below is byte-identical. The old
+  // header named the colleague and the exchange, handing the model the exact vocabulary
+  // harveySoul's sentence 36 forbids. It arrives now as what it is to him: things already
+  // established this conversation.
+  return `\n\n[Established this conversation — what you already know, turn by turn:]\n${recent.join('\n')}\n`;
+}
 
 // ── TDW_04 B6 sitting 2 (Q-B4-6(b), R-B6-3 CE-ruled) — THE WITNESS RETURNS ──
 // The composed-reply save needs to UPDATE the exact row this function inserted:

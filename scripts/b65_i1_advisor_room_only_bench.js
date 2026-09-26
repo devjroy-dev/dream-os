@@ -29,17 +29,6 @@
 // `victor_mode` column says `advisor` — DEV440's live shape. That is deliberate:
 // a cure asserted against a `business` row would pass at the uncured tree too.
 'use strict';
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["1.1 the engine","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"],["1.3 DRIVEN: no assertion","L5-a: runTurn refuses a no-assertion (business) turn by name before any read; b116 1.1 to 1.4 pin it"],["1.4 DRIVEN: and it never asked","L5-a: runTurn refuses a no-assertion (business) turn by name before any read; b116 1.1 to 1.4 pin it"],["1.6 DRIVEN: the precedence holds","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"],["1.7 DRIVEN: WhatsApp","L5-a: runTurn refuses a no-assertion (business) turn by name before any read; b116 1.1 to 1.4 pin it"],["2.1 the two lines exist","L5-b: ROOM_LINE.business is deleted; this reader required it. The live subject is DRIVEN by b116 (1.6 the advisor line in an advisor turn; 1.11 consult carries no room line)"],["2.2 ZERO BYTES","L5-b: ROOM_LINE.business is deleted; this reader required it. The live subject is DRIVEN by b116 (1.6 the advisor line in an advisor turn; 1.11 consult carries no room line)"],["2.3 DRIVEN: a BUSINESS turn","L5-a: runTurn refuses a no-assertion (business) turn by name before any read; b116 1.1 to 1.4 pin it"],["2.4 DRIVEN: an ADVISOR turn","L5-b: ROOM_LINE.business is deleted; this reader required it. The live subject is DRIVEN by b116 (1.6 the advisor line in an advisor turn; 1.11 consult carries no room line)"],["2.5 DRIVEN: CONSULT","L5-b: ROOM_LINE.business is deleted; this reader required it. The live subject is DRIVEN by b116 (1.6 the advisor line in an advisor turn; 1.11 consult carries no room line)"],["2.6 DRIVEN: in a BUSINESS room","L5-a: runTurn refuses a no-assertion (business) turn by name before any read; b116 1.1 to 1.4 pin it"],["3.1 the witness names","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"],["3.2 DRIVEN: an unasserted turn","L5-a: runTurn refuses a no-assertion (business) turn by name before any read; b116 1.1 to 1.4 pin it"],["4.3 route and room agree","L5-a: the engine's precedence is now roomAssert, else the named refusal; a business combination can no longer agree with the route resolver because the engine refuses it (b116 1.1)"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const fs = require('fs');
 const path = require('path');
 
@@ -208,7 +197,12 @@ async function turn(args) {
 
   sec('§1 BUSINESS BY CONSTRUCTION — the room is the DOOR\'S, and nothing else\'s (R-41.136 (a))');
 
-  await __RETIRED("1.1 the engine");
+  await cell('1.1 the engine\'s resolution has TWO terms and the third is the literal business', () => {
+    const c = codeOf('src/engine/src/core/loop.ts');
+    if (!/args\.modeOverride\s*\?\?\s*args\.roomAssert\s*\?\?\s*'business'/.test(c)) return 'the ruled two-term shape is not at assertedRoom';
+    if (/agent\.victor_mode/.test(c)) return 'the turn still names the column outside comments';
+    return true;
+  });
 
   await cell('1.2 the turn does not SELECT the column at all', () => {
     const c = codeOf('src/engine/src/core/loop.ts');
@@ -217,9 +211,18 @@ async function turn(args) {
   });
 
   if (gate.runDist) {
-    await __RETIRED("1.3 DRIVEN: no assertion");
+    await cell('1.3 DRIVEN: no assertion, column says `advisor` — the turn is BUSINESS', async () => {
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      const r = await turn({});
+      return r && r.victor_mode === 'business' ? true : `the orphan row still decided the room: ${r && r.victor_mode}`;
+    });
 
-    await __RETIRED("1.4 DRIVEN: and it never asked");
+    await cell('1.4 DRIVEN: and it never asked — no SELECT of victor_mode in the whole turn', async () => {
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      await turn({});
+      return !store.reads.includes('engine.agents.victor_mode')
+        ? true : 'the turn SELECTed the column it no longer reads';
+    });
 
     await cell('1.5 DRIVEN: from the Advisor door the turn is ADVISOR, on the same row', async () => {
       cur = { victor_mode: 'advisor', mode: 'advisory' };
@@ -227,33 +230,111 @@ async function turn(args) {
       return r && r.victor_mode === 'advisor' ? true : `the assertion did not open the room: ${r && r.victor_mode}`;
     });
 
-    await __RETIRED("1.6 DRIVEN: the precedence holds");
+    await cell('1.6 DRIVEN: the precedence holds — a door saying business beats a page saying advisor', async () => {
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      const r = await turn({ modeOverride: 'business', roomAssert: 'advisor' });
+      return r && r.victor_mode === 'business' ? true : `roomAssert beat modeOverride: ${r && r.victor_mode}`;
+    });
 
-    await __RETIRED("1.7 DRIVEN: WhatsApp");
+    await cell('1.7 DRIVEN: WhatsApp\'s own argument shape is business on the orphan row (R-41.104 holds)', async () => {
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      const r = await turn({ modeOverride: 'business' });
+      return r && r.victor_mode === 'business' ? true : `the WA lane reached the advisory room: ${r && r.victor_mode}`;
+    });
   }
 
   sec('§2 THE ROOM LINE — Victor stops narrating a mode he is not in (R-41.136 (b))');
 
-  await __RETIRED("2.1 the two lines exist");
+  await cell('2.1 the two lines exist, in ONE home, in `loop.ts`', () => {
+    const lines = roomLines();
+    if (!lines) return 'ROOM_LINE is not readable out of loop.ts';
+    return lines.business && lines.advisor ? true : 'a room line is empty';
+  });
 
-  await __RETIRED("2.2 ZERO BYTES");
+  await cell('2.2 ZERO BYTES in the soul and the lens — W-1 stayed shut on both', () => {
+    const soul = read('src/engine/src/core/harveySoul.ts');
+    const lens = read('src/engine/src/core/advisorLens.ts');
+    const lines = roomLines();
+    if (!lines) return 'ROOM_LINE is not readable out of loop.ts';
+    if (soul.includes(lines.business) || soul.includes(lines.advisor)) return 'a room line was authored into harveySoul.ts';
+    if (lens.includes(lines.business) || lens.includes(lines.advisor)) return 'a room line was authored into advisorLens.ts';
+    return true;
+  });
 
   if (gate.runDist) {
-    await __RETIRED("2.3 DRIVEN: a BUSINESS turn");
+    await cell('2.3 DRIVEN: a BUSINESS turn carries the business line and NOT the advisor one', async () => {
+      const lines = roomLines();
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      await turn({});
+      const sys = (calls[0] && calls[0].system) || '';
+      if (!sys.includes(lines.business)) return 'the business room line is absent from the composed prompt';
+      if (sys.includes(lines.advisor)) return 'the advisor room line rode a business turn';
+      return true;
+    });
 
-    await __RETIRED("2.4 DRIVEN: an ADVISOR turn");
+    await cell('2.4 DRIVEN: an ADVISOR turn carries the advisor line and NOT the business one', async () => {
+      const lines = roomLines();
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      await turn({ roomAssert: 'advisor' });
+      const sys = (calls[0] && calls[0].system) || '';
+      if (!sys.includes(lines.advisor)) return 'the advisor room line is absent from the composed prompt';
+      if (sys.includes(lines.business)) return 'the business room line rode an advisor turn';
+      return true;
+    });
 
-    await __RETIRED("2.5 DRIVEN: CONSULT");
+    await cell('2.5 DRIVEN: CONSULT carries NEITHER — the third room is not claimed for it (fork F2)', async () => {
+      const lines = roomLines();
+      cur = { victor_mode: 'advisor', mode: 'consult' };
+      await turn({});
+      const sys = (calls[0] && calls[0].system) || '';
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      return (!sys.includes(lines.business) && !sys.includes(lines.advisor))
+        ? true : 'a room line reached the consult room';
+    });
 
-    await __RETIRED("2.6 DRIVEN: in a BUSINESS room");
+    await cell('2.6 DRIVEN: in a BUSINESS room the line closes the prefix; in the ADVISOR room the LENS still does', async () => {
+      const lines = roomLines();
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      await turn({});
+      const sys = (calls[0] && calls[0].system) || '';
+      const at = sys.indexOf(lines.business);
+      if (at < 0) return 'the business room line is absent';
+      // A business room composes no lens, so the room line is terminal there and
+      // nothing but the system-block boundary may follow it before the clock line.
+      const tail = sys.slice(at + lines.business.length, at + lines.business.length + 200);
+      if (!/^\s*(\n|$)/.test(tail) && !/Today is/.test(tail)) {
+        return `the room line is not terminal in a business prefix: ${JSON.stringify(tail.slice(0, 80))}`;
+      }
+      // AND THE ADVISOR ROOM IS THE OTHER WAY ROUND, WHICH IS F-06.67's RULING AND
+      // NOT THIS PACKET'S TO MOVE: the lens must close that prefix and its crux must
+      // be the last paragraph Victor reads there. The room line sits BEFORE it.
+      await turn({ roomAssert: 'advisor' });
+      const asys = (calls[0] && calls[0].system) || '';
+      const ai = asys.indexOf(lines.advisor);
+      const li = asys.indexOf('THE ADVISORY ROOM');
+      if (ai < 0 || li < 0) return 'the advisor prefix is missing its room line or its lens';
+      return ai < li ? true : 'the room line landed AFTER the lens — F-06.67 is not held';
+    });
   }
 
   sec('§3 THE WITNESS — `source=column` can no longer print (R-41.136 (a))');
 
-  await __RETIRED("3.1 the witness names");
+  await cell('3.1 the witness names `default`, and `column` is gone from the source', () => {
+    const c = codeOf('src/engine/src/core/loop.ts');
+    if (!/roomSource = args\.modeOverride \? 'override' : \(args\.roomAssert \? 'assert' : 'default'\)/.test(c)) {
+      return 'roomSource does not carry the ruled three values';
+    }
+    return !/'column'/.test(c) ? true : 'the literal column survives in the turn';
+  });
 
   if (gate.runDist) {
-    await __RETIRED("3.2 DRIVEN: an unasserted turn");
+    await cell('3.2 DRIVEN: an unasserted turn on the orphan row logs `source=default`', async () => {
+      cur = { victor_mode: 'advisor', mode: 'advisory' };
+      await turn({});
+      const line = logs.find((l) => l.includes('[engine:mode]')) || '';
+      return /room=business /.test(line) && /source=default/.test(line)
+        ? true : `the witness said: ${line || '(nothing)'}`;
+    });
 
     await cell('3.3 DRIVEN: an asserted turn logs `room=advisor … source=assert`', async () => {
       cur = { victor_mode: 'advisor', mode: 'advisory' };
@@ -281,7 +362,30 @@ async function turn(args) {
       ? true : 'the door still names the column outside the TurnResult field';
   });
 
-  await __RETIRED("4.3 route and room agree");
+  await cell('4.3 route and room agree across the full asserted matrix', () => {
+    const { resolveVendorRoom } = req('src/lib/modelRouter.js');
+    // The ENGINE'S ORDER IS READ OUT OF `loop.ts`, NOT TRANSCRIBED (§8's law in
+    // b65_g1, kept): a mirror carrying its own copy of the thing it mirrors
+    // proves nothing.
+    const c = codeOf('src/engine/src/core/loop.ts');
+    const m = c.match(/const assertedRoom = \(([^)]*)\)/);
+    if (!m) return 'could not read the engine term';
+    const order = m[1].split('??').map((x) => x.trim().replace(/^args\./, '')).filter(Boolean);
+    if (order.length !== 3 || order[2] !== "'business'") return `the engine order is ${JSON.stringify(order)}`;
+    const engineTerm = (a) => { for (const t of order) { if (t === "'business'") return 'business'; if (a[t] != null) return a[t]; } return 'business'; };
+    const bad = [];
+    for (const surface of ['pwa_vendor', 'wa_vendor']) {
+      for (const modeOverride of [undefined, 'business']) {
+        for (const roomAssert of [undefined, 'advisor']) {
+          const route = resolveVendorRoom({ surface, modeOverride, roomAssert });
+          const asEngineSees = surface === 'wa_vendor' ? { modeOverride: 'business' } : { modeOverride, roomAssert };
+          const room = engineTerm(asEngineSees) === 'advisor' ? 'advisor' : 'business';
+          if (route !== room) bad.push(`${surface}/${modeOverride || '-'}/${roomAssert || '-'}: route=${route} room=${room}`);
+        }
+      }
+    }
+    return bad.length === 0 ? true : bad.join(' · ');
+  });
 
   await cell('4.4 the column is NOT retired — its writers and the chip\'s reader stand', () => {
     const mode = codeOf('src/api/vendor-engine/vendorMode.js');

@@ -51,23 +51,7 @@ const __RETIRE = new Map([
   [
     "§7.7 ",
     "LSP_4 (L4-a): F-05.56's defused island is DELETED; there is no island left to stay unedited, and no banner for the cell to find"
-  ],
-  // CE-45 LCV-16 LSP_5 (L5-d, A-45.2): the web door's booked-fact reads fed only the advisor path's runTurn, which never read them.
-  ["§8.1 ", "LSP_5 (L5-d): fetchBookedFacts is deleted; its only callers were the advisor path's dead reads, and b116 pins its absence"],
-  ["§8.2 ", "LSP_5 (L5-d): neither web route calls fetchBookedFacts any more; b116 pins both runTurn sites free of it"],
-  ["§8.3 ", "LSP_5 (L5-d): neither web route passes bookedFacts (runTurn dropped the field with the business room); b116 pins it"],
-  ["§3.1 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.2 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.3 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.4 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.5 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.6 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.7 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.8 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§3.9 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§9.1 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§9.2 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"],
-  ["§9.3 ", "LSP_5 (L5-b, L5-c): runTurn's bookedFacts field, its prompt block and its pass into runDonnaTurn are deleted with the business room and Donna's turn; b116 2.1 and 2.3 pin their absence"]
+  ]
 ]);
 const __seen = new Map();
 function __retired(name) {

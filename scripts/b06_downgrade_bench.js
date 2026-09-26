@@ -36,17 +36,6 @@
 // makes true) · D-1 (mechanical verdicts) · F-04.84's precedent (filed + cured
 // same sitting, convicted by the estate's own run) · D-11 (the gate).
 'use strict';
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["§1.4 Donna","L5-c: Donna's turn and her split transport are deleted; the advisor room has no Donna leg (b116 1.8)"],["§1.5 THE 404 SHAPE DEAD","L5-c: Donna's turn and her split transport are deleted; the advisor room has no Donna leg (b116 1.8)"],["§2.1 the turn SURVIVES her","L5-c: Donna's turn and her split transport are deleted; the advisor room has no Donna leg (b116 1.8)"],["§2.2 HER downgrade","L5-c: Donna's turn and her split transport are deleted; the advisor room has no Donna leg (b116 1.8)"],["§2.3 her fallback","L5-c: Donna's turn and her split transport are deleted; the advisor room has no Donna leg (b116 1.8)"],["§2.4 Victor was never downgraded","L5-c: Donna's turn and her split transport are deleted; the advisor room has no Donna leg (b116 1.8)"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
@@ -62,7 +51,7 @@ const AGENT = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 sec('§0 — D-11: the dist gate (sentinel = donnaTransportForSeg, the F-04.86 cure\'s own identifier).');
 const { distGate } = require(path.join(__dirname, 'lib', 'dist_gate'));
 const gate = distGate({
-  sentinel: 'providerDowngrade', // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): donnaTransportForSeg left with Donna's dispatch; Victor's own fallback keeps this name
+  sentinel: 'donnaTransportForSeg',
   srcPath: path.join(ROOT, 'src/engine/src/core/loop.ts'),
   distPath: path.join(ROOT, 'src/engine/dist/core/loop.js'),
   benchCmd: 'scripts/b06_downgrade_bench.js',
@@ -72,9 +61,8 @@ if (!gate.runDist) {
   console.log('  … the behavioural sections SKIP per the gate; source assertions carry:');
   const loopSrc = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/loop.ts'), 'utf8');
   const donnaSrc = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/donna.ts'), 'utf8');
-  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the two Donna-side source cells left with runDonnaTurn; Victor's own fallback is what remains.
-  void donnaSrc;
-  T('source: Victor\'s provider fallback downgrades to Haiku and flags the turn (F-04.86, the advisor room\'s leg)', /providerDowngrade = true;/.test(loopSrc) && /model = MODELS\.haiku;/.test(loopSrc) && /provider_downgrade: providerDowngrade \|\| undefined/.test(loopSrc));
+  T('source: the downgrade-coherent donna wiring exists (F-04.86)', /donnaTransportForSeg/.test(loopSrc) && /providerDowngrade \? undefined/.test(loopSrc));
+  T('source: her downgrade flag rides the return (F-04.87)', /provider_downgrade\?: boolean/.test(donnaSrc) && /provider_downgrade: providerDowngrade \|\| undefined/.test(donnaSrc));
   console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -178,32 +166,36 @@ const failingTransport = (label) => ({
     nativeCalls.length = 0; store.conversations.length = 0; store.messages.length = 0;
     let r = null, err = null;
     try {
-      r = await runTurn({ agentId: AGENT, roomAssert: 'advisor', message: 'Anything pending this week?', tierOverride: 'entry', modelOverride: DEEPSEEK, transport: failingTransport('victor-deepseek') }); // RE-AIMED (LSP_5, labelled): the advisor room, the one runTurn now serves
+      r = await runTurn({ agentId: AGENT, message: 'Anything pending this week?', tierOverride: 'entry', modelOverride: DEEPSEEK, transport: failingTransport('victor-deepseek') });
     } catch (e) { err = e; }
     T('§1.1 the turn SURVIVES the provider failure (no crash out of runTurn)', err === null && !!r);
     T('§1.2 provider_downgrade rides the TurnResult (spec P5\'s flag)', !!r && r.provider_downgrade === true);
     const victorNative = nativeCalls.filter((c) => c.hand === 'victor');
     T('§1.3 Victor\'s fallback ran NATIVE on Haiku', victorNative.length > 0 && victorNative.every((c) => c.model === HAIKU));
     const donnaNative = nativeCalls.filter((c) => c.hand === 'donna');
-    __RETIRED("§1.4 Donna");
-    __RETIRED("§1.5 THE 404 SHAPE DEAD");
+    T('§1.4 Donna\'s segment ran (the dispatch was not eaten by the downgrade)', donnaNative.length > 0);
+    T('§1.5 THE 404 SHAPE DEAD: her native call carries HAIKU, never the foreign model string', donnaNative.length > 0 && donnaNative.every((c) => c.model === HAIKU));
     T('§1.6 …and no native call anywhere carried the foreign string (the whole turn is coherent)', nativeCalls.every((c) => c.model === HAIKU));
   }
 
   sec('§2 — F-04.87: her split transport fails — the flag folds up to the TurnResult.');
   {
     nativeCalls.length = 0; store.conversations.length = 0; store.messages.length = 0;
-    // RETIRED (CE-45 LCV-16 LSP_5): §2 drove Donna's split transport (donnaTransport/donnaModelOverride), deleted with her turn; the turn is not driven.
-    __RETIRED("§2.1 the turn SURVIVES her");
-    __RETIRED("§2.2 HER downgrade");
-    __RETIRED("§2.3 her fallback");
-    __RETIRED("§2.4 Victor was never downgraded");
+    let r = null, err = null;
+    try {
+      r = await runTurn({ agentId: AGENT, message: 'Anything pending this week?', tierOverride: 'entry', donnaTransport: failingTransport('donna-deepseek'), donnaModelOverride: DEEPSEEK });
+    } catch (e) { err = e; }
+    T('§2.1 the turn SURVIVES her provider failure', err === null && !!r);
+    T('§2.2 HER downgrade reaches the TurnResult (the L3 blindness cured)', !!r && r.provider_downgrade === true);
+    const donnaNative = nativeCalls.filter((c) => c.hand === 'donna');
+    T('§2.3 her fallback ran NATIVE on Haiku', donnaNative.length > 0 && donnaNative.every((c) => c.model === HAIKU));
+    T('§2.4 Victor was never downgraded (his leg was native all along — the flag is honest, not sticky-wrong)', nativeCalls.filter((c) => c.hand === 'victor').every((c) => c.model === HAIKU));
   }
 
   sec('§3 — the floor: a clean native turn carries NO flag (the cure adds nothing to clean turns).');
   {
     nativeCalls.length = 0; store.conversations.length = 0; store.messages.length = 0;
-    const r = await runTurn({ agentId: AGENT, roomAssert: 'advisor', message: 'Anything pending this week?', tierOverride: 'entry' }); // RE-AIMED (LSP_5, labelled)
+    const r = await runTurn({ agentId: AGENT, message: 'Anything pending this week?', tierOverride: 'entry' });
     T('§3.1 clean turn, no flag', !!r && r.provider_downgrade === undefined);
     T('§3.2 both hands native Haiku, as ever', nativeCalls.length > 0 && nativeCalls.every((c) => c.model === HAIKU));
   }

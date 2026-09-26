@@ -28,17 +28,6 @@
 // half-cure this seat reported as blocking — and because F-41.95's specimen had
 // never been driven anywhere. §7.4 records what the driving found.
 'use strict';
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["2.1 the engine accepts a modeOverride","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"],["2.2 the room predicate prefers the override","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"],["2.3 ABSENT the override the predicate","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"],["2.6 R-41.105","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"],["8.1 the route resolver and the engine term agree","L5-a: the engine's precedence is now roomAssert, else the named refusal; a business combination can no longer agree with the route resolver because the engine refuses it (b116 1.1)"],["8.4 the engine carries the ruled precedence","L5-a: the engine's precedence is now roomAssert, else the named refusal; a business combination can no longer agree with the route resolver because the engine refuses it (b116 1.1)"],["8.6 modeOverride is STILL","L5-a/L5-b: modeOverride (the WhatsApp door's term) is deleted and runTurn serves advisor and consult only; b116 1.1 and 2.1 pin both"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const fs = require('fs');
 const path = require('path');
 
@@ -187,11 +176,31 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
 
   sec('§2 THE ROOM — the door hands the engine `business` (R-41.104 §4(a), limb 2)');
 
-  await __RETIRED("2.1 the engine accepts a modeOverride");
+  await cell('2.1 the engine accepts a modeOverride and it is `business`-only', () => {
+    const t = read('src/engine/src/core/loop.ts');
+    return /modeOverride\?:\s*'business';/.test(t) ? true : 'RunTurnArgs has no business-only modeOverride';
+  });
 
-  await __RETIRED("2.2 the room predicate prefers the override");
+  await cell('2.2 the room predicate prefers the override over everything below it', () => {
+    // ANCHOR RE-DERIVED at G2, and again at SEAT I (R-41.136, fork F4): the row
+    // is no longer a term at all, so an expression naming `agent.victor_mode`
+    // would now be the FAILURE. The SUBJECT is unchanged across all three cuts —
+    // the door must lead the precedence — and §8.4 owns the full ruled order.
+    const c = codeOf('src/engine/src/core/loop.ts');
+    if (/agent\.victor_mode/.test(c)) return 'the turn still reads the column';
+    return /args\.modeOverride\s*\?\?[\s\S]{0,40}'business'/.test(c) ? true : 'the override does not lead the resolution';
+  });
 
-  await __RETIRED("2.3 ABSENT the override the predicate");
+  await cell('2.3 ABSENT the override the predicate lands on the SHIPPED default', () => {
+    const { runTurn } = req('src/engine/dist/core/loop.js');
+    // The compiled term, read as source. AMENDED AT SEAT I: the right-hand term
+    // was the row and is now the literal `'business'`, so what is asserted is
+    // that the COMPILED engine carries the cure and not merely the source — the
+    // dist is what Railway runs, and `b65_i1` drives it.
+    const c = fs.readFileSync(path.join(ROOT, 'src/engine/dist/core/loop.js'), 'utf8');
+    return typeof runTurn === 'function' && /modeOverride\s*\?\?\s*args\.roomAssert\s*\?\?\s*'business'/.test(c)
+      ? true : 'the compiled engine does not carry the two-term resolution';
+  });
 
   await cell('2.4 the WhatsApp door passes it at BOTH runTurn sites', () => {
     const c = codeOf('src/lib/vendorInbound.js');
@@ -205,7 +214,11 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
     return !/modeOverride/.test(c) ? true : 'the PWA door names modeOverride';
   });
 
-  await __RETIRED("2.6 R-41.105");
+  await cell('2.6 R-41.105\'s witness line is at the predicate and names the room', () => {
+    const c = codeOf('src/engine/src/core/loop.ts');
+    return /\[engine:mode\]/.test(c) && /room=\$\{/.test(c) && /override=\$\{/.test(c)
+      ? true : 'no [engine:mode] line carrying room= and override=';
+  });
 
   sec('§3 ONE HOME — route and room cannot disagree (R-41.104 §4(a))');
 
@@ -440,7 +453,24 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
     return undefined;
   };
 
-  await __RETIRED("8.1 the route resolver and the engine term agree");
+  await cell('8.1 the route resolver and the engine term agree on ALL 8 combinations', () => {
+    const { resolveVendorRoom } = req('src/lib/modelRouter.js');
+    if (!engineOrder || engineOrder.length !== 3) return `could not read the engine's precedence: ${JSON.stringify(engineOrder)}`;
+    if (engineOrder[2] !== "'business'") return `the engine's last term is ${engineOrder[2]}, not the ruled default`;
+    const bad = [];
+    for (const m of MATRIX) {
+      const route = resolveVendorRoom(m);
+      // The engine is only ever reached with the WhatsApp door's own arguments on
+      // that lane, so the surface term is applied here exactly as the door applies
+      // it — `modeOverride: 'business'` at both runTurn sites, never an assertion.
+      const asEngineSees = m.surface === 'wa_vendor'
+        ? { modeOverride: 'business', roomAssert: undefined }
+        : m;
+      const room = engineTerm(asEngineSees) === 'advisor' ? 'advisor' : 'business';
+      if (route !== room) bad.push(`${m.surface}/${m.modeOverride || '-'}/${m.roomAssert || '-'}: route=${route} room=${room}`);
+    }
+    return bad.length === 0 ? true : bad.join(' · ');
+  });
 
   await cell('8.2 the PRECEDENCE is modeOverride, then roomAssert, then BUSINESS', () => {
     const { resolveVendorRoom } = req('src/lib/modelRouter.js');
@@ -460,14 +490,21 @@ const LOOKUP_REPLY = '18 December 2026 is unblocked and available.';
       ? true : 'R-41.104 was overridden by an assertion';
   });
 
-  await __RETIRED("8.4 the engine carries the ruled precedence");
+  await cell('8.4 the engine carries the ruled precedence in that order', () => {
+    const c = codeOf('src/engine/src/core/loop.ts');
+    return /args\.modeOverride\s*\?\?\s*args\.roomAssert\s*\?\?\s*'business'/.test(c)
+      ? true : 'the engine does not carry the ruled order (R-41.136)';
+  });
 
   await cell('8.5 roomAssert is `advisor`-ONLY on the type — no door can force a vendor OUT either', () => {
     const t = read('src/engine/src/core/loop.ts');
     return /roomAssert\?:\s*'advisor';/.test(t) ? true : 'roomAssert is not advisor-only';
   });
 
-  await __RETIRED("8.6 modeOverride is STILL");
+  await cell('8.6 modeOverride is STILL `business`-only — M3 keeps its subject', () => {
+    const t = read('src/engine/src/core/loop.ts');
+    return /modeOverride\?:\s*'business';/.test(t) ? true : 'modeOverride widened';
+  });
 
   await cell('8.7 the door reads `room`, accepts only `advisor`, and never 400s on a bad one', () => {
     const c = codeOf('src/api/vendor-engine/chat.js');

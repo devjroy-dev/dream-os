@@ -13,18 +13,23 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { supabase } from './db.js';
 import {
-  MODELS, startModelForTier, calcCostInr, modelLabel, type Tier,
+  MODELS, startModelForTier, canEscalate, calcCostInr, modelLabel, type Tier,
 } from './models.js';
 import { HARVEY_SOUL, PRODUCTION_WEAVE, NO_MACHINERY_LAW } from './harveySoul.js';
 import { CONSULTANT_HARVEY_SOUL } from './consultantHarveySoul.js';
 import { ADVISOR_LENS } from './advisorLens.js';
-import { ADVISOR_HANDBOOK_TOOL } from './tools/dearDonnaHandbook.js';
+import { ESCALATE_TOOL } from './tools/donnaLead.js';
+import { DEAR_DONNA_TALK_TOOL } from './tools/dearDonna.js';
+import { DEAR_DONNA_HANDBOOK_TOOL, ADVISOR_HANDBOOK_TOOL } from './tools/dearDonnaHandbook.js';
 import { JOT_ADVICE_TOOL, executeJotAdvice } from './tools/jotAdvice.js';
+import { snapshotText, runDonnaTurn, type DonnaSession } from './donna.js';
 import type { ViewRow } from './snapshotTypes.js';
-import { todayLine } from './today.js';
+// TDW_06 THE DETERMINISTIC SITTING (fork B-2(α)) — the relay deed seam's ONE home.
+import { echoedRefusals, appendDeedTail } from './relaySeam.js';
+import { todayLine, todayISO } from './today.js';
 import { resolveField, getHandbookIndex, getHandbookFull, getSection } from './handbook.js';
 import {
-  getOrCreateConversation, saveMessage, loadOwner, TOMBSTONE, type ThreadMessage,
+  getOrCreateConversation, saveMessage, loadFacts, loadOwner, donnaMessages, TOMBSTONE, type ThreadMessage,
 } from './memory.js';
 
 // Outer cap on Harvey's own iterations. Raised from 6 to give room for a multi-exchange
@@ -32,6 +37,11 @@ import {
 // handbook lookup and his final reply. The Harvey<->Donna exchange itself is bounded by
 // TALK_FUSE below, not by this.
 const MAX_ITERATIONS = 12;
+// The fuse on the Harvey<->Donna back-and-forth. A healthy exchange (he is impatient)
+// converges in one or two; this only trips if they genuinely circle, turning a runaway
+// into a logged abort. It does NOT shape how they talk — it makes a loop observable
+// and safe instead of a hung, billing turn. Soul governs the real count.
+const TALK_FUSE = 5;
 
 // ── CE-41 · SEAT I · R-41.136 (b) — VICTOR DOES NOT NARRATE A MODE HE IS NOT IN ──
 // The wire has said which room a turn ran in since G2 (`[engine:mode]`); Victor
@@ -61,7 +71,8 @@ const MAX_ITERATIONS = 12;
 // the business line and not the advisor one, and the converse — so a vetoed
 // rewording is a copy edit here and nothing else moves.
 const ROOM_LINE = {
-  // CE-45 LSP_5 (L5-b): the business line left with the business room (runTurn serves advisor and consult).
+  business: '\n\nYou are in the working room. If you are asked which mode you are in, say business. '
+    + 'The Advisor room is its own door in the app.',
   advisor: '\n\nYou are in the Advisor room.',
 } as const;
 
@@ -121,6 +132,79 @@ type RunTurnArgs = {
   agentId: string;
   message: string;
   conversationId?: string;
+  calendarSnapshot?: string;
+  scratchpad?: string;
+  recentActivity?: string; // TDW_02 P4 (CE-4): door-built cross-surface activity block
+  // TDW_05 F-05.50(b) (CE-68, R1(a)): the ACTIVE-LEAD PING block — door-built, the
+  // pronoun referent for a bride who just enquired. An OPAQUE STRING here by design:
+  // the engine's client is bound to schema 'engine' (db.ts) and cannot read
+  // public.pending_lead_pings, so construction lives at the door
+  // (lib/vendor/leadPings.js) exactly as recentActivity's does. ABSENT => the pre-cure
+  // dynamic block is byte-identical (regression law).
+  leadPings?: string;
+  // ── TDW_06 F-06.162/.163 (R-29.29) — THE PENDING-RELAY BLOCK ───────────────
+  // actBlock and pingBlock's third sibling, and it exists for a reason neither of
+  // them had: THE RELAY IS THE ESTATE'S FIRST MULTI-TURN COMMITMENT. A draft is
+  // shown on one turn and approved on the next, and between those turns the only
+  // party who knows a commitment is open is the DOOR.
+  //
+  // F-06.162, founder-witnessed 2026-08-11 09:29: the confirm was in Victor's own
+  // thread (F-06.158's cure had landed and is proven) and the turn still came back
+  // `(0 tool calls)` — no `dear_donna_talk`, no hand, a fabricated 「 Message sent
+  // to Priya 」. Reading a question is not having a hand to answer it, and a
+  // question a model can read and cannot mechanically answer is a question it
+  // answers in PROSE. Prose about a send is a fabrication.
+  //
+  // THIS SEAM GIVES HIM A FACT, NOT A TOOL. `loop.ts`'s own opening line — Harvey
+  // holds NO DB tools — stays true, and this block does not touch it. The CE-4
+  // seam exists precisely so the door can tell him something only the door knows.
+  // OPAQUE STRING, door-built: the engine's client is bound to schema 'engine' and
+  // cannot read `public.pending_couple_drafts` at all. ABSENT => the dynamic block
+  // is byte-identical (regression law), exactly as leadPings' own contract states.
+  pendingRelay?: string;
+  // ── TDW · THE VICTOR SITTING (CE-40) · F-39.73's CURE · F-A arm A1, R-VS.2 ──
+  // THE MONEY FACT BLOCK — actBlock / pingBlock / relayBlock's fourth sibling,
+  // and it exists because the engine CANNOT read the plane the answer lives on.
+  // `db.ts` binds this client to `db: { schema: 'engine' }`, so `public.invoices`
+  // is not merely unread here, it is unreachable; every money answer Victor has
+  // ever given stood on `engine.records`, a second money model that is EMPTY
+  // (F-39.73's walk: 「no one owes you」 with Rs 60,000 unpaid on the typed plane).
+  //
+  // AND IT IS A FACT, NOT A TOOL — deliberately, so this file's own opening line
+  // (「Harvey holds NO DB tools」) stays true. R-VS.2 refused A2/A3/A4 for exactly
+  // that: a tool on a seat that holds none, a network hop for an in-process read,
+  // or a second client and a second home. The CE-4 seam exists precisely so the
+  // door can tell him something only the door knows.
+  //
+  // OPAQUE STRING, door-built (lib/vendor/moneyFacts.js). ABSENT => the dynamic
+  // block is byte-identical to the pre-cure engine (regression law), exactly as
+  // leadPings' and pendingRelay's own contracts state.
+  moneyFacts?: string;
+  // F-42.97 (CE-42 V-2): the EXPENSE half of the same seam. OPAQUE STRING,
+  // door-built (lib/vendor/expenseFacts.js). ABSENT => the dynamic tail is
+  // byte-identical to the pre-cure world, exactly as moneyFacts', leadPings' and
+  // pendingRelay's own contracts state. It is a SEPARATE arg rather than a
+  // widening of moneyFacts because the two blocks fail independently: an
+  // unreadable expense book must not silence a readable invoice book.
+  expenseFacts?: string;
+  // ── CE-44 · LC-2 · packet 4a · THE BOOKED-CLIENT FACT (c-43.20, chair-owned) ──
+  // The sixth thing the door knows and this plane cannot reach. `db.ts` binds this
+  // client to `db: { schema: 'engine' }`, so `public.leads` is unreachable here —
+  // the same wall `moneyFacts` was built around, on a different table. Door-built
+  // in `lib/vendor/bookedFacts.js`, one seam on each lane (C-43.1).
+  //
+  // IT IS NOT AN OPAQUE STRING, AND THAT IS THE ONE DIFFERENCE FROM ITS FIVE
+  // SIBLINGS. It carries two halves that travel apart: `block` is the opaque
+  // string the prompt takes, gated on `estateInRoom` with the others; `binderIds`
+  // is the SET V12 refuses on, which is a CONTROL and therefore NOT gated — it
+  // reaches `executeRecordTool`'s fourth argument on every turn the door built it,
+  // room or no room. A gate reads a row, never a display string (CE-215), which is
+  // why the arms are handed ids and never the block.
+  //
+  // ABSENT => the dynamic tail is byte-identical to the pre-cure world AND V12
+  // never fires (the regression law, and the read-first's fail-SAFE ruling: an
+  // unreadable lead table must not refuse lawful writes).
+  bookedFacts?: { block: string; binderIds: string[] };
   // TDW_04.5 P6 (CE-61, Fork B): the vendor's NORMALISED category, door-computed.
   // THE DOOR NORMALISES, THE ENGINE COMPARES — `normaliseCategory` keeps its one home in
   // lib/vendor/categoryFraming.js, which is the whole point of the ruling: Victor's
@@ -136,6 +220,25 @@ type RunTurnArgs = {
   transport?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> };
   // TDW_02 P7 (Amendment Two): Donna's hand may route separately (LD-7 role split).
   // ABSENT => she follows Victor's wiring exactly as P5 shipped it.
+  donnaTransport?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> };
+  donnaModelOverride?: string;
+  // ── CE-41 · SEAT G · R-41.104, W-1 OPENED BY R-41.105 ─────────────────────
+  // THE ROOM, SUPPLIED BY THE DOOR. Every other room in this file is decided
+  // from the agent row read at :270, and that is right for the PWA: the vendor
+  // flips the chip, the column moves, the app changes rooms. It was WRONG for
+  // WhatsApp, where R-39.22 has always said the advisory room does not live —
+  // and enforcing that at the word alone (`vendorInbound.js`'s refusal to WRITE
+  // `advisor`) left every vendor ALREADY flipped in the app answering from the
+  // advisory room on WhatsApp: no Donna, no estate, no read hands, and the wire
+  // guard convicting his lookups (F-41.95).
+  //
+  // 'business' IS THE ONLY VALUE THE TYPE ADMITS. Not `Room`, not
+  // `'business' | 'advisor'`: a door that could push a vendor INTO the advisory
+  // room is F-40.3's disease with a new spelling, and the type is where that is
+  // refused rather than in a comment asking the next seat not to. ABSENT => the
+  // row decides, byte-identical to the pre-cure engine (regression law), which
+  // is what the PWA door passes.
+  modeOverride?: 'business';
   // ── CE-41 · SEAT G · G2 · R-41.107 ────────────────────────────────────────
   // THE ROOM A PAGE ASSERTS ABOUT ITSELF, for this turn and no other. Its twin
   // above and it are deliberately TWO FIELDS with opposite polarity: this one can
@@ -273,7 +376,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
 
   const tier = (args.tierOverride ?? agent.tier) as Tier; // CE-7 read-through
   let model = args.modelOverride ?? startModelForTier(tier);
-  const escalated = false; // CE-45 LSP_5: escalation left with the business tool branch; the ledger column stays
+  let escalated = false;
   // The turn's transport. On downgrade (non-anthropic fidelity/API failure) this
   // flips to null for the REMAINDER of the turn — pure anthropic Haiku, spec P5.
   let transport = args.transport ?? null;
@@ -318,7 +421,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // file only through the WhatsApp door, which passes `modeOverride: 'business'`
   // at both its `runTurn` sites and never passes an assertion. The router's
   // resolver carries the surface term because it is called on both lanes.
-  const assertedRoom = (args.roomAssert ?? 'business') as string | null; // CE-45 LSP_5: modeOverride left with the WhatsApp door's engine path
+  const assertedRoom = (args.modeOverride ?? args.roomAssert ?? 'business') as string | null;
   const isAdvisor = !isConsult && assertedRoom === 'advisor';
   // ── R-41.105's WITNESS ────────────────────────────────────────────────────
   // The founder's walk (§6) reads THIS to know the room, because the estate has
@@ -342,27 +445,53 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // CE-41 · SEAT I · R-41.136: the third value is `default`, and `column` can no
   // longer print — there is no column term left to decide. A log still saying
   // `source=column` after this packet is a stale dist, not a live read.
-  const roomSource = args.roomAssert ? 'assert' : 'default';
+  const roomSource = args.modeOverride ? 'override' : (args.roomAssert ? 'assert' : 'default');
   console.log(`[engine:mode] room=${isConsult ? 'consult' : (isAdvisor ? 'advisor' : 'business')} `
-    + `override=no assert=${args.roomAssert ? 'yes' : 'no'} `
+    + `override=${args.modeOverride ? 'yes' : 'no'} assert=${args.roomAssert ? 'yes' : 'no'} `
     + `source=${roomSource}`);
-  // ── CE-45 · LCV-16 · LSP_5 · L5-a (the chair's ruling, 25 September 2026) ──
-  // THE BUSINESS ROOM IS THE DOOR'S. Since LSP_1 the WhatsApp door and the app's
-  // business room answer through the door and never reach runTurn; runTurn serves
-  // the Advisor room and consult. A turn that is neither is refused HERE, after the
-  // room line above has printed which room was asked and before any read or write
-  // (no conversation is opened, no row saved, no usage charged). engine/src/core/
-  // server.ts (P8) is left untouched (Q-c2) and meets this named error. Rung b116.
-  if (!isConsult && !isAdvisor) {
-    throw new Error('ENGINE_BUSINESS_ROOM_RETIRED: the business room is the door\'s; runTurn serves advisor and consult');
-  }
+  // The estate lives ONLY in a business room. Consult is ephemeral (no owner even);
+  // advisor keeps the OWNER but drops all estate. One predicate for the reads below.
+  const estateInRoom = !isConsult && !isAdvisor;
 
   // ── Wake-up read: working thread + durable facts + Donna's snapshot ────────
   const { conversationId, thread } = await getOrCreateConversation(agentId, args.conversationId);
   // Consult sessions are ephemeral: no owner anchor, no durable facts, no Donna snapshot.
-  const { block: ownerBlock } = isConsult
-    ? { block: '' }
+  const { block: ownerBlock, consultDone } = isConsult
+    ? { block: '', consultDone: true }
     : await loadOwner(agentId); // who he works for — Donna's briefing
+  const wasFirstMeeting = estateInRoom && !consultDone; // consult has no first-meeting gate; advisor never runs/discharges the owner consult
+  const factsBlock = estateInRoom ? await loadFacts(agentId) : '';
+  let snapshot = estateInRoom ? await snapshotText(agentId) : ''; // Donna hands Harvey the real state — business room only
+  const donnaMsgs = estateInRoom ? await donnaMessages(conversationId) : ''; // his Donna exchange this conversation (session-scoped)
+
+  // ── Document Shelf: PASSIVE sight of what Donna holds (Bible 5.1.6). The titles
+  //    of every live Brief stand in Harvey's dynamic context each turn — full title
+  //    + page count, never the sections, never the content. Ambient awareness, not
+  //    a tool: he must never have to elect to look, or the confidence-triggered-
+  //    retrieval gap (the RBI mislabel, 2026-06-11) returns. He still goes to Donna
+  //    (dear_donna_talk) for every actual fact; the shelf line only tells him WHICH
+  //    document exists, by name, so he routes and names it cleanly. Dynamic (never
+  //    cached): changes when documents are added. Consult mode has no Donna, no shelf.
+  let shelfBlock = '';
+  if (estateInRoom) {
+    const { data: shelfRows } = await supabase
+      .from('briefs')
+      .select('title, pages')
+      .eq('agent_id', agentId)
+      .is('superseded_by', null)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (shelfRows && shelfRows.length) {
+      const lines = shelfRows.map((b) => {
+        const pages = b.pages ? ` \u00b7 ${b.pages} pages` : '';
+        return `  \u00b7 ${b.title}${pages}`;
+      });
+      shelfBlock =
+        `\n\n[Document Shelf — the documents Donna holds for you:\n` +
+        lines.join('\n') +
+        `]\n`;
+    }
+  }
 
   // ── Field + referencer: tell Harvey his client's trade, and put the Codex
   //    index in front of him so he knows what he can consult. Resolved from the
@@ -532,16 +661,75 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     + (isPlannerVoice ? PRODUCTION_WEAVE : '')
     + (isConsult ? '' : NO_MACHINERY_LAW)
     + fieldBlock
-    + (isConsult ? '' : ROOM_LINE.advisor)
+    + (isConsult ? '' : (isAdvisor ? ROOM_LINE.advisor : ROOM_LINE.business))
     + (isAdvisor ? ADVISOR_LENS : '');
   // The clock: today's date, in the owner's timezone, in the DYNAMIC (never-cached)
   // block — it changes daily and must never be cached stale. Reaches Harvey here;
   // Donna reads the same date via todayLine() in her own runtime.
   const today = todayLine(agent.timezone as string | null);
+  const todayIso = todayISO(agent.timezone as string | null);
   const buildSystem = (): Anthropic.TextBlockParam[] => {
-    // CE-45 LSP_5 (L5-b): the estate blocks (facts, snapshot, Donna's exchange, shelf, calendar, activity, pings,
-    // relay, booked, money, expense) left with the business room; advisor and consult never read them.
-    const dynamic = ownerBlock + `\n\n[${today}]\n`;
+    const calBlock = (estateInRoom && args.calendarSnapshot) ? `\n\n${args.calendarSnapshot}` : '';
+    const actBlock = (estateInRoom && args.recentActivity) ? `\n\n${args.recentActivity}` : ''; // TDW_02 P4 (CE-4), never cached; estate = business room only
+    // TDW_05 F-05.50(b) (CE-68, R1(a)): the enquiry-ping block, actBlock's structural
+    // sibling — DYNAMIC, NEVER CACHED (it changes the minute a bride writes).
+    // GATED ON estateInRoom AND NOT ON ITS OWN: an advisor room LOSES the estate by
+    // ruling A-3 (see :246-251 above) precisely so no neighbouring-line donor pool
+    // stands beside Victor — F-04.70's mechanism, removed by construction. A ping
+    // carries a bride's own sentence, rupee figures and all; exempting it from this
+    // gate would re-open the pool the ruling closed.
+    // AND IT IS *HERE*, IN THE SYSTEM TAIL, NOT IN THE MESSAGE STREAM. That siting is
+    // the whole provenance property: `vendorWords` below (:441-446) is built from
+    // user-role thread messages plus the message in hand — the OWNER'S words only —
+    // and the provenance hold vouches a money figure only if it appears there. A
+    // bride's figure reaching Victor as CONTEXT can inform him; reaching him as a
+    // user-roled message would let it VOUCH for a write, which is F-04.70 exactly.
+    // b05_f0550_ping_drain_bench §2 asserts the absence structurally and functionally.
+    const pingBlock = (estateInRoom && args.leadPings) ? `\n\n${args.leadPings}` : '';
+    // F-06.162/.163 (R-29.29): DYNAMIC, NEVER CACHED — it changes the moment a draft
+    // is staged or resolved. Gated on `estateInRoom` with its two siblings and NOT on
+    // its own: the block carries a draft's verbatim body, which can hold a rupee
+    // figure, and exempting it from the gate would re-open the neighbouring-line donor
+    // pool that ruling A-3 closed (F-04.70's mechanism). SYSTEM TAIL, never the message
+    // stream — the same provenance siting as pingBlock, so a figure here can inform
+    // Victor and can never VOUCH for a write.
+    const relayBlock = (estateInRoom && args.pendingRelay) ? `\n\n${args.pendingRelay}` : '';
+    // F-39.73 (R-VS.2): DYNAMIC, NEVER CACHED — it changes the moment an invoice is
+    // raised or a payment lands. Gated on `estateInRoom` with its three siblings and
+    // NOT on its own: the block carries rupee figures, and exempting it from the gate
+    // would re-open the neighbouring-line donor pool ruling A-3 closed (F-04.70's
+    // mechanism). SYSTEM TAIL, never the message stream — the same provenance siting
+    // pingBlock and relayBlock carry, so a figure here can INFORM Victor and can never
+    // VOUCH for a write (the provenance hold reads `vendorWords`, the owner's own
+    // messages, and this block is deliberately not among them).
+    //
+    // IT IS LAST, AND THAT IS THE INSTRUCTION. CE-77's position doctrine, named after
+    // the M-4 narration arc: position inside a paragraph is part of the instruction.
+    // The block ends on the sentence that must govern — these are the only figures for
+    // money owed, and the cabinet does not hold this.
+    const moneyBlock = (estateInRoom && args.moneyFacts) ? `\n\n${args.moneyFacts}` : '';
+    // F-42.97 (CE-42 V-2): DYNAMIC, NEVER CACHED — it changes the moment an expense
+    // is logged or edited. Gated on `estateInRoom` with its four siblings and NOT on
+    // its own: the block carries rupee figures AND dates, and exempting it from the
+    // gate would re-open the neighbouring-line donor pool ruling A-3 closed
+    // (F-04.70's mechanism). SYSTEM TAIL, never the message stream — so a figure
+    // here can INFORM Victor and can never VOUCH for a write.
+    //
+    // IT IS LAST, AND IT IS LAST *AFTER* moneyBlock, WHICH IS THE INSTRUCTION.
+    // CE-77's position doctrine: position inside a paragraph is part of the
+    // instruction. Both blocks end on the sentence that must govern their own
+    // plane, and the expense one governs closest to the answer because the expense
+    // plane is the one that had no facts at all until this sitting — 00:52:38 is
+    // what an unfenced silence produced.
+    const expenseBlock = (estateInRoom && args.expenseFacts) ? `\n\n${args.expenseFacts}` : '';
+    // CE-44 · packet 4a: IT IS NOT LAST, AND THAT IS DELIBERATE (chair-ruled).
+    // CE-77's position doctrine governs the two blocks below it: each ends on the
+    // sentence that must govern its own plane, and those two seats are earned. This
+    // block carries no figure and no governing sentence — it states what stands on
+    // the vendor's books and stops — so it sits with the other informers, after
+    // relayBlock, and leaves money and expenses the last word they hold.
+    const bookedBlock = (estateInRoom && args.bookedFacts && args.bookedFacts.block) ? `\n\n${args.bookedFacts.block}` : '';
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock + bookedBlock + moneyBlock + expenseBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];
@@ -584,16 +772,31 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     // No escalate (E-3 keeps it off every tier regardless).
     if (handbook) tools.push(ADVISOR_HANDBOOK_TOOL);
     tools.push(JOT_ADVICE_TOOL);
+  } else if (!isConsult) {
+    tools.push(DEAR_DONNA_TALK_TOOL);
+    if (handbook) tools.push(DEAR_DONNA_HANDBOOK_TOOL);
+    if (canEscalate(tier)) tools.push(ESCALATE_TOOL);
   }
 
   const priorTurns: Anthropic.MessageParam[] = (thread as ThreadMessage[]).map((m) => ({
     role: m.role,
     content: m.content,
   }));
+  // ── THE PROVENANCE HOLD's corpus (M-2, mechanical-floors ZIP): the vendor's own
+  // words this thread — every user-role message on the working thread plus the
+  // message in hand, assembled once per turn and handed down to Donna's runtime.
+  // A money figure in a WRITE hand must appear here or the hand holds with the
+  // honest question (provenanceHold.ts). Deliberately the OWNER'S words only: the
+  // snapshot, the facts block, and Victor's own prose never vouch for a figure —
+  // F-04.70's ₹50,000 came from exactly those neighbours.
+  const vendorWords = [
+    ...(thread as ThreadMessage[]).filter((m) => m.role === 'user').map((m) => m.content),
+    message,
+  ].join('\n');
   let messages: Anthropic.MessageParam[] = [...priorTurns, { role: 'user', content: message }];
 
   let reply: string | null = null;
-  const turnView: ViewRow[] | null = null; // CE-45 LSP_5: only Donna's reads filled a view; advisor and consult produce none
+  let turnView: ViewRow[] | null = null; // the latest READ's rows become this turn's view
   let accumulatedText = ''; // Harvey's counsel, captured from EVERY iteration — not
                             // just the terminal no-tool one. Fixes the bug where text
                             // emitted alongside a tool call (advise-while-delegating)
@@ -601,6 +804,16 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   let totalIn = 0, totalOut = 0, costInr = 0;
   let cacheRead = 0, cacheWrite = 0; // surfaced so the cache hit is visible in /chat
   const toolCalls: TurnResult['tool_calls'] = [];
+
+  // The two-way exchange state, carried across Harvey's iterations within this turn.
+  let donnaSession: DonnaSession | null = null; // Donna's live conversation, for resume
+  let talks = 0;                                // Harvey<->Donna round-trips this turn
+  // TDW_06 D-6: her open question, tracked beside the session. Set from each
+  // exchange's own return — non-empty exactly while the session holds
+  // pendingToolUseId (she ended by speaking ALONE and is waiting); a later
+  // exchange that resumes and resolves her clears it, because runDonnaTurn
+  // resets pendingToolUseId per segment and only re-arms it on listen-alone.
+  let pendingDonnaQuestion = '';
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     // Victor's prose streamed token by token (victor_token) when a streaming door wired
@@ -659,10 +872,224 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
       break;
     }
 
+    const esc = toolUse.find((t) => t.name === 'escalate');
+    if (esc && !escalated) {
+      escalated = true;
+      // F-04.85 CLOSED (CE ruling E-3): DEFENSIVE TOMBSTONE. canEscalate is false
+      // for every tier, so the tool never boards and this branch is unreachable on
+      // any lawful turn — it survives only against a foreign injection of an
+      // 'escalate' call (a replayed thread, a compat endpoint's invention), and
+      // even then the re-run stays on Haiku: zero Sonnet reachable, mechanically.
+      model = MODELS.haiku;
+      const idx = tools.findIndex((t) => t.name === 'escalate');
+      if (idx >= 0) tools.splice(idx, 1);
+      messages = [...priorTurns, { role: 'user', content: message }]; // clean re-run, on Haiku (see :528-532)
+      donnaSession = null; // fresh exchange on the re-run
+      talks = 0;
+      pendingDonnaQuestion = ''; // D-6: the re-run's exchange starts clean too
+      continue;
+    }
+
     const results: Anthropic.ToolResultBlockParam[] = [];
+    let mutatedThisRound = false;
     for (const tu of toolUse) {
       let result: string;
-      if (tu.name === 'dear_donna_handbook') { // the ADVISOR's handbook lookup (ADVISOR_HANDBOOK_TOOL keeps this name)
+      if (tu.name === 'dear_donna_talk') {
+        const msg = (tu.input as { message?: string }).message ?? '';
+
+        // Fuse: if Harvey and Donna have gone back and forth past the cap without
+        // closing, stop the exchange (logged) and tell Harvey to wrap up to the client.
+        if (talks >= TALK_FUSE) {
+          // eslint-disable-next-line no-console
+          console.log(`[H<->D] FUSE TRIPPED at ${talks} exchanges — agent ${agentId}, conv ${conversationId}`);
+          const abort =
+            "You and Donna have gone back and forth several times without closing this. " +
+            "Stop here: tell the client what you have and what is still open, in your own voice.";
+          toolCalls.push({ name: 'dear_donna_talk', input: tu.input, result: '(exchange limit reached)' });
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: abort });
+          continue;
+        }
+
+        talks++;
+        // eslint-disable-next-line no-console
+        console.log(`[H->D #${talks}] ${msg}`);
+
+        args.onEvent?.({ type: 'dispatch', to: 'donna', message: msg });
+        // ── F-04.86 CURE (TDW_06 economics sitting; convicted LIVE by the gauntlet's
+        // L2 lane, reproduced at the bench): after a Victor-side provider downgrade
+        // (`transport = null` above), the old wiring handed Donna the NATIVE anthropic
+        // client (`donnaTransport ?? transport` → null → undefined) while STILL passing
+        // `args.modelOverride` — the foreign model string against Anthropic's API, a
+        // hard 404, the turn dead. Spec P5's contract ("Haiku for the rest of this
+        // turn") now covers BOTH hands: on downgrade, a one-model-both-hands route
+        // sends her native-Haiku (transport undefined, model undefined). An explicit
+        // donna split (args.donnaTransport) is untouched — her own catch governs her leg.
+        const donnaTransportForSeg = args.donnaTransport ?? (providerDowngrade ? undefined : (transport ?? undefined));
+        const donnaModelForSeg = args.donnaTransport
+          ? args.donnaModelOverride
+          : (providerDowngrade ? undefined : (args.donnaModelOverride ?? args.modelOverride));
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, donnaTransportForSeg, donnaModelForSeg, vendorWords, args.bookedFacts);
+        // F-04.87 (same sitting): her downgrade folds into the turn's flag — the door's
+        // activity write and TurnResult see BOTH hands' fidelity, and a bench/gauntlet
+        // can void a candidate's turn mechanically instead of trusting a console line.
+        if (donna.provider_downgrade) providerDowngrade = true;
+        donnaSession = donna.session; // persist so the next dear_donna_talk RESUMES her
+        totalIn += donna.input_tokens;
+        totalOut += donna.output_tokens;
+        // 02-HOTFIX (2026-07-15): her cache buckets fold into the turn totals so the
+        // ledger sees the WHOLE turn's billing shape, not just Victor's. TDW_06
+        // economics sitting: the day this seam existed for arrived — donna.ts now
+        // caches her static prefix on the anthropic path, so these buckets carry her
+        // cache writes/reads live (and compat-endpoint buckets where reported).
+        cacheRead += donna.cache_read_tokens;
+        cacheWrite += donna.cache_write_tokens;
+        costInr += donna.cost_inr;
+        if (donna.mutated) mutatedThisRound = true;
+        if (donna.view && donna.view.length) turnView = donna.view; // this ask produced a view
+
+        // Donna's reply comes back in HER OWN VOICE, not a bare return. Logged as two
+        // halves so the dialogue is legible: dear_donna_talk (Harvey -> Donna, with what
+        // she actually did nested under it) and listen_harvey_talk (Donna -> Harvey).
+        const said = donna.message.trim();
+        // TDW_06 D-6: pendingToolUseId is the trigger (donna.ts's listen-ALONE arm);
+        // her final message text is what the guard's line will quote. An exchange
+        // that resolved her (work+listen, or a fresh segment) writes '' here.
+        pendingDonnaQuestion = donna.session.pendingToolUseId ? said : '';
+        const voiced = /^listen[,\s]+harvey/i.test(said) ? said : `Listen Harvey \u2014 ${said}`;
+
+        // ── THE RELAY-SEAM DEED LINE (TDW_06 THE DETERMINISTIC SITTING, 2026-07-28;
+        // CE fork B-2(α), amended from (c) on the executor's §2 blocking report and
+        // the chair's correction №1). HER VOICED SENTENCE IS CHECKED AGAINST HER OWN
+        // HAND'S RECEIPT, AND A DETECTED CONTRADICTION CARRIES THE DEED'S SENTENCE.
+        //
+        // THE DISEASE: SD-REL. The door refuses to overwrite a standing fact, says so
+        // in a receipt in her own hand — and the relay speaks the DISPATCH back as the
+        // outcome anyway. CE-94 made the honest sentence producible; Evening One proved
+        // producible is not spoken; CE-100 carried the receipt to Victor's composer;
+        // Evening Four proved the residual is a COIN-FLIP and architecture-indifferent.
+        // Cures that ask a mouth to choose cannot clear an every-cell-twice bar.
+        //
+        // WHY THE APPEND FORM AND NOT AN ADJACENT ENTRY — derived, reported, ruled.
+        // SD-REL's verdict reads exactly one surface: the `listen_harvey_talk` results
+        // (`b06_gauntlet.js`, the `relays` line). Its verdict is BYTE-UNTOUCHED by
+        // ruling (CE-91's don't-re-aim-the-grader precedent). So a deed sentence filed
+        // as its own separate entry would repair the thread and leave SD-REL exactly as
+        // intermittent as Evening Four found it — the one outcome Path A exists to
+        // prevent. The append is the composedTail/deed-line precedent, thrice shipped:
+        // the model's words and the door's line in ONE field, the door's attributable
+        // by its seam. HER BYTES ARE VERBATIM-FIRST AND BYTE-EXACT; nothing of hers is
+        // edited, reordered or dropped, and an honest relay is returned UNTOUCHED.
+        //
+        // THE SEPARABILITY THIS BUYS AND OWES: because the tail is door speech living
+        // inside a relay field, every per-mouth arm MUST strip at the seam before
+        // judging, or an appended honest tail could ACQUIT a fabricating relay (the
+        // hazard was enumerated in advance, not discovered). `RELAY_DEED_SEAM` has ONE
+        // home in relaySeam.ts and `stripDeedTail` is imported by the arms from it;
+        // both directions are asserted as cells.
+        //
+        // THE PREDICATE READS STRUCTURED FIELDS, NEVER PROSE (F-06.102): `dc.refused`
+        // is the door's own already-evaluated guard conditions as data. A hand with no
+        // `refused` array can never be detected and its relay ships byte-identical —
+        // FAIL-OPEN by construction, no inference fallback, and none may be added. The
+        // coverage boundary is stated as law in relaySeam.ts: `refused` today is
+        // authored at TWO sites (donnaLead's single-match returns), which is NOT the
+        // same set as `plain`'s three.
+        //
+        // THE DISTIL CONSEQUENCE, which is half the point: `memory.ts`'s
+        // `donnaMessages` re-injects `listen_harvey_talk.result` into Harvey's context
+        // on EVERY later turn of the conversation. An uncorrected echo is therefore
+        // re-taught for the life of the thread — this block's founding conviction, that
+        // the thread teaches the shape. Because the annotated text IS the persisted
+        // result, the correction re-teaches instead, and `donnaMessages` needs NO
+        // change at all: zero reader bytes ship, asserted as a cell.
+        const echoedPlain: string[] = [];
+        for (const dc of donna.tool_calls) {
+          if (!dc.refused || !dc.refused.length) continue; // fail OPEN: no structure, no detection
+          if (!dc.plain) continue;                          // no authored sentence, nothing to carry
+          if (echoedRefusals(voiced, dc.refused).length) echoedPlain.push(String(dc.plain).trim());
+        }
+        const deedSentence = Array.from(new Set(echoedPlain)).join(' ');
+        // A CLEAN TURN APPENDS NOTHING AND PERSISTS NOTHING — the cost fires only on a
+        // detected contradiction (cell). `voicedOut === voiced` byte-exact otherwise.
+        const voicedOut = deedSentence ? appendDeedTail(voiced, deedSentence) : voiced;
+
+        // eslint-disable-next-line no-console
+        console.log(`[D->H #${talks}] ${voicedOut}`);
+        args.onEvent?.({ type: 'donna_report', message: voicedOut });
+
+        toolCalls.push({
+          name: 'dear_donna_talk',
+          input: tu.input,
+          result: '(handed to Donna)',
+          donna_calls: donna.tool_calls.map((dc) => ({ name: dc.name, input: dc.input, result: dc.result, ...(dc.plain ? { plain: dc.plain } : {}), ...(dc.refused && dc.refused.length ? { refused: dc.refused } : {}) })),
+        });
+        toolCalls.push({ name: 'listen_harvey_talk', input: { message: msg }, result: voicedOut });
+
+        // ── FORK C (TDW_06 Donna cure sitting, 2026-07-28; CE-99 chartered, R-1/R-2
+        // ruled). THE DOOR'S OWN PLAIN SPEECH REACHES VICTOR'S COMPOSER BESIDE HER
+        // VOICED SENTENCE — so a relay that echoes the dispatch, or drops a date, is no
+        // longer the ONLY thing he ever sees.
+        //
+        // THE SPECIMENS: SD-REL 3-for-3 on L3 (the relay echoed the dispatch OVER the
+        // honest F-06.92 receipt in her own hand — the paper cure made honesty
+        // PRODUCIBLE and producible turned out not to be SPOKEN on the cheap hand); and
+        // SD-FRESHr4 ("Inbox is quiet" over five dated hands). Refused twice before this
+        // — NOTE_12 §7's two grounds — and both are answered, by derivation, not by
+        // waiting them out:
+        //
+        //   GROUND 1, F-06.52's donor shape: the disease was MACHINERY VOCABULARY in the
+        //   model's context — headers were merely its commonest carrier. F-06.102 (minted
+        //   this sitting) proved a second carrier is live: `dc.result` ships `(id=<uuid>)`,
+        //   raw column keys and binder-machinery clauses. So this seam reads `plain` AND
+        //   ONLY `plain` — the door-authored clause, machinery-free BY CONSTRUCTION, with
+        //   NO FALLBACK to `result`. A door that authored no plain clause contributes
+        //   nothing. That absence is the cure (R-8).
+        //
+        //   GROUND 2, "it dissolves the mouth-attribution arm's subject": derived FALSE.
+        //   `handAttribution` reads `relays` (listen_harvey_talk results) and
+        //   `nestedHands` (donna_calls) — this seam touches NEITHER. Its STRANDED /
+        //   DROPPED / SURVIVED classification is byte-stable across this change. What
+        //   dies is not the arm's subject but its EXCLUSIVITY: a dropped relay beside a
+        //   dateless Victor reply is now BOTH her loss and his, where the old sentence
+        //   acquitted him for free. The per-mouth geometry (F-04.78, F-06.86/91) judges
+        //   each mouth on its own words regardless of what the other holds, and it still
+        //   does. The arm got sharper, not emptier.
+        //
+        // UNLABELED, per F-06.52's own law: the receipt is appended to the SAME content
+        // block her voiced sentence arrives in — no header, no frame, no "receipt:"
+        // prefix. Knowledge arrives as knowledge. b06_f0692_bench asserts the composed
+        // content carries no framing banner, both directions.
+        //
+        // LIVE-TURN ONLY, and priced: `loadThread` (memory.ts:85-109) selects role and
+        // content and maps to {role, content} — tool evidence never replays — and
+        // `persistComposedReply` writes only `reply + tail`. So this costs ~50 tokens
+        // ONCE, on the turn, on write-class turns, and never compounds across a thread.
+        // `:706`'s donna_calls persistence gains `plain` additively; every consumer of
+        // `result` (chipFiling, donnaWitnessLines, nestedHands, D-1's law) is untouched.
+        //
+        // F-06.85, BOTH DIRECTIONS — THE ARM THIS SEAM NOW CONDITIONS. b06_gauntlet's
+        // `handAttribution` limb 2 used to say, in the rig's own words, "Victor's
+        // composer NEVER RECEIVED THE DATES (loop.ts:710 hands him the voiced text
+        // alone)". THAT SENTENCE DIED THE MOMENT THIS SHIPPED, and it has been re-aimed
+        // at b06_gauntlet.js (the DROPPED and STRANDED branches both). IF THIS SEAM IS
+        // EVER REVERTED, NARROWED, OR ITS PAYLOAD SCOPE CHANGED, RE-READ BOTH BRANCHES
+        // BEFORE SHIPPING — they are conditioned on this line and will otherwise fail
+        // silently, which is precisely the class F-06.85 exists to prevent.
+        //
+        // TDW_06 DETERMINISTIC SITTING: a receipt already carried at the relay seam is
+        // NOT repeated here — Victor would otherwise read the same sentence twice in
+        // one payload. The seam's copy wins because it is the one SD-REL and the thread
+        // both see; Fork C keeps every receipt the seam did not carry, unchanged.
+        const carriedAtSeam = new Set(echoedPlain);
+        const plainReceipts = donna.tool_calls
+          .map((dc) => (dc.plain ? String(dc.plain).trim() : ''))
+          .filter((t) => t.length > 0 && !carriedAtSeam.has(t));
+        const composedForVictor = plainReceipts.length
+          ? `${voicedOut}\n\n${plainReceipts.join('\n\n')}`
+          : voicedOut;
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: composedForVictor });
+        continue;
+      } else if (tu.name === 'dear_donna_handbook') {
         const ref = (tu.input as { ref?: string }).ref ?? '';
         const section = await getSection(field, ref);
         result = section ?? `No section "${ref}" found in your reference. Check the index for the right number.`;
@@ -672,12 +1099,18 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         // (D-1's reader) but is NOT a Donna dispatch — an advisor turn carries ZERO
         // donna_calls by construction, which is exactly how the ledger reads the room.
         result = await executeJotAdvice(agentId, tu.input as { note?: string });
+      } else if (tu.name === 'escalate') {
+        result = 'Already escalated.';
       } else {
         result = `Unknown tool: ${tu.name}`;
       }
       toolCalls.push({ name: tu.name, input: tu.input, result });
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: result });
     }
+
+    // Donna already patched the snapshot surgically from each confirmed write.
+    // Re-read it so the rest of the turn reasons on the true, post-write state.
+    if (mutatedThisRound) snapshot = await snapshotText(agentId);
 
     messages.push({ role: 'assistant', content: resp.content });
     messages.push({ role: 'user', content: results });
@@ -703,6 +1136,12 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // agent_owner consult stamp, the usage-ledger insert — can still throw, and if it does
   // the wrapper must NOT tombstone a thread that already holds the true answer.
   ctx.saved = true;
+
+  // First-meeting greeting delivered on this turn → mark it so the opener never fires again,
+  // on any device. consult_done gates ONLY the opening line, not the ongoing read of the owner.
+  if (wasFirstMeeting) {
+    await supabase.from('agent_owner').update({ consult_done: true }).eq('agent_id', agentId);
+  }
 
   // 02-HOTFIX (2026-07-15): the ledger records the cache buckets. Root cause of the
   // "stripped ~900-token calls" field-report item: a cold-cache turn bills its ~32.5k
@@ -749,6 +1188,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     tokens: { input: totalIn, output: totalOut, cache_read: cacheRead, cache_write: cacheWrite },
     view: turnView,
     assistant_message_id: assistantMessageId || undefined, // Q-B4-6(b): the row the door may patch
+    pendingDonnaQuestion: pendingDonnaQuestion || undefined, // D-6: absent when no open question
     victor_mode: isConsult ? undefined : (isAdvisor ? 'advisor' : 'business'), // TDW_06 P6a: inert for consult
   };
 }

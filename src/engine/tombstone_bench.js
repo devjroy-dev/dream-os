@@ -23,8 +23,7 @@
 // conversation id at getOrCreateConversation's resolve — written from READING. The
 // bench proved it: a throw in the window between the resolve and saveMessage(user)
 // (loadOwner, loadFacts, snapshotText, donnaMessages and the shelf read ALL await
-// there; since CE-45 LSP_5 runTurn serves only advisor and consult, and in the Advisor
-// room loadOwner and the handbook reads await there, so the bench is aimed at that room, Q-c3) tombstoned a thread WITH NO USER ROW IN IT — an assistant row denying a
+// there) tombstoned a thread WITH NO USER ROW IN IT — an assistant row denying a
 // reply to a message that was never recorded, and on a fresh conversation the
 // thread's FIRST message. F-04.51's own disease rebuilt inside its cure.
 //
@@ -130,7 +129,7 @@ const healthyAnthropic = {
   MESSAGES.length = 0;
   let threw = null;
   try {
-    await runTurn({ agentId: 'agent-1', roomAssert: 'advisor', message: 'move Meera\'s wedding shoot to 15 November',
+    await runTurn({ agentId: 'agent-1', message: 'move Meera\'s wedding shoot to 15 November',
                     transport: dyingAnthropic });
   } catch (e) { threw = e; }
   console.log('  thread now holds:'); rows().forEach((r) => console.log('     ' + r));
@@ -150,7 +149,7 @@ const healthyAnthropic = {
 
   console.log('\n=== T-2 — THE §1.5 GUARD: a healthy turn must NEVER gain a tombstone ===');
   MESSAGES.length = 0; convoInserts = 0;
-  await runTurn({ agentId: 'agent-1', roomAssert: 'advisor', message: 'all good?', transport: healthyAnthropic });
+  await runTurn({ agentId: 'agent-1', message: 'all good?', transport: healthyAnthropic });
   console.log('  thread now holds:'); rows().forEach((r) => console.log('     ' + r));
   const assistants = MESSAGES.filter((m) => m.role === 'assistant');
   ok('exactly one assistant row', assistants.length === 1, `got ${assistants.length}`);
@@ -164,7 +163,7 @@ const healthyAnthropic = {
     ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: 'boom' } }) }) }) }
     : stub(t));
   let threw3 = null;
-  try { await runTurn({ agentId: 'agent-1', roomAssert: 'advisor', message: 'hello', transport: healthyAnthropic }); }
+  try { await runTurn({ agentId: 'agent-1', message: 'hello', transport: healthyAnthropic }); }
   catch (e) { threw3 = e; }
   db.supabase.from = savedFrom;
   ok('the agent-lookup error is rethrown', threw3 && /agent lookup failed/.test(threw3.message),
@@ -173,20 +172,20 @@ const healthyAnthropic = {
      `got ${MESSAGES.length} rows`);
 
   console.log('\n=== T-4 — THE WINDOW MY OWN SKETCH OPENED: throw AFTER the conversation');
-  console.log('         resolves but BEFORE the user row lands (loadOwner, a real await) ===');
+  console.log('         resolves but BEFORE the user row lands (snapshotText, a real await) ===');
   MESSAGES.length = 0; convoInserts = 0;
   const saved4 = db.supabase.from;
   db.supabase.from = (t) => {
-    if (t === 'agent_owner') throw new Error('owner store unreachable'); // CE-45 LSP_5 (Q-c3): the advisor room's own await in the window
+    if (t === 'agent_snapshot') throw new Error('snapshot store unreachable');
     return stub(t);
   };
   let threw4 = null;
-  try { await runTurn({ agentId: 'agent-1', roomAssert: 'advisor', message: 'hello', transport: healthyAnthropic }); }
+  try { await runTurn({ agentId: 'agent-1', message: 'hello', transport: healthyAnthropic }); }
   catch (e) { threw4 = e; }
   db.supabase.from = saved4;
   console.log('  thread now holds:');
   if (!MESSAGES.length) console.log('     (nothing)'); else rows().forEach((r) => console.log('     ' + r));
-  ok('the owner-read error is rethrown', threw4 && /owner store unreachable/.test(threw4.message),
+  ok('the snapshot error is rethrown', threw4 && /snapshot store unreachable/.test(threw4.message),
      threw4 ? threw4.message : 'nothing thrown');
   ok('NO user row landed (the throw beat saveMessage(user))', !MESSAGES.some((m) => m.role === 'user'));
   ok('THEREFORE no tombstone — there is no orphan to mark',

@@ -16,17 +16,6 @@
 // asserts POSITION as a mechanical property: the closing clause of each guarded paragraph
 // must BE the closing clause. Any future append that pushes it off-terminal REDs here
 // before it reaches a wire.
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["§1.2 V-2 donnaSoul","K6: donnaSoul.ts is deleted with Donna's turn"],["§2.2 donnaSoul","K6: donnaSoul.ts is deleted with Donna's turn"],["§2.2 RED (donnaSoul)","K6: donnaSoul.ts is deleted with Donna's turn"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -151,7 +140,26 @@ t('§1.1 V-1 harveySoul — M-4\'s register sentence is GONE, and the pre-existi
 // asserted more precisely than byte-equality ever did. What may differ is ENUMERATED BY
 // RULING, and any fourth difference REDs. V-3 advisorLens is untouched by this sitting
 // and keeps whole-file equality exactly as before.
-__RETIRED("§1.2 V-2 donnaSoul");
+t('§1.2 V-2 donnaSoul — every pre-M-4 readable sentence is ACCOUNTED FOR; only the three RULED deltas differ', () => {
+  const sentences = (x) => x.split(/(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean);
+  const src = new Set(sentences(read(DONNA)));
+  const pre = sentences(gitShow(PRE_M4, DONNA));
+  const lost = pre.filter((s) => !src.has(s));
+
+  // The three licensed deltas, each named to the ruling that authorised it. A pre-M-4
+  // sentence may be absent ONLY if it is one of these; anything else is a partial revert
+  // or an unruled edit, which is what this cell has always existed to catch.
+  const ALLOW = [
+    [/is not a reach that hands you a clock/, 'F-06.81 clause 4 — the stale premise, founder-approved re-draft'],
+    [/this reach cannot say/, 'F-06.81 clause 6b — the stale conclusion, founder-approved replacement'],
+    [/two clients named Rhea/, 'F-06.79 Fork 3A — the exemplar line, EXTENDED by insertion (halves proven surviving in b05_f0550 §6.1)'],
+  ];
+  const unexplained = lost.filter((s) => !ALLOW.some(([re]) => re.test(s)));
+  assert.deepStrictEqual(unexplained, [],
+    `donnaSoul lost pre-M-4 readable content OUTSIDE the ruled boundary — a partial revert of a soul is a third version nobody ruled:\n       ${unexplained.map((s) => JSON.stringify(s.slice(0, 80))).join('\n       ')}`);
+  assert.strictEqual(lost.length, ALLOW.length,
+    `expected exactly ${ALLOW.length} ruled deltas, found ${lost.length} — re-derive before trusting this cell`);
+});
 
 t('§1.3 V-3 advisorLens is BYTE-IDENTICAL to ' + PRE_M4, () => {
   assert.strictEqual(read(LENS), gitShow(PRE_M4, LENS),
@@ -171,7 +179,10 @@ t('§2.1 advisorLens — "never the machinery of how you would have known it" go
     'the machinery clause is no longer TERMINAL in its paragraph — the CE-77 regression, restored');
 });
 
-__RETIRED("§2.2 donnaSoul");
+t('§2.2 donnaSoul — "You make him right. He does the rest." closes the soul again', () => {
+  assert.ok(/You make him right\. He does the rest\.`;\s*$/.test(read(DONNA).trim()),
+    'donnaSoul no longer closes on its own purpose line — V-2\'s displacement, restored');
+});
 
 t('§2.3 harveySoul — the VOICE RUN is contiguous again, unsplit', () => {
   const src = read(HARVEY);
@@ -289,9 +300,6 @@ const MUTATIONS = [
     } },
 ];
 
-// CE-45 LCV-16 LSP_5 (A-45.2): the mutation on donnaSoul.ts (K6: deleted) is RETIRED, never "restored"; the four on live files run.
-__RETIRED("§2.2 RED (donnaSoul)");
-for (let k = MUTATIONS.length - 1; k >= 0; k -= 1) if (MUTATIONS[k].file === DONNA) MUTATIONS.splice(k, 1);
 for (const m of MUTATIONS) {
   t(m.label, () => {
     const before = read(m.file);
@@ -314,7 +322,7 @@ t('§5.0 every mutated file is restored BYTE-IDENTICAL', () => {
   // exemplar insertion (§1.2's amendment), so restoration is asserted on THIS section's
   // own mutation target — the closing purpose line — instead of whole-file equality.
   // Same treatment harveySoul already receives two lines below, same reason.
-  // RE-DERIVED (CE-45 LCV-16 LSP_5, labelled) over the mutations that remain: donnaSoul.ts is deleted (K6) and no longer mutated.
+  assert.ok(/He does the rest\.`;$/.test(read(DONNA).trim()), `a mutation survived in ${DONNA}`);
   // harveySoul lawfully differs from PRE_M4 by the position move (F-06.52), so restoration
   // is asserted on the moved law's terminal placement instead of whole-file equality.
   assert.ok(/spoken to him, finished\.`;$/.test(read(HARVEY).trim()), 'a mutation survived in harveySoul');

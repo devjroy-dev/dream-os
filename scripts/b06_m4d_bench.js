@@ -19,17 +19,6 @@
 // and its verdict is behavioural — a desk can prove the label is gone, never that the
 // model stops narrating. §1 and §2 are mechanical and binding. The behavioural half is
 // the walk's, asserted on STORED CONTENT (not the wire, whose name-scrub masks it).
-// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
-// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25-26 September 2026) retired the business room from runTurn and deleted Donna's
-// turn and the engine code only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
-// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
-// matched exactly ONE reached cell, or the bench exits 1.
-const __RETIRE_LSP5 = new Map([["§1.1 RED (donna.ts)", "L5-c: the snapshot frames lived in donna.ts snapshotText, deleted; the mutation anchor no longer exists"], ["§1.3 RED (donna.ts)", "L5-c: the snapshot frames lived in donna.ts snapshotText, deleted; the mutation anchor no longer exists"], ["§1.2 the three census sites", "L5-c (the chair, 26 Sep): memory.ts donnaMessages is deleted; the exchange frame these cells were re-aimed to (turn 7) lived in it, so no frame of the three census sites remains"], ["§1.3 ⚑ FRAMING ONLY", "L5-c (the chair, 26 Sep): memory.ts donnaMessages is deleted; the exchange frame these cells were re-aimed to (turn 7) lived in it, so no frame of the three census sites remains"]]);
-const __seenLSP5 = new Map();
-function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
-  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
-process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
-  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -73,9 +62,21 @@ t('§1.1 no injection label names the colleague or her artifacts', () => {
     `a machinery label still frames the model's context: ${bad.map((b) => `${b.file}: [${b.label}]`).join(' · ')}`);
 });
 
-__RETIRED("§1.2 the three census sites");
+t('§1.2 the three census sites carry their cured frames', () => {
+  const d = read(DONNA_CTX), m = read(MEMORY);
+  assert.ok(d.includes("[What's open and near] Nothing open or near yet"), 'the empty-snapshot frame was not cured');
+  assert.ok(d.includes("[What's open and near — your live picture, kept true]"), 'the snapshot frame was not cured');
+  assert.ok(m.includes('[Established this conversation — what you already know, turn by turn:]'), 'the exchange frame was not cured');
+});
 
-__RETIRED("§1.3 ⚑ FRAMING ONLY");
+t('§1.3 ⚑ FRAMING ONLY — the CONTENT of every frame is byte-identical to pre-cure', () => {
+  // The register arm's value-invariance logic, applied to labels: a cure that quietly
+  // changed what the model is TOLD would be a far worse defect than the one it fixes.
+  const d = read(DONNA_CTX);
+  assert.ok(/\$\{lines\.join\('\\n'\)\}/.test(d), 'the snapshot body no longer interpolates its lines unchanged');
+  assert.ok(/Nothing open or near yet — clean slate\./.test(d), 'the empty-state sentence was altered');
+  assert.ok(/\$\{recent\.join\('\\n'\)\}/.test(read(MEMORY)), 'the exchange body no longer interpolates its lines unchanged');
+});
 
 t('§1.4 THE ESTATE\'S OWN CLEAN FRAME IS UNTOUCHED — the model this cure copied', () => {
   // memory.ts:230 always framed the owner note as HIS ("[Your owner — the one person you
@@ -104,8 +105,7 @@ t('§2.2 THE BYTES DID NOT CHANGE — position only, and the law exists exactly 
     'the law\'s opening clause was altered');
 });
 
-// RE-WORDED (CE-45 LCV-16 LSP_5, the chair's ruling): runTurn serves the advisor room (and consult); the same composition, the subject unchanged.
-t('§2.3 THE LAW STILL GOVERNS THE ADVISOR ROOM — loop.ts composes HARVEY_SOUL there', () => {
+t('§2.3 THE LAW STILL GOVERNS THE BUSINESS ROOM — loop.ts composes HARVEY_SOUL there', () => {
   // If this ever stops being true, the whole derivation changes: a law in the wrong room
   // cannot be ignored, it simply never applied.
   assert.ok(/const staticPrefix = \(isConsult \? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL\)/.test(read('src/engine/src/core/loop.ts')),
@@ -175,10 +175,6 @@ const MUTATIONS = [
     check: () => assert.ok(/leadPatch\.budget_min = input\.budget_min \|\| null;/.test(read(ENGINE))) },
 ];
 
-// CE-45 LCV-16 LSP_5 (A-45.2): the two mutations on donna.ts's snapshot frames (deleted with snapshotText, L5-c) are RETIRED, never "restored".
-__RETIRED("§1.1 RED (donna.ts)");
-__RETIRED("§1.3 RED (donna.ts)");
-for (let k = MUTATIONS.length - 1; k >= 0; k -= 1) if (MUTATIONS[k].file === DONNA_CTX) MUTATIONS.splice(k, 1);
 for (const m of MUTATIONS) {
   t(m.label, () => {
     const before = read(m.file);
@@ -190,7 +186,7 @@ for (const m of MUTATIONS) {
 
 t('§4.0 every mutated file is restored BYTE-IDENTICAL', () => {
   const dirty = execFileSync('git', ['diff', '--name-only', '--', DONNA_CTX, HARVEY, ENGINE], { cwd: ROOT, encoding: 'utf8' });
-  // RE-DERIVED (CE-45 LCV-16 LSP_5, labelled) over the mutations that remain: the donna.ts frames are deleted and no longer mutated.
+  assert.ok(read(DONNA_CTX).includes("[What's open and near — your live picture, kept true]"), 'a mutation survived in the context frame');
   assert.ok(/spoken to him, finished\.`;$/.test(read(HARVEY).trim()), 'a mutation survived in the soul');
   assert.strictEqual((read(HARVEY).match(/no narrating your machinery/g) || []).length, 1, 'a duplicate law survived');
   assert.ok(read(ENGINE).includes('if (input.budget_min)     leadPatch.budget_min     = input.budget_min;'), 'a mutation survived in the update');
