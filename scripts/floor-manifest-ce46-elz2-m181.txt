@@ -1,0 +1,5 @@
+# CE-46 ELZ-2 · m181 with history (the chair's F7 ruling, 27 September 2026) · base 7b4c036 (carried by command from 7e03e32; the three paths untouched by ASK-1 1c r2)
+# floor-base unchanged: no bench reads m181 (grep -rln m181 scripts/ src/ finds only the e-151 manifest); the script is bare-green (A-46.1).
+docs/handovers/TDW_CE46_ELZ2_M181_HANDOVER.md
+scripts/floor-manifest-ce46-elz2-m181.txt
+scripts/m181_ear_short_relay_measure.js
