@@ -1,4 +1,4 @@
-cd /workspaces/dream-os && git pull --ff-only && test -f CE_SUCCESSION_CE45_TO_CE46.md && mv CE_SUCCESSION_CE45_TO_CE46.md docs/ && sha256sum docs/CE_SUCCESSION_CE45_TO_CE46.md && git add docs/CE_SUCCESSION_CE45_TO_CE46.md && git status --porcelain && git commit -m "CE-45 to CE-46 succession note: the founder's order of 26 September (the conversation layer first), R-45.23 to R-45.33, six seats open, LSP_5 reverted and parked, ASK-1's measured run in flight" && git push origin main && git log --oneline -1TDW · CE-45 → CE-46 · SUCCESSION NOTE · 2026-09-26 IST
+TDW · CE-45 → CE-46 · SUCCESSION NOTE · 2026-09-26 IST
 
 **Read this whole file before ruling anything. Derive both tips by command before the first relay. The founder relays; the chair rules; seats cut; the founder applies, walks, pushes.**
 
