@@ -1,5 +1,5 @@
 {
- "version": "ask1-bank-v1",
+ "version": "ask1-bank-v2",
  "today": "2026-09-26",
  "count": 362,
  "questions": [
@@ -310,11 +310,10 @@
    "source": "export",
    "strat": "rest",
    "expect": {
-    "kind": "fact",
-    "tools": [
-     "owed"
-    ]
-   }
+    "kind": "ask_back",
+    "tools": []
+   },
+   "amended": "cut 1c by label: asked alone, with no earlier turn in the bank, 'the total across everything' names no ledger; asking which is right"
   },
   {
    "id": "q019",
@@ -1958,15 +1957,12 @@
    "source": "kickoff",
    "strat": "rest",
    "expect": {
-    "kind": "fact",
+    "kind": "ask_back",
     "tools": [
-     "client",
-     "events"
-    ],
-    "facts": [
-     "Gurgaon"
+     "client"
     ]
-   }
+   },
+   "amended": "cut 1c by label: her records hold two Priyas (Mehta, Sachdeva); asking which is the right answer"
   },
   {
    "id": "q125",
@@ -5167,7 +5163,8 @@
    "expect": {
     "kind": "advice",
     "tools": []
-   }
+   },
+   "amended": "cut 1c by label (R-46.3): the facts looked up and stated, never a verdict"
   },
   {
    "id": "q336",
@@ -5193,7 +5190,8 @@
    "expect": {
     "kind": "advice",
     "tools": []
-   }
+   },
+   "amended": "cut 1c by label (R-46.3): the facts looked up and stated, never a verdict"
   },
   {
    "id": "q338",

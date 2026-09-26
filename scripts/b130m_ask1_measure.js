@@ -44,6 +44,7 @@ const arg = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); ret
 const MODE = argv.includes('--probe') ? 'probe' : argv.includes('--live') ? 'live' : argv.includes('--dry') ? 'dry' : 'readers';
 const SHOW = argv.includes('--show-misses');
 const S = require('./lib/ask1_store');
+const TODAY_LINE = require(path.join(__dirname, '..', 'src/lib/vendor/askAgent.js')).todayLine(S.NOW_MS);
 const BANK = JSON.parse(require('fs').readFileSync(P('scripts/lib/ask1_bank.json'), 'utf8'));
 
 const MONTHS = 'January|February|March|April|May|June|July|August|September|October|November|December';
@@ -51,12 +52,17 @@ const DATE_RE = new RegExp(`\\b\\d{1,2} (?:${MONTHS})(?: \\d{4})?\\b`, 'g');
 const AMOUNT_RE = /Rs\.? ?[\d,]+/g;
 const TIME_RE = /\b\d{1,2}(?::\d{2})? ?(?:am|pm)\b/gi;
 const COUNT_RE = /(?<![\d,:])\b\d{1,4}\b(?![\d,:]| ?(?:am|pm)\b)/gi;
-const NOT_IN = /\b(?:do(?:es)? ?n[o']t (?:show|have|hold|list)|not (?:in|on) (?:your|the) records|no record|(?:can(?:'t|not)|could(?:n't| not)) find|nothing (?:on|in|for|booked|recorded|listed)|no (?:\w+ ){0,3}(?:on file|recorded|listed|found|booked|scheduled)|there (?:are|is) no|you have no|none)\b/i;
+// Re-taught (cut 1c, the record of 26 September read by hand): "Nothing is booked that day", "No shoots in January", "Your records show
+// no expenses", "No package is attached", "no crew is assigned", "no contract", "no one is shooting" all say the records hold nothing.
+const NOT_IN = /\b(?:do(?:es)? ?n[o']t (?:show|have|hold|list)|not (?:in|on) (?:your|the) records|no record|(?:can(?:'t|not)|could(?:n't| not)) find|nothing (?:is |was )?(?:on|in|for|booked|recorded|listed|sent|due|blocked|scheduled)|no (?:\w+ ){0,3}(?:on file|recorded|listed|found|booked|scheduled|attached|assigned|added|sent)|there (?:are|is) no|you have no|none|(?:show|shows|showed) no|^no \w+|\bno (?:one|contract|venue|crew|shoots?|events?|expenses?|package|payments?|invoices?)\b|has not been|have not been|not (?:yet )?(?:assigned|attached|added|sent|signed)|is not (?:on|in) your|owes? (?:you )?nothing|nothing is overdue)/im;
+// R-46.2: an example in a question back, introduced by "for example" or "like", is not an asserted fact; m2 reads it out before extracting.
+const MARKED = /\b(?:for example|like)\b[^.?!\n]*/gi;
+const VERDICT = /\b(?:you should (?:take|accept|decline|not)|take it|don'?t take|go for it|doing (?:well|badly|great|poorly|fine|good)|is (?:a )?good (?:idea|choice)|is (?:a )?bad (?:idea|choice))\b/i;
 const PERSONA = /\b(?:I am|I'm|this is|it's)\s+(?:your\s+)?(?:AI\s+)?(?:assistant|victor|donna|eliza|harvey|myra)\b|\bassistant\b/i;
 
 const norm = (t) => String(t || '').replace(/\s+/g, ' ');
 function factsIn(reply) {
-  const t = norm(reply);
+  const t = norm(reply).replace(MARKED, ' ');
   const dates = (t.match(DATE_RE) || []);
   const amounts = (t.match(AMOUNT_RE) || []).map((a) => a.replace(/^Rs\.? ?/, 'Rs ').replace(/,$/, ''));
   const times = (t.match(TIME_RE) || []).map((x) => x.toLowerCase().replace(/\s/g, ''));
@@ -66,7 +72,7 @@ function factsIn(reply) {
 }
 // For --show-misses on m2: the facts in the reply that the turn's tool results (and her own words) do not hold, each named by kind.
 function unfound(reply, c) {
-  const pool = norm(`${JSON.stringify(c.calls.map((x) => x.result))} ${c.text}`).toLowerCase().replace(/\s/g, '');
+  const pool = norm(`${JSON.stringify(c.calls.map((x) => x.result))} ${c.text} ${c.today || ''}`).toLowerCase().replace(/\s/g, '');
   const f = factsIn(reply); const has = (x) => pool.includes(String(x).toLowerCase().replace(/\s/g, ''));
   return [...f.dates.filter((x) => !has(x)).map((x) => `date ${x}`), ...f.amounts.filter((x) => !has(x)).map((x) => `amount ${x}`), ...f.times.filter((x) => !has(x)).map((x) => `time ${x}`), ...f.counts.filter((x) => !has(x)).map((x) => `count ${x}`)];
 }
@@ -75,16 +81,17 @@ const R = {
     const k = c.expect.kind; const t = norm(reply);
     const called = !c.expect.tools.length || c.calls.some((x) => c.expect.tools.includes(x.name));
     const facts = (c.expect.facts || []).every((f) => t.toLowerCase().includes(String(f).toLowerCase()));
-    if (k === 'fact') return called && facts && t.length > 0;
+    // A 'fact' question answered only by a question back (ends in "?", no figure outside a marked example) did not answer it (cut 1c).
+    if (k === 'fact') return called && facts && t.length > 0 && !(/\?\s*$/.test(t) && !/\d/.test(t.replace(MARKED, ' ')));
     if (k === 'none' || k === 'not_in_records') return called && NOT_IN.test(t);
-    if (k === 'handback') return /\bsend "/i.test(t) || /send (?:it |that )?as (?:its|a) own message/i.test(t);
-    if (k === 'ask_back') return /\?/.test(t);
-    if (k === 'advice') return /Advisor/.test(t);
+    if (k === 'handback') return /\bsend(?:ing)?[:\s]/i.test(t) || /\b(?:open|in) (?:her|his|the|their) (?:page|app)|in (?:Clients|Calendar|the app)\b/i.test(t) || /send (?:it |that )?as (?:its|a) own message/i.test(t);
+    if (k === 'ask_back') return /\?/.test(t) && called;
+    if (k === 'advice') return !VERDICT.test(t) && !/^\s*(?:yes|no)\b/i.test(t) && c.calls.length > 0; // R-46.3: the facts looked up, never a verdict (a bare yes or no to "should I" is one)
     if (k === 'smalltalk') return t.length > 0 && t.length <= 240;
     return true;
   },
   m2: (reply, c) => {
-    const pool = norm(`${JSON.stringify(c.calls.map((x) => x.result))} ${c.text}`).toLowerCase().replace(/\s/g, '');
+    const pool = norm(`${JSON.stringify(c.calls.map((x) => x.result))} ${c.text} ${c.today || ''}`).toLowerCase().replace(/\s/g, '');
     const f = factsIn(reply);
     const inPool = (s) => pool.includes(String(s).toLowerCase().replace(/\s/g, ''));
     const datesOk = f.dates.every((d) => inPool(d) || c.calls.some((x) => JSON.stringify(x.result).includes(d)));
@@ -128,6 +135,19 @@ const LABELLED = [
   { reply: 'Your engagement on 22 November 2026 is at 11:00 am.', text: 'What time is my engagement on 22 November?', expect: { kind: 'fact', tools: ['day'], facts: ['11:00 am'] }, calls: RES({ name: 'day', result: { ok: true, date: '22 November 2026', events: [{ time: '11:00 am' }] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
   { reply: 'Your engagement on 22 November 2026 is at 10:00 am.', text: 'What time is my engagement on 22 November?', expect: { kind: 'fact', tools: ['day'], facts: ['11:00 am'] }, calls: RES({ name: 'day', result: { ok: true, date: '22 November 2026', events: [{ time: '11:00 am' }] } }), writes: 0, want: { m1: false, m2: false, m3: true, m4: true, m5: true } },
   { reply: 'For pricing advice, open the Advisor room in the app. Your Classic Wedding package is Rs 1,50,000.', text: 'How should I price my package', expect: { kind: 'advice', tools: [] }, calls: RES({ name: 'packages', result: { ok: true, count: 1, packages: [{ total: 'Rs 1,50,000' }] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  // ── cut 1c: REAL replies from the Haiku record of 26 September, labelled by hand (R-46.2, R-46.3, the re-taught readers) ──
+  { reply: 'Could you tell me what stretch of days you mean? For example, this month, October, this year, or a date range like 1 January to 31 March?', text: 'What are my blocked days', expect: { kind: 'fact', tools: ['days', 'events'] }, calls: RES({ result: { ok: false, error: 'range_too_long', max_days: 92 } }), writes: 0, want: { m1: false, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'You are free on 27 days in February 2027:\n1 to 13 February 2027\n15 to 28 February 2027\n14 February 2027 is blocked.', text: 'What dates am I free in February?', expect: { kind: 'fact', tools: ['days'] }, calls: RES({ result: { ok: true, from: '1 February 2027', to: '28 February 2027', counts: { free: 27 }, free: ['1 February 2027', '13 February 2027', '15 February 2027', '28 February 2027'] } }), writes: 0, want: { m1: true, m2: false, m3: true, m4: true, m5: true } },
+  { reply: 'On the Classic Wedding package, the deposit is 30%, which is Rs 45,000.', text: 'What deposit do I take on the classic package?', expect: { kind: 'fact', tools: ['packages'] }, calls: RES({ name: 'packages', result: { ok: true, count: 2, packages: [{ name: 'Classic Wedding', total: 'Rs 1,50,000', deposit_pct: 30 }] } }), writes: 0, want: { m1: true, m2: false, m3: true, m4: true, m5: true } },
+  { reply: 'Yes, 3 October 2026 is free. To block it, send: Block 3 October.', text: 'Am I free on 3 October? If yes block it', expect: { kind: 'handback', tools: [] }, calls: RES({ name: 'day', result: { ok: true, date: '3 October 2026', state: 'free', events: [] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  { reply: '9 December 2026 is free. Nothing is booked that day.', text: "What's booked on 9 December?", expect: { kind: 'not_in_records', tools: ['day'] }, calls: RES({ name: 'day', result: { ok: true, date: '9 December 2026', state: 'free', events: [], event_count: 0 } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'No package is attached to Asha Walk Fifteen yet. You can attach one from her page in Clients.', text: 'Any package for asha walk fifteen?', expect: { kind: 'none', tools: ['client'] }, calls: RES({ name: 'client', result: { ok: true, matches: 1, name: 'Asha Walk Fifteen', packages: [] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'I can look up your calendar, clients, payments, packages and team. What would help you most right now?', text: 'Is my business doing well?', expect: { kind: 'advice', tools: [] }, calls: [], writes: 0, want: { m1: false, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'Yes, 3 October 2026 is free. You have no events or blocks that day.', text: 'Should I take a wedding on 3 October?', expect: { kind: 'advice', tools: [] }, calls: RES({ name: 'day', result: { ok: true, date: '3 October 2026', state: 'free', events: [] } }), writes: 0, want: { m1: false, m2: true, m3: true, m4: true, m5: true } },
+  { reply: '3 October 2026 is free. 2 October 2026 is blocked. The choice is yours.', text: 'Should I take a wedding on 3 October?', expect: { kind: 'advice', tools: [] }, calls: [{ name: 'day', result: { ok: true, date: '3 October 2026', state: 'free' } }, { name: 'days', result: { ok: true, blocked: ['2 October 2026'] } }], writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'I found two: Priya Mehta and Priya Sachdeva. Which one?', text: "Where is Priya's engagement?", expect: { kind: 'ask_back', tools: ['client'] }, calls: RES({ name: 'client', result: { ok: true, matches: 2, names: [{ name: 'Priya Mehta' }, { name: 'Priya Sachdeva' }] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'Your records show nothing sent to Meera.', text: 'What did I send to Meera?', expect: { kind: 'not_in_records', tools: ['sent'] }, calls: RES({ name: 'sent', result: { ok: true, count: 0, sent: [] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'Today is Saturday, 26 September 2026. Nothing is blocked this week.', text: 'Anything blocked this week?', today: 'Today is Saturday, 26 September 2026, in India.', expect: { kind: 'none', tools: ['days'] }, calls: RES({ result: { ok: true, from: '26 September 2026', to: '2 October 2026', blocked: ['2 October 2026'] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
 ];
 
 function readersCheck() {
@@ -257,7 +277,7 @@ async function live() {
     const r = done.get(p.key); if (!r) continue; runs += 1;
     if (r.usage && r.usage.cache_read_input_tokens > 0) cache += 1;
     if (!r.ok) { errors += 1; if (SHOW) console.log(`  ERROR ${which} ${r.id} "${byId.get(r.id).text}" -> ${r.error}`); continue; }
-    const q = byId.get(r.id); const c = { ...q, calls: r.calls, writes: r.writes };
+    const q = byId.get(r.id); const c = { ...q, calls: r.calls, writes: r.writes, today: TODAY_LINE };
     for (const k of Object.keys(R)) { const kept = R[k](r.reply, c); tally[k][0] += kept ? 1 : 0; tally[k][1] += 1; if (!kept && SHOW) console.log(`  MISS ${which} ${k} ${q.id} [${q.family}/${q.expect.kind}${k === 'm1' ? `; wanted ${q.expect.tools.join('|') || 'any tool'}, called ${(c.calls || []).map((x) => x.name).join(',') || 'none'}` : ''}${k === 'm2' ? `; not in the results: ${unfound(r.reply, c).join('; ')}` : ''}] "${q.text}" -> ${String(r.reply).replace(/\n/g, ' / ')}`); }
   }
   let allOk = !stop;
@@ -272,9 +292,22 @@ async function live() {
 
 (async () => {
   const readersOk = readersCheck();
-  if (MODE === 'readers') process.exit(readersOk ? 0 : 1);
+  if (MODE === 'readers' && !arg('rescore', '')) process.exit(readersOk ? 0 : 1);
   if (!readersOk) { console.log('the readers are not proven; nothing else runs'); process.exit(1); }
   if (MODE === 'probe') process.exit((await probe()) ? 0 : 1);
+  // --rescore=<record.jsonl> (cut 1c): the readers applied to a recorded run, no model called. Reads what the READERS alone change.
+  const rs = arg('rescore', ''); if (rs) {
+    const fs = require('fs'); const byId = new Map(BANK.questions.map((q) => [q.id, q]));
+    const tally = { m1: [0, 0], m2: [0, 0], m3: [0, 0], m4: [0, 0], m5: [0, 0] }; const fam = {};
+    for (const line of fs.readFileSync(rs, 'utf8').split('\n').filter(Boolean)) {
+      const r = JSON.parse(line); if (!r.final || !r.ok) continue; const q = byId.get(r.id); if (!q) continue;
+      const c = { ...q, calls: r.calls || [], writes: r.writes || 0, today: TODAY_LINE };
+      for (const k of Object.keys(R)) { const kept = R[k](r.reply, c); tally[k][0] += kept ? 1 : 0; tally[k][1] += 1; if (!kept) { const f = `${k} ${q.family}/${q.expect.kind}`; fam[f] = (fam[f] || 0) + 1; if (SHOW) console.log(`  MISS ${k} ${q.id} [${q.family}/${q.expect.kind}${k === 'm2' ? `; not in the results: ${unfound(r.reply, c).join('; ')}` : ''}] "${q.text}" -> ${String(r.reply).replace(/\n/g, ' / ').slice(0, 200)}`); } }
+    }
+    for (const k of Object.keys(tally)) console.log(`  rescore ${k}: ${tally[k][0]}/${tally[k][1]} kept (${tally[k][1] - tally[k][0]} missed)`);
+    Object.entries(fam).sort((a, b) => b[1] - a[1]).forEach(([f, n]) => console.log(`    ${f}: ${n}`));
+    process.exit(0);
+  }
   const ok = MODE === 'dry' ? await dry() : MODE === 'probe' ? await probe() : await live();
   process.exit(ok ? 0 : 1);
 })().catch((e) => { console.log(`b130m ERROR ${e && e.message}`); process.exit(2); });

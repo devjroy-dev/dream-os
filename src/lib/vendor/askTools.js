@@ -149,10 +149,21 @@ T.day = {
 
 T.days = {
   description: 'A stretch of days (a month, a week, a weekend, a range): which days are free, booked, part held, blocked. Use for: what dates am I free in October, what is blocked in February, am I free this weekend.',
-  props: { range_as_spoken: { type: 'string', description: 'The stretch in her words, e.g. "October", "this weekend", "next month", "3 to 9 March". Never compute dates.' }, want: { type: 'string', enum: ['free', 'booked', 'blocked', 'all'] }, past: { type: 'boolean', description: 'true only when she asks about days already gone.' } },
-  required: ['range_as_spoken'],
+  props: { range_as_spoken: { type: 'string', description: 'The stretch in her words, e.g. "October", "next month", "this weekend", "3 to 9 March". Leave it out when she names no stretch: with want blocked the tool then lists every block from today for a year; otherwise it reads the next 30 days. Never compute dates.' }, want: { type: 'string', enum: ['free', 'booked', 'blocked', 'all'] }, past: { type: 'boolean', description: 'true only when she asks about days already gone.' } },
+  required: [],
   async run(ctx, a) {
-    const r = rangeOf(ctx, a.range_as_spoken, a.past === true);
+    // CE-46 ASK-1 cut 1c (the misses read 26 September): "What are my blocked days" names no stretch. Blocks are ONE read (listBlocks),
+    // not a day-by-day verdict, so with want 'blocked' and no range the tool lists every block from today for the next year, in code.
+    if (!text(a.range_as_spoken) && a.want === 'blocked') {
+      const from = today(ctx); const to = addDays(from, 364);
+      const { listBlocks } = require('./availability');
+      const b = await listBlocks(ctx.supabase, ctx.vendorId, { from, to });
+      if (!b || b.ok !== true) return bad('unreadable');
+      const rows = (b.blocks || []).filter((x) => x && x.blocked_date).sort((x, y) => String(x.blocked_date).localeCompare(String(y.blocked_date)));
+      const k = capped(rows);
+      return { ok: true, from: said(from), to: said(to), blocked_count: rows.length, blocked: k.list.map((x) => ({ date: said(x.blocked_date), slot: x.slot || 'full_day', reason: text(x.reason) })), more: k.more };
+    }
+    const r = rangeOf(ctx, text(a.range_as_spoken) ? a.range_as_spoken : 'the next 30 days', a.past === true);
     if (!r) return bad('date_unreadable', { said: text(a.range_as_spoken) });
     if (r.days > RANGE_CAP_DAYS) return bad('range_too_long', { max_days: RANGE_CAP_DAYS, from: said(r.from), to: said(r.to) });
     const list = []; for (let d = r.from; d <= r.to; d = addDays(d, 1)) list.push(d);
@@ -173,7 +184,7 @@ T.days = {
     const outp = { ok: true, from: said(r.from), to: said(r.to), day_count: r.days, counts: { free: byState.free.length, booked: byState.booked.length, part_held: byState.part_held.length, not_blocked: byState.not_blocked.length, blocked: blocked.length, with_events: busy.length } };
     if (want === 'all' || want === 'free') { outp.free = byState.free; outp.not_blocked = byState.not_blocked; outp.days_with_events = busy; }
     if (want === 'all' || want === 'booked') { outp.booked = byState.booked; outp.part_held = byState.part_held; outp.days_with_events = busy; }
-    if (want === 'all' || want === 'blocked') outp.blocked = blocked;
+    outp.blocked = blocked; // always, beside free: the agent copies a blocked day, it never infers one as the gap between free days (cut 1c)
     return outp;
   },
 };
@@ -225,7 +236,16 @@ T.client = {
   async run(ctx, a) {
     const who = await findPeople(ctx, a.name_as_spoken);
     const people = [...who.leads.map((l) => ({ kind: 'lead', row: l })), ...who.clients.filter((c) => !who.leads.some((l) => l.client_id === c.id)).map((c) => ({ kind: 'client', row: c }))];
-    if (!people.length) return { ok: true, matches: 0, said: text(a.name_as_spoken) };
+    if (!people.length) {
+      // cut 1c: no full match. Names sharing a word with hers (3 letters or more) come back as POSSIBLE, so the agent asks "did you mean"
+      // from her records instead of saying nobody is there ("priya Walk" when her records hold two Priyas).
+      const words = norm(a.name_as_spoken).split(' ').filter((w) => w.length >= 3);
+      const hasWord = (w) => (l) => norm(l.name).split(' ').includes(w);
+      const first = words.length ? who.allLeads.filter(hasWord(words[0])) : [];
+      const pool = first.length ? first : who.allLeads.filter((l) => words.some((w) => hasWord(w)(l))); // her FIRST word leads: "priya Walk" is a Priya
+      const possible = [...new Set(pool.map((l) => text(l.name)))].slice(0, 8);
+      return { ok: true, matches: 0, said: text(a.name_as_spoken), possible };
+    }
     if (people.length > 1) return { ok: true, matches: people.length, names: people.map((p) => ({ name: text(p.row.name), stage: p.row.state || null, wedding_date: said(p.row.wedding_date) })) };
     const p = people[0].row; const isLead = people[0].kind === 'lead';
     const leadId = isLead ? p.id : null; const clientId = isLead ? p.client_id : p.id;
@@ -288,11 +308,11 @@ T.client = {
 
 T.leads = {
   description: 'Her leads: how many at each stage, and the list for a stage or for weddings in a stretch of days. Stage "new" is the new-leads list.',
-  props: { stage: { type: 'string', description: 'A stage word as she said it, e.g. new, quoted, booked, lost. Empty for all.' }, range_as_spoken: { type: 'string', description: 'Weddings in this stretch, in her words.' } },
+  props: { source: { type: 'string', description: 'Where the lead came from, as she said it (instagram, whatsapp, referral). Empty for all.' }, stage: { type: 'string', description: 'A stage word as she said it, e.g. new, quoted, booked, lost. Empty for all.' }, range_as_spoken: { type: 'string', description: 'Weddings in this stretch, in her words.' } },
   required: [],
   async run(ctx, a) {
     const stage = text(a.stage) ? norm(a.stage) : null;
-    if (stage === 'new' && !text(a.range_as_spoken)) {
+    if (stage === 'new' && !text(a.range_as_spoken) && !text(a.source)) {
       const { newestLeads, newLeadsCount, NEWEST_CAP } = require('./leadFeed');
       const { data, error } = await newestLeads(ctx.supabase, ctx.vendorId);
       if (error || !Array.isArray(data)) return bad('unreadable');
@@ -301,15 +321,16 @@ T.leads = {
       const k = capped(data);
       return { ok: true, stage: 'new', count: total, leads: k.list.map((l) => ({ name: text(l.name), wedding_date: said(l.wedding_date), city: text(l.wedding_city), added_on: said(l.created_at) })), more: Math.max(0, total - k.list.length) };
     }
-    let q = ctx.supabase.from('leads').select('name, state, wedding_date, wedding_city, created_at').eq('vendor_id', ctx.vendorId).is('deleted_at', null);
+    let q = ctx.supabase.from('leads').select('name, state, wedding_date, wedding_city, created_at, source, notes').eq('vendor_id', ctx.vendorId).is('deleted_at', null);
     let r = null;
     if (text(a.range_as_spoken)) { r = rangeOf(ctx, a.range_as_spoken, false); if (!r) return bad('date_unreadable', { said: text(a.range_as_spoken) }); q = q.gte('wedding_date', r.from).lte('wedding_date', r.to); }
     const { data, error } = await q.order('created_at', { ascending: false });
     if (error || !Array.isArray(data)) return bad('unreadable');
     const by = {}; data.forEach((l) => { const s = l.state || 'none'; by[s] = (by[s] || 0) + 1; });
-    const rows = stage ? data.filter((l) => norm(l.state) === stage) : data;
+    let rows = stage ? data.filter((l) => norm(l.state) === stage) : data;
+    if (text(a.source)) { const src = norm(a.source); rows = rows.filter((l) => norm(l.source).includes(src)); } // cut 1c: "Who came from Instagram?"
     const k = capped(rows);
-    return { ok: true, stage: stage || 'all', total: data.length, count_by_stage: by, count: rows.length, from: r ? said(r.from) : null, to: r ? said(r.to) : null, leads: k.list.map((l) => ({ name: text(l.name), stage: l.state || null, wedding_date: said(l.wedding_date), city: text(l.wedding_city), added_on: said(l.created_at) })), more: k.more };
+    return { ok: true, stage: stage || 'all', total: data.length, count_by_stage: by, stage_count: Object.keys(by).length, count: rows.length, from: r ? said(r.from) : null, to: r ? said(r.to) : null, leads: k.list.map((l) => ({ name: text(l.name), stage: l.state || null, wedding_date: said(l.wedding_date), city: text(l.wedding_city), added_on: said(l.created_at), source: text(l.source), note: text(l.notes) ? text(l.notes).slice(0, 160) : null })), more: k.more };
   },
 };
 
@@ -449,7 +470,8 @@ T.packages = {
   async run(ctx) {
     const { data, error } = await ctx.supabase.from('vendor_packages').select('name, description, line_items, total, deposit_pct, middle_pct, middle_enabled, delivery_basis, delivery_days, is_default').eq('vendor_id', ctx.vendorId).is('deleted_at', null).order('total', { ascending: true });
     if (error || !Array.isArray(data)) return bad('unreadable');
-    return { ok: true, count: data.length, packages: data.map((p) => ({ name: text(p.name), description: text(p.description), includes: p.line_items || null, total: money(p.total), deposit_pct: p.deposit_pct, middle_pct: p.middle_enabled ? p.middle_pct : null, delivery_days: p.delivery_days, delivery_basis: p.delivery_basis || null, is_default: p.is_default === true })) };
+    const part = (tot, pct) => (Number.isFinite(Number(tot)) && Number.isFinite(Number(pct)) && pct != null ? money(Math.round((Number(tot) * Number(pct)) / 100)) : null); // cut 1c: amounts in code, never by the model
+    return { ok: true, count: data.length, packages: data.map((p) => ({ name: text(p.name), description: text(p.description), includes: p.line_items || null, total: money(p.total), deposit_pct: p.deposit_pct, deposit_amount: part(p.total, p.deposit_pct), middle_pct: p.middle_enabled ? p.middle_pct : null, middle_amount: p.middle_enabled ? part(p.total, p.middle_pct) : null, delivery_days: p.delivery_days, delivery_basis: p.delivery_basis || null, is_default: p.is_default === true })) };
   },
 };
 
