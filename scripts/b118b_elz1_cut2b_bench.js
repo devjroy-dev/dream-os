@@ -211,13 +211,17 @@ async function main() {
   // the composer double: records every call (provider, model, tools) and answers the fixed body
   const composed = [];
   const composerOf = (body) => async (provider, params) => { composed.push({ provider, model: params.model, tools: (params.tools || []).map((t) => t.name), choice: params.tool_choice && params.tool_choice.name, user: params.messages && params.messages[0] && params.messages[0].content }); return { content: [{ type: 'tool_use', name: 'draft_message', input: { message: body } }], usage: { input_tokens: 300, output_tokens: 40 } }; };
+  // A-45.14 (CE-45, 26 September; ELZ-1 e-151): a composer double ECHOES its instruction, never a fixed body, so no cell can pass while her words
+  // fail to reach the writer. The echo is the user message on one line; `drop` removes matching lines (an F2 miss is an echo without the figure).
+  const echoOf = (user, drop) => `Echo: ${String(user || '').split('\n').filter((l) => l && !(drop && drop.test(l))).join(' | ')}`;
+  const echoComposer = (drop) => async (p, params) => composerOf(echoOf(params && params.messages && params.messages[0] && params.messages[0].content, drop))(p, params);
   const sent = [];
   const transport = async (to, text, media, from) => { sent.push({ to, text, media, from }); return { sid: `wamid.${sent.length}`, sent: true }; };
   const turn = async (db, message, request, o = {}) => {
     const mod = o.M || WD;
     LF._resetLaneFlagCache();
     const out = await quiet(() => mod.preTurn({ supabase: db, vendor: V, agentId: AG, route: o.route || ROUTE, message, lane: o.lane || 'whatsapp' },
-      { llmCreate: earOf(request), nowMs: NOW, composerCreate: o.composer || composerOf(BODY), sendWhatsApp: transport, env: ENV }));
+      { llmCreate: earOf(request), nowMs: NOW, composerCreate: o.composer || echoComposer() /* A-45.14 */, sendWhatsApp: transport, env: ENV }));
     const said = out && out.door === true ? out : await quiet(() => mod.standIn({ supabase: db, out }, { nowMs: NOW }));
     await quiet(() => mod.persistDoorTurn({ supabase: db, agentId: AG, message, out: said, lane: o.lane || 'whatsapp' }, { memory: memoryOf(db), meter }));
     return { out, said, reply: said.reply, keys: J(said.keys) };
@@ -227,53 +231,53 @@ async function main() {
   const FRAME_ASHA = frame('Asha Walk Fifteen');
   const NONE = req([], 'none');
   // ═══ CE-45 ELZ-1 cut 2b · RUNG b118b (b101's harness above, reused verbatim; its cells are b101's own) ═══════════════════════════
-  const seqComposer = (bodies) => { let i = 0; return async (p, params) => { const b = bodies[Math.min(i, bodies.length - 1)]; i += 1; return composerOf(b)(p, params); }; };
+  // A-45.14: every writer here ECHOES; missFirst drops the figure's line on the first call only (F2's re-compose), then echoes whole
+  const missFirst = () => { let i = 0; return async (p, params) => { i += 1; return echoComposer(i === 1 ? /^total:/ : null)(p, params); }; };
   const LP = (o) => Object.assign({ id: 'lp-asha', vendor_id: V.id, lead_id: 'l-asha', package_id: 'p-film', snapshot: { name: 'Photographs and film', delivery_basis: 'handover' }, total: 80000, schedule: [], delivery_on: '2027-04-10', quoted_at: null, quote_draft_id: null, created_at: '2026-09-20T00:00:00Z', updated_at: '2026-09-20T00:00:00Z', deleted_at: null }, o);
   const withPkg = () => { const w = world(); w['public.lead_packages'] = [LP()]; return w; };
   const QUOTE = req([{ act: 'quote_send', client_as_spoken: 'Asha Walk Fifteen' }]);
-  const GOOD = 'Hi Asha, your Photographs and film package comes to Rs 80,000, delivered by 10 April 2027.';
-  const NOFIG = 'Hi Asha, here is the quote for your Photographs and film package.';
   let db; let r;
 
   sec('1 quote_send (P6b\'s second half, R-45.17; F2; F3)');
   db = makeDb(withPkg()); composed.length = 0;
-  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: seqComposer([GOOD]) });
+  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: echoComposer() });
   const qUser = composed.length ? String(composed[composed.length - 1].user) : '';
-  T('1.1 a lead with a live package: the facts reach the writer ("This is a QUOTE", package, Rs total, delivery), the draft is STORED and framed B37, nothing sent', r.keys === 'B37' && draftsIn(db).length === 1 && d0(db).body === GOOD && /This is a QUOTE/.test(qUser) && qUser.includes('package: Photographs and film') && qUser.includes('total: Rs 80,000') && qUser.includes('delivery date: 10 April 2027') && sent.length === 0);
-  const nSent = sent.length;
+  T('1.1 a lead with a live package: the facts reach the writer ("This is a QUOTE", package, Rs total, delivery), the draft is STORED and framed B37, nothing sent', r.keys === 'B37' && draftsIn(db).length === 1 && d0(db).body.includes('Her instruction: Send Asha Walk Fifteen a quote') && d0(db).body.includes('total: Rs 80,000') && /This is a QUOTE/.test(qUser) && qUser.includes('package: Photographs and film') && qUser.includes('total: Rs 80,000') && qUser.includes('delivery date: 10 April 2027') && sent.length === 0);
+  const nSent = sent.length; const qBody = d0(db).body;
   r = await turn(db, 'yes', NONE);
   const lp = db.tables['public.lead_packages'][0];
-  T('1.2 F3: her YES sends the STORED bytes, and the package is marked quoted with THIS draft (quoted_at, quote_draft_id)', sent.length === nSent + 1 && sent[sent.length - 1].text === `Walk Studio: ${GOOD}` /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */ && !!lp.quoted_at && lp.quote_draft_id === String(d0(db).id));
+  T('1.2 F3: her YES sends the STORED bytes, and the package is marked quoted with THIS draft (quoted_at, quote_draft_id)', sent.length === nSent + 1 && sent[sent.length - 1].text === `Walk Studio: ${qBody}` /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */ && !!lp.quoted_at && lp.quote_draft_id === String(d0(db).id));
   db = makeDb(withPkg()); composed.length = 0;
-  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: seqComposer([NOFIG, GOOD]) });
-  T('1.3 F2: a body missing the figure is RE-COMPOSED once; the second, carrying both facts, is the one stored', r.keys === 'B37' && composed.length === 2 && d0(db).body === GOOD);
+  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: missFirst() });
+  T('1.3 F2: a body missing the figure is RE-COMPOSED once; the second, carrying both facts, is the one stored', r.keys === 'B37' && composed.length === 2 && d0(db).body.includes('total: Rs 80,000') && d0(db).body.includes('Her instruction: Send Asha Walk Fifteen a quote'));
   db = makeDb(withPkg()); composed.length = 0;
-  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: seqComposer([NOFIG, NOFIG]) });
+  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: echoComposer(/^total:/) });
   T('1.4 F2: two misses: NOTHING is staged and the glitch line speaks (a quote without its figure never reaches her)', r.keys === 'GLITCH' && draftsIn(db).length === 0 && composed.length === 2);
   db = makeDb(world()); composed.length = 0;
-  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: seqComposer([GOOD]) });
+  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: echoComposer() });
   T('1.5 no package: B39, his V6, rendered for the client; nothing composed, nothing stored', r.reply === 'Could not send the quote. Asha Walk Fifteen has no package yet. Attach a package to Asha Walk Fifteen first.' && composed.length === 0 && draftsIn(db).length === 0);
   // F3's two cells as ruled: a mark that fails is logged with both ids and never undoes the send; a send that did not reach her marks nothing
   db = makeDb(withPkg());
-  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: seqComposer([GOOD]) });
+  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: echoComposer() });
   const realFrom = db.from; db.from = (n) => { if (n === 'lead_packages') return { update() { throw new Error('write down'); } }; return realFrom(n); };
   const errs = []; const ce = console.error; console.error = (...a) => { errs.push(a.join(' ')); };
   const nS2 = sent.length; let out3;
-  try { out3 = await WD.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message: 'yes', lane: 'whatsapp' }, { llmCreate: earOf(NONE), nowMs: NOW, composerCreate: composerOf(GOOD), sendWhatsApp: transport, env: ENV }); } finally { console.error = ce; }
+  try { out3 = await WD.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message: 'yes', lane: 'whatsapp' }, { llmCreate: earOf(NONE), nowMs: NOW, composerCreate: echoComposer(), sendWhatsApp: transport, env: ENV }); } finally { console.error = ce; }
   T('1.6 F3: the quoted mark\'s write FAILS: the quote is still SENT and recorded sent, and the failure is logged at error level with the lead_package and draft ids', sent.length === nS2 + 1 && out3 && out3.door === true && errs.some((e) => e.includes('quoted_at NOT written') && e.includes('lead_package=lp-asha') && e.includes(`draft=${d0(db).id}`)));
   db = makeDb(withPkg());
-  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: seqComposer([GOOD]) });
+  r = await turn(db, 'Send Asha Walk Fifteen a quote', QUOTE, { composer: echoComposer() });
   const deadTransport = async () => { throw new Error('provider down'); };
-  const out4 = await quiet(() => WD.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message: 'yes', lane: 'whatsapp' }, { llmCreate: earOf(NONE), nowMs: NOW, composerCreate: composerOf(GOOD), sendWhatsApp: deadTransport, env: ENV }));
+  const out4 = await quiet(() => WD.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message: 'yes', lane: 'whatsapp' }, { llmCreate: earOf(NONE), nowMs: NOW, composerCreate: echoComposer(), sendWhatsApp: deadTransport, env: ENV }));
   T('1.7 F3: a quote that did NOT reach her (the transport failed) writes NO mark', db.tables['public.lead_packages'][0].quoted_at === null && db.tables['public.lead_packages'][0].quote_draft_id === null && out4 && out4.door === true);
 
   sec('2 the app lane\'s relay (P6b\'s second half); relay_pwa deleted');
   db = makeDb(world()); composed.length = 0;
   r = await turn(db, 'Tell Asha Walk Fifteen hello', req([relay('Asha Walk Fifteen')]), { lane: 'pwa' });
-  T('2.1 on the pwa lane a relay is composed, STORED and framed B37, exactly as on WhatsApp', r.keys === 'B37' && draftsIn(db).length === 1 && r.reply === FRAME_ASHA);
+  T('2.1 on the pwa lane a relay is composed FROM HER WORDS, STORED and framed B37, exactly as on WhatsApp (A-45.14)', r.keys === 'B37' && draftsIn(db).length === 1 && d0(db).body.includes('Her instruction: Tell Asha Walk Fifteen hello') && r.reply.includes(d0(db).body));
+  const aBody = d0(db).body;
   const nS3 = sent.length;
   r = await turn(db, 'yes', NONE, { lane: 'pwa' });
-  T('2.2 her YES in the app sends the stored bytes (with the shared line\'s studio prefix, F-44.176)', sent.length === nS3 + 1 && sent[sent.length - 1].text === `Walk Studio: ${BODY}` /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */);
+  T('2.2 her YES in the app sends the stored bytes (with the shared line\'s studio prefix, F-44.176)', sent.length === nS3 + 1 && sent[sent.length - 1].text === `Walk Studio: ${aBody}` /* LABELED AMENDMENT · CE-45 ELZ-1 F-44.176 (his (a)): on TDW's shared line the sent and recorded text is "{studio}: " + the approved bytes */);
   T('2.3 relay_pwa is ABSENT from src: no reason, no mapping (a grep of every src file, comments aside)', !require('child_process').execSync("grep -rn --include=*.js \"'relay_pwa'\" src || true", { cwd: P('.'), encoding: 'utf8' }).trim());
 
   sec('3 V11 and V13, the numbered package picks (V16\'s safe half)');
@@ -331,6 +335,12 @@ async function main() {
   T('5.4 the seven lines are punctuation-only changes: no em dash left in a copy line of nudgeCopy.js or prospectCopy.js; the pick\'s "Sorry, didn\'t catch that." has none', noDash(ncs) && noDash(pcs) && vis.includes("`Sorry, didn't catch that. ${buildDisambiguationQuestion") && !vis.includes("didn't catch that \u2014"));
   T('5.5 their words are unchanged (a sample of the seven)', ncs.includes("You're opted out. I won't message you first about anything.") && ncs.includes("You're back on. I'll message you again when there's something worth saying.") && pcs.includes("You're opted out. You won't hear from us again.") && ncs.includes("Done. No more morning messages.") && ncs.includes("Morning messages are back on. You'll get the next one tomorrow."));
 
+  sec('5b e-151: a placeholder draft is refused (the chair\'s ruling; a deliberately broken writer, the property under test)');
+  for (const bad of ['<UNKNOWN>', '[message]', '{draft}', '   ']) {
+    const dbx = makeDb(world());
+    const rx = await turn(dbx, 'Tell Asha Walk Fifteen hello', req([relay('Asha Walk Fifteen')]), { composer: composerOf(bad) });
+    T(`5b ${JSON.stringify(bad)} from the writer: nothing staged, the glitch line`, rx.keys === 'GLITCH' && draftsIn(dbx).length === 0);
+  }
   sec('6 the money functions byte-identical to b115\'s pins');
   const PIN = JSON.parse(src('scripts/b115_lcv15_lsp4_bench.js').match(/const PIN = (\{[^\n]*\});/)[1]);
   const body = (t, name) => { const i = t.search(new RegExp(`^(async )?function ${name}\\b`, 'm')); if (i < 0) return ''; let j = t.indexOf('(', i); let d = 0; for (; j < t.length; j += 1) { if (t[j] === '(') d += 1; else if (t[j] === ')') { d -= 1; if (d === 0) break; } } const k = t.indexOf('{', j); d = 0; for (let m = k; m < t.length; m += 1) { if (t[m] === '{') d += 1; else if (t[m] === '}') { d -= 1; if (d === 0) return t.slice(i, m + 1); } } return ''; };
@@ -340,13 +350,15 @@ async function main() {
 
   sec('7 mutations of production code, each reddening its cell');
   await mut('7.1 M1 the fact check always passing: a figureless quote is staged (reddens 1.4)', WDf, [['  return [facts.package, facts.total].every((f) => typeof f === \'string\' && f && b.includes(f));', '  return true;']], [],
-    async (rq) => { const d = makeDb(withPkg()); await turn(d, 'Send Asha Walk Fifteen a quote', QUOTE, { M: rq(WDf), composer: seqComposer([NOFIG, NOFIG]) }); return draftsIn(d).length; }, (v) => v === 1);
+    async (rq) => { const d = makeDb(withPkg()); await turn(d, 'Send Asha Walk Fifteen a quote', QUOTE, { M: rq(WDf), composer: echoComposer(/^total:/) }); return draftsIn(d).length; }, (v) => v === 1);
+  await mut('7.1b M1b the placeholder check removed: "<UNKNOWN>" is staged and framed again (reddens 5b)', WDf, [['  if (first && placeholderBody(first.body)) return null;\n', '']], [],
+    async (rq) => { const d = makeDb(world()); await turn(d, 'Tell Asha Walk Fifteen hello', req([relay('Asha Walk Fifteen')]), { M: rq(WDf), composer: composerOf('<UNKNOWN>') }); return draftsIn(d).length; }, (v) => v === 1);
   await mut('7.2 M2 the number not read after B31 (reddens 3.2)', WDf, [["const NUMBER_PICK_PKG = Object.freeze(['B23', 'B31']);", 'const NUMBER_PICK_PKG = Object.freeze([]);']], [],
     async (rq) => { const d = makeDb(threePk()); await turn(d, 'Attach a package to Asha Walk Fifteen', ATT(), { M: rq(WDf) }); await turn(d, '3', NONE, { M: rq(WDf) }); return d.tables['public.lead_packages'].some((x) => x.lead_id === 'l-asha' && !x.deleted_at); }, (v) => v === false);
   await mut('7.3 M3 the honesty route removed: "What are my blocked days" lists the new leads again (reddens 4.1)', WDf, [["    if (a.act === 'find' && !said && !LEADS_WORDS.test(String(message || ''))) {", "    if (false) {"]], [],
     async (rq) => (await turn(makeDb(world()), 'What are my blocked days', FIND, { M: rq(WDf) })).reply, (v) => /^New leads: /.test(v));
   await mut('7.4 M4 the quoted mark written on ANY outcome (reddens 1.7)', WDf, [["const QUOTE_REACHED = Object.freeze(['sent', 'window_closed_doorbell']);", "const QUOTE_REACHED = { includes: () => true };"]], [],
-    async (rq) => { const d = makeDb(withPkg()); await turn(d, 'Send Asha Walk Fifteen a quote', QUOTE, { M: rq(WDf), composer: seqComposer([GOOD]) }); await quiet(() => rq(WDf).preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message: 'yes', lane: 'whatsapp' }, { llmCreate: earOf(NONE), nowMs: NOW, composerCreate: composerOf(GOOD), sendWhatsApp: deadTransport, env: ENV })); return d.tables['public.lead_packages'][0].quoted_at; }, (v) => !!v);
+    async (rq) => { const d = makeDb(withPkg()); await turn(d, 'Send Asha Walk Fifteen a quote', QUOTE, { M: rq(WDf), composer: echoComposer() }); await quiet(() => rq(WDf).preTurn({ supabase: d, vendor: V, agentId: AG, route: ROUTE, message: 'yes', lane: 'whatsapp' }, { llmCreate: earOf(NONE), nowMs: NOW, composerCreate: echoComposer(), sendWhatsApp: deadTransport, env: ENV })); return d.tables['public.lead_packages'][0].quoted_at; }, (v) => !!v);
   await mut('7.5 M5 exactPick disabled: an exact name falls to the model again (reddens 5.1)', 'src/agent/disambiguation.js', [['    return hits.length === 1 ? hits[0] : null;', '    return null;']], [],
     async (rq) => { let n = 0; await quiet(() => rq('src/agent/disambiguation.js').interpretDisambiguationReply({ replyText: 'Dev Roy Photography', candidateVendors: C3, anthropic: { messages: { create: async () => { n += 1; return { content: [{ text: '{"matched_vendor_id": null, "confidence": "none"}' }] }; } } } })); return n; }, (v) => v === 1);
 

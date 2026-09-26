@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 e-151 (R-45.30): the em dashes in B42, B45, B72, B75 and relaySeat's four draft lines ("Not sent", "The draft is
+// saved", "Done", "here it is again") set as a full stop or a comma, words unchanged; the bytes, rendered forms and hashes re-pinned here.
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
 // re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b101_lcv11_relay_bench.js · TDW CE-45 · LCV-11 · LC-Victor P6b, THE FIRST CUT: a message to a client routed from the door on the
@@ -287,7 +289,7 @@ async function main() {
   db = makeDb(world()); r = await turn(db, 'Send a message to Asha Walk Fifteen asking for the advance', req([relay('Asha Walk Fifteen')]));
   T('4.6 THE CARD (the fresh name): the frame for Asha Walk Fifteen', r.reply === FRAME_ASHA && r.keys === 'B37');
   r = await turn(db, 'No', NONE);
-  T('4.7 THE CARD: her NO refuses the row (vendor_declined) and reads the seat\'s declined byte; nothing sent', r.reply === "Not sent — I've dropped it. Nothing went to Asha Walk Fifteen. Tell me when you want to write to her again." && d0(db).state === 'refused' && d0(db).refusal_reason === 'vendor_declined' && sent.length === 1 && r.out.why === 'draft_declined');
+  T('4.7 THE CARD: her NO refuses the row (vendor_declined) and reads the seat\'s declined byte; nothing sent', r.reply === "Not sent. I've dropped it. Nothing went to Asha Walk Fifteen. Tell me when you want to write to her again." && d0(db).state === 'refused' && d0(db).refusal_reason === 'vendor_declined' && sent.length === 1 && r.out.why === 'draft_declined');
   db = makeDb(world()); r = await turn(db, 'Tell Priya Walk Fifteen hello', req([relay('Priya Walk Fifteen')]));
   T('4.8 THE CARD: a client who is no client of hers is B38, HIS byte; nothing stored, nothing composed', r.keys === 'B38' && r.reply === 'Could not send the message. No client called Priya Walk Fifteen.' && draftsIn(db).length === 0 && composed.length === 2);
   db = makeDb(world()); r = await turn(db, 'Tell Asha Walk Fiften hello', req([relay('Asha Walk Fiften')]));

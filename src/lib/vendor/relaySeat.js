@@ -141,7 +141,7 @@ const sentLine = (name, phone) => `Sent to ${recipientLabel(name, phone)}.`;
 // a doorbell that did not go never claims it did.
 const windowClosedLine = (name) =>
   `Not sent. ${name || 'She'} hasn't written in over 24 hours, and I can't open a new message to her until she does. ` +
-  `The draft is saved — the moment she writes, say the word and it goes.`;
+  `The draft is saved. The moment she writes, say the word and it goes.`;
 
 // ④b-v2 THE DOORBELL RANG — FOUNDER-AUTHORED AND VETOED 2026-08-11, byte-exact.
 // ④b IS RETIRED. Two things changed and both are the founder's: the 「 word for
@@ -150,7 +150,7 @@ const windowClosedLine = (name) =>
 // — so this line no longer asks him to say anything. It promises a receipt, and
 // the receipt chain below is that promise's machinery.
 const doorbellLineV2 = (name) =>
-  `Done — ${name || 'she'}'s been notified on WhatsApp. I'll confirm the moment it's delivered and read.`;
+  `Done. ${name || 'she'}'s been notified on WhatsApp. I'll confirm the moment it's delivered and read.`;
 
 // №14 — the delivered receipt. ALWAYS fires: Meta sends `delivered` unconditionally.
 const deliveredLine = (name, phone) => `Delivered to ${recipientLabel(name, phone)}.`;
@@ -241,13 +241,13 @@ const noLaneLine = (name) =>
 // repeats the wrong name back: repeating a wrong name is how a wrong-recipient
 // send starts.
 const mismatchBlock = (body, name, phone) =>
-  `I haven't sent anything. The draft I'm holding is for ${recipientLabel(name, phone)} — here it is again:\n\n` +
+  `I haven't sent anything. The draft I'm holding is for ${recipientLabel(name, phone)}. Here it is again:\n\n` +
   `"${body}"\n\nSend this to ${recipientLabel(name, phone)}?`;
 
 // ── BYTE №13 — the plain decline ──────────────────────────────────────────
 // FOUNDER-VETOED 2026-08-11 「 approve 」. A decline NEVER deletes; the row stays.
 const declinedLine = (name) =>
-  `Not sent — I've dropped it. Nothing went to ${name || 'her'}. ` +
+  `Not sent. I've dropped it. Nothing went to ${name || 'her'}. ` +
   `Tell me when you want to write to her again.`;
 
 // ── ② THE BODY FORK ───────────────────────────────────────────────────────

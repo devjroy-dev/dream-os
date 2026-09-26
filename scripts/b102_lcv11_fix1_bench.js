@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 e-151 (R-45.30): the em dashes in B42, B45, B72, B75 and relaySeat's four draft lines ("Not sent", "The draft is
+// saved", "Done", "here it is again") set as a full stop or a comma, words unchanged; the bytes, rendered forms and hashes re-pinned here.
 // scripts/b102_lcv11_fix1_bench.js · TDW CE-45 · LCV-11 · LC-Victor P6b, THE FIX CUT (F-44.123, F-44.124), on b101's harness verbatim; b101's header follows for its conventions:
 //   THE FIRST CUT: a message to a client routed from the door on the
 // WhatsApp lane; phone_as_spoken (F-44.96); B37, B38 spoken and B39 carried; the composer on the listener's seat (R-45.1). Rung b101.
@@ -291,7 +293,7 @@ async function main() {
   n0 = sent.length; r = await turn(db, 'YES', NONE);
   T('2.2 THE CARD: YES reads "Sent to Sarah (+919625759924)." with the name back (the walk read "Sent to +919625759924.")', r.reply === `Sent to Sarah (${PHONE}).` && sent.length === n0 + 1);
   db = makeDb(sarahWorld()); r = await turn(db, 'Tell Sarah hello', req([relay('Sarah')])); r = await turn(db, 'No', NONE);
-  T('2.3 the declined line names her too (the walk read "Nothing went to her.")', r.reply === "Not sent — I've dropped it. Nothing went to Sarah. Tell me when you want to write to her again.");
+  T('2.3 the declined line names her too (the walk read "Nothing went to her.")', r.reply === "Not sent. I've dropped it. Nothing went to Sarah. Tell me when you want to write to her again.");
   db = makeDb(sarahWorld()); db.tables['public.leads'] = db.tables['public.leads'].filter((l) => l.deleted_at);
   T('2.4 [boundary, green at the base: six rows errored there too] only deleted leads on the number: no name (a deleted lead is not who she is)', (await RT.coupleDisplayName(db, V.id, PHONE)) === null);
   db = makeDb(sarahWorld()); db.tables['public.leads'].push(leadRow({ id: 'l-other', name: 'Meena', phone: PHONE }));

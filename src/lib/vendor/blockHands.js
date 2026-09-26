@@ -154,7 +154,7 @@ function blockLines(done) {
     const day = longDateYear(d.date);
     if (d.ok)                        return `Blocked: ${day}${why}. The day's off your calendar.`;
     if (d.code === 'ALREADY_BLOCKED') return `${day} was already blocked. Nothing changed.`;
-    return `Couldn't block ${day} — nothing was written. Try again or block it from the calendar.`;
+    return `Couldn't block ${day}. Nothing was written. Try again or block it from the calendar.` // CE-45 ELZ-1 e-151 (R-45.30, the chair's ruling (a)): one home, one byte; the door's B4x/B75 reuse this line;
   }).join('\n');
 }
 
@@ -164,7 +164,7 @@ function unblockLines(done) {
     const day = longDateYear(d.date);
     if (d.ok)         return `Unblocked: ${day}. The day's back on your calendar.`;
     if (d.notBlocked) return `${day} wasn't blocked. Nothing changed.`;
-    return `Couldn't unblock ${day} — nothing was written. Try again or unblock it from the calendar.`;
+    return `Couldn't unblock ${day}. Nothing was written. Try again or unblock it from the calendar.` // CE-45 ELZ-1 e-151 (R-45.30, the chair's ruling (a)): one home, one byte; the door's B4x/B75 reuse this line;
   }).join('\n');
 }
 

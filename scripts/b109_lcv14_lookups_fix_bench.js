@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 e-151 (R-45.30): the em dashes in B42, B45, B72, B75 and relaySeat's four draft lines ("Not sent", "The draft is
+// saved", "Done", "here it is again") set as a full stop or a comma, words unchanged; the bytes, rendered forms and hashes re-pinned here.
 // scripts/b109_lcv14_lookups_fix_bench.js · TDW CE-45 · LCV-14 · LC-Victor P7 CUT 4 FIX: F-44.136 (a new lead with no name broke the whole answer), Q4 (the five
 // newest named, the derived tail "and {n} more."), R-45.12 (newest first, the door's own read; the app's feed unchanged), B81/B83 (the nameless counted), and
 // the tally (B80, B82; LEDGER_UNREADABLE REUSED on a failed read) on invoices.js readOutstanding AS IT STANDS. Rung b109. b108's harness and definitions
@@ -367,7 +369,7 @@ async function main() {
     return w;
   };
   const WEEK = (nowMs) => { const t = (n) => IC.istPlusDaysISO(n, nowMs || NOW); return [`Due this week: Rao · Advance · Rs 30,000 · ${LY(t(0))}.`, `Due this week: Rao · Second · Rs 45,000 · ${LY(t(6))}.`, `This week: Rao · shoot · ${LY(t(3))}.`].join('\n'); };
-  const DAY14 = '14 February 2027: blocked — personal.\n14 February 2027: blocked.\n14 February 2027: Rao · shoot';
+  const DAY14 = '14 February 2027: blocked, personal.\n14 February 2027: blocked.\n14 February 2027: Rao · shoot';
   const LEADS2 = 'New leads: Walk Eighteen Xi · Walk Eighteen Nu (1 May 2027).'; // RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, R-45.12, labelled): NEWEST first, the door's own read
   const lk = (d, said, h, deps) => turnX(d, said, h, deps || {});
 

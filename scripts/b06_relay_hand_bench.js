@@ -1009,7 +1009,9 @@ await t('§7.7 the eleven vetoed bytes are present and none was silently reworde
     // AMENDED (rider 3, F-06.185): the needle carries the founder's executed strike.
     [s.showBlock(BODY, 'Priya', PHONE), 'Here is the draft:'],
     [s.sentLine('Priya', PHONE), 'Sent to Priya (+919625759924).'],
-    [s.windowClosedLine('Priya'), "the moment she writes, say the word and it goes."],
+    // RE-PINNED (CE-45 ELZ-1 e-151, R-45.30 beside it, the chair's ruling (1), labelled): his words unchanged; the em dash before "the moment" set as
+    // a full stop, so the needle opens with a capital. Punctuation only, shown on the e-151 card for his eye.
+    [s.windowClosedLine('Priya'), "The moment she writes, say the word and it goes."],
     [s.windowUndeterminedLine(), "I won't send blind. The draft is saved."],
     [s.expiredLine(), "Tell me again and I'll write it fresh."],
     [s.sendFailedLine('Priya'), 'The draft is saved and nothing has gone out.'],

@@ -698,10 +698,19 @@ function factsPresent(body, facts) {
 }
 // The composer's SECOND argument (its deps: the listener and the model handle) is passed through untouched: dropping it composed with
 // no seat and broke every relay (caught by b101 and b114 in the seat's own differential before the cut).
+// CE-45 ELZ-1 e-151 (the chair's ruling, 26 September): a composed body that is EMPTY or ONLY a placeholder token ("<UNKNOWN>", "[...]",
+// "{...}") is refused: nothing staged, the glitch line. A check of the writer's output against a fact (it holds no message), never a choice of
+// her words (R-45.26). On the founder's walk "<UNKNOWN>" was staged and framed for his YES.
+function placeholderBody(body) {
+  const b = typeof body === 'string' ? body.trim() : '';
+  return !b || /^(<[^<>]*>|\[[^\[\]]*\]|\{[^{}]*\})$/.test(b);
+}
 async function composeChecked(L, facts, args, composeDeps) {
   const first = await L.draft.composeDraft({ ...args, ...(facts ? { facts } : {}) }, composeDeps);
+  if (first && placeholderBody(first.body)) return null;
   if (!facts || (first && factsPresent(first.body, facts))) return first;
   const second = await L.draft.composeDraft({ ...args, facts }, composeDeps);
+  if (second && placeholderBody(second.body)) return null;
   return second && factsPresent(second.body, facts) ? second : null;
 }
 async function planRelay(supabase, vendor, act, L) {
@@ -1876,19 +1885,20 @@ async function preTurn(args, depsIn) {
       // a BINDER pick (planInvoice's same-named binders): the binder is re-read by id and pinned on the invoice acts; the rest re-ask
       if (id && note.pick_kind === 'binder') {
         const b = await pinnedBinder(supabase, agentId, id, note.pick_name);
-        if (b) { fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) ? { ...a, binder_id: String(b.id) } : { ...a })) }; st.answered = note.asked; }
+        if (b) { fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) ? { ...a, binder_id: String(b.id) } : { ...a })) }; st.answered = note.asked; st.said = note.said || null; }
       }
       const lead = id && note.pick_kind !== 'binder' ? await pinnedLead(supabase, vendor.id, id, note.pick_name, bookedOnly) : null;
       if (lead) {
         // a lead pick carries the lead's binder to an invoice act naming the same client (F3 within each kind; the binder pin)
         fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) && lead.binder_id ? { ...a, binder_id: String(lead.binder_id) } : { ...a })) }; st.answered = note.asked;
         L.lifecycle = pinLifecycle(L.lifecycle, note.pick_name, lead);
+        st.said = note.said || null; // e-151: the replayed relay is written from her original words (F-44.123)
       } else if (fromNote) { /* a binder pick answered above */ } else if (n || !heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string')) {
         if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
         const rows = await leadsNamed(supabase, vendor.id, note.pick_name, bookedOnly);
         const line = rows && rows.length > 1 ? sameName(note.pick_name, rows, (r) => r.wedding_date) : null;
         if (!line) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'pick_gone' };
-        return { ...askAgain(line, 'B8', note.tries + 1), note: { asked: 'B8', acts: note.acts, tries: note.tries + 1, lead_ids: rows.map((r) => String(r.id)), pick_name: note.pick_name } };
+        return { ...askAgain(line, 'B8', note.tries + 1), note: { asked: 'B8', acts: note.acts, tries: note.tries + 1, lead_ids: rows.map((r) => String(r.id)), pick_name: note.pick_name, pick_kind: note.pick_kind, ...(note.said ? { said: note.said } : {}) } };
       }
     } else if (note && PICK_CREW.includes(note.asked)) {
       // cut 2c (V14, V15): a bare number is the Nth member or shoot SHOWN, pinned by id on the replayed act; planAssign honours it only while
@@ -2314,7 +2324,10 @@ async function preTurn(args, depsIn) {
     if (!st.wrote && st.keys.length === 1 && st.keys[0] === 'B8') {
       const pick = await clientPickOf(supabase, vendor, acts, agentId);
       const tries = fromNote && note && PICK_CLIENT.includes(note.asked) ? note.tries + 1 : 0;
-      if (pick && tries <= 1) st.note = { asked: 'B8', acts: acts.map((a) => ({ ...a })), tries, lead_ids: pick.ids, pick_name: pick.name, pick_kind: pick.kind };
+      // e-151 (the founder's walk, 26 Sept): the note keeps her ORIGINAL words (F-44.123's pattern), so a relay replayed after "2" is written from
+      // them, never from the bare number
+      const original = holdsRelay(acts) ? saidOf(st.said || message) : null;
+      if (pick && tries <= 1) st.note = { asked: 'B8', acts: acts.map((a) => ({ ...a })), tries, lead_ids: pick.ids, pick_name: pick.name, pick_kind: pick.kind, ...(original ? { said: original } : {}) };
     }
     // cut 2c (V14, V15): a turn whose only line is planAssign's B53 or B61 keeps the crew pick, the ids in the order shown
     if (!st.wrote && st.keys.length === 1 && ['B53', 'B61'].includes(st.keys[0]) && st.crewPick) {

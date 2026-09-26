@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 e-151 (R-45.30): the em dashes in B42, B45, B72, B75 and relaySeat's four draft lines ("Not sent", "The draft is
+// saved", "Done", "here it is again") set as a full stop or a comma, words unchanged; the bytes, rendered forms and hashes re-pinned here.
 // scripts/b108_lcv14_lookups_bench.js · TDW CE-45 · LCV-14 · LC-Victor P7 CUT 4: THE LOOKUPS. A request on route 'search' is answered READ ONLY behind the
 // route-search gate (workingDoor.js lookupDoor): the new leads (leadFeed.js newLeads, K3's relocation of worklistToday's query, byte-preserved), a day's
 // availability (daySheet.js readDaySpine), what's due this week (dueWeek.js); B69 to B74, B78, B79 his (ASK 7: each form its own key); tally, history and a
@@ -368,12 +370,12 @@ async function main() {
     return w;
   };
   const WEEK = (nowMs) => { const t = (n) => IC.istPlusDaysISO(n, nowMs || NOW); return [`Due this week: Rao · Advance · Rs 30,000 · ${LY(t(0))}.`, `Due this week: Rao · Second · Rs 45,000 · ${LY(t(6))}.`, `This week: Rao · shoot · ${LY(t(3))}.`].join('\n'); };
-  const DAY14 = '14 February 2027: blocked — personal.\n14 February 2027: blocked.\n14 February 2027: Rao · shoot';
+  const DAY14 = '14 February 2027: blocked, personal.\n14 February 2027: blocked.\n14 February 2027: Rao · shoot';
   const LEADS2 = 'New leads: Walk Eighteen Xi · Walk Eighteen Nu (1 May 2027).'; // RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, R-45.12, labelled): NEWEST first, the door's own read
   const lk = (d, said, h, deps) => turnX(d, said, h, deps || {});
 
   sec('1 · THE LAWS OF THE CUT (the bytes, the lookups\' door, K3\'s relocation)');
-  const EIGHT = { B69: '2529a488e7bc47337286f6737fae1b6fc061cc23c736495266546a307cbda459', B70: '1eb19e7ff80596105866e91a70f1c38ae50991c426035af5ad1d423395d64b31', B71: 'b2a93cd4ed88977434dc30f6dafe1fba387a867a6dccb5bef56b5add43022cdb', B72: 'caae4be489ef24c9743d11dba40370bd211ed83b8a1859a1a6f04b445273baae', B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a', B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5', B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a', B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74' };
+  const EIGHT = { B69: '2529a488e7bc47337286f6737fae1b6fc061cc23c736495266546a307cbda459', B70: '1eb19e7ff80596105866e91a70f1c38ae50991c426035af5ad1d423395d64b31', B71: 'b2a93cd4ed88977434dc30f6dafe1fba387a867a6dccb5bef56b5add43022cdb', B72: '0a03c68819cc2e85aa7a4062dbcef6a0a0fc7c44e48019855865cf25eda83693', B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a', B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5', B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a', B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74' };
   T('1.1 LINES 75: the eight of his (B69 to B74, B78, B79), each byte its hash literal; B78 has NO full stop', Object.keys(DL.LINES).length === 83 /* RE-PINNED (CE-45 ELZ-1 cut 2b, labelled): B86 and B87 his (F-44.175's stopgap), LINES 83 */ /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his (R-45.16, the screenshot save); b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): 79 since B80 to B83, his; b109 holds them */ && Object.keys(EIGHT).every((k) => DL.LINE_HASHES[k] === EIGHT[k] && sha(DL.LINES[k] || '') === EIGHT[k]) && !DL.LINES.B78.endsWith('.'));
   T('1.2 LOOKUP_ACTS is find, whatsdue, date and is NOT in COVERED (a lookup is never a job); COVERED fifteen since ELZ-1 cut 2b', J(WD.LOOKUP_ACTS) === 'find,whatsdue,date' && WD.COVERED.length === 15 /* LABELED AMENDMENT · CE-45 ELZ-1 cut 2b: quote_send joined COVERED (fifteen kinds) */ && !WD.LOOKUP_ACTS.some((a) => WD.COVERED.includes(a)));
   const LFD = (() => { try { return require(P('src/lib/vendor/leadFeed.js')); } catch (_e) { return {}; } })();

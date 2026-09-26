@@ -134,13 +134,13 @@ const LINES = Object.freeze({
   // REUSE: his chain-era line, blockHands.js :156 (CE-blessed 2026-07-15; the month in full since F-44.62). Spoken ONLY on blockDate's exact 'Already blocked.'
   B41: "{date} was already blocked. Nothing changed.",
   // REUSE: his blockHands.js :157, spoken when the writer refused with NO sentence of its own (a throw); a writer's own refusal sentence is spoken verbatim instead
-  B42: "Couldn't block {date} — nothing was written. Try again or block it from the calendar.",
+  B42: "Couldn't block {date}. Nothing was written. Try again or block it from the calendar.",
   // REUSE: his blockHands.js :165
   B43: "Unblocked: {date}. The day's back on your calendar.",
   // REUSE: his blockHands.js :166. Spoken ONLY on unblockDate's exact 'Block not found.' (F-44.65 and F-44.72 close on this row)
   B44: "{date} wasn't blocked. Nothing changed.",
   // REUSE: his blockHands.js :167
-  B45: "Couldn't unblock {date} — nothing was written. Try again or unblock it from the calendar.",
+  B45: "Couldn't unblock {date}. Nothing was written. Try again or unblock it from the calendar.",
   // a shoot booked by the door; every slot from the events ROW writeEvent returned (his, 23 September 2026)
   B46: "Booked: {client} · shoot · {date}.",
   // P7 cut 2b (CE-45 LCV-13) · MOVE AND CANCEL A SHOOT, all his (22 and 23 September 2026, "All proposed lines accepted", "yes to all"). B48 and B50 are ASKED:
@@ -188,7 +188,7 @@ const LINES = Object.freeze({
   // a day with no live row
   B71: "{date} is free.",
   // a block on the day; the reason is the ROW's notes (no reason: "{date}: blocked." derived, as B40's no-reason form is)
-  B72: "{date}: blocked — {reason}.",
+  B72: "{date}: blocked, {reason}.",
   // a booking on the day: {client} the ROW's title (a non-shoot kind places its own kind word, derived as B46's is). NO full stop, exactly as he accepted it
   B78: "{date}: {client} · shoot",
   // a pending milestone due this week (today through today plus six, IST): every slot from the payment_schedules ROW and its invoice's client_name
@@ -214,7 +214,7 @@ const LINES = Object.freeze({
   B86: "I can't look that up yet. Open {room} in the app to see {thing}.",
   B87: "I can't look that up yet. Open the app to see it.",
   // REUSE (his "ok", 23 September 2026): the chain's own refusal line, calendarSignals.js :134, byte for byte; spoken when writeEvent refused a booking with no conflict sentence and no error sentence
-  B75: "Couldn't put that on the calendar — nothing was changed.",
+  B75: "Couldn't put that on the calendar. Nothing was changed.",
   // a calendar or reminder job for a name that is no lead of hers (his "ok", 23 September 2026; B4's tail): one line for book, move, cancel and remind
   B76: "No lead called {name}. Add {name} as a lead first, here or in the app.",
   // an assignment by date alone with no shoot on that day (his "ok", 23 September 2026). CARRIED in 2a, spoken from cut three
@@ -252,6 +252,8 @@ const EXAMPLE_ACTS = Object.freeze([
 // CE-45 ELZ-1 cut 2a · R-45.23, the founder's V1 to V8 ("yes to all", 25 September 2026): every "do X first" line names WHAT is
 // missing, WHERE it is set and FOR WHOM. B4, B5, B25, B32, B33, B39, B60, B76 re-hashed below; B33 gains {package}. V9 to V16 (the
 // numbered picks) ride cut 2b with the number answer, so no line asks for a number the door cannot yet read.
+// CE-45 ELZ-1 e-151 (R-45.30, the chair's ruling on the founder's walk): B42, B45, B72 and B75's em dashes set as a full stop or a comma, words
+// unchanged; re-hashed below.
 const LINE_HASHES = Object.freeze({
   B1: '1fb5297d3c1193543d8385e514fe42b1856be16deb6cabf2e83cf036169ed4ba',
   B2: 'cd29bd0dfbde4e0dba9cf4df73e12bc7b69880aea0337562e77d96228e8259eb',
@@ -294,10 +296,10 @@ const LINE_HASHES = Object.freeze({
   B39: '647f8a34d7a0bd592db1940cd31841febd0bd237a6b7439079110808ba910a96',
   B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',
   B41: '6d882045d5fca760cce1f3dd1393bc6b6f3b23cea11f59a810dc910a51ea0b03',
-  B42: 'a41ef8b9fe7281b7cd06c2ad7e99cac57ac6c6a5f85e611915b543560247b651',
+  B42: 'aaaa2e6e807e81c3daa4619669eb8bcfb0cefeb65ca82a86123252a9d8642c3d',
   B43: 'b78f22148ed8f80aa71e2ba0e5311fb8f7d1d8798fd5b8631befb263924db0ad',
   B44: '2e8457a7173407d2b6166c895ad03188a19a174e3307a008e084996354ede0e5',
-  B45: 'b4363bbbfc3f29c23b913cc26c88f1586c5a8b2b040e15da9b42cd00c8abcf6e',
+  B45: '4a359fa05de98e63fa577fac29fd25e48d37e72ebb3bec3d95561f47a584554b',
   B46: 'e06955310af567757977dc641dd8231d410bc582014e0ea62d4cb67ffbd820f1',
   B48: 'fb8734312f58ff98f2061be1e6559996f7ac7d7ae0c05910094d72257b39239e',
   B49: '420a5f16d6dd179e663e5f64e2cae71499cbd3114034b533ed4c033f24b935a1',
@@ -318,7 +320,7 @@ const LINE_HASHES = Object.freeze({
   B69: '2529a488e7bc47337286f6737fae1b6fc061cc23c736495266546a307cbda459',
   B70: '1eb19e7ff80596105866e91a70f1c38ae50991c426035af5ad1d423395d64b31',
   B71: 'b2a93cd4ed88977434dc30f6dafe1fba387a867a6dccb5bef56b5add43022cdb',
-  B72: 'caae4be489ef24c9743d11dba40370bd211ed83b8a1859a1a6f04b445273baae',
+  B72: '0a03c68819cc2e85aa7a4062dbcef6a0a0fc7c44e48019855865cf25eda83693',
   B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a',
   B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5',
   B80: '08f216a15644ce1b9202096dac24349c2d8cc0e16f022891bb9d87110af61ea2',
@@ -331,7 +333,7 @@ const LINE_HASHES = Object.freeze({
   B87: '8a10f87ecf94d4169d67bbb22a9f7efc80a1ff5785be2922b239e6f2a154fcee',
   B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
   B79: '6f951e48eb5ff2bb7e3a2af443de08a1f2bc7aad7aa6ef82a0f372441e6d3e74',
-  B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
+  B75: '279f87cbc350c71bc23be93f6c359051c57e7dc76d1bb8607b85122a5a66f261',
   B76: '90befbeea38250f99dc0743161e1b191aa45aea7bf3938cb9e7ccd8ee8178bb8',
   B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
   D1: '1a7d3901e2d0a7a72709b471bcd010931aff7ddd002ed34b9c001b463df3e8ee',
@@ -532,7 +534,7 @@ function dayLines(date, blocks, events) {
     const out = [];
     for (const b of (Array.isArray(blocks) ? blocks : [])) {
       const r = slot(b && b.reason);
-      out.push(r === null ? LINES.B72.replace(' — {reason}', '').replace('{date}', d) : render('B72', { date: d, reason: r }));
+      out.push(r === null ? LINES.B72.replace(', {reason}', '').replace('{date}', d) : render('B72', { date: d, reason: r }));
     }
     for (const e of (Array.isArray(events) ? events : [])) {
       const line = render('B78', { date: d, client: e && e.title });

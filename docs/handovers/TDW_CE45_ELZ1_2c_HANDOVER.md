@@ -32,4 +32,8 @@ b118a (4.4 flipped), b118b (3.7 flipped; 6.1 planAssign). The differential at cd
 
 ## 3 · Walk record
 
-To be recorded.
+Landed as 1b37c26. The founder's walk, 26 September (the app, DEV440, test twins): W1 "tell walk twin hi" -> B8 exactly as ruled ("Two clients
+are called walk twin: 1. Walk twin (5 March 2027) 2. Walk twin (12 June 2027). Reply with the number."); "2" bound the SECOND lead correctly (the frame
+named Walk twin, +918000000000, the 12 June lead) BUT the draft's body was "<UNKNOWN>": the B8 note did not carry her original words, so the
+replayed relay was written from "2" (e-151). He answered NO; nothing was sent. Cured in the e-151 cut, with the placeholder refusal. W1 is re-walked
+after that cut lands. W2 to W4 and 2b's W3 to W5 remain to be walked (they compose nothing and were unaffected).

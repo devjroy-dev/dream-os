@@ -213,13 +213,17 @@ async function main() {
   // the composer double: records every call (provider, model, tools) and answers the fixed body
   const composed = [];
   const composerOf = (body) => async (provider, params) => { composed.push({ provider, model: params.model, tools: (params.tools || []).map((t) => t.name), choice: params.tool_choice && params.tool_choice.name, user: params.messages && params.messages[0] && params.messages[0].content }); return { content: [{ type: 'tool_use', name: 'draft_message', input: { message: body } }], usage: { input_tokens: 300, output_tokens: 40 } }; };
+  // A-45.14 (CE-45, 26 September; ELZ-1 e-151): a composer double ECHOES its instruction, never a fixed body, so no cell can pass while her words
+  // fail to reach the writer. The echo is the user message on one line; `drop` removes matching lines (an F2 miss is an echo without the figure).
+  const echoOf = (user, drop) => `Echo: ${String(user || '').split('\n').filter((l) => l && !(drop && drop.test(l))).join(' | ')}`;
+  const echoComposer = (drop) => async (p, params) => composerOf(echoOf(params && params.messages && params.messages[0] && params.messages[0].content, drop))(p, params);
   const sent = [];
   const transport = async (to, text, media, from) => { sent.push({ to, text, media, from }); return { sid: `wamid.${sent.length}`, sent: true }; };
   const turn = async (db, message, request, o = {}) => {
     const mod = o.M || WD;
     LF._resetLaneFlagCache();
     const out = await quiet(() => mod.preTurn({ supabase: db, vendor: V, agentId: AG, route: o.route || ROUTE, message, lane: o.lane || 'whatsapp' },
-      { llmCreate: earOf(request), nowMs: NOW, composerCreate: o.composer || composerOf(BODY), sendWhatsApp: transport, env: ENV }));
+      { llmCreate: earOf(request), nowMs: NOW, composerCreate: o.composer || echoComposer() /* A-45.14 */, sendWhatsApp: transport, env: ENV }));
     const said = out && out.door === true ? out : await quiet(() => mod.standIn({ supabase: db, out }, { nowMs: NOW }));
     await quiet(() => mod.persistDoorTurn({ supabase: db, agentId: AG, message, out: said, lane: o.lane || 'whatsapp' }, { memory: memoryOf(db), meter }));
     return { out, said, reply: said.reply, keys: J(said.keys) };
@@ -246,6 +250,9 @@ async function main() {
   T('1.1 three same-named clients: his B8, numbered in ONE order (wedding date ascending), and a note carrying the lead ids in that order', r.reply === B8_3 && noteIn(db).asked === 'B8' && JSON.stringify(noteIn(db).lead_ids) === JSON.stringify(['l-s2', 'l-s1', 'l-s3']));
   r = await turn(db, '2', NONE);
   T('1.2 "2" binds the SECOND SHOWN lead: the relay is framed and stored to l-s1\'s own phone (the pin through L\'s resolveLead)', r.keys === 'B37' && draftsIn(db).length === 1 && d0(db).couple_phone === PS1);
+  // e-151 (the founder's walk, 26 September 16:51 IST: "2" after B8 drafted "<UNKNOWN>"): the replayed relay is written from her ORIGINAL words
+  const lastUser = composed.length ? String(composed[composed.length - 1].user || '') : '';
+  T('1.2b e-151: after "2" the writer is given her ORIGINAL words ("Tell Sarah Walk hello"), never the bare number', lastUser.includes('Her instruction: Tell Sarah Walk hello') && !/Her instruction: 2\b/.test(lastUser));
   db = makeDb(sarahs(world()));
   await turn(db, 'Tell Sarah Walk hello', TELL);
   db.tables['public.leads'].find((l) => l.id === 'l-s1').deleted_at = '2026-09-21T05:59:00Z';
@@ -330,6 +337,8 @@ async function main() {
   sec('6 mutations of production code: each reddens its cell');
   await mut('6.1 M1 the pin dropped (the replay\'s lifecycle unpinned): "2" never binds, the pick is asked again (reddens 1.2)', WDf, [['        L.lifecycle = pinLifecycle(L.lifecycle, note.pick_name, lead);', '        void pinLifecycle;']], [],
     async (rq) => { const d = makeDb(sarahs(world())); await turn(d, 'Tell Sarah Walk hello', TELL, { M: rq(WDf) }); const x = await turn(d, '2', NONE, { M: rq(WDf) }); return x.keys === 'B37' && d0(d).couple_phone === PS1; }, (v) => v === false);
+  await mut('6.1b M1b e-151\'s cure removed: the relay after "2" is written from the bare number again (reddens 1.2b)', WDf, [['        st.said = note.said || null; // e-151: the replayed relay is written from her original words (F-44.123)', '']], [],
+    async (rq) => { composed.length = 0; const d = makeDb(sarahs(world())); await turn(d, 'Tell Sarah Walk hello', TELL, { M: rq(WDf) }); await turn(d, '2', NONE, { M: rq(WDf) }); return String((composed[composed.length - 1] || {}).user || ''); }, (v) => !v.includes('Her instruction: Tell Sarah Walk hello'));
   await mut('6.2 M2 the vanished check removed: a DELETED lead is bound (reddens 1.3)', WDf, [[".eq('vendor_id', vendorId).eq('id', id).is('deleted_at', null).maybeSingle();", ".eq('vendor_id', vendorId).eq('id', id).maybeSingle();"]], [],
     async (rq) => { const d = makeDb(sarahs(world())); await turn(d, 'Tell Sarah Walk hello', TELL, { M: rq(WDf) }); d.tables['public.leads'].find((l) => l.id === 'l-s1').deleted_at = '2026-09-21T05:59:00Z'; const x = await turn(d, '2', NONE, { M: rq(WDf) }); return x.keys; }, (v) => v !== 'B8');
   await mut('6.3 M3 leadsNamed\'s order REVERSED: B8 no longer lists by date (reddens 1.1)', WDf, [['  return hits.sort(byDateThenId((l) => l.wedding_date));', '  return hits.sort(byDateThenId((l) => l.wedding_date)).reverse();']], [],

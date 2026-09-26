@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 e-151 (R-45.30): the em dashes in B42, B45, B72, B75 and relaySeat's four draft lines ("Not sent", "The draft is
+// saved", "Done", "here it is again") set as a full stop or a comma, words unchanged; the bytes, rendered forms and hashes re-pinned here.
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (his V9, V10, V12, V14, V15): the rendered picks re-pinned to his numbered forms, the same options in the
 // same order; a cell titled "exactly two" now reads "two or more" by F4's ruling (no cap), named at its title.
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (R-45.23, his V9, V10, V12, V14, V15): B8, B10, B24, B53 and B61 re-pinned to his numbered bytes and hashes;
@@ -391,16 +393,16 @@ async function main() {
   d = makeDb(estate());
   await turnC(d, S2B[6], heard2('6/C2/asis'));
   x = await turnD(d, 'Yes', NONE, { writeEvent: async () => ({ ok: false, error: 'db down' }) });
-  const t14 = x.reply === "Couldn't put that on the calendar — nothing was changed." && tcOf(x, 'donna_edit_event').result === 'refused:write_failed';
+  const t14 = x.reply === "Couldn't put that on the calendar. Nothing was changed." && tcOf(x, 'donna_edit_event').result === 'refused:write_failed';
   d = makeDb(estate());
   await turnC(d, S2B[6], heard2('6/C2/asis'));
   x = await turnD(d, 'Yes', NONE, { writeEvent: async () => { throw new Error('boom'); } });
-  T('2.14 a refusal with no sentence, or a throw, → B75 (his), recorded; nothing claimed', t14 && x.reply === "Couldn't put that on the calendar — nothing was changed." && tcOf(x, 'donna_edit_event').result === 'refused:exception');
+  T('2.14 a refusal with no sentence, or a throw, → B75 (his), recorded; nothing claimed', t14 && x.reply === "Couldn't put that on the calendar. Nothing was changed." && tcOf(x, 'donna_edit_event').result === 'refused:exception');
   d = makeDb(estate());
   await turnC(d, S2B[6], heard2('6/C2/asis'));
   d.tables['public.events'].find((e) => e.id === 'e-verma').deleted_at = '2026-09-21T06:00:00Z';
   x = await turnC(d, 'Yes', NONE);
-  T('2.15 the shoot deleted between the question and her YES → B75 (the writer\'s "Event not found."), nothing claimed', x.reply === "Couldn't put that on the calendar — nothing was changed.");
+  T('2.15 the shoot deleted between the question and her YES → B75 (the writer\'s "Event not found."), nothing claimed', x.reply === "Couldn't put that on the calendar. Nothing was changed.");
   d = makeDb(estate());
   x = await turnC(d, 'Move the Walk Seventeen Zeta shoot to 1 June 2027', mv('Walk Seventeen Zeta', '1 June 2027'));
   T('2.16 a name that is no lead → B76 "No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app." (his one line), nothing written', x.reply === 'No lead called Walk Seventeen Zeta. Add Walk Seventeen Zeta as a lead first, here or in the app.' && writesOf(d) === 0);

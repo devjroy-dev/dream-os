@@ -1,4 +1,6 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 e-151 (R-45.30): the em dashes in B42, B45, B72, B75 and relaySeat's four draft lines ("Not sent", "The draft is
+// saved", "Done", "here it is again") set as a full stop or a comma, words unchanged; the bytes, rendered forms and hashes re-pinned here.
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (his V9, V10, V12, V14, V15): B8, B10, B24, B53 and B61 re-pinned to his numbered bytes, hashes and rendered
 // forms (the same options in the same order); a cell titled "exactly two" now reads "two or more" by F4's ruling. Applied BY HAND at cda36fa (the carry:
 // 7505ff2, then 5cba98e, then back to cda36fa).
@@ -243,10 +245,10 @@ async function main() {
     // P7 cut 2a (CE-45 LCV-12): the calendar's eleven, his, ruled 23 September 2026 (B41 to B45 REUSED from blockHands.js :156 to :167; B75 from calendarSignals.js :134)
     B40: "Blocked: {date} · {reason}.",
     B41: "{date} was already blocked. Nothing changed.",
-    B42: "Couldn't block {date} — nothing was written. Try again or block it from the calendar.",
+    B42: "Couldn't block {date}. Nothing was written. Try again or block it from the calendar.",
     B43: "Unblocked: {date}. The day's back on your calendar.",
     B44: "{date} wasn't blocked. Nothing changed.",
-    B45: "Couldn't unblock {date} — nothing was written. Try again or unblock it from the calendar.",
+    B45: "Couldn't unblock {date}. Nothing was written. Try again or unblock it from the calendar.",
     B46: "Booked: {client} · shoot · {date}.",
     // P7 cut 2b re-pin (CE-45 LCV-13, labelled): the six 2b bytes, his (22 and 23 September), join the ruled set, one 1.1 cell each; 196 → 202
     B48: "Move {client}'s shoot to {date}? Reply YES or NO.",
@@ -256,7 +258,7 @@ async function main() {
     B52: "No shoot for {client} on the calendar.",
     B53: "Which shoot for {client}? 1. {date} 2. {date}. Reply with the number.",
     B54: "Which day? Say it like 5 December.",
-    B75: "Couldn't put that on the calendar — nothing was changed.",
+    B75: "Couldn't put that on the calendar. Nothing was changed.",
     B76: "No lead called {name}. Add {name} as a lead first, here or in the app.",
     B77: "No shoot on {date}.",
     // P7 cut 3 (CE-45 LCV-14, labelled): nine of his join the ruled set (B60 carried, unspoken); one cell each in the RULED loop; b106 holds them
@@ -273,7 +275,7 @@ async function main() {
     B69: "New leads: {name} ({date}) · {name} ({date}).",
     B70: "No new leads.",
     B71: "{date} is free.",
-    B72: "{date}: blocked — {reason}.",
+    B72: "{date}: blocked, {reason}.",
     B73: "Due this week: {client} · {milestone} · Rs {amount} · {date}.",
     B74: "Nothing due this week.",
     B78: "{date}: {client} · shoot",
@@ -320,10 +322,10 @@ async function main() {
     B39: '647f8a34d7a0bd592db1940cd31841febd0bd237a6b7439079110808ba910a96',
     B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',
     B41: '6d882045d5fca760cce1f3dd1393bc6b6f3b23cea11f59a810dc910a51ea0b03',
-    B42: 'a41ef8b9fe7281b7cd06c2ad7e99cac57ac6c6a5f85e611915b543560247b651',
+    B42: 'aaaa2e6e807e81c3daa4619669eb8bcfb0cefeb65ca82a86123252a9d8642c3d',
     B43: 'b78f22148ed8f80aa71e2ba0e5311fb8f7d1d8798fd5b8631befb263924db0ad',
     B44: '2e8457a7173407d2b6166c895ad03188a19a174e3307a008e084996354ede0e5',
-    B45: 'b4363bbbfc3f29c23b913cc26c88f1586c5a8b2b040e15da9b42cd00c8abcf6e',
+    B45: '4a359fa05de98e63fa577fac29fd25e48d37e72ebb3bec3d95561f47a584554b',
     B46: 'e06955310af567757977dc641dd8231d410bc582014e0ea62d4cb67ffbd820f1',
     B48: 'fb8734312f58ff98f2061be1e6559996f7ac7d7ae0c05910094d72257b39239e',
     B49: '420a5f16d6dd179e663e5f64e2cae71499cbd3114034b533ed4c033f24b935a1',
@@ -332,7 +334,7 @@ async function main() {
     B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb',
     B53: 'aa55335d1132fb578845bc1ddfdbf9f0258c825c026c6a595700b114d124a5a3',
     B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
-    B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
+    B75: '279f87cbc350c71bc23be93f6c359051c57e7dc76d1bb8607b85122a5a66f261',
     B76: '90befbeea38250f99dc0743161e1b191aa45aea7bf3938cb9e7ccd8ee8178bb8',
     B77: '756908b48584d5cfbedc716eb21307d3c7a50fd7d3ad3210677e6f3bfe8a3a6c',
     B56: 'd434900fe046a14f2bc58dec7d35f367f4fac70d99b08a849b7cf2be1b064b5a',
@@ -347,7 +349,7 @@ async function main() {
     B69: '2529a488e7bc47337286f6737fae1b6fc061cc23c736495266546a307cbda459',
     B70: '1eb19e7ff80596105866e91a70f1c38ae50991c426035af5ad1d423395d64b31',
     B71: 'b2a93cd4ed88977434dc30f6dafe1fba387a867a6dccb5bef56b5add43022cdb',
-    B72: 'caae4be489ef24c9743d11dba40370bd211ed83b8a1859a1a6f04b445273baae',
+    B72: '0a03c68819cc2e85aa7a4062dbcef6a0a0fc7c44e48019855865cf25eda83693',
     B73: '56afe8b641accbc202b22462b85326cdd6c92255e50f00b49dc6bf5b9a00ff0a',
     B74: '047bd5c99a6e6c5a58fd6ea168a30fdf9d7fa34d0e184f55580937da31ecfdd5',
     B78: '575f97d619bae91397ffdd31267bc10dfea25b5ae8c12bf83b5e6d498b6d1d4a',
@@ -924,8 +926,8 @@ async function main() {
   T('11.17 M15 an advance on a booked lead routed to the booking path again reddens 15.8 (no deposit question)', typeof m === 'string' && !m.startsWith('Mark this payment?'));
   // F-44.62
   const BH = require(P('src/lib/vendor/blockHands.js'));
-  const OLD = { ok: (d, w) => `Blocked: ${d}${w}. The day's off your calendar.`, already: (d) => `${d} was already blocked. Nothing changed.`, fail: (d) => `Couldn't block ${d} — nothing was written. Try again or block it from the calendar.`,
-    uok: (d) => `Unblocked: ${d}. The day's back on your calendar.`, not: (d) => `${d} wasn't blocked. Nothing changed.`, ufail: (d) => `Couldn't unblock ${d} — nothing was written. Try again or unblock it from the calendar.` };
+  const OLD = { ok: (d, w) => `Blocked: ${d}${w}. The day's off your calendar.`, already: (d) => `${d} was already blocked. Nothing changed.`, fail: (d) => `Couldn't block ${d}. Nothing was written. Try again or block it from the calendar.`,
+    uok: (d) => `Unblocked: ${d}. The day's back on your calendar.`, not: (d) => `${d} wasn't blocked. Nothing changed.`, ufail: (d) => `Couldn't unblock ${d}. Nothing was written. Try again or unblock it from the calendar.` };
   const FULL = '20 March 2027';
   T('15.10 F-44.62: "Blocked:" reads the full date, the words byte for byte', BH.blockLines([{ date: '2027-03-20', ok: true, reason: 'Personal time' }]) === OLD.ok(FULL, ' — Personal time'));
   T('15.11 F-44.62: the other five lines, words byte for byte, full dates', BH.blockLines([{ date: '2027-03-20', code: 'ALREADY_BLOCKED' }]) === OLD.already(FULL) && BH.blockLines([{ date: '2027-03-20' }]) === OLD.fail(FULL)

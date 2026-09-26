@@ -532,7 +532,7 @@ function bookingLines(booked) {
 // written. Same treatment, no special case: the vendor is owed the truth in both.
 function conflictLines(refused) {
   return scrubText(refused.map((r) =>
-    (r.conflict && r.conflict.message) || r.error || `Couldn't put that on the calendar — nothing was changed.`
+    (r.conflict && r.conflict.message) || r.error || `Couldn't put that on the calendar. Nothing was changed.` // CE-45 ELZ-1 e-151 (R-45.30, the chair's ruling (a)): one home, one byte; the door's B4x/B75 reuse this line
   ).join('\n'));
 }
 
