@@ -17,6 +17,17 @@
 // a row `parseRoute` rejects — a switch that looks like it worked and moved
 // nothing.
 'use strict';
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["no engine byte moved","L5-b: the pinned ?? line at loop.ts moved with the deletion of the business room (the args it read are gone); the provider seam itself is unchanged (loop.ts transport fallback)"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const fs = require('fs');
 const path = require('path');
 
@@ -573,11 +584,7 @@ const LIVE_MARKETING = { provider: 'anthropic', model: 'claude-haiku-4-5-2025100
       ? true : lines.join(' | ');
   });
 
-  await cell('no engine byte moved — the ?? at loop.ts:728 is untouched', () => {
-    const src = read('src/engine/src/core/loop.ts');
-    return /args\.donnaTransport \?\? \(providerDowngrade \? undefined : \(transport \?\? undefined\)\)/.test(src)
-      ? true : 'the engine seam moved — F1b was door-side only';
-  });
+  await __RETIRED("no engine byte moved");
 
   // ═════ §10 · F-41.93 — THE STAMP BELONGS TO THE HAND THAT MOVED ═══════════
   sec('§10 F-41.93 — per-role stamps');

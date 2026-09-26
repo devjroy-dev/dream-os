@@ -405,8 +405,12 @@ section('5. the original lead\'s state is NOT touched — the row is the record'
     .match(/const ALLOWED_STATES\s*=\s*\[([^\]]*)\]/);
   ok('ALLOWED_STATES is unchanged by this sitting',
      !!allowed && !/forwarded/.test(allowed[1]));
-  const engine = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/donnaLead.ts'), 'utf8');
-  ok('W-1 holds: no engine byte learned the word', !/forwarded/.test(engine));
+  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): donnaLead.ts is deleted (K6); the claim is the ENGINE's, so every engine source is read.
+  const engine = (function walk(d) { let t = ''; for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name); if (e.isDirectory()) t += walk(p); else if (/\.ts$/.test(e.name)) t += fs.readFileSync(p, 'utf8'); } return t; })(path.join(ROOT, 'src/engine/src'));
+  // The engine holds no lead-state list any more (it left with donnaLead); the claim is that no engine CODE uses `forwarded` as a VALUE.
+  // A quoted token, not the English word (harveySoul.ts speaks of WhatsApp's "forwarded messages" frame, unrelated).
+  ok('W-1 holds: no engine byte learned the word (as a value, in any engine source)', !/['"`]forwarded['"`]/.test(engine));
 }
 
 // ══ §6 — THE ORDER IS THE RULING · R-G51.2 ═════════════════════════════════

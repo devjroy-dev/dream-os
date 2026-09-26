@@ -25,6 +25,17 @@
 //
 // D-11 dist gate (sentinel = 'tombstone: true', the wrapper's own 0081 mark).
 'use strict';
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§1.2 the business assistant row is BARE — no meta key at all (the asymmetry)","L5-a: the business row's bare shape was the asymmetry with a room runTurn no longer serves (it refuses the turn by name, b116 1.1); §1.1 keeps the advisor stamp"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const path = require('path');
 const fs = require('fs');
@@ -163,10 +174,8 @@ const lastAssistant = () => [...store.messages].reverse().find((m) => m.role ===
     T('§1.1 the advisor assistant row carries meta {"mode":"advisor"}', !!adv && adv.meta && adv.meta.mode === 'advisor');
 
     store.messages.length = 0;
-    curVictorMode = 'business';
-    await runTurn({ agentId: AGENT, message: 'Book Meera for the 14th.', conversationId: CONV, tierOverride: 'entry' });
-    const biz = lastAssistant();
-    T('§1.2 the business assistant row is BARE — no meta key at all (the asymmetry)', !!biz && !('meta' in biz));
+/* CE-45 LCV-16 LSP_5 (A-45.2): the span below was removed and its 1 cells retired at site: L5-a: the business row's bare shape was the asymmetry with a room runTurn no longer serves (it refuses the turn by name, b116 1.1); §1.1 keeps the advisor stamp */
+__RETIRED("§1.2 the business assistant row is BARE — no meta key at all (the asymmetry)");
   }
 
   sec('§2 — THE TOMBSTONE STAMP (an outage → the wrapper marks the row, durable + interim).');
@@ -174,7 +183,7 @@ const lastAssistant = () => [...store.messages].reverse().find((m) => m.role ===
     metaColumnPresent = true; store.messages.length = 0; curVictorMode = 'business';
     sdkShouldThrow = true;
     let threw = false;
-    try { await runTurn({ agentId: AGENT, message: 'anything?', conversationId: CONV, tierOverride: 'entry' }); }
+    try { await runTurn({ agentId: AGENT, message: 'anything?', conversationId: CONV, tierOverride: 'entry', roomAssert: 'advisor' /* RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the subject is live, the room is the one runTurn serves */ }); }
     catch (e) { threw = true; }
     sdkShouldThrow = false;
     const tomb = lastAssistant();
@@ -193,7 +202,7 @@ const lastAssistant = () => [...store.messages].reverse().find((m) => m.role ===
     store.messages.push({ id: 'm2', conversation_id: CONV, role: 'assistant', content: 'Real answer one.', created_at: new Date(t0 + 2).toISOString() });
     store.messages.push({ id: 'm3', conversation_id: CONV, role: 'assistant', content: TOMBSTONE, meta: { tombstone: true }, created_at: new Date(t0 + 3).toISOString() });
     store.messages.push({ id: 'm4', conversation_id: CONV, role: 'assistant', content: TOMBSTONE, created_at: new Date(t0 + 4).toISOString() }); // pre-0081: no meta
-    await runTurn({ agentId: AGENT, message: 'Real question two.', conversationId: CONV, tierOverride: 'entry' });
+    await runTurn({ agentId: AGENT, message: 'Real question two.', conversationId: CONV, tierOverride: 'entry', roomAssert: 'advisor' /* RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the subject is live, the room is the one runTurn serves */ });
     const replayed = (seen.messages || []).map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
     const replayedText = replayed.join('\n');
     T('§3.1 the real pair replayed (Victor still has his thread)', /Real question one/.test(replayedText) && /Real answer one/.test(replayedText));
@@ -205,7 +214,7 @@ const lastAssistant = () => [...store.messages].reverse().find((m) => m.role ===
   {
     metaColumnPresent = false; store.messages.length = 0; curVictorMode = 'advisor'; seen.messages = null;
     let r = null, err = null;
-    try { r = await runTurn({ agentId: AGENT, message: 'What should I post?', conversationId: CONV, tierOverride: 'entry' }); }
+    try { r = await runTurn({ agentId: AGENT, message: 'What should I post?', conversationId: CONV, tierOverride: 'entry', roomAssert: 'advisor' /* RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the subject is live, the room is the one runTurn serves */ }); }
     catch (e) { err = e; }
     const adv = lastAssistant();
     T('§4.1 the advisor turn SURVIVED with no meta column (saveMessage degraded, no crash)', err === null && !!r);
@@ -216,7 +225,7 @@ const lastAssistant = () => [...store.messages].reverse().find((m) => m.role ===
     const t0 = Date.now();
     store.messages.push({ id: 'p1', conversation_id: CONV, role: 'user', content: 'Pre-DDL question.', created_at: new Date(t0 + 1).toISOString() });
     store.messages.push({ id: 'p2', conversation_id: CONV, role: 'assistant', content: TOMBSTONE, created_at: new Date(t0 + 2).toISOString() });
-    await runTurn({ agentId: AGENT, message: 'Next.', conversationId: CONV, tierOverride: 'entry' });
+    await runTurn({ agentId: AGENT, message: 'Next.', conversationId: CONV, tierOverride: 'entry', roomAssert: 'advisor' /* RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the subject is live, the room is the one runTurn serves */ });
     const replayedText = (seen.messages || []).map((m) => (typeof m.content === 'string' ? m.content : '')).join('\n');
     T('§4.3 loadThread degraded AND still excluded the tombstone by content-match', /Pre-DDL question/.test(replayedText) && !replayedText.includes(TOMBSTONE));
   }

@@ -45,6 +45,17 @@
 // `records`; drop the equality fence → a wrong rupee acquits; delete the vetoed-line
 // exemption → the cure's own refusal convicts. Each mutation must RED the cell it targets
 // and nothing else.
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["moneyBlock is gated on estateInRoom","L5-b: the money and expense blocks and estateInRoom are deleted with the business room; b116 2.1 pins their absence"],["  …and it is LAST in the dynamic tail","L5-b: the money and expense blocks and estateInRoom are deleted with the business room; b116 2.1 pins their absence"],["  …and the expense block is gated","L5-b: the money and expense blocks and estateInRoom are deleted with the business room; b116 2.1 pins their absence"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'bench-inert';
@@ -501,8 +512,7 @@ function classify(reply, message, facts, mode) {
   console.log('\n  §10 regression — absent the block, the world is the pre-cure world');
   {
     const loop = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/loop.ts'), 'utf8');
-    T('moneyBlock is gated on estateInRoom AND its own presence',
-      /const moneyBlock = \(estateInRoom && args\.moneyFacts\) \? `\\n\\n\$\{args\.moneyFacts\}` : '';/.test(loop));
+    __RETIRED("moneyBlock is gated on estateInRoom");
     // ── LABELED AMENDMENT (CE-42, seat V-2). RE-AIMED, TEETH KEPT, COUNT PRESERVED,
     // RATIFY-OR-REVERT. F-42.97 appends the EXPENSE fact block after this one, so
     // "last" is now the two fact blocks together, money then expense. CE-77's
@@ -516,9 +526,8 @@ function classify(reply, message, facts, mode) {
     // sits with the informers and leaves money and expenses the last two seats CE-77's
     // position doctrine earned them. THE SUBJECT IS UNTOUCHED — this cell asserts that
     // the money block still ends the tail with its expense sibling, and it still does.
-    T('  …and it is LAST in the dynamic tail', /\+ relayBlock \+ bookedBlock \+ moneyBlock \+ expenseBlock;/.test(loop));
-    T('  …and the expense block is gated on estateInRoom AND its own presence (F-42.97)',
-      /const expenseBlock = \(estateInRoom && args\.expenseFacts\) \? `\\n\\n\$\{args\.expenseFacts\}` : '';/.test(loop));
+    __RETIRED("  …and it is LAST in the dynamic tail");
+    __RETIRED("  …and the expense block is gated");
     T('the three-arg guard caller still classifies exactly as before (optional ctx)',
       chat.wireGuardClassify(V, { reply: 'Nothing on file for Priya.', victor_mode: 'business', tool_calls: [] }) !== null);
     T('  …and a bare "Done." with NO ask is NOT classified (the ask is required)',

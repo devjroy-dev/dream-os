@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TDW vendor app, simpler layout: Home and shelves</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0F1011;--page:#141516;--header:#1A1B1D;--sheet:#1D1E20;--sheet-top:#232527;--card-border:rgba(240,244,246,.11);--card-bg:linear-gradient(180deg,rgba(240,244,246,.060) 0%,rgba(240,244,246,.030) 100%);--row-hover:rgba(240,244,246,.14);--ink:#EDEEEF;--ink-soft:#C8CACC;--ink-dim:#A3A6A9;--ink-mute:#888B8E;--label:#B9BCBF;--accent:#68C9B4;--metal:#C9A84C;--on-metal:#141516;--positive:#6FC98C;--caution:#DFAE6C;--critical:#E8836B;--scrim:rgba(10,11,12,.62);--serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;--sans:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 24px 64px;display:grid;grid-template-columns:392px 1fr;gap:56px;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr;padding:20px 12px 48px;gap:36px}.phone{margin:0 auto}}
+.phone{width:100%;max-width:392px;height:800px;border-radius:40px;border:1px solid rgba(240,244,246,.16);background:var(--page);position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.status{height:40px;display:flex;justify-content:space-between;align-items:center;padding:0 26px;font-size:12.5px;color:var(--ink-dim);flex:none}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 14px;flex:none}
+.hdr h1{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.1;margin:0;letter-spacing:.2px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--sheet-top);border:1px solid var(--card-border);color:var(--ink-soft);font-size:13px;display:grid;place-items:center;cursor:pointer}
+.avatar:active,.row:active,.pin:active,.card:active{background:var(--row-hover)}
+.scroll{flex:1;overflow-y:auto;padding:0 16px 120px}
+.hello{color:var(--ink-dim);font-size:14px;margin:0 4px 14px}
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.card .k{font-size:12.5px;color:var(--accent);margin-bottom:2px}
+.card .t{font-size:15.5px;color:var(--ink)}.card .s{font-size:13px;color:var(--ink-mute)}
+.sechd{font-size:13px;color:var(--label);margin:22px 4px 8px}
+.list{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:13px 16px;border:0;border-top:1px solid var(--card-border);cursor:pointer;background:transparent;width:100%;text-align:left;color:inherit;font:inherit}
+.row:first-child{border-top:0}
+.row .n{font-size:15.5px}.row .d{font-size:12.5px;color:var(--ink-mute);line-height:1.35}
+.row .chev{margin-left:auto;color:var(--ink-mute);font-size:18px}
+.row.headline .n{color:var(--metal)}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:78px;background:var(--header);border-top:1px solid var(--card-border);display:flex;justify-content:space-around;align-items:flex-start;padding-top:12px}
+.tab{background:none;border:0;color:var(--ink-mute);font:inherit;font-size:13px;padding:6px 8px;cursor:pointer;border-radius:10px;position:relative}
+.tab[aria-current=page]{color:var(--ink)}
+.tab[aria-current=page]::after{content:"";position:absolute;left:50%;transform:translateX(-50%);bottom:-6px;width:18px;height:2px;border-radius:2px;background:var(--accent)}
+.ask{position:absolute;right:18px;bottom:94px;background:var(--metal);color:var(--on-metal);border:0;border-radius:24px;padding:11px 18px;font:inherit;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.askbox{display:flex;align-items:center;gap:10px;background:var(--sheet-top);border:1px solid rgba(104,201,180,.58);border-radius:18px;padding:14px 16px;margin:0 0 18px;color:var(--ink-mute);font-size:15px}
+.askbox b{font-weight:400;color:var(--ink-dim)}
+.pins{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pin{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:14px;cursor:pointer;color:inherit;font:inherit;text-align:left;min-height:78px}
+.top2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}.top2 .pin{min-height:96px}.top2 .n{color:var(--metal);font-size:16px}.pin .n{font-size:15px}.pin .d{font-size:12px;color:var(--ink-mute);line-height:1.35;margin-top:2px}
+.search{width:100%;background:var(--sheet-top);border:1px solid var(--card-border);border-radius:14px;padding:12px 14px;color:var(--ink);font:inherit;font-size:15px;margin-bottom:6px}
+.search:focus{outline:2px solid var(--accent);outline-offset:1px}
+.overlay{position:absolute;inset:0;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheetp{position:absolute;left:0;right:0;bottom:0;max-height:78%;background:linear-gradient(180deg,var(--sheet-top),#191A1C);border-top:1px solid rgba(240,244,246,.14);border-radius:24px 24px 0 0;transform:translateY(102%);transition:transform .25s ease;display:flex;flex-direction:column}
+.open .overlay{opacity:1;pointer-events:auto}.open .sheetp{transform:none}
+.grab{width:40px;height:4px;border-radius:2px;background:rgba(240,244,246,.22);margin:10px auto 6px}
+.sheetp h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:4px 20px 2px}
+.sheetp p{margin:0 20px 12px;color:var(--ink-mute);font-size:13.5px}
+.sheetp .inner{overflow-y:auto;padding:0 16px 28px}
+.close{position:absolute;right:14px;top:12px;background:none;border:0;color:var(--ink-dim);font:inherit;font-size:14px;cursor:pointer;padding:6px}
+button:focus-visible,.row:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.notes h1{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.1;margin:8px 0 10px}
+.notes .sub{color:var(--ink-dim);margin:0 0 26px;max-width:62ch}
+.notes p{max-width:62ch;color:var(--ink-soft);margin:0 0 14px}
+.notes h2{font-family:var(--serif);font-weight:400;font-size:24px;margin:34px 0 10px}
+.count{border-left:2px solid var(--metal);padding:4px 0 4px 14px;color:var(--ink);max-width:62ch;margin:22px 0}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+td,th{text-align:left;padding:8px 10px 8px 0;border-top:1px solid var(--card-border);vertical-align:top}
+th{color:var(--label);font-weight:400}td:first-child{color:var(--ink);white-space:nowrap}td{color:var(--ink-soft)}
+.tablewrap{overflow-x:auto}
+.foot{color:var(--ink-mute);font-size:12.5px;margin-top:28px;max-width:62ch}
+@media (prefers-reduced-motion:reduce){.sheetp,.overlay{transition:none}}
+
+.dock{position:absolute;left:0;right:0;bottom:70px;padding:8px 16px;background:var(--header);border-top:1px solid var(--card-border)}
+.dockfield{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;background:rgba(240,244,246,.040);border:1px solid rgba(104,201,180,.58);border-radius:999px;padding:10px 8px 10px 16px;cursor:pointer;color:var(--ink-mute);font:inherit;font-size:14px;text-align:left}
+.dockfield:active{background:var(--row-hover)}
+.send{margin-left:auto;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--on-metal);font-size:15px}
+.tabs{height:70px}
+.scroll{padding-bottom:160px}
+.editpins{display:inline-block;margin:10px 4px 0;color:var(--accent);font-size:13.5px;background:none;border:0;padding:4px 0;cursor:pointer;font-family:inherit}
+</style></head><body>
+<div class="wrap">
+<div class="phone" id="phone" aria-label="Phone mock">
+ <div class="status"><span>9:41</span><span>TDW</span></div>
+ <div class="hdr"><h1 id="ttl">Home</h1></div>
+ <div class="scroll" id="scr"></div>
+ <div class="dock"><button class="dockfield" id="dock" aria-label="Ask TDW"><span>Ask TDW — “Am I free on 14 Feb?”</span><span class="send" aria-hidden="true">&#8593;</span></button></div>
+ <nav class="tabs" id="tabs" aria-label="Sections"><button class="tab" data-t="rooms">Rooms</button><button class="tab" data-t="home">Home</button></nav>
+ <div class="overlay" id="ov"></div>
+ <div class="sheetp" role="dialog" aria-modal="true" aria-labelledby="shT"><div class="grab"></div><button class="close" id="shX">Close</button><h2 id="shT"></h2><p id="shS"></p><div class="inner" id="shB"></div></div>
+</div>
+<section class="notes">
+ <h1>Home and shelves</h1>
+ <p class="sub">Option C's Home in place of Today, Option B's shelves in place of Everything, Business Solutions and Storefront at the top, and TDW chat where it is today. Tap the tabs, the rows and the Ask bar in the phone.</p>
+ <p>This joins the two parts you picked. Home is Option C&#x27;s first screen: what needs her today, then six rooms she pins. It takes the place of Today. Rooms is Option B&#x27;s shelves, with Business Solutions and Storefront at the very top, where the eye lands first.</p><p>TDW chat is left exactly as the app has it now: the Ask TDW bar sits just above the tabs on every screen, with the same words and the same send arrow, and it opens the same chat. Nothing about how she talks to TDW changes.</p><p>Rooms keeps today&#x27;s order of tabs (Rooms on the left, the day&#x27;s screen on the right), so a vendor who has used the app does not have to relearn where her thumb goes.</p><p>Below the top two, three shelves hold everything else: Couples, Money and Studio, never more than six rows each. Inside Business Solutions the eleven rows are sorted into Get found, Get booked, Get paid and Work together.</p><p>Storefront and Your website &amp; SEO stay separate rooms here, as you have them today. Contracts appears once, inside Business Solutions under Get paid, and Collab is Hire, collab &amp; barter under Work together. Payment reminders lives only in Business Solutions, under Get paid.</p>
+ <div class="count">Today: 2 tabs, 20 room tiles, and 11 more rows inside Business Solutions. Here: the same 2 tabs and the same chat bar; Home with 6 pins; Rooms with 2 rooms on top and 3 shelves of at most 6 rows.</div>
+ <h2>Where every room goes</h2>
+ <div class="tablewrap"><table><thead><tr><th>Room today</th><th>Where it is today</th><th>Where it goes here</th></tr></thead><tbody><tr><td>Business Solutions</td><td>Rooms · Your work</td><td>Rooms · top of the page</td></tr><tr><td>Leads</td><td>Rooms · Your work</td><td>Rooms · Couples · Leads (also pinned on Home)</td></tr><tr><td>Packages</td><td>Rooms · Your work</td><td>Rooms · Couples · Packages</td></tr><tr><td>Clients</td><td>Rooms · Your work</td><td>Rooms · Couples · Clients (also pinned on Home)</td></tr><tr><td>Invoices</td><td>Rooms · Your work</td><td>Rooms · Money · Invoices (also pinned on Home)</td></tr><tr><td>Expenses</td><td>Rooms · Your work</td><td>Rooms · Money · Expenses</td></tr><tr><td>Books</td><td>Rooms · Your work</td><td>Rooms · Money · Books</td></tr><tr><td>Events</td><td>Rooms · Your work</td><td>Rooms · Couples · Events</td></tr><tr><td>Notes</td><td>Rooms · Your work</td><td>Rooms · Couples · Notes</td></tr><tr><td>Calendar</td><td>Rooms · Your work</td><td>Rooms · Couples · Calendar (also pinned on Home)</td></tr><tr><td>Storefront</td><td>Rooms · Your business</td><td>Rooms · top of the page (also pinned on Home)</td></tr><tr><td>Portfolio</td><td>Rooms · Your business</td><td>Rooms · Studio · Portfolio</td></tr><tr><td>Couture</td><td>Rooms · Your business</td><td>Rooms · Studio · Couture</td></tr><tr><td>Team</td><td>Rooms · Your business</td><td>Rooms · Studio · Team</td></tr><tr><td>Contracts</td><td>Rooms · Your business</td><td>Rooms · Business Solutions · Get paid · Contracts &amp; deposits</td></tr><tr><td>TDS</td><td>Rooms · Your business</td><td>Rooms · Money · TDS</td></tr><tr><td>Billing</td><td>Rooms · Your business</td><td>Rooms · Studio · Billing</td></tr><tr><td>Settings</td><td>Rooms · Your business</td><td>Rooms · Studio · Settings</td></tr><tr><td>Collab</td><td>Rooms · Your business</td><td>Rooms · Business Solutions · Work together · Hire, collab &amp; barter</td></tr><tr><td>Advisor</td><td>Rooms · Your business</td><td>Rooms · Studio · Advisor</td></tr><tr><td>Wedding pages</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get found</td></tr><tr><td>Google reviews</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get found</td></tr><tr><td>Your website &amp; SEO</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get found</td></tr><tr><td>Contracts &amp; deposits</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get paid</td></tr><tr><td>Payment reminders</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get paid</td></tr><tr><td>Posts &amp; ads</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get found (also pinned on Home)</td></tr><tr><td>Referrals &amp; partners</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get booked</td></tr><tr><td>Hire, collab &amp; barter</td><td>Business Solutions</td><td>Rooms · Business Solutions · Work together</td></tr><tr><td>Open dates &amp; rates</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get booked</td></tr><tr><td>Your own number</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get booked</td></tr><tr><td>Introductions</td><td>Business Solutions</td><td>Rooms · Business Solutions · Get booked</td></tr></tbody></table></div>
+ <p class="foot">Room names and the Ask TDW bar's words are the app's current ones. Shelf and group names (Couples, Money, Studio, Get found, Get booked, Get paid, Work together) are proposals for your veto. Drawn from dreamos-pwa 24923aa: lib/worklist/rooms.ts, lib/solutions/copy.ts, lib/worklist/copy.ts, components/worklist/AiDock.tsx and WorklistShell.tsx, and the Graphite tokens in lib/worklist/theme.ts. A mock only; nothing here is wired.</p>
+</section>
+</div>
+<script>
+const D = {"Leads": "Enquiries waiting for you", "Introductions": "Couples introduced to you, and by you", "Referrals & partners": "Enquiries you pass to peers, and theirs to you", "Clients": "Your booked couples", "Packages": "What you sell, and at what price", "Calendar": "Shoots, holds and blocked days", "Events": "Every function of every wedding", "Contracts & deposits": "Signed on WhatsApp, date locked", "Notes": "Your notes on couples", "Invoices": "What you have billed", "Payment reminders": "Polite nudges in your name", "Expenses": "What each wedding cost you", "Books": "All your money in one view", "TDS": "Tax your clients deducted", "Your website": "Your page, your domain, found on Google", "Your website & SEO": "Your domain, and being found on Google", "Storefront": "Your public page, as couples see it", "Portfolio": "Your photos and films", "Wedding pages": "Every wedding, with its credit list", "Google reviews": "A review asked after every wedding", "Posts & ads": "Posts, reels and your own ads", "Open dates & rates": "Fill the dates still empty", "Hire, collab & barter": "Crew, models and partners", "Team": "Your crew, and who is on which shoot", "Couture": "Appointments, for designers", "Your own number": "Your WhatsApp, connected to TDW", "Billing": "Your TDW plan", "Settings": "Your account and switches", "Business Solutions": "Get found, get booked, get paid", "Advisor": "Advice from Victor, on your own numbers"}, CARDS = [["Money", "Sharma deposit due Friday", "Rs 45,000 \u00b7 reminder ready to send"], ["Enquiries", "2 new enquiries overnight", "Both asked about 22 November"], ["Tomorrow", "Kapoor mehendi, 4 pm", "Gate 2, The Grand \u00b7 3 crew"]], TOP = ["Business Solutions", "Storefront"], SHELVES = [["Couples", ["Leads", "Clients", "Packages", "Calendar", "Events", "Notes"]], ["Money", ["Invoices", "Expenses", "Books", "TDS"]], ["Studio", ["Portfolio", "Team", "Couture", "Advisor", "Billing", "Settings"]]], HUB = [["Get found", ["Your website & SEO", "Wedding pages", "Google reviews", "Posts & ads"]], ["Get booked", ["Open dates & rates", "Introductions", "Referrals & partners", "Your own number"]], ["Get paid", ["Contracts & deposits", "Payment reminders"]], ["Work together", ["Hire, collab & barter"]]], PINS = ["Leads", "Calendar", "Clients", "Invoices", "Posts & ads", "Storefront"];
+const $ = id => document.getElementById(id);
+const row = (n, cls) => `<button class="row${cls||''}" data-room="${n}"><span><span class="n">${n}</span><br><span class="d">${D[n]||''}</span></span><span class="chev" aria-hidden="true">›</span></button>`;
+const list = (items, cls) => `<div class="list">${items.map(n=>row(n, cls)).join('')}</div>`;
+function openSheet(t, s, b) { $('shT').textContent=t; $('shS').textContent=s; $('shB').innerHTML=b; $('phone').classList.add('open'); $('shX').focus(); wire($('shB')); }
+function closeSheet() { $('phone').classList.remove('open'); }
+$('ov').onclick=closeSheet; $('shX').onclick=closeSheet;
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeSheet(); });
+function openRoom(n) {
+  if (n==='Business Solutions') { let h=''; for (const [g,items] of HUB) h += `<div class="sechd">${g}</div>` + list(items); return openSheet('Business Solutions','Sorted into four groups', h); }
+  openSheet(n, D[n]||'', `<div class="card"><div class="t">The ${n} room opens here</div><div class="s">Its screens stay as they are today. Only the way in changes.</div></div>`);
+}
+function wire(root) { root.querySelectorAll('[data-room]').forEach(b => b.onclick = () => openRoom(b.dataset.room)); }
+$('dock').onclick = () => openSheet('Ask TDW', 'TDW chat, exactly as it opens today', `<div class="card"><div class="t">The chat opens here, unchanged</div><div class="s">Same bar, same words, same place above the tabs.</div></div>`);
+function render(t) {
+  document.querySelectorAll('.tab').forEach(b => b.dataset.t===t ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  $('ttl').textContent = t==='home' ? 'Home' : 'Rooms';
+  let h='';
+  if (t==='home') {
+    h += `<p class="hello">Good morning. Three things need you today.</p>`;
+    for (const [k,ti,s] of CARDS) h += `<div class="card"><div class="k">${k}</div><div class="t">${ti}</div><div class="s">${s}</div></div>`;
+    h += `<div class="sechd">Your pinned rooms</div><div class="pins">` + PINS.map(n=>`<button class="pin" data-room="${n}"><div class="n">${n}</div><div class="d">${D[n]||''}</div></button>`).join('') + `</div>`;
+    h += `<button class="editpins" id="ep">Change pinned rooms</button>`;
+  } else {
+    h += list(TOP, ' headline');
+    for (const [s,items] of SHELVES) h += `<div class="sechd">${s}</div>` + list(items);
+  }
+  $('scr').innerHTML = h; wire($('scr')); $('scr').scrollTop = 0;
+  const ep = $('ep'); if (ep) ep.onclick = () => openSheet('Change pinned rooms','Pick up to six. Set by trade at sign-up; hers to change.', list(Object.keys(D).filter(n=>!['Your website'].includes(n)).sort()));
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => render(b.dataset.t));
+render('home');
+</script>
+</body></html>

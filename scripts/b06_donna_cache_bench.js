@@ -40,6 +40,17 @@
 // the house cost-discipline law (§4 protocol) · D-11 (the gate) · the z law
 // (llm.js deep strip, TDW_02 P5).
 'use strict';
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["source: the static prefix is marked cache_control ephemeral","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["source: the today line rides the DYNAMIC tail, never the static run","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["system is BLOCKS (an array), no longer a bare string","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["block[0] carries cache_control: ephemeral (the static prefix pays once per window)","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["the DYNAMIC tail exists and carries NO cache marker","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["tools still ride the call whole (they cache off the same prefix)","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["block[0] BYTE-IDENTICAL across different today + scratchpad","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["the soul opens the static prefix (order preserved)","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["the cabinet shape survives verbatim","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["the working shape survives verbatim","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["the today line is ABSENT from the static prefix (the one disclosed reorder)","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["…and PRESENT in the dynamic tail, its sentence intact","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["the scratchpad rides the dynamic tail (never Harvey's, never cached)","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["a call with no scratchpad still carries its today tail","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"],["cache_control reached the (anthropic) transport unstripped","L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
@@ -61,75 +72,23 @@ const deepHasCacheControl = (v) => {
 
 (async () => {
   sec('§0 — D-11: the dist gate (sentinel = DONNA_STATIC_PREFIX, the cure\'s own const).');
-  const { distGate } = require(path.join(__dirname, 'lib', 'dist_gate'));
-  const DIST = path.join(ROOT, 'src/engine/dist/core/donna.js');
-  const gate = distGate({
-    sentinel: 'DONNA_STATIC_PREFIX',
-    srcPath: path.join(ROOT, 'src/engine/src/core/donna.ts'),
-    distPath: DIST,
-    benchCmd: 'scripts/b06_donna_cache_bench.js',
-  });
-
-  let capturedA = null, capturedB = null;
-  if (!gate.runDist) {
-    console.log('  … §1/§2/§4\'s dist-driven assertions SKIP per the gate; source assertions carry:');
-    const fs = require('fs');
-    const src = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/donna.ts'), 'utf8');
-    T('source: the static prefix is marked cache_control ephemeral', /DONNA_STATIC_PREFIX, cache_control: \{ type: 'ephemeral' \}/.test(src));
-    T('source: the today line rides the DYNAMIC tail, never the static run', /donnaDynamic =\s*\n?\s*\(today \?/.test(src.replace(/\r/g, '')));
-  } else {
-    // db.js — the ONE shim (b6_open_question §4's convention): an inert proxy;
-    // the listen-alone path under test issues no query.
-    const dbPath = path.join(ROOT, 'src/engine/dist/core/db.js');
-    const inert = () => new Proxy(function () {}, { get: (_t, p) => (p === 'then' ? undefined : inert()), apply: () => inert() });
-    require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: { supabase: { schema: () => ({ from: () => inert() }), from: () => inert() } } };
-
-    const { runDonnaTurn } = require(DIST);
-
-    const spyTransport = (sink) => ({
-      provider: 'anthropic',
-      stream: () => { throw new Error('donna never streams'); },
-      create: async (params) => {
-        sink.push(params);
-        return { content: [{ type: 'tool_use', id: 'lh-1', name: 'listen_harvey_talk', input: { message: 'Nothing due this week.' } }], usage: { input_tokens: 10, output_tokens: 5 } };
-      },
-    });
-
-    sec('§1 — the captured params: blocks, the marker, the tail.');
-    {
-      const sink = [];
-      await runDonnaTurn(AGENT, 'What is due?', null, TODAY_A, '2026-07-18', undefined, PAD_A, 'what is due?', spyTransport(sink), undefined);
-      capturedA = sink[0];
-      const sys = capturedA && capturedA.system;
-      T('system is BLOCKS (an array), no longer a bare string', Array.isArray(sys));
-      const b0 = Array.isArray(sys) ? sys[0] : null;
-      T('block[0] carries cache_control: ephemeral (the static prefix pays once per window)', !!b0 && b0.cache_control && b0.cache_control.type === 'ephemeral');
-      const dyn = Array.isArray(sys) ? sys[sys.length - 1] : null;
-      T('the DYNAMIC tail exists and carries NO cache marker', Array.isArray(sys) && sys.length === 2 && dyn && dyn.cache_control === undefined);
-      T('tools still ride the call whole (they cache off the same prefix)', Array.isArray(capturedA.tools) && capturedA.tools.some((t) => t.name === 'listen_harvey_talk'));
-    }
-
-    sec('§2 — byte conservation + stability (a moving prefix caches nothing).');
-    {
-      const sink = [];
-      await runDonnaTurn(AGENT, 'What is due?', null, TODAY_B, '2026-07-19', undefined, undefined, 'what is due?', spyTransport(sink), undefined);
-      capturedB = sink[0];
-      const a0 = capturedA.system[0] || {}, b0 = capturedB.system[0] || {};
-      T('block[0] BYTE-IDENTICAL across different today + scratchpad', typeof a0.text === 'string' && a0.text === b0.text);
-      T('the soul opens the static prefix (order preserved)', typeof a0.text === 'string' && a0.text.startsWith('You are Donna'));
-      T('the cabinet shape survives verbatim', typeof a0.text === 'string' && a0.text.includes('THE SHAPE OF YOUR CABINET'));
-      T('the working shape survives verbatim', typeof a0.text === 'string' && a0.text.includes('You are working with Harvey, turn by turn'));
-      T('the today line is ABSENT from the static prefix (the one disclosed reorder)', typeof a0.text === 'string' && !a0.text.includes(TODAY_A) && !b0.text.includes(TODAY_B));
-      const dynA = (capturedA.system[1] || {}).text || '';
-      T('…and PRESENT in the dynamic tail, its sentence intact', dynA.includes(`[${TODAY_A}] Use this when something is dated relative to now`));
-      T('the scratchpad rides the dynamic tail (never Harvey\'s, never cached)', dynA.includes(PAD_A));
-      T('a call with no scratchpad still carries its today tail', !!(capturedB.system[1] && typeof capturedB.system[1].text === 'string' && capturedB.system[1].text.includes(TODAY_B) && !capturedB.system[1].text.includes('SCRATCHPAD')));
-    }
-
-    sec('§4 — the anthropic-shaped transport receives the marker INTACT.');
-    T('cache_control reached the (anthropic) transport unstripped', deepHasCacheControl(capturedA));
-  }
-
+/* CE-45 LCV-16 LSP_5 (A-45.2): the span below was removed and its 15 cells retired at site: L5-c: the gate sentinel DONNA_STATIC_PREFIX and every cell of §0, §1, §2 and §4 read or drove Donna's prompt and runDonnaTurn, deleted; §3 (llm.js translateFor, live) is kept */
+__RETIRED("source: the static prefix is marked cache_control ephemeral");
+__RETIRED("source: the today line rides the DYNAMIC tail, never the static run");
+__RETIRED("system is BLOCKS (an array), no longer a bare string");
+__RETIRED("block[0] carries cache_control: ephemeral (the static prefix pays once per window)");
+__RETIRED("the DYNAMIC tail exists and carries NO cache marker");
+__RETIRED("tools still ride the call whole (they cache off the same prefix)");
+__RETIRED("block[0] BYTE-IDENTICAL across different today + scratchpad");
+__RETIRED("the soul opens the static prefix (order preserved)");
+__RETIRED("the cabinet shape survives verbatim");
+__RETIRED("the working shape survives verbatim");
+__RETIRED("the today line is ABSENT from the static prefix (the one disclosed reorder)");
+__RETIRED("…and PRESENT in the dynamic tail, its sentence intact");
+__RETIRED("the scratchpad rides the dynamic tail (never Harvey's, never cached)");
+__RETIRED("a call with no scratchpad still carries its today tail");
+__RETIRED("cache_control reached the (anthropic) transport unstripped");
+  const capturedA = null; // CE-45 LSP_5: §1 captured this from runDonnaTurn (deleted); §3 falls back to its own fixture
   sec('§3 — THE Z LAW: the REAL translateFor strips every marker for deepseek.');
   {
     // Clean-clone fence (Q-SP-5): llm.js imports the SDK at module top; translateFor

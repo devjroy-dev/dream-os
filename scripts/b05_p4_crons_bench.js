@@ -558,13 +558,16 @@ t('§8.3 no src/** file re-declares an inline wa.me fallback (one home, or none)
 // ══════════════════════════════════════════════════════════════════════════
 H('§9 — F-05.25: THE FULL STOP REACHES BRIDE AND VENDOR (closing micro)');
 
-const { matchFullStopWord, recordFullStop, recordFullStart } = require('../src/lib/fullStop');
+// CE-45 LCV-16 LSP_5 (K3, RE-AIMED under A-45.2): fullStop.js's matchFullStopWord is deleted (§7). It only re-exported
+// prospects.js's isStopWord / isStartWord, the ONE home of the words, so the word-set and hazard cells read that home now.
+const { recordFullStop, recordFullStart } = require('../src/lib/fullStop');
+const { isStopWord, isStartWord } = require('../src/lib/prospects');
 
 t('§9.1 the words are the MARKETING LANE\'S OWN — imported, never re-declared', () => {
   for (const w of ['STOP', 'stop', 'Stop.', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'STOPALL'])
-    assert.strictEqual(matchFullStopWord(w), 'stop', `${JSON.stringify(w)} must be a full stop`);
+    assert.strictEqual(isStopWord(w), true, `${JSON.stringify(w)} must be a full stop`);
   for (const w of ['START', 'UNSTOP', 'RESUME'])
-    assert.strictEqual(matchFullStopWord(w), 'start');
+    assert.strictEqual(isStartWord(w), true);
   const src = fs.readFileSync(path.join(ROOT, 'src/lib/fullStop.js'), 'utf8');
   assert.ok(/require\(['"]\.\/prospects['"]\)/.test(src) && !/STOP_WORDS\s*=/.test(src),
     'the word set must be IMPORTED from prospects.js, not re-declared — one home, three lanes');
@@ -601,7 +604,7 @@ t('§9.5 *** ORDER IS LOAD-BEARING *** — the nudge branch runs FIRST on both c
   // If the full-stop branch ran first it would swallow every pause into a terminal
   // opt-out: F-05.22's cure destroyed by its own sibling. Asserted on POSITION, not
   // on an outcome that a reordering could still fake.
-  assert.strictEqual(matchFullStopWord('STOP MORNINGS'), 'stop',
+  assert.strictEqual(isStopWord('STOP MORNINGS'), true,
     'the hazard is real: the full-stop matcher DOES claim the pause phrase');
   for (const f of ['src/lib/brideInbound.js', 'src/lib/vendorInbound.js']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');

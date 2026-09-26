@@ -35,6 +35,15 @@ const fs = require('fs');
 const ROOT = path.resolve(__dirname, '..');
 
 let pass = 0, fail = 0;
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ────────────────────
+// §2 drove a turn with NO assertion (the business room) as this bench's CONTROL. L5-a (ruled 25 September 2026) makes
+// runTurn refuse that turn by name before any read or write; b116 1.1 to 1.4 pin the refusal. The business room is the
+// door's. §0 and §1 (the Advisor room, driven) are kept whole. A retired cell prints RETIRED and is NOT counted as a pass.
+// CONTROL: on the run that reaches §2, every row must match exactly ONE cell, or the bench exits 1.
+const __RETIRE_WHY = 'L5-a: the business room is the door\'s; runTurn refuses a no-assertion turn by name (b116 1.1 to 1.4)';
+const __RETIRE = new Set(["§2.1 victor_mode rides the TurnResult as \"business\"", "§2.2 dear_donna_talk IS offered", "§2.3 jot_advice is NOT offered in the business room", "§2.4 the advisor lens is NOT in the business prompt", "§2.5 the ESTATE is present", "§2.5b AND IT CARRIES NO MACHINERY VOCABULARY", "§2.6 no advisor note was written"]);
+const __seen = new Map();
+const RETIRED = (label) => { if (__RETIRE.has(label)) { __seen.set(label, (__seen.get(label) || 0) + 1); console.log('  RETIRED  ' + label + '  (' + __RETIRE_WHY + ')'); } else { fail++; console.log('  FAIL  ' + label + '  (RETIRED at site but not in the table)'); } };
 const T = (label, cond) => { if (cond) { pass++; console.log('  PASS  ' + label); } else { fail++; console.log('  FAIL  ' + label); } };
 const sec = (t) => console.log('\n── ' + t + ' ──');
 
@@ -62,9 +71,10 @@ if (!gate.runDist) {
   // at seat I against the shipped shape, and split so the room and its resolution
   // are two claims rather than one regex.
   T('source: loop learns the room from the DOOR, gated on !isConsult', /isAdvisor = !isConsult && assertedRoom === 'advisor'/.test(loopSrc));
-  T('source: and the resolution is the door, the page, then business (R-41.136)', /args\.modeOverride \?\? args\.roomAssert \?\? 'business'/.test(loopSrc));
+  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled; found by the hollow-green read, a clean-clone-only branch): the door's term and the estate gate are deleted (L5-a/L5-b).
+  T('source: and the resolution is the page, then business, which runTurn refuses by name (L5-a)', /args\.roomAssert \?\? 'business'/.test(loopSrc) && !/modeOverride/.test(loopSrc.replace(/\/\/[^\n]*/g, '')) && /ENGINE_BUSINESS_ROOM_RETIRED/.test(loopSrc));
   T('source: the advisor branch drops dear_donna_talk and adds jot_advice', /if \(isAdvisor\) \{[\s\S]*JOT_ADVICE_TOOL/.test(loopSrc) && !/if \(isAdvisor\)[\s\S]*DEAR_DONNA_TALK_TOOL/.test(loopSrc.slice(loopSrc.indexOf('if (isAdvisor)'), loopSrc.indexOf('} else if (!isConsult)'))));
-  T('source: the estate is gated out (estateInRoom)', /const estateInRoom = !isConsult && !isAdvisor/.test(loopSrc));
+  T('source: the estate never reaches this room: a non-advisor, non-consult turn is refused before any read (L5-a)', /if \(!isConsult && !isAdvisor\) \{\s*\n\s*throw new Error\('ENGINE_BUSINESS_ROOM_RETIRED/.test(loopSrc));
   T('source: victor_mode rides the TurnResult', /victor_mode: isConsult \? undefined : \(isAdvisor \? 'advisor' : 'business'\)/.test(loopSrc));
   T('source: the lens exists and carries the redirect verbatim', /flip me to business mode and it's filed/.test(lensSrc));
   T('source: jot_advice writes owner_notes via the reverse bridge', /vendorIdFromAgent/.test(jotSrc) && /owner_notes/.test(jotSrc));
@@ -185,30 +195,10 @@ const db = { from: (t) => mkq(t), schema: () => db };
     T('§1.9 tool_calls carry jot_advice, and ZERO Donna dispatches (filing paused, mechanically)', jotCalls.length === 1 && donnaish.length === 0);
   }
 
-  sec('§2 — THE BUSINESS ROOM (control): victor_mode=business. The path A-2 leaves untouched.');
-  {
-    calls.length = 0; store.conversations.length = 0; store.messages.length = 0; store.ownerNotes.length = 0;
-    cur = { victor_mode: 'business', mode: 'advisory' };
-    const r = await runTurn({ agentId: ADVISOR_AGENT, message: 'Book Meera\'s shoot for 14 February.', tierOverride: 'entry' });
-    const first = calls[0] || { tools: [], system: '' };
+  sec('§2 — THE BUSINESS ROOM (control): RETIRED, CE-45 LCV-16 LSP_5 (A-45.2). The turn is NOT driven: runTurn now refuses it by name.');
+  for (const n of ["§2.1 victor_mode rides the TurnResult as \"business\"", "§2.2 dear_donna_talk IS offered", "§2.3 jot_advice is NOT offered in the business room", "§2.4 the advisor lens is NOT in the business prompt", "§2.5 the ESTATE is present", "§2.5b AND IT CARRIES NO MACHINERY VOCABULARY", "§2.6 no advisor note was written"]) RETIRED(n);
 
-    T('§2.1 victor_mode rides the TurnResult as "business"', r && r.victor_mode === 'business');
-    T('§2.2 dear_donna_talk IS offered (Donna enabled — the business path is unchanged)', first.tools.includes('dear_donna_talk'));
-    T('§2.3 jot_advice is NOT offered in the business room', !first.tools.includes('jot_advice'));
-    T('§2.4 the advisor lens is NOT in the business prompt (mode-gated, not global)', !/THE ADVISORY ROOM/.test(first.system));
-    // ── LABELED AMENDMENT · F-06.52 (CE-ruled 2026-07-25) ────────────────────────
-    // This cell asserted the estate's presence by its LABEL — "[Donna's snapshot]" — and
-    // that label was the disease: the context handed the model the exact machinery
-    // vocabulary harveySoul's no-machinery law forbids, and the model echoed it back to
-    // the vendor. The frame is cured; the PROPERTY this cell guards (the estate rides the
-    // business prompt while the advisor lens does not) is unchanged and is now asserted on
-    // the frame's cured name. Re-pointed, not retired — and note the cell did its job:
-    // it caught the cure by name and forced this amendment.
-    T('§2.5 the ESTATE is present — the live picture rides the business prompt', /\[What's open and near/.test(first.system));
-    T('§2.5b AND IT CARRIES NO MACHINERY VOCABULARY (F-06.52)', !/\[Donna|\[Operator|Donna's snapshot/.test(first.system));
-    T('§2.6 no advisor note was written (jot_advice unreachable here)', store.ownerNotes.length === 0);
-  }
-
+  for (const k of __RETIRE) if ((__seen.get(k) || 0) !== 1) { fail++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seen.get(k) || 0) + ' cells (must be exactly 1)'); }
   console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
   process.exit(fail === 0 ? 0 : 1);
 })().catch((e) => { console.error('BENCH THREW (unexpected):', e && e.stack || e); process.exit(2); }); // F-39.67: an unexpected throw is an ERROR (2), never a FAIL (1)

@@ -31,6 +31,17 @@
 // aboard, §4 finds `MODELS.sonnet` at the handler — fails on exactly the cure.
 // A stale dist SKIPS STATED per D-11 (sentinel = the E-3 comment's own marker).
 'use strict';
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§4.1 the escalate handler","L5-b: the escalate handler is deleted with ESCALATE_TOOL (never boarded since E-3); a foreign escalate call now meets Unknown tool with no model change; §3.2 and §3.4 here still pin that no escalate boards and none fires"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const path = require('path');
 const fs = require('fs');
@@ -57,7 +68,7 @@ sec('§4 — the defensive tombstone (source; runs in every world).');
 {
   const loopSrc = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/loop.ts'), 'utf8');
   const escBlock = loopSrc.slice(loopSrc.indexOf("t.name === 'escalate'"), loopSrc.indexOf("t.name === 'escalate'") + 1400);
-  T('§4.1 the escalate handler retargets HAIKU (the injection defense), never Sonnet', /model = MODELS\.haiku;/.test(escBlock) && !/model = MODELS\.sonnet/.test(escBlock));
+  __RETIRED("§4.1 the escalate handler");
 }
 
 if (!gate.runDist) {
@@ -145,7 +156,7 @@ const db = { from: (t) => mkq(t), schema: () => db };
   sec('§2 — tier TOP (the prestige shape), the REAL compiled loop: the first call is HAIKU.');
   {
     nativeCalls.length = 0; store.conversations.length = 0; store.messages.length = 0;
-    const r = await runTurn({ agentId: AGENT, message: 'All quiet this week?', tierOverride: 'top' });
+    const r = await runTurn({ agentId: AGENT, roomAssert: 'advisor', message: 'All quiet this week?', tierOverride: 'top' }); // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the advisor room, the one runTurn now serves
     const first = nativeCalls[0];
     T('§2.1 the turn ran', !!r && typeof r.reply === 'string');
     T('§2.2 the FIRST native call carries HAIKU, never Sonnet (the start-path, behaviourally)', !!first && first.model === HAIKU);
@@ -155,7 +166,7 @@ const db = { from: (t) => mkq(t), schema: () => db };
   sec('§3 — tier MID (the signature shape): the escalate tool never boards.');
   {
     nativeCalls.length = 0; store.conversations.length = 0; store.messages.length = 0;
-    const r = await runTurn({ agentId: AGENT, message: 'All quiet this week?', tierOverride: 'mid' });
+    const r = await runTurn({ agentId: AGENT, roomAssert: 'advisor', message: 'All quiet this week?', tierOverride: 'mid' }); // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the advisor room, the one runTurn now serves
     const victor = nativeCalls.filter((c) => c.hand === 'victor');
     T('§3.1 the turn ran on mid', !!r);
     T('§3.2 Victor\'s tools carry NO escalate (the boarding gate closed)', victor.length > 0 && victor.every((c) => !c.toolNames.includes('escalate')));

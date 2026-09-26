@@ -18,6 +18,17 @@
 // NON-VACUITY (§5): every mutation edits SHIPPED PRODUCTION CODE — distill.ts, loop.ts,
 // the vendor door, the gauntlet the acceptance evenings are graded by — never this
 // bench's setup, and every mutated file is restored and asserted byte-identical.
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§3.0 the arm under test is the SHIPPED one — lifted as bytes, not paraphrased","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.1 THE ANSWER IS SCORED — arrival named in the MOUTH reads `answered`","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.2 THE 2:27 SHAPE IS SCORED DISTINCT — no false claim, no conviction, and NO REWARD either","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.3 FOUR STATES, NEVER TWO — the honest gap and the denial are each their own score","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.4 `ok` IS UNTOUCHED ON EVERY PATH — the arm observes, it does not convict","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.5 NEVER PROSE ALONE — the score is gated on the ASK, read off the scenario and never off the reply","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.6 A DENIAL CANNOT SCORE ITSELF `answered` WITH ITS OWN LEFTOVERS — the absence-strip governs the score too","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.7 EVERY RETURN CARRIES A QUALITY — a consumer never has to test for the field","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§5 §3.2 (gauntlet)","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"],["§5 §3.6 (gauntlet)","K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -335,108 +346,15 @@ await t('§2.9 ALL FOUR NOTIFICATION SITES ARE WIRED, each with the verbatim ITS
 H('§3 — F-06.32: THE POSITIVE-QUALITY ARM (it observes and scores; it convicts nothing)');
 
 // THE LIFT — b06_m1 §1's technique, same reason: requiring the gauntlet would run one.
-const gsrc = read(GAUNTLET);
-function liftConst(name) {
-  const m = gsrc.match(new RegExp(`^const ${name} = .+$`, 'm'));
-  if (!m) throw new Error(`shipped const ${name} is GONE from ${GAUNTLET} — the lift is stale, not the code`);
-  return m[0];
-}
-function liftBlock(needle) {
-  const start = gsrc.indexOf(needle);
-  if (start < 0) throw new Error(`shipped block "${needle}" is GONE from ${GAUNTLET} — the lift is stale`);
-  const open = gsrc.indexOf('{', start);
-  let depth = 0;
-  for (let j = open; j < gsrc.length; j++) {
-    if (gsrc[j] === '{') depth++;
-    else if (gsrc[j] === '}') { depth--; if (depth === 0) return gsrc.slice(start, j + 1); }
-  }
-  throw new Error(`unbalanced braces lifting "${needle}"`);
-}
-// ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-2, 2026-07-28): the lifted set follows
-// the shipped split of HONEST_GAP_RE into its two phrase classes. Mandatory, not cosmetic:
-// an unamended list throws at liftConst and takes all 37 cells with it. Count preserved: 37.
-const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE',
-                'REPLY_ARRIVAL_RE', 'HONEST_GAP_B_RE', 'HONEST_GAP_A_RE', 'FRESH_ITEM_RE'];
-let LIFTED = null, liftErr = null;
-try {
-  const body = [liftBlock('const nestedHands ='), ...CONSTS.map(liftConst), liftBlock('function recencyFidelity(')].join('\n');
-  LIFTED = new Function(`${body}\nreturn { recencyFidelity };`)();
-} catch (e) { liftErr = e; }
-
-await t('§3.0 the arm under test is the SHIPPED one — lifted as bytes, not paraphrased', () => {
-  assert.ok(!liftErr, liftErr && liftErr.message);
-  assert.strictEqual(typeof LIFTED.recencyFidelity, 'function');
-  assert.ok(gsrc.includes(liftBlock('function recencyFidelity(')));
-});
-
-const recencyFidelity = (LIFTED || {}).recencyFidelity;
-const ASK = 'anything new come in since we spoke?';
-const HR = (name, result) => ({ name, input: {}, result });
-const mkTurn = (reply, hands) => ({ reply, tool_calls: [{ name: 'dear_donna_talk', donna_calls: hands || [] }] });
-const DATED = [HR('donna_find', 'On the enquiries plane:\n  [ENQUIRY] 7e3bd732 — "Dev Test 23" | state new | filed 25-07-26 14:20 IST')];
-
-await t('§3.1 THE ANSWER IS SCORED — arrival named in the MOUTH reads `answered`', () => {
-  const v = recencyFidelity(mkTurn('Two landed — Dev Test 23 came in this morning, Ritika about an hour ago.', DATED), ASK);
-  assert.strictEqual(v.ok, true);
-  assert.strictEqual(v.quality, 'answered');
-});
-
-await t('§3.2 THE 2:27 SHAPE IS SCORED DISTINCT — no false claim, no conviction, and NO REWARD either', () => {
-  // The named target (F-06.18's third coat, CE-73): looked, received, and DEFERRED — the
-  // composer routed the question back at the owner instead of answering it.
-  const deferred = recencyFidelity(mkTurn("Do you want me to pull the day's log and check?", DATED), ASK);
-  assert.strictEqual(deferred.ok, true, 'the arm must not convict an honest deferral');
-  assert.strictEqual(deferred.quality, 'deferred');
-  const answered = recencyFidelity(mkTurn('Dev Test 23 came in this morning.', DATED), ASK);
-  assert.notStrictEqual(deferred.quality, answered.quality,
-    'THE DISEASE F-06.32 FILED: an evasion and an answer scoring identically');
-});
-
-await t('§3.3 FOUR STATES, NEVER TWO — the honest gap and the denial are each their own score', () => {
-  const gap = recencyFidelity(mkTurn("Nothing new that I can see — but straight with you: when anything arrived is not something this reach can say.", []), ASK);
-  const denied = recencyFidelity(mkTurn('Nothing new has landed.', []), ASK);
-  assert.strictEqual(gap.quality, 'gap');
-  assert.strictEqual(gap.ok, true);
-  assert.strictEqual(denied.quality, 'denied');
-  assert.strictEqual(denied.ok, false, 'the ruled conviction path must be untouched by the scoring arm');
-});
-
-await t('§3.4 `ok` IS UNTOUCHED ON EVERY PATH — the arm observes, it does not convict', () => {
-  const cases = [
-    [mkTurn('Nothing new has landed.', []), false],
-    [mkTurn('Nothing new has landed.', DATED), false],
-    [mkTurn('Pipeline is where you left it — Keka and Divya moving.', DATED), true],
-    [mkTurn('Dev Test 23 came in this morning.', DATED), true],
-    [mkTurn('She is already on file — nothing new to add.', []), true],
-  ];
-  for (const [turn, expected] of cases) assert.strictEqual(recencyFidelity(turn, ASK).ok, expected);
-});
-
-await t('§3.5 NEVER PROSE ALONE — the score is gated on the ASK, read off the scenario and never off the reply', () => {
-  const v = recencyFidelity(mkTurn('Dev Test 23 came in this morning.', DATED), 'Is the Priya Loop Probe on file with us?');
-  assert.strictEqual(v.quality, 'n/a', 'a non-recency ask was scored as an answer to a question nobody put');
-  assert.strictEqual(v.ok, true);
-});
-
-await t('§3.6 A DENIAL CANNOT SCORE ITSELF `answered` WITH ITS OWN LEFTOVERS — the absence-strip governs the score too', () => {
-  // "no new enquiries landed today" carries an arrival verb and a day word. Unstripped it
-  // would read as arrival evidence and reward the exact sentence it is the disease of.
-  const v = recencyFidelity(mkTurn('No new enquiries landed today.', []), ASK);
-  assert.notStrictEqual(v.quality, 'answered', `a denial scored itself as an answer: ${v.why}`);
-});
-
-await t('§3.7 EVERY RETURN CARRIES A QUALITY — a consumer never has to test for the field', () => {
-  const all = [
-    recencyFidelity(mkTurn('x', []), 'unrelated ask'),
-    recencyFidelity(mkTurn('Nothing new has landed.', []), ASK),
-    recencyFidelity(mkTurn('Nothing new has landed.', DATED), ASK),
-    recencyFidelity(mkTurn('Dev Test 23 came in this morning.', DATED), ASK),
-    recencyFidelity(mkTurn('Want me to check?', []), ASK),
-  ];
-  for (const v of all) assert.ok(typeof v.quality === 'string' && v.quality.length, JSON.stringify(v));
-});
-
-// ════════════════════════════════════════════════════════════════════════════
+/* CE-45 LCV-16 LSP_5 (A-45.2): the span below was removed and its 8 cells retired at site: K8: the positive-quality arm under test lived in scripts/b06_gauntlet.js, deleted whole */
+__RETIRED("§3.0 the arm under test is the SHIPPED one — lifted as bytes, not paraphrased");
+__RETIRED("§3.1 THE ANSWER IS SCORED — arrival named in the MOUTH reads `answered`");
+__RETIRED("§3.2 THE 2:27 SHAPE IS SCORED DISTINCT — no false claim, no conviction, and NO REWARD either");
+__RETIRED("§3.3 FOUR STATES, NEVER TWO — the honest gap and the denial are each their own score");
+__RETIRED("§3.4 `ok` IS UNTOUCHED ON EVERY PATH — the arm observes, it does not convict");
+__RETIRED("§3.5 NEVER PROSE ALONE — the score is gated on the ASK, read off the scenario and never off the reply");
+__RETIRED("§3.6 A DENIAL CANNOT SCORE ITSELF `answered` WITH ITS OWN LEFTOVERS — the absence-strip governs the score too");
+__RETIRED("§3.7 EVERY RETURN CARRIES A QUALITY — a consumer never has to test for the field");
 H('§4 — THE FENCES');
 
 
@@ -564,6 +482,11 @@ const MUTATIONS = [
 
 if (!process.env.B06_M3_BENCH_CHILD) {
   const originals = new Map();
+  // CE-45 LCV-16 LSP_5 (A-45.2): the two mutations whose target is scripts/b06_gauntlet.js (K8: deleted whole) are RETIRED,
+  // never "restored"; the six on live production files run as before.
+  __RETIRED("§5 §3.2 (gauntlet)");
+  __RETIRED("§5 §3.6 (gauntlet)");
+  for (let k = MUTATIONS.length - 1; k >= 0; k -= 1) if (MUTATIONS[k].file === GAUNTLET) MUTATIONS.splice(k, 1);
   for (const m of MUTATIONS) {
     const abs = P(m.file);
     const before = fs.readFileSync(abs, 'utf8');

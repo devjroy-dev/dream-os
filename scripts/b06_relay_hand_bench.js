@@ -46,6 +46,17 @@
 // Railway log. §4's window legs prove the code ASKS FIRST and ATTEMPTS NOTHING;
 // that a real closed window on production behaves so is the founder's smoke card
 // and is named there. Provable-equivalent doctrine, stated.
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§5.2 the relay tools are SIGNAL-ONLY","K6: tools/relayCouple.ts (the relay signal hands) is deleted with Donna's turn"],["§9.13 the engine seam is gated","L5-b: runTurn's pendingRelay block and estateInRoom are deleted with the business room; b116 2.1 pins their absence"],["§9.14 ABSENT => byte-identical dynamic block","L5-b: runTurn's pendingRelay block and estateInRoom are deleted with the business room; b116 2.1 pins their absence"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const assert = require('assert');
 const fs = require('fs');
@@ -768,11 +779,7 @@ await t('§5.1 THE ENGINE HOLDS NO STORE WRITER AND NO TRANSPORT (R-29.25)', asy
   assert.deepStrictEqual(bad, [], `engine reaches an organ it must not: ${bad.join(', ')}`);
 });
 
-await t('§5.2 the relay tools are SIGNAL-ONLY — they return a sentence and nothing else', async () => {
-  const s = fs.readFileSync(SRC('src/engine/src/core/tools/relayCouple.ts'), 'utf8');
-  assert.ok(!/supabase|await |async /.test(s), 'a relay signal tool acquired an organ or an await');
-  assert.ok(/RELAY_SIGNAL_NAMES/.test(s));
-});
+await __RETIRED("§5.2 the relay tools are SIGNAL-ONLY");
 
 await t('§5.3 the send leg executes ONLY from an approved draft', async () => {
   const r = await runSend(openWorld());
@@ -863,12 +870,12 @@ await t('§6.1 relaySeam.ts is BYTE-UNTOUCHED at origin, and its site-count comm
   assert.ok(/`refused` is authored at TWO sites/.test(s), 'the site-count comment moved');
   // The comment's SUBJECT re-derived: authorship sites are `refused: refusedOut`
   // RETURNS, not the word's every appearance (its own prose mentions it too).
-  const authored = (fs.readFileSync(SRC('src/engine/src/core/tools/donnaLead.ts'), 'utf8').match(/refused: refusedOut/g) || []).length;
-  assert.strictEqual(authored, 2, `donnaLead authors ${authored} refused arrays — the site-count comment is stale`);
+  // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): donnaLead.ts is deleted (K6), so its authoring count is gone; relaySeam.ts stays byte-untouched
+  // (L5-e). Its site-count comment is now stale (0 sites) and is NAMED for the road, not edited here.
 });
 
 await t('§6.2 this sitting authors NO `refused` array anywhere', async () => {
-  for (const f of [SEAT, RELAY, DRAFTS, SRC('src/engine/src/core/tools/relayCouple.ts')]) {
+  for (const f of [SEAT, RELAY, DRAFTS]) { // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): tools/relayCouple.ts is deleted (K6)
     const body = fs.readFileSync(f, 'utf8').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
     assert.ok(!/\brefused\s*:\s*\[/.test(body), `${path.relative(ROOT, f)} authors a refused array`);
   }
@@ -1267,39 +1274,9 @@ await t('§9.12 the door hands the OWNER\'S words, and the block rides the retry
   assert.strictEqual((d.match(/pendingRelay,/g) || []).length, 2, 'the block reaches one path only');
 });
 
-await t('§9.13 the engine seam is gated and never cached, like its two siblings', async () => {
-  const l = fs.readFileSync(SRC('src/engine/src/core/loop.ts'), 'utf8');
-  assert.ok(/const relayBlock = \(estateInRoom && args\.pendingRelay\)/.test(l),
-    'the block is not estate-room-gated — the F-04.70 donor pool reopens');
-  // LABELED AMENDMENT (CE-40, F-39.73's cure): the dynamic tail gained a FOURTH
-  // door-built sibling, `moneyBlock`, sited last per CE-77's position doctrine. This
-  // cell is about the RELAY block's membership, which is unchanged. COUNT PRESERVED.
-  // ── LABELED AMENDMENT (CE-42, seat V-2). RE-AIMED, TEETH KEPT, COUNT PRESERVED,
-  // RATIFY-OR-REVERT. F-42.97 gives the dynamic tail a FIFTH door-built sibling,
-  // `expenseBlock`, sited after `moneyBlock` per the same position doctrine. This
-  // cell is about the RELAY block's MEMBERSHIP, which is untouched — only the term
-  // that follows it moved, exactly as CE-40's own amendment above recorded when
-  // `moneyBlock` arrived.
-  // ── LABELED AMENDMENT (CE-44, LC-2t, packet 4a). RE-AIMED, TEETH KEPT, COUNT
-  // PRESERVED. The tail gains a SIXTH door-built sibling, `bookedBlock`, sited between
-  // relayBlock and moneyBlock by chair ruling. This cell is about the RELAY block's
-  // MEMBERSHIP, which is untouched — only the term that follows it moved, exactly as
-  // CE-40's and CE-42's amendments above recorded when their own siblings arrived.
-  assert.ok(/pingBlock \+ relayBlock \+ bookedBlock \+ moneyBlock \+ expenseBlock;/.test(l), 'the block is not in the dynamic tail');
-  // NEVER CACHED, asserted structurally: the cached block is `staticPrefix` and
-  // the relay block is a term of `dynamic`. If the block ever joined the cached
-  // prefix, a draft staged at 14:00 would still be "waiting" at 14:05.
-  assert.ok(/\{ type: 'text', text: staticPrefix, cache_control: \{ type: 'ephemeral' \} \}/.test(l),
-    'the cached block is no longer staticPrefix — re-derive this cell\'s premise');
-  assert.ok(!/staticPrefix[^\n]*pendingRelay|pendingRelay[^\n]*staticPrefix/.test(l),
-    'the block touches the cached prefix');
-});
+await __RETIRED("§9.13 the engine seam is gated");
 
-await t('§9.14 ABSENT => byte-identical dynamic block (the regression law)', async () => {
-  const l = fs.readFileSync(SRC('src/engine/src/core/loop.ts'), 'utf8');
-  assert.ok(/args\.pendingRelay\) \? `\\n\\n\$\{args\.pendingRelay\}` : ''/.test(l),
-    'an absent block does not collapse to the empty string');
-});
+await __RETIRED("§9.14 ABSENT => byte-identical dynamic block");
 
 
 // ── §10 · ZIP 4 — THE DOOR OWNS THE STAGE, AND E3-PRIME ─────────────────────

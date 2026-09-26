@@ -15,6 +15,17 @@
 //
 // NON-VACUITY: every mutation edits SHIPPED PRODUCTION CODE — the arm, the donor, the
 // scorer — never this bench's setup, and every mutated file is restored byte-identical.
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§6.1 THE 24 JUL WALK SPECIMEN","K8: the deflection scorer under test (openerFidelity) lived in scripts/b06_gauntlet.js, deleted whole"],["§6.2 A DEFLECTION THAT ANSWERS FIRST","K8: the deflection scorer under test (openerFidelity) lived in scripts/b06_gauntlet.js, deleted whole"],["§6.3 THE M-4 CELLS STILL HOLD","K8: the deflection scorer under test (openerFidelity) lived in scripts/b06_gauntlet.js, deleted whole"],["§6.1 RED (gauntlet)","K8: the deflection scorer under test (openerFidelity) lived in scripts/b06_gauntlet.js, deleted whole"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -193,28 +204,11 @@ t('§5.2 THE ARM STATES ITS OWN TWO-LAYER DOCTRINE — a future reader cannot mi
 // ════════════════════════════════════════════════════════════════════════════
 H('§6 — F-06.45: THE DEFLECTION LIMB CATCHES THE SHAPE IT MISSED');
 
-t('§6.1 THE 24 JUL WALK SPECIMEN NOW CONVICTS — a padded deflection is still a door closing', () => {
-  const openerFidelity = opener();
-  const ask = 'Makeupbyswatiroy hi, do you do bridal makeup packages around 50k?';
-  const padded = 'Let me check with dev and get back to you. In the meantime, is this for a wedding, and roughly how many functions are you planning and over how many days?';
-  const r = openerFidelity(padded, ask);
-  assert.strictEqual(r.ok, false, `the padded deflection still passes: ${JSON.stringify(r)}`);
-  assert.strictEqual(r.quality, 'bare-deflection');
-});
+__RETIRED("§6.1 THE 24 JUL WALK SPECIMEN");
 
-t('§6.2 A DEFLECTION THAT ANSWERS FIRST STILL PASSES — the limb judges the LEAD, not the phrase', () => {
-  const openerFidelity = opener();
-  const ask = 'do you do packages around 50k?';
-  const ruled = "Swati prices on the number of functions, so she'll want your dates before quoting — let me check with her and get back to you today. How many functions are you planning?";
-  assert.strictEqual(openerFidelity(ruled, ask).ok, true, 'the ruled shape is now falsely convicted');
-});
+__RETIRED("§6.2 A DEFLECTION THAT ANSWERS FIRST");
 
-t('§6.3 THE M-4 CELLS STILL HOLD — the widening did not break the questionnaire limb', () => {
-  const openerFidelity = opener();
-  const ask = 'do you do packages around 50k?';
-  assert.strictEqual(openerFidelity("Hi Dev Test 23! I'm Swati Roy's assistant — is this for a single day wedding, or multiple functions?", ask).quality, 'questionnaire');
-  assert.strictEqual(openerFidelity("Hi! I'm Swati's assistant — is this a wedding?", 'hi').quality, 'n/a');
-});
+__RETIRED("§6.3 THE M-4 CELLS STILL HOLD");
 
 // ════════════════════════════════════════════════════════════════════════════
 H('§7 — NON-VACUOUS: RED AT THE UNCURED TREE, BY PRODUCTION MUTATION');
@@ -247,6 +241,10 @@ const MUTATIONS = [
     } },
 ];
 
+// CE-45 LCV-16 LSP_5 (A-45.2): the mutation on scripts/b06_gauntlet.js (K8: deleted whole) is RETIRED, never "restored"; the four on
+// live production files (scrub.js, enquiryEnrichment.js) run as before.
+__RETIRED("§6.1 RED (gauntlet)");
+for (let k = MUTATIONS.length - 1; k >= 0; k -= 1) if (MUTATIONS[k].file === GAUNTLET) MUTATIONS.splice(k, 1);
 for (const m of MUTATIONS) {
   t(m.label, () => {
     const before = read(m.file);
@@ -267,7 +265,7 @@ t('§7.0 every mutated file is restored BYTE-IDENTICAL', () => {
   assert.ok(read(SCRUB).includes('  s = registerScrub(s);'), 'a mutation survived in the arm');
   assert.ok(read(SCRUB).includes('  l: 1e5, lakh: 1e5,'), 'a mutation survived in the scale table');
   assert.ok(read(ENRICH).includes('  return rupees(n) || `Rs ${n}`;'), 'a mutation survived in the donor');
-  assert.ok(read(GAUNTLET).includes('nonQuestionResidue.length < 25;'), 'a mutation survived in the scorer');
+  // RE-DERIVED (CE-45 LCV-16 LSP_5, labelled) over the mutations that remain: the gauntlet's scorer is deleted (K8) and is no longer mutated.
 });
 
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);

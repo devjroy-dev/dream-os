@@ -580,7 +580,8 @@ section('§10 · W-1 — zero soul bytes');
 
 {
   const soulish = [
-    'src/engine/src/core/donnaSoul.ts',
+    // RE-AIMED (CE-45 LCV-16 LSP_5, labelled, the chair's ruling): donnaSoul.ts is deleted with Donna's turn (K6), so it leaves
+    // the protected list; §10.3 still refuses the name in IG code.
     'src/engine/src/core/harveySoul.ts',
     'src/engine/src/core/advisorLens.ts',
     'src/engine/src/core/loop.ts',

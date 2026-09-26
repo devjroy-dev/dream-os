@@ -12,6 +12,17 @@
 // control job, not a behavioural claim. No cell here asserts that any behaviour
 // depends on a phrase.
 'use strict';
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§5.1 the \"on Sonnet\" comment is gone","L5-b: the escalate re-run (its \"zero Sonnet reachable\" sentence and its \"clean re-run, on Haiku\" comment, base loop.ts :875 to :890) is deleted with ESCALATE_TOOL; no Sonnet is reachable at all, pinned by b06_sonnet §2 and §3"],["M §5.1 (loop.ts escalate re-run)","L5-b: the escalate re-run (its \"zero Sonnet reachable\" sentence and its \"clean re-run, on Haiku\" comment, base loop.ts :875 to :890) is deleted with ESCALATE_TOOL; no Sonnet is reachable at all, pinned by b06_sonnet §2 and §3"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const assert = require('assert');
 const fs   = require('fs');
 const path = require('path');
@@ -206,12 +217,7 @@ t('§4.2b THE COUPLE PROMPT\'S OPENING IS BOUNDED — it took Eliza, not another
 
 H('§5 — C10-loop: THE STALE COMMENT DIES');
 
-t('§5.1 the "on Sonnet" comment is gone and its contradiction with :528-533 with it', () => {
-  const l = read('src/engine/src/core/loop.ts');
-  assert.ok(!/clean re-run on Sonnet/.test(l), 'the stale comment survived');
-  assert.ok(/model = MODELS\.haiku;/.test(l), 'the code it contradicted must be untouched');
-  assert.ok(/zero Sonnet reachable, mechanically/.test(l), 'and :532\'s own sentence must still stand');
-});
+__RETIRED("§5.1 the \"on Sonnet\" comment is gone");
 
 t('§5.2 the engine BUILT — D-10\'s engine step is attested, not assumed', () => {
   assert.ok(fs.existsSync(P('src/engine/dist/core/loop.js')), 'run `npm run build` — M4 touches the engine');
@@ -235,6 +241,9 @@ if (!process.env.M4_BENCH_CHILD) {
       file: 'src/engine/src/core/loop.ts',
       from: '// clean re-run, on Haiku (see :528-532)', to: '// clean re-run on Sonnet' },
   ];
+  // CE-45 LCV-16 LSP_5 (A-45.2): the §5.1 mutation's anchor lived in loop.ts's escalate re-run, deleted (L5-b); RETIRED, never "restored".
+  __RETIRED("M §5.1 (loop.ts escalate re-run)");
+  for (let k = MUTS.length - 1; k >= 0; k -= 1) if (MUTS[k].cell === '§5.1' && MUTS[k].file === 'src/engine/src/core/loop.ts') MUTS.splice(k, 1);
   for (const m of MUTS) {
     const abs = P(m.file); const orig = fs.readFileSync(abs, 'utf8');
     try {

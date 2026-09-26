@@ -55,6 +55,17 @@
 // the REAL runDonnaTurn so the hold is proven at the seam a real caller reaches
 // (§9's law: a green over an unreachable path is not evidence).
 'use strict';
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["the hand HELD at the seam — tool result is the hold sentence, not a write","L5-c: §5 drove the REAL runDonnaTurn, which is deleted; the provenance hold itself stays pinned here in §1 to §4, and its live caller is lib/moneyGuard.js"],["ZERO leads rows landed (the pre-floor write is dead — rows convict the cure the same way they convicted the disease)","L5-c: §5 drove the REAL runDonnaTurn, which is deleted; the provenance hold itself stays pinned here in §1 to §4, and its live caller is lib/moneyGuard.js"],["the turn is not marked mutated by a held hand","L5-c: §5 drove the REAL runDonnaTurn, which is deleted; the provenance hold itself stays pinned here in §1 to §4, and its live caller is lib/moneyGuard.js"],["the SAME hand with the figure honestly on the thread WRITES — budget_max 50000 lands","L5-c: §5 drove the REAL runDonnaTurn, which is deleted; the provenance hold itself stays pinned here in §1 to §4, and its live caller is lib/moneyGuard.js"],["a corpus-less call holds at the seam too (fail-closed end to end)","L5-c: §5 drove the REAL runDonnaTurn, which is deleted; the provenance hold itself stays pinned here in §1 to §4, and its live caller is lib/moneyGuard.js"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const path = require('path');
 const fs = require('fs');
@@ -132,7 +143,7 @@ if (!fs.existsSync(path.join(DIST, 'provenanceHold.js'))) {
 const { checkMoneyProvenance, extractVendorFigures, MONEY_WRITE_FIELDS } = require(path.join(DIST, 'provenanceHold.js'));
 const { parseMoney } = require(path.join(DIST, 'tools/recordPrimitives.js'));
 const { executeFindTool } = require(path.join(DIST, 'tools/donnaFind.js'));
-const { runDonnaTurn } = require(path.join(DIST, 'donna.js'));
+// CE-45 LCV-16 LSP_5: runDonnaTurn is deleted (L5-c); §5 below, its only reader, is retired at site.
 
 (async () => {
   sec('§1 — ONE HOME: the hold computes zeros exactly as the hands do (parseMoney shared)');
@@ -171,28 +182,12 @@ const { runDonnaTurn } = require(path.join(DIST, 'donna.js'));
   // Donna scripted to do exactly what F-04.70\u2019s Donna did: donna_lead with the
   // laundered value_estimate, then speak. The transport is scripted; everything
   // from the tool loop down \u2014 the hold, the door, the double\u2019s rows \u2014 is REAL dist.
-  const script = (blocks) => ({ provider: 'anthropic', stream: () => ({ on() {}, finalMessage: async () => blocks.shift() }), create: async () => blocks.shift() });
-  const msg = (content) => ({ content, usage: { input_tokens: 50, output_tokens: 10 } });
-  const laundered = () => [msg([
-    { type: 'tool_use', id: 'dl-1', name: 'donna_lead', input: { name: 'Zoya Persist Test', value_estimate: 50000 } },
-    { type: 'tool_use', id: 'lh-1', name: 'listen_harvey_talk', input: { message: 'Handled.' } },
-  ])];
-  resetStore();
-  const heldTurn = await runDonnaTurn(AGENT, 'Log the Zoya booking.', null, undefined, undefined, undefined, undefined, F0470_MSG, script(laundered()), undefined, F0470_MSG);
-  const heldCall = heldTurn.tool_calls.find((c) => c.name === 'donna_lead');
-  T('the hand HELD at the seam \u2014 tool result is the hold sentence, not a write', !!heldCall && /^HELD/.test(heldCall.result));
-  T('ZERO leads rows landed (the pre-floor write is dead \u2014 rows convict the cure the same way they convicted the disease)', store.leadInserts.length === 0 && store.leadUpdates.length === 0);
-  T('the turn is not marked mutated by a held hand', heldTurn.mutated === false);
-  resetStore();
-  const spoken = F0470_MSG + '\nShe said 50k, log that as the estimate.';
-  const passTurn = await runDonnaTurn(AGENT, 'Log the Zoya booking with the 50k estimate.', null, undefined, undefined, undefined, undefined, spoken, script(laundered()), undefined, spoken);
-  const wrote = store.leadInserts.find((l) => /zoya persist test/i.test(String(l.name || '')));
-  T('the SAME hand with the figure honestly on the thread WRITES \u2014 budget_max 50000 lands', !!wrote && wrote.budget_max === 50000 && passTurn.mutated === true);
-  resetStore();
-  const noCorpus = await runDonnaTurn(AGENT, 'Log the Zoya booking.', null, undefined, undefined, undefined, undefined, F0470_MSG, script(laundered()), undefined, undefined);
-  const ncCall = noCorpus.tool_calls.find((c) => c.name === 'donna_lead');
-  T('a corpus-less call holds at the seam too (fail-closed end to end)', !!ncCall && /^HELD/.test(ncCall.result));
-
+/* CE-45 LCV-16 LSP_5 (A-45.2): the span below was removed and its 5 cells retired at site: L5-c: §5 drove the REAL runDonnaTurn, which is deleted; the provenance hold itself stays pinned here in §1 to §4, and its live caller is lib/moneyGuard.js */
+__RETIRED("the hand HELD at the seam — tool result is the hold sentence, not a write");
+__RETIRED("ZERO leads rows landed (the pre-floor write is dead — rows convict the cure the same way they convicted the disease)");
+__RETIRED("the turn is not marked mutated by a held hand");
+__RETIRED("the SAME hand with the figure honestly on the thread WRITES — budget_max 50000 lands");
+__RETIRED("a corpus-less call holds at the seam too (fail-closed end to end)");
   sec('§6 — M-4: RECOGNITION LINES \u2014 the zero-match dump\u2019s ruled shape');
   resetStore();
   store.records.push(

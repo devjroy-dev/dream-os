@@ -76,7 +76,7 @@ const MUT = [
   ["M8 R-41.105's witness line is dropped", 'src/engine/src/core/loop.ts',
     "  console.log(`[engine:mode] room=${isConsult ? 'consult' : (isAdvisor ? 'advisor' : 'business')} `",
     "  console.log(`[engine:mode] `",
-    'R-41.105\'s witness line is at the predicate and names the room'],
+    '1.3 the [engine:mode] line printed the room before the throw', 'b116', 'rebuild'], // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): its b65_g1 cell 2.6 retired with modeOverride; the line is kept (L5-a) and b116 1.3 pins it exactly
 
   // ── THE ROUTE ─────────────────────────────────────────────────────────────
   // RE-CUT AT SEAT I: `readVictorMode` is deleted, so both mutations now RE-ADD a
@@ -243,13 +243,13 @@ const MUT = [
     "    + (isConsult ? '' : (isAdvisor ? ROOM_LINE.business : ROOM_LINE.advisor))",
     'DRIVEN: a BUSINESS turn carries the business line and NOT the advisor one', 'b65_i1', 'rebuild'],
   ['M38 the CONSULT room is handed a room line too (fork F2 reversed)', 'src/engine/src/core/loop.ts',
-    "    + (isConsult ? '' : (isAdvisor ? ROOM_LINE.advisor : ROOM_LINE.business))",
-    "    + (isAdvisor ? ROOM_LINE.advisor : ROOM_LINE.business)",
-    'DRIVEN: CONSULT carries NEITHER — the third room is not claimed for it (fork F2)', 'b65_i1', 'rebuild'],
+    "    + (isConsult ? '' : ROOM_LINE.advisor)",
+    "    + ROOM_LINE.advisor",
+    '1.11 consult untouched', 'b116', 'rebuild'], // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): the compose expression as L5-b leaves it; b65_i1 2.5 retired, b116 1.11 drives consult
   ['M39 the witness says `column` again over a room no column decided', 'src/engine/src/core/loop.ts',
-    "(args.roomAssert ? 'assert' : 'default')",
-    "(args.roomAssert ? 'assert' : 'column')",
-    'the witness names `default`, and `column` is gone from the source', 'b65_i1'],
+    "const roomSource = args.roomAssert ? 'assert' : 'default';",
+    "const roomSource = args.roomAssert ? 'assert' : 'column';",
+    '1.3 the [engine:mode] line printed the room before the throw', 'b116', 'rebuild'], // RE-AIMED (CE-45 LCV-16 LSP_5, labelled): roomSource as L5-a leaves it; b65_i1 3.1 retired, b116 1.3 pins source=default
   ['M40 the resolver takes its column parameter back', 'src/lib/modelRouter.js',
     "function resolveVendorRoom({ surface, modeOverride, roomAssert }) {",
     "function resolveVendorRoom({ surface, modeOverride, roomAssert, columnMode }) {",
@@ -266,6 +266,7 @@ const MUT = [
 const BENCH = {
   b65_g1: 'scripts/b65_g1_wa_advisor_off_bench.js',
   b65_i1: 'scripts/b65_i1_advisor_room_only_bench.js',
+  b116: 'scripts/b116_lcv16_lsp5_bench.js', // CE-45 LCV-16 LSP_5: the rung that now owns the room's live subjects
 };
 
 // ── CE-45 LCV-15 LSP_1 · LABELLED AMENDMENT: THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────────────
@@ -275,6 +276,16 @@ const BENCH = {
 // row must have matched exactly ONE cell that this run reached, or the bench fails, so the table can never retire a cell
 // by accident or outlive the cell it names.
 const __RETIRE = new Map([
+  // CE-45 LCV-16 LSP_5 (A-45.2): eight mutations whose targets are deleted, retired, never "restored".
+  ["M1 ", "LSP_5 (L5-a/L5-b): its target, the three-term room resolution with modeOverride, is deleted; runTurn serves advisor and consult (b116 1.1, 2.1)"],
+  ["M2 ", "LSP_5 (L5-a/L5-b): its target, the three-term room resolution with modeOverride, is deleted; runTurn serves advisor and consult (b116 1.1, 2.1)"],
+  ["M3 ", "LSP_5 (L5-a/L5-b): its target, the three-term room resolution with modeOverride, is deleted; runTurn serves advisor and consult (b116 1.1, 2.1)"],
+  ["M23 ", "LSP_5 (L5-a/L5-b): its target, the three-term room resolution with modeOverride, is deleted; runTurn serves advisor and consult (b116 1.1, 2.1)"],
+  ["M24 ", "LSP_5 (L5-a/L5-b): its target, the three-term room resolution with modeOverride, is deleted; runTurn serves advisor and consult (b116 1.1, 2.1)"],
+  ["M26 ", "LSP_5 (L5-a/L5-b): its target, the three-term room resolution with modeOverride, is deleted; runTurn serves advisor and consult (b116 1.1, 2.1)"],
+  ["M35 ", "LSP_5 (L5-a/L5-b): its target, the three-term room resolution with modeOverride, is deleted; runTurn serves advisor and consult (b116 1.1, 2.1)"],
+  ["M37 ", "LSP_5 (L5-b): ROOM_LINE.business is deleted; there are no two room lines to swap (b116 1.6 pins the advisor line)"],
+
   [
     "M4 ",
     "LSP_1: its anchor is a line of the WhatsApp chain in vendorInbound.js, deleted (a dead anchor)"

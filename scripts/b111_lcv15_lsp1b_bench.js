@@ -28,6 +28,21 @@ process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'bench-inert';
 
 let pass = 0; let fail = 0; const failed = [];
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// §7 of LSP_5's read-first (ruled 25 September 2026, K4) deletes fullStop.js's first-token matcher, matchFullStopWord. The
+// cells below read or restore it, so they are retired at their site (never evaluated) and named here with the reason. A
+// retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have matched exactly ONE cell
+// this run reached, or the bench exits 1.
+const __RETIRE = new Map([
+  ['1.5 ', 'the restored matcher no longer exists; b116 pins its absence (the CONTROL claimed it still had callers)'],
+  ['6.1 ', 'the restored matcher no longer exists; b116 pins its absence (6.1 only anchored M1)'],
+  ['6.2 ', 'the restored matcher no longer exists; b116 pins its absence (M1 restored it on the vendor lane)'],
+]);
+const __seen = new Map();
+function RETIRED(name) {
+  for (const [k, why] of __RETIRE) if (String(name).startsWith(k)) { __seen.set(k, (__seen.get(k) || 0) + 1); console.log(`  RETIRED  ${name}  (${why})`); return; }
+  fail += 1; failed.push(name); console.log(`  FAIL  ${name}  (RETIRED at site but not in the table)`);
+}
 function T(name, cond) { if (cond) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); } }
 const sec = (t) => console.log(`\n${t}`);
 const quiet = async (fn) => { const w = console.warn, e = console.error, l = console.log; console.warn = () => {}; console.error = () => {}; console.log = () => {}; try { return await fn(); } finally { console.warn = w; console.error = e; console.log = l; } };
@@ -129,7 +144,7 @@ async function drive(lane, text, from, prospectState) {
   T('1.3 case and surrounding punctuation are tolerated: "stop", "Cancel.", "  start  ", "UNSTOP!", "¡Quit!"', ['stop', 'Cancel.', '  start  ', 'UNSTOP!', '¡Quit!'].every((w) => FS.matchOptOutExact(w) !== null));
   const phrases = ["Cancel Walk Seventeen Alpha's shoot", 'Cancel no one from wall seventeen alpha shoot crew', 'End it', 'Quit the job', 'Resume on Monday', 'STOP MORNINGS', 'unsubscribe me', 'Start the shoot at 9', 'stop.stop', 'can cel', 'cancelled', 'STOPPED'];
   T(`1.4 ${phrases.length} messages that only BEGIN with (or merely resemble) a word are NOT an opt-out`, phrases.every((p) => FS.matchOptOutExact(p) === null));
-  T('1.5 CONTROL: the first-token matcher still says "stop" for the very sentence that was witnessed (the defect is real, and still there for its remaining callers)', FS.matchFullStopWord("Cancel Walk Seventeen Alpha's shoot") === 'stop');
+  RETIRED('1.5 CONTROL: the first-token matcher still says "stop" for the witnessed sentence');
   const HOSTILE = [undefined, null, 0, NaN, true, {}, [], () => {}, Symbol.iterator.toString(), '\u0000', ' '.repeat(10000), 'STOP'.repeat(5000)];
   let threw = 0; for (const h of HOSTILE) { try { const r = FS.matchOptOutExact(h); if (!(r === null || r === 'stop' || r === 'start')) threw += 1; } catch (_e) { threw += 1; } }
   T(`1.6 ${HOSTILE.length} hostile inputs: never a throw, never anything but null, "stop" or "start"`, threw === 0);
@@ -188,14 +203,8 @@ async function drive(lane, text, from, prospectState) {
 
   // §6
   sec('6 mutations of production code, each reddening its cell');
-  {
-    const t = src('src/lib/vendorInbound.js');
-    const a = 'const fullStopWord = matchOptOutExact(trimmedBody);';
-    T('6.1 the matcher anchor is present', t.includes(a));
-    const M = compileAt('src/lib/vendorInbound.js', t.replace(a, "const fullStopWord = require('./fullStop').matchFullStopWord(trimmedBody);"));
-    const m = await drive(M, "Cancel Walk Seventeen Alpha's shoot", VPHONE, null);
-    T('6.2 M1 the first-token matcher restored on the vendor lane reddens 4.1 (the vendor is opted out again)', m.prospect && m.prospect.state === 'opted_out');
-  }
+  RETIRED('6.1 the matcher anchor is present (M1\'s anchor)');
+  RETIRED('6.2 M1 the first-token matcher restored on the vendor lane reddens 4.1');
   {
     const t = src('src/lib/vendorInbound.js');
     const a = '          // Never opted out';
@@ -215,5 +224,6 @@ async function drive(lane, text, from, prospectState) {
 
   console.log(`\nb111_lcv15_lsp1b_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
   if (fail) { console.log('FAILED:'); failed.forEach((f) => console.log(`   ${f}`)); }
+  for (const [k] of __RETIRE) if ((__seen.get(k) || 0) !== 1) { fail += 1; failed.push(`retire row ${k}`); console.log(`  FAIL  retire row ${k.trim()} matched ${__seen.get(k) || 0} cells (must be exactly 1)`); }
   process.exit(fail === 0 ? 0 : 1);
 })().catch((e) => { console.error('BENCH THREW (unexpected):', e && e.stack || e); process.exit(2); });

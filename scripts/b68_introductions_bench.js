@@ -45,6 +45,17 @@
 //       UNIQUE on (vendor_id, recipient_phone), and `where_met NOT NULL` — the
 //       three places R-41.11 and R-40.110 are structural rather than conventional.
 //       Read comment-stripped (R-40.105 / the comment-blindness law).
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§10.1 the two hands are in DONNA_TOOLS","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"],["§10.1 and the file they come from is imported","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"],["§10.2 introduction ∩ relay is empty","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"],["§10.2 relay ∩ introduction is empty","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"],["§10.2 neither family contains donna_lead","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"],["§10.2 the introduction family is exactly two","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"],["§10.5 the hand returns display and NOTHING else","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"],["§10.5 it does not claim the deed is done","K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 
 const assert = require('assert');
 const fs = require('fs');
@@ -511,36 +522,15 @@ const capDouble = (status) => ({
   // 2026-09-10. These are that question, in eight parts.
   console.log('\n§10 the door');
   {
-    const T_INTRO = require(path.join(ROOT, 'src/engine/dist/core/tools/introduce.js'));
-    const T_RELAY = require(path.join(ROOT, 'src/engine/dist/core/tools/relayCouple.js'));
-    const donnaSrc = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/donna.ts'), 'utf8');
-    const strip = (t) => t.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
-    const donna = strip(donnaSrc);
-
-    // 1 · both names are in the bag Donna is handed.
-    T('§10.1 the two hands are in DONNA_TOOLS',
-      /const DONNA_TOOLS[^\n]*\.\.\.INTRODUCTION_TOOLS/.test(donna));
-    T('§10.1 and the file they come from is imported',
-      /import \{[^}]*INTRODUCTION_TOOLS[^}]*\} from '\.\/tools\/introduce\.js'/.test(donna));
-
-    // 2 · the three families share no member. THE WALK'S OWN LESSON: donna_lead
-    //     took the ask because nothing else could, and a collision here would be
-    //     the same failure with a different owner.
-    const I = [...T_INTRO.INTRODUCTION_SIGNAL_NAMES];
-    const R = [...T_RELAY.RELAY_SIGNAL_NAMES];
-    T('§10.2 introduction ∩ relay is empty', I.every(n => !T_RELAY.RELAY_SIGNAL_NAMES.has(n)));
-    T('§10.2 relay ∩ introduction is empty', R.every(n => !T_INTRO.INTRODUCTION_SIGNAL_NAMES.has(n)));
-    T('§10.2 neither family contains donna_lead',
-      !I.includes('donna_lead') && !R.includes('donna_lead'));
-    T('§10.2 the introduction family is exactly two', I.length === 2);
-
-    // 5 · signal-only. The engine branch authors no `plain` and no `mutated`.
-    const outcome = T_INTRO.executeIntroductionStage(DRAFT);
-    T('§10.5 the hand returns display and NOTHING else',
-      Object.keys(outcome).length === 1 && typeof outcome.display === 'string');
-    T('§10.5 it does not claim the deed is done',
-      !/\b(sent|introduced|delivered)\b/i.test(outcome.display));
-
+/* CE-45 LCV-16 LSP_5 (A-45.2): the span below was removed and its 8 cells retired at site: K6: tools/introduce.ts and tools/relayCouple.ts are deleted and Donna holds no bag (DONNA_TOOLS, L5-c); the introductions feature itself stays pinned in §1 to §9 and §11 */
+__RETIRED("§10.1 the two hands are in DONNA_TOOLS");
+__RETIRED("§10.1 and the file they come from is imported");
+__RETIRED("§10.2 introduction ∩ relay is empty");
+__RETIRED("§10.2 relay ∩ introduction is empty");
+__RETIRED("§10.2 neither family contains donna_lead");
+__RETIRED("§10.2 the introduction family is exactly two");
+__RETIRED("§10.5 the hand returns display and NOTHING else");
+__RETIRED("§10.5 it does not claim the deed is done");
     // CE-45 LCV-15 LSP_1 (labelled amendment): introductionSeat.js is DELETED with the WhatsApp chain (A11), and the door
     // that called it (vendorInbound's chain tail) with it. Every §10 cell that drove the seat or read the door is RETIRED
     // by this bench's table; each is still named here so the table's control can match it exactly once.

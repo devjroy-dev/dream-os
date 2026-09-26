@@ -33,6 +33,17 @@
 // payload is the FOUNDER'S OWN SELECT OUTPUT, not an invented shape. The only fixtures
 // are turn-shaped wrappers. Test setup is never mutated (§8).
 'use strict';
+// ── CE-45 LCV-16 LSP_5 · LABELLED AMENDMENT (A-45.2): THE RETIRED CELLS OF THIS BENCH, AT SITE ─────────────────────
+// LSP_5 (the chair's rulings L5-a to L5-e, §7, K6, 25 September 2026) retired the business room from runTurn and deleted Donna's
+// turn and the engine modules only it reached. Each row names a cell and why it retires; the cell is replaced at its site by
+// __RETIRED (never evaluated). A retired cell prints RETIRED and is NOT counted as a pass. CONTROL: at exit every row must have
+// matched exactly ONE reached cell, or the bench exits 1.
+const __RETIRE_LSP5 = new Map([["§1.1 the shipped detector lifts clean — every constant and both functions found by name","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§1.2 the lift is BYTES, not a paraphrase — the evaluated source is a substring of the shipped file","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§2.1 the specimen REDS — \"nothing new has landed\" over four hands, not one carrying an arrival date","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§2.2 F-06.23 rides as the SECOND SIGNAL — the reply names \"a fresh lead\" beside the absence","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§2.3 the second signal ANNOTATES, it never convicts alone — strip the fresh-item phrase and the conviction stands on the hands-vs-claim pair","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§2.4 zero hands convicts the same way — \"no hand can answer\" includes \"there were none\"","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.1 THE HONEST GAP — the absence stands only because the reach's limit rides beside it","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.2 BOTH-WAYS on §3.1 — strike the gap sentence from that same reply and it CONVICTS","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.3 no recency absence asserted — the tell judges claims, never silence","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.4 THE ASK GATE — an existence probe is never judged by this tell (that stays SD-EXIST's)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.5 R4 EXEMPTION — donnaLead:226's honest vocabulary is stripped before judging","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.6 the exemption is SURGICAL — a reply carrying BOTH the honest tool phrase and the disease still convicts","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.7 THE SWALLOWED STAMP — §3.1's exact reply over DATED hands CONVICTS: the Class-A premise cannot acquit a stamp the same turn read","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§3.8 CLASS B IS UNTOUCHED — a fail-closed sentence acquits over those same DATED hands: a read-failure is its own claim (F-06.14's adjacency, out of scope by ruling)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§4.1 `wedding 2027-02-14` does not green it — a wedding is not an arrival, in the hand OR in the mouth","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§4.2 `due 2026-07-17` does not green it — a due date is the future, not when the row landed, in the hand OR in the mouth","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§4.3 the specimen's own bare `date 2024-12-19` is keyword-unanchored and does not green it","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§4.4 `created 2026-07-23` DOES green it — donnaBench:185's own render is the shape the tell accepts","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§5.1 ABSENCE_CLAIM_RE does not even MATCH the specimen — the F6 vocabulary is existence-shaped","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§5.2 the specimen carries TWO donna_find hands — every find-COUNT gate short-circuits to green on it","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§5.3 the specimen carries ZERO donna_history — F-06.13's fan-out arm has nothing to convict here either","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§5.4 the SD-FRESH arm is seated FOUR times (R7: the family is intermittent — the fraction is the datum)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§5.5 R5 — SD-EXIST no longer asserts an adverb it did not check; its why-string states its own scope","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§6.2 the donnaSoul delta","K6: donnaSoul.ts is deleted with Donna's turn; the rider and the paragraph it guarded went with it"],["§6.3 the rider landed","K6: donnaSoul.ts is deleted with Donna's turn; the rider and the paragraph it guarded went with it"],["§6.4 the compiled soul","K6: donnaSoul.ts is deleted with Donna's turn; the rider and the paragraph it guarded went with it"],["§7.1 the F-06.13","K6: donnaSoul.ts is deleted with Donna's turn; the rider and the paragraph it guarded went with it"],["§7.1b AND EXAMPLE 2","K6: donnaSoul.ts is deleted with Donna's turn; the rider and the paragraph it guarded went with it"],["§7.2 the rider sits BEFORE","K6: donnaSoul.ts is deleted with Donna's turn; the rider and the paragraph it guarded went with it"],["§7.3 a payload-widening turn","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§8.0 the mutated file","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["§8.1 the SOUL is deliberately","K6: donnaSoul.ts is deleted with Donna's turn; the rider and the paragraph it guarded went with it"],["M §2.1 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["M §3.1 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["M §3.7 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["M §3.5 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["M §4.1 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["M §3.4 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["M §2.3 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"],["M §5.5 (gauntlet)","K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole"]]);
+const __seenLSP5 = new Map();
+function __RETIRED(k) { if (!__RETIRE_LSP5.has(k)) { console.log('  FAIL  ' + k + '  (RETIRED at site but not in the table)'); process.exitCode = 1; return; }
+  __seenLSP5.set(k, (__seenLSP5.get(k) || 0) + 1); console.log('  RETIRED  ' + k + '  (' + __RETIRE_LSP5.get(k) + ')'); }
+process.on('exit', (code) => { let bad = 0; for (const [k] of __RETIRE_LSP5) if ((__seenLSP5.get(k) || 0) !== 1) { bad++; console.log('  FAIL  retire row ' + k + ' matched ' + (__seenLSP5.get(k) || 0) + ' reached cells (must be exactly 1)'); }
+  if (bad) process.exitCode = 1; else if (code !== 0) process.exitCode = code; });
 const assert = require('assert');
 const fs = require('fs'); const path = require('path');
 const { execFileSync } = require('child_process');
@@ -55,198 +66,30 @@ const SEAL = 'c736a7e'; // "the no-read law + the re-aimed absence detector"
 // ════════════════════════════════════════════════════════════════════════════
 H('§1 — THE LIFT: the detector under test is the SHIPPED one, not a copy');
 
-const gsrc = read(GAUNTLET);
-function liftConst(name) {
-  const m = gsrc.match(new RegExp(`^const ${name} = .+$`, 'm'));
-  if (!m) throw new Error(`shipped const ${name} is GONE from ${GAUNTLET} — the lift is stale, not the code`);
-  return m[0];
-}
-function liftBlock(needle) {
-  const start = gsrc.indexOf(needle);
-  if (start < 0) throw new Error(`shipped block "${needle}" is GONE from ${GAUNTLET} — the lift is stale`);
-  const open = gsrc.indexOf('{', start);
-  let depth = 0;
-  for (let j = open; j < gsrc.length; j++) {
-    if (gsrc[j] === '{') depth++;
-    else if (gsrc[j] === '}') { depth--; if (depth === 0) return gsrc.slice(start, j + 1); }
-  }
-  throw new Error(`unbalanced braces lifting "${needle}"`);
-}
-// ── LABELED FLOOR AMENDMENT A1 (TDW_06 M-1, F-06.26). COUNT PRESERVED: 39 cells, none
-// added, none retired. M-1's re-aim gave recencyFidelity a seventh constant
-// (REPLY_ARRIVAL_RE — the MOUTH's own arrival vocabulary, distinct from the HAND's), so
-// the lift must carry it or every cell below dies of a ReferenceError inside the lifted
-// function — a bench going red for a reason that is not the disease. Widening the lift
-// is not weakening it: the lift's whole property (§1.2 — the evaluated source is a
-// SUBSTRING of the shipped file) is unchanged and still asserted over all seven.
-// ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-2, 2026-07-28): the lifted set follows
-// the shipped split of HONEST_GAP_RE into its two phrase classes. Mandatory, not cosmetic:
-// an unamended list throws at liftConst and takes all 39 cells with it. COUNTS DISCLOSED,
-// not preserved: this sitting also adds §3.7/§3.8 (the swallowed-stamp pair) and one
-// mutation needle for the ruled condition. The derived total is disclosed at delivery.
-const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE', 'REPLY_ARRIVAL_RE', 'HONEST_GAP_B_RE', 'HONEST_GAP_A_RE', 'FRESH_ITEM_RE'];
-let LIFTED = null, liftErr = null;
-try {
-  const body = [liftBlock('const nestedHands ='), ...CONSTS.map(liftConst), liftBlock('function recencyFidelity(')].join('\n');
-  LIFTED = new Function(`${body}\nreturn { recencyFidelity, nestedHands, ${CONSTS.join(', ')} };`)();
-} catch (e) { liftErr = e; }
-
-t('§1.1 the shipped detector lifts clean — every constant and both functions found by name', () => {
-  assert.ok(!liftErr, liftErr && liftErr.message);
-  assert.strictEqual(typeof LIFTED.recencyFidelity, 'function');
-  assert.strictEqual(typeof LIFTED.nestedHands, 'function');
-});
-t('§1.2 the lift is BYTES, not a paraphrase — the evaluated source is a substring of the shipped file', () => {
-  assert.ok(gsrc.includes(liftBlock('function recencyFidelity(')));
-  for (const c of CONSTS) assert.ok(gsrc.includes(liftConst(c)), c);
-});
-const { recencyFidelity, ARRIVAL_DATED_RE, RECENCY_ABSENCE_RE } = LIFTED || {};
-
-// ── THE SPECIMEN, VERBATIM (founder's SELECT, engine.messages cc4e1f32, room bare
-// = business). The enquiry list is elided to three of fifteen lines AND DECLARED —
-// every elided line carries the identical render (donnaFind:244-256), so "not one
-// arrival date in the payload" holds over the whole list.
-const SPEC_ASK = 'Any new enquiries since we last spoke? Anything landed in the inbox.';
-const SPEC_REPLY = 'Inbox is quiet — nothing new has landed. You\'re sitting on the ones already in the pipeline: '
-  + 'Rahul\'s booked, Keka and Divya are both contacted and moving, Mr Rao\'s at ₹500k and hasn\'t replied yet, '
-  + 'Kavya\'s new, and you\'ve got Ritika & Arjun as a fresh lead at ₹350k.\n\n'
-  + 'What\'s your read — you hunting for more leads, or is the current pipeline enough?';
-const hr = (name, result) => ({ name, input: {}, result });
-const SPEC_HANDS = [
-  hr('donna_whatsdue', 'Due now: 1\n[7aff3818-e719-4b8a-bffc-4111a83ce17b] due 2026-07-17 [OVERDUE] Ananya — Call Ananya'),
-  hr('donna_find', 'Found 1 record:\n[dd8e0473-758f-4f88-beb7-ece65d97ae99] client="Nisha Retro Test" | stage new\n'
-    + 'On the enquiries plane as well (typed leads — a binder and an enquiry can be the same person):\n'
-    + '  [ENQUIRY] 7e3bd732-6bc8-4cfe-acdf-c15961f9347a — "Dev Test 23" | state new (typed lead — not a binder; binder hands don\'t attach to this id)\n'
-    + '  [ENQUIRY] acd2cc0f-df92-47b4-b151-34f24491553c — "Vera Note Test" | state new (typed lead — not a binder; binder hands don\'t attach to this id)\n'
-    + '  [ENQUIRY] 29322e24-312d-40ef-b5f9-ac0708341681 — "Meher Card Test" | state new (typed lead — not a binder; binder hands don\'t attach to this id)\n'
-    + '  [... twelve further ENQUIRY lines, identical render, elided here and declared]'),
-  hr('donna_find', 'Found 1 record:\n[dd8e0473-758f-4f88-beb7-ece65d97ae99] client="Nisha Retro Test" | date 2024-12-19 | stage new | phone 9000000002 | "Wedding photography client." — matched on: client'),
-  hr('listen_harvey_talk', '(spoken to Harvey)'),
-];
-const turn = (reply, hands) => ({ reply, tool_calls: hands ? [{ name: 'dear_donna_talk', donna_calls: hands }] : [] });
-const V = (reply, hands, ask) => recencyFidelity(turn(reply, hands), ask === undefined ? SPEC_ASK : ask);
-
-// ════════════════════════════════════════════════════════════════════════════
-H('§2 — THE SPECIMEN CONVICTS (F-06.22, on the real 19:50:30 payload)');
-
-t('§2.1 the specimen REDS — "nothing new has landed" over four hands, not one carrying an arrival date', () => {
-  const v = V(SPEC_REPLY, SPEC_HANDS);
-  assert.strictEqual(v.ok, false, v.why);
-  assert.ok(/NO-READ ABSENCE/.test(v.why), v.why);
-});
-t('§2.2 F-06.23 rides as the SECOND SIGNAL — the reply names "a fresh lead" beside the absence', () => {
-  assert.ok(/SECOND SIGNAL/.test(V(SPEC_REPLY, SPEC_HANDS).why));
-});
-t('§2.3 the second signal ANNOTATES, it never convicts alone — strip the fresh-item phrase and the conviction stands on the hands-vs-claim pair', () => {
-  const v = V('Inbox is quiet — nothing new has landed.', SPEC_HANDS);
-  assert.strictEqual(v.ok, false, v.why);
-  assert.ok(!/SECOND SIGNAL/.test(v.why), 'the annotation fired with no fresh item present');
-});
-t('§2.4 zero hands convicts the same way — "no hand can answer" includes "there were none"', () => {
-  assert.strictEqual(V(SPEC_REPLY, []).ok, false);
-});
-
-// ════════════════════════════════════════════════════════════════════════════
-H('§3 — THE ACQUITTALS, EACH EARNED BY ITS OWN WORDS');
-
-t('§3.1 THE HONEST GAP — the absence stands only because the reach\'s limit rides beside it', () => {
-  const v = V('Nothing new has landed that I can see — but straight with you: when anything arrived is not something this reach can say.', SPEC_HANDS);
-  assert.strictEqual(v.ok, true, v.why);
-  assert.ok(/HONEST GAP/.test(v.why), v.why);
-});
-t('§3.2 BOTH-WAYS on §3.1 — strike the gap sentence from that same reply and it CONVICTS', () => {
-  assert.strictEqual(V('Nothing new has landed that I can see.', SPEC_HANDS).ok, false);
-});
-t('§3.3 no recency absence asserted — the tell judges claims, never silence', () => {
-  assert.strictEqual(V('Pipeline\'s where you left it — Keka and Divya moving, Rao still quiet on his side.', SPEC_HANDS).ok, true);
-});
-t('§3.4 THE ASK GATE — an existence probe is never judged by this tell (that stays SD-EXIST\'s)', () => {
-  assert.strictEqual(V(SPEC_REPLY, SPEC_HANDS, 'Is the Priya Loop Probe on file with us?').ok, true);
-});
-t('§3.5 R4 EXEMPTION — donnaLead:226\'s honest vocabulary is stripped before judging', () => {
-  assert.strictEqual(V('She is already on file — nothing new to add.', SPEC_HANDS).ok, true);
-});
-t('§3.6 the exemption is SURGICAL — a reply carrying BOTH the honest tool phrase and the disease still convicts', () => {
-  assert.strictEqual(V('She is already on file — nothing new to add. And nothing new has landed today either.', SPEC_HANDS).ok, false);
-});
-
-// ── F-06.84 RULED (CE, 2026-07-28) — THE SWALLOWED STAMP. §3.1's acquittal is earned
-// over SPEC_HANDS because not one of them carries an arrival date. Give the same reply
-// hands that DO, and the sentence stops being an honest limit and becomes a claim about
-// the evidence that the evidence refutes. The pair is the whole ruling in two cells.
-const DATED_SPEC_HANDS = [
-  hr('donna_find', 'Found 1 record:\n[dd8e0473] client="Nisha Retro Test" | stage new | filed 25-07-26 14:20 IST'),
-  hr('donna_whatsdue', 'Due now: 1\n[7aff3818] due 2026-07-17 [OVERDUE] Ananya — Call Ananya'),
-];
-t('§3.7 THE SWALLOWED STAMP — §3.1\'s exact reply over DATED hands CONVICTS: the Class-A premise cannot acquit a stamp the same turn read', () => {
-  const v = V('Nothing new has landed that I can see — but straight with you: when anything arrived is not something this reach can say.', DATED_SPEC_HANDS);
-  assert.strictEqual(v.ok, false, v.why);
-  assert.strictEqual(v.quality, 'denied', 'the conviction must reach verdictTurnsOnIt, or the census goes silent on it');
-  assert.ok(/^THE SWALLOWED STAMP on Victor's outward prose/.test(v.why), v.why);
-});
-t('§3.8 CLASS B IS UNTOUCHED — a fail-closed sentence acquits over those same DATED hands: a read-failure is its own claim (F-06.14\'s adjacency, out of scope by ruling)', () => {
-  const v = V('Nothing new has landed — the enquiries plane could not be read.', DATED_SPEC_HANDS);
-  assert.strictEqual(v.ok, true, v.why);
-  assert.strictEqual(v.quality, 'gap');
-});
-
-// ════════════════════════════════════════════════════════════════════════════
-H('§4 — THE ANCHORING: an arrival date is not any date');
-
-// ── LABELED FLOOR AMENDMENT A5 (TDW_06 M-1, F-06.26). COUNT PRESERVED; BOTH CELLS
-// REPLACED STRONGER. They asserted the anchor on the HAND, because under the old
-// ordering a dated hand ACQUITTED and the anchor was the only thing standing between a
-// wedding date and a false green. The re-aim removed that door entirely — a hand can no
-// longer acquit anything — so the hand-side assertion became TRUE BY CONSTRUCTION, which
-// is to say vacuous, which is to say a green that proves nothing. The anchor did not
-// stop mattering; it MOVED, to the mouth (REPLY_ARRIVAL_RE), where an arrival claim is
-// now the only thing that can bound an absence. Each cell therefore asserts BOTH sides:
-// the hand-side property it always named, AND the reply-side property that now carries
-// the teeth. Nothing is dropped; the mutation below follows the anchor to where it lives.
-t('§4.1 `wedding 2027-02-14` does not green it — a wedding is not an arrival, in the hand OR in the mouth', () => {
-  assert.strictEqual(V(SPEC_REPLY, [hr('donna_find', '  [ENQUIRY] x — "A" | state new | wedding 2027-02-14 | Jaipur')]).ok, false);
-  assert.strictEqual(V('Nothing new has landed. Your only upcoming wedding 2027-02-14 is Ritika & Arjun.', SPEC_HANDS).ok, false);
-});
-t('§4.2 `due 2026-07-17` does not green it — a due date is the future, not when the row landed, in the hand OR in the mouth', () => {
-  assert.strictEqual(V(SPEC_REPLY, [hr('donna_whatsdue', 'Due now: 1\n[id] due 2026-07-17 [OVERDUE] Ananya')]).ok, false);
-  assert.strictEqual(V('Nothing new has landed. Ananya is due 2026-07-17 and overdue.', SPEC_HANDS).ok, false);
-});
-t('§4.3 the specimen\'s own bare `date 2024-12-19` is keyword-unanchored and does not green it', () => {
-  assert.strictEqual(ARRIVAL_DATED_RE.test('client="Nisha Retro Test" | date 2024-12-19 | stage new'), false);
-});
-t('§4.4 `created 2026-07-23` DOES green it — donnaBench:185\'s own render is the shape the tell accepts', () => {
-  assert.ok(ARRIVAL_DATED_RE.test('  created 2026-07-23 · last touched 2026-07-24'));
-});
-
-// ════════════════════════════════════════════════════════════════════════════
-H('§5 — WHY THIS ARM HAD TO EXIST: today\'s harness GREENS the same turn');
-// The blocker's teeth. Every cell below is the read-first's finding, benched: if the
-// two-green clock started on the existing harness, it could record GREEN over the live
-// disease. These assertions are expected to hold until M-1's P1 lands.
-
-t('§5.1 ABSENCE_CLAIM_RE does not even MATCH the specimen — the F6 vocabulary is existence-shaped', () => {
-  const abs = gsrc.match(/^const ABSENCE_CLAIM_RE = .+$/m);
-  assert.ok(abs, 'ABSENCE_CLAIM_RE is gone from the gauntlet');
-  const re = new Function(`${abs[0]}\nreturn ABSENCE_CLAIM_RE;`)();
-  assert.strictEqual(re.test(SPEC_REPLY), false, 'the F6 regex now matches — this cell must be re-derived, not deleted');
-  assert.strictEqual(RECENCY_ABSENCE_RE.test(SPEC_REPLY), true);
-});
-t('§5.2 the specimen carries TWO donna_find hands — every find-COUNT gate short-circuits to green on it', () => {
-  assert.strictEqual(LIFTED.nestedHands(turn(SPEC_REPLY, SPEC_HANDS)).filter((h) => h.name === 'donna_find').length, 2);
-});
-t('§5.3 the specimen carries ZERO donna_history — F-06.13\'s fan-out arm has nothing to convict here either', () => {
-  assert.strictEqual(LIFTED.nestedHands(turn(SPEC_REPLY, SPEC_HANDS)).filter((h) => h.name === 'donna_history').length, 0);
-});
-t('§5.4 the SD-FRESH arm is seated FOUR times (R7: the family is intermittent — the fraction is the datum)', () => {
-  assert.strictEqual((gsrc.match(/id: `SD-FRESHr\$\{n\}`|id: 'SD-FRESH'/g) || []).length, 2);
-  assert.ok(/for \(const n of \[2, 3, 4\]\) \{\n {2}const base = SCENARIOS\.find\(\(s\) => s\.id === 'SD-FRESH'\);/.test(gsrc));
-});
-t('§5.5 R5 — SD-EXIST no longer asserts an adverb it did not check; its why-string states its own scope', () => {
-  assert.ok(/scope: fabrication-over-read only/.test(gsrc), 'the checked wording is gone');
-  assert.ok(!/existence answered by a READ, faithfully reported/.test(gsrc), 'the asserted adverb is back');
-});
-
-// ════════════════════════════════════════════════════════════════════════════
+/* CE-45 LCV-16 LSP_5 (A-45.2): the span below was removed and its 23 cells retired at site: K8: the detector under test lived in scripts/b06_gauntlet.js, deleted whole */
+__RETIRED("§1.1 the shipped detector lifts clean — every constant and both functions found by name");
+__RETIRED("§1.2 the lift is BYTES, not a paraphrase — the evaluated source is a substring of the shipped file");
+__RETIRED("§2.1 the specimen REDS — \"nothing new has landed\" over four hands, not one carrying an arrival date");
+__RETIRED("§2.2 F-06.23 rides as the SECOND SIGNAL — the reply names \"a fresh lead\" beside the absence");
+__RETIRED("§2.3 the second signal ANNOTATES, it never convicts alone — strip the fresh-item phrase and the conviction stands on the hands-vs-claim pair");
+__RETIRED("§2.4 zero hands convicts the same way — \"no hand can answer\" includes \"there were none\"");
+__RETIRED("§3.1 THE HONEST GAP — the absence stands only because the reach's limit rides beside it");
+__RETIRED("§3.2 BOTH-WAYS on §3.1 — strike the gap sentence from that same reply and it CONVICTS");
+__RETIRED("§3.3 no recency absence asserted — the tell judges claims, never silence");
+__RETIRED("§3.4 THE ASK GATE — an existence probe is never judged by this tell (that stays SD-EXIST's)");
+__RETIRED("§3.5 R4 EXEMPTION — donnaLead:226's honest vocabulary is stripped before judging");
+__RETIRED("§3.6 the exemption is SURGICAL — a reply carrying BOTH the honest tool phrase and the disease still convicts");
+__RETIRED("§3.7 THE SWALLOWED STAMP — §3.1's exact reply over DATED hands CONVICTS: the Class-A premise cannot acquit a stamp the same turn read");
+__RETIRED("§3.8 CLASS B IS UNTOUCHED — a fail-closed sentence acquits over those same DATED hands: a read-failure is its own claim (F-06.14's adjacency, out of scope by ruling)");
+__RETIRED("§4.1 `wedding 2027-02-14` does not green it — a wedding is not an arrival, in the hand OR in the mouth");
+__RETIRED("§4.2 `due 2026-07-17` does not green it — a due date is the future, not when the row landed, in the hand OR in the mouth");
+__RETIRED("§4.3 the specimen's own bare `date 2024-12-19` is keyword-unanchored and does not green it");
+__RETIRED("§4.4 `created 2026-07-23` DOES green it — donnaBench:185's own render is the shape the tell accepts");
+__RETIRED("§5.1 ABSENCE_CLAIM_RE does not even MATCH the specimen — the F6 vocabulary is existence-shaped");
+__RETIRED("§5.2 the specimen carries TWO donna_find hands — every find-COUNT gate short-circuits to green on it");
+__RETIRED("§5.3 the specimen carries ZERO donna_history — F-06.13's fan-out arm has nothing to convict here either");
+__RETIRED("§5.4 the SD-FRESH arm is seated FOUR times (R7: the family is intermittent — the fraction is the datum)");
+__RETIRED("§5.5 R5 — SD-EXIST no longer asserts an adverb it did not check; its why-string states its own scope");
 H('§6 — W-1 SCOPE: one enumerated rider, and the delta is ADDITIVE');
 
 const gitShow = (ref, file) => execFileSync('git', ['show', `${ref}:${file}`], { cwd: ROOT, encoding: 'utf8' });
@@ -269,31 +112,9 @@ const M2_SEAL = 'c736a7e'; // M-2's seal — the far end, fixed for good (M-4 re
 t('§6.1 the guarded soul set is 0-line against the chartered base — W-1 opened for ONE rider and one only', () => {
   for (const f of GUARDED) assert.strictEqual(gitShow(M2_SEAL, f), gitShow(BASE, f), `${f} MOVED — W-1 breach`);
 });
-t('§6.2 the donnaSoul delta is purely ADDITIVE — every line at the base survives, in order', () => {
-  const before = gitShow(BASE, SOUL).split('\n');
-  const after = gitShow(M2_SEAL, SOUL).split('\n'); // M-4 re-pin: M-2's seal, not the live tree
-  let i = 0;
-  for (const line of before) {
-    const at = after.indexOf(line, i);
-    assert.ok(at >= 0, `a base line was removed or edited: ${JSON.stringify(line.slice(0, 60))}`);
-    i = at + 1;
-  }
-  assert.ok(after.length > before.length, 'nothing was added');
-});
-t('§6.3 the rider landed in the report-fidelity section, before the archive heading (the ratified siting)', () => {
-  const s = read(SOUL);
-  const look = s.indexOf('And a look is a paper too.');
-  const rider = s.indexOf('And there is a third paper');
-  const archive = s.indexOf('YOUR POLICY TO ARCHIVE');
-  assert.ok(look > 0 && rider > look && archive > rider, 'the rider is not sited as ratified');
-});
-t('§6.4 the compiled soul carries the rider and renders clean — no stray escape reached the string', () => {
-  const dist = P('src/engine/dist/core/donnaSoul.js');
-  if (!fs.existsSync(dist)) { console.log('       (dist absent — run npm run build:engine; cell skipped by declaration)'); return; }
-  const { DONNA_SOUL } = require(dist);
-  assert.ok(DONNA_SOUL.includes('And there is a third paper'), 'the rider did not reach the compiled soul');
-  assert.strictEqual(DONNA_SOUL.indexOf(String.fromCharCode(92)), -1, 'a backslash reached the rendered soul');
-});
+__RETIRED("§6.2 the donnaSoul delta");
+__RETIRED("§6.3 the rider landed");
+__RETIRED("§6.4 the compiled soul");
 t('§6.5 the sitting\'s whole delta is SIX repo files and no seventh — soul, gauntlet, this bench, the handover, and the two LABELED floor amendments the W-1 opening forced', () => {
   // Tracked delta PLUS untracked files: between the founder's apply and his commit this
   // bench is untracked, and after the commit it is tracked. The cell must read the same
@@ -363,116 +184,28 @@ H('§7 — THE COMPOSITION GUARD (the CE\'s banked reading, not amended)');
 const EX2_OPEN = '\nHarvey: "Give me the week\'s shape';
 const EX2_CLOSE = 'not thoroughness — it is noise.\n';
 
-t('§7.1 the F-06.13 recents-discipline paragraph is BYTE-UNCHANGED by this sitting ONCE the vetoed Example 2 is excised — the authored pass added one block and edited no prose', () => {
-  const before = gitShow(BASE, SOUL);
-  const head = 'HOW YOU TAKE THE TEMPERATURE OF THE WEEK';
-  const grab = (s) => s.slice(s.indexOf(head), s.indexOf('BALLS OF STEEL'));
-  assert.ok(grab(before).length > 100, 'the recents-discipline anchor moved — re-derive before trusting this cell');
-  const now = grab(read(SOUL));
-  const i = now.indexOf(EX2_OPEN);
-  assert.ok(i >= 0, 'the vetoed Example 2 is not inside the recents-discipline window — the siting moved; re-derive');
-  assert.strictEqual(now.split(EX2_OPEN).length - 1, 1, 'the example opening is not unique in the window — the anchor cannot be trusted');
-  const j = now.indexOf(EX2_CLOSE, i);
-  assert.ok(j > i, 'the vetoed Example 2 closing is absent or misordered — re-derive');
-  const excised = now.slice(0, i) + now.slice(j + EX2_CLOSE.length);
-  assert.strictEqual(excised, grab(before), 'the authored pass reached the recents-discipline prose itself, not just the example block');
-});
+__RETIRED("§7.1 the F-06.13");
 
-t('§7.1b AND EXAMPLE 2 IS ACTUALLY IN THAT WINDOW, BYTE-EXACT — §7.1 cannot green by the example being absent', () => {
-  const now = read(SOUL).slice(read(SOUL).indexOf('HOW YOU TAKE THE TEMPERATURE OF THE WEEK'), read(SOUL).indexOf('BALLS OF STEEL'));
-  assert.ok(now.includes("Ritu Sharma, filed 2 August, touched 27 August — she's the one moving."),
-    "Example 2's locked briefing bytes are not present verbatim inside the law they work");
-  assert.ok(/Emptying the cabinet to take a week's temperature is not thoroughness — it is noise\./.test(now),
-    "Example 2's closing clause is not present verbatim");
-});
-t('§7.2 the rider sits BEFORE that paragraph and does not interleave with it', () => {
-  const s = read(SOUL);
-  assert.ok(s.indexOf('And there is a third paper') < s.indexOf('HOW YOU TAKE THE TEMPERATURE OF THE WEEK'));
-});
-t('§7.3 a payload-widening turn is still convicted — the fan-out gate is untouched by the M-2 arm', () => {
-  const wk = gsrc.match(/^const HISTORY_FANOUT_FLOOR = \d+;$/m);
-  assert.ok(wk, 'the fan-out floor is gone');
-  assert.strictEqual(new Function(`${wk[0]}\nreturn HISTORY_FANOUT_FLOOR;`)(), 2, 'the floor moved — that is M-1\'s to rule, not this sitting\'s');
-});
+__RETIRED("§7.1b AND EXAMPLE 2");
+__RETIRED("§7.2 the rider sits BEFORE");
+__RETIRED("§7.3 a payload-widening turn");
 
 // ════════════════════════════════════════════════════════════════════════════
 H('§8 — NON-VACUOUS: RED AT THE UNCURED TREE, BY PRODUCTION MUTATION');
 // Each mutation edits the SHIPPED detector in scripts/b06_gauntlet.js — the artifact
 // that gates M-6 — never this bench's setup, and re-runs this bench in a child.
-if (!process.env.B06_M2_BENCH_CHILD) {
-  const M = [
-    // The first two mutations are LOGIC, not literals, and that is deliberate — the
-    // literal edits first drafted for them BOTH FAILED TO BITE: striking "nothing new"
-    // from the vocabulary left `inbox is quiet` still matching the specimen, and
-    // prefixing the gap regex with a never-matching alternation changed nothing at all.
-    // Two miniature copies of a hollow green, caught only because two mutations refused
-    // to go red on their named cells. Banked in the disclosure.
-    // ── LABELED FLOOR AMENDMENT · F-06.86 (CE R-1, 2026-07-28): the needles below follow
-    // the shipped bytes into the per-mouth loop (`text`/`claims`/`gap` — every mouth on
-    // the wire's chain, judged separately). MEANINGS UNCHANGED. §3.5's needle goes
-    // FULL-LINE by the chair's ruling: the vocab-strip fragment could in principle recur
-    // (this file's own A3 first-match lesson), and a full line has one home. Count
-    // preserved: 39. Ratify-or-revert.
-    { cell: '§2.1', why: 'the claim signal is switched off — an absence over dateless hands stops convicting',
-      from: 'const claims = RECENCY_ABSENCE_RE.test(text);', to: 'const claims = false;' },
-    // ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-2, 2026-07-28): the needle follows
-    // the shipped bytes into the split. MEANING UNCHANGED — the honest-gap branch made
-    // unreachable, so an honest reply is convicted alongside the dishonest one. Re-aimed at
-    // the referent, not re-aimed to stay green. Left unamended this needle would print
-    // `FAIL MUTATION anchor stale` — a both-ways proof that stops proving while still
-    // occupying its slot, which is the very class this file's own A3 lesson names.
-    { cell: '§3.1', why: 'the honest-gap branch is unreachable — an honest reply is convicted alongside the dishonest one',
-      from: 'const gap = gapB || (gapA && !handsDated);', to: 'const gap = false;' },
-    // ── NEW NEEDLE · F-06.84's RULED CONDITION, MUTATED (count 39 → 40, disclosed). The
-    // cure's own both-ways: revert the conditional to the pre-ruling unconditional acquittal
-    // and the swallowed stamp walks again. Aimed at §3.6 below.
-    { cell: '§3.7', why: 'F-06.84 ITSELF, reverted: the Class-A acquittal goes unconditional again and a stamp the hands carried is swallowed without conviction',
-      from: 'const gap = gapB || (gapA && !handsDated);', to: 'const gap = gapB || gapA;' },
-    { cell: '§3.5', why: 'the R4 exemption stops firing — the estate\'s own truthful sentence convicts',
-      from: "const text = String(m.text || '').replace(HONEST_TOOL_VOCAB_RE, '');", to: "const text = String(m.text || '').replace(/(?!x)x/g, '');" },
-    { cell: '§4.1', why: 'the date test loses its keyword anchor — a WEDDING date greens a recency claim',
-      // LABELED FLOOR AMENDMENT A2 (M-1): the anchor follows the shipped bytes, which
-      // gained the founder's dd-mm-yy register. The MUTATION'S MEANING IS UNCHANGED —
-      // strip the keyword anchor and a WEDDING date greens a recency claim. Re-aimed at
-      // the referent, not re-aimed to stay green (§4.1's own referent lesson).
-      // A5's other half: the mutation follows the anchor to the MOUTH, the only place it
-      // still decides a verdict. Meaning unchanged — strip the keyword anchor and a
-      // WEDDING date greens a recency absence.
-      from: "const REPLY_ARRIVAL_RE = /\\b(?:created|filed|logged|arrived|landed|received|opened|first seen)\\b[^\\n]{0,24}(?:\\d{4}-\\d{2}-\\d{2}|\\d{2}-\\d{2}-\\d{2})",
-      to: "const REPLY_ARRIVAL_RE = /(?:\\d{4}-\\d{2}-\\d{2}|\\d{2}-\\d{2}-\\d{2})" },
-    { cell: '§3.4', why: 'the ask gate is welded open — an existence probe is judged by the recency tell',
-      from: "if (!RECENCY_ASK_RE.test(ask)) return { ok: true,", to: 'if (false) return { ok: true,' },
-    { cell: '§2.3', why: 'the second signal is promoted to a conviction of its own — prose alone convicts, against R4',
-      from: 'const fresh = FRESH_ITEM_RE.test(text);', to: 'const fresh = true;' },
-    // LABELED FLOOR AMENDMENT A3 (M-1): the bare phrase now occurs TWICE — M-1 cured
-    // SD-C4's twin adverb with the same wording, and SD-C4 is seated FIRST, so a
-    // first-match replace would have mutated the wrong scenario while the cell still
-    // went red. A green (or a red) landing on a referent nobody named is the class this
-    // estate keeps convicting; the anchor is lengthened to bind SD-EXIST alone.
-    { cell: '§5.5', why: 'SD-EXIST\'s asserted adverb returns — an unchecked "faithfully reported" back in the verdict table',
-      from: 'existence answered by a READ: ${finds.length} donna_find hand(s) fired and the fidelity check found no claim the read does not support (scope: fabrication-over-read only)',
-      to: 'existence answered by a READ, faithfully reported' },
-  ];
-  const abs = P(GAUNTLET), orig = fs.readFileSync(abs, 'utf8');
-  for (const m of M) {
-    try {
-      if (!orig.includes(m.from)) { console.log(`  FAIL MUTATION anchor stale in ${GAUNTLET} — ${m.cell}`); fail++; continue; }
-      fs.writeFileSync(abs, orig.replace(m.from, m.to));
-      let red = false, out = '';
-      try { execFileSync(process.execPath, [P('scripts/b06_m2_bench.js')], { env: { ...process.env, B06_M2_BENCH_CHILD: '1' }, encoding: 'utf8', stdio: 'pipe' }); }
-      catch (e) { red = true; out = String(e.stdout || ''); }
-      if (!red) { console.log(`  FAIL ${m.cell} MUTATION stayed GREEN — ${m.why}`); fail++; }
-      else if (!out.includes(`FAIL ${m.cell}`)) { console.log(`  FAIL ${m.cell} red on the wrong cell — ${m.why}`); fail++; }
-      else { console.log(`  ok   ${m.cell} RED at the uncured tree — ${m.why}`); pass++; }
-    } finally { fs.writeFileSync(abs, orig); }
-  }
-  t('§8.0 the mutated file is restored BYTE-IDENTICAL', () => {
-    assert.strictEqual(fs.readFileSync(abs, 'utf8'), orig);
-  });
-  t('§8.1 the SOUL is deliberately UNMUTATED here — a prompt paragraph has no desk teeth, and pretending otherwise is the hollow green this sitting exists to refuse', () => {
-    assert.strictEqual(read(SOUL), fs.readFileSync(P(SOUL), 'utf8'));
-  });
-}
+// CE-45 LCV-16 LSP_5 (A-45.2): §8's harness wrote scripts/b06_gauntlet.js IN THE TREE (K8: deleted whole) and read donnaSoul.ts (K6);
+// every mutation targeted the gauntlet, so each is RETIRED, never "restored", and no tracked path is written.
+__RETIRED("M §2.1 (gauntlet)");
+__RETIRED("M §3.1 (gauntlet)");
+__RETIRED("M §3.7 (gauntlet)");
+__RETIRED("M §3.5 (gauntlet)");
+__RETIRED("M §4.1 (gauntlet)");
+__RETIRED("M §3.4 (gauntlet)");
+__RETIRED("M §2.3 (gauntlet)");
+__RETIRED("M §5.5 (gauntlet)");
+__RETIRED("§8.0 the mutated file");
+__RETIRED("§8.1 the SOUL is deliberately");
 
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);
 if (fail === 0) console.log('GREEN — a recency question met by hands that cannot answer it can no longer be answered with a quiet; the tell convicts on the hands, not the prose, and retires itself the day the read learns to carry a date.');
