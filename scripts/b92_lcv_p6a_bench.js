@@ -1,4 +1,8 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (his V9, V10, V12, V14, V15): the rendered picks re-pinned to his numbered forms, the same options in the
+// same order; a cell titled "exactly two" now reads "two or more" by F4's ruling (no cap), named at its title.
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (R-45.23, his V9, V10, V12, V14, V15): B8, B10, B24, B53 and B61 re-pinned to his numbered bytes and hashes;
+// two OR MORE options render numbered (F4); what each cell proves is unchanged unless its own label says it flipped.
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (R-45.23, his V11 and V13): B23 and B31 list their options NUMBERED and end "Reply with the number.";
 // B31 names the client; B23 now leaves a package note (F5). Templates, rendered forms and hashes re-pinned; what each cell proves is unchanged.
 const __NUM = (s) => String(s).split(' · ').map((x, i) => `${i + 1}. ${x}`).join(' ');
@@ -497,7 +501,7 @@ async function main() {
   const RULED2 = {
     B22: 'Package attached: {client} · {package} · Rs {total}.',
     B23: 'You have no package called {name}. Yours are: {list}. Reply with the number.',
-    B24: 'Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.',
+    B24: 'Two packages are called {name}: 1. {name} (Rs {total}) 2. {name} (Rs {total}). Reply with the number.',
     B25: 'Could not attach the package. {client} has no wedding date yet. Add {client}\'s wedding date first.',
     B26: 'When is the delivery date for {client}?',
     B27: 'Package attached: {client} · {package} · Rs {total} · Delivery {date}.',
@@ -506,20 +510,20 @@ async function main() {
     B30: 'Could not attach the package.',
   };
   const HASHES2 = {
-    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '583d20e906f253e15230693679cc9ad4b93f81b601be6e3434b825c2959819de', B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785', B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d', B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
+    B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '583d20e906f253e15230693679cc9ad4b93f81b601be6e3434b825c2959819de', B24: 'feea6dd46ad7d8c2c8defcb6b1d43f857fda7a8ed0373f2f76a2aaffe2f8e640', B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785', B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d', B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986',
     // B29's twin is dreamos-pwa lib/worklist/packages.ts:126 (refusals.already_booked); B30's is :73 (attachFailed). A dream-os
     // bench cannot read the pwa on his machine, so each pin is the hash literal and the twin is named, not tested.
     B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d', B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
   };
   for (const k of Object.keys(RULED2)) T(`11.1 ${k} is his byte verbatim and its hash is the literal pinned here`, DL.LINES[k] === RULED2[k] && DL.LINE_HASHES[k] === HASHES2[k] && sha(RULED2[k]) === HASHES2[k]);
   const close = src('docs/handovers/TDW_CE44_LCV6_SEAT_CLOSE.md');
-  T('11.2 B22 to B28 are byte-identical to the LCV-6 seat close §4, the record of his word', ['B22', 'B24', 'B26', 'B27', 'B28'].every((k) => close.includes(`  ${k}  ${RULED2[k]}\n`)) /* cut 2b, labelled: B23 left it too (his V11) */ /* cut 2a, labelled: B25 left this record when the founder's V3 (R-45.23) superseded it; its new byte is pinned in 11.1 and b118a */);
+  T('11.2 B22 to B28 are byte-identical to the LCV-6 seat close §4, the record of his word', ['B22', 'B26', 'B27', 'B28'].every((k) => close.includes(`  ${k}  ${RULED2[k]}\n`)) /* cut 2c, labelled: B24 left it too (his V12) */ /* cut 2b, labelled: B23 left it too (his V11) */ /* cut 2a, labelled: B25 left this record when the founder's V3 (R-45.23) superseded it; its new byte is pinned in 11.1 and b118a */);
   // 11.3 RE-PINNED (CE-44 LCV-9 PART ONE): it asserted B31 and B32 free while his word was pending. His word came at R-44.36
   // ("yes to your open earlirr questions"). B32 rides Part One (the chair's ruling) and is spoken ONLY by the stand-in, chain
   // out; planAttach still returns noLead and preTurn still answers door false, so 14.16 stands. B31 enters with Part Two.
   // 11.3 RE-PINNED (CE-44 LCV-10 PART B-2, second cut): B31 is HIS now (R-44.36) and b98 holds it; this cell keeps B32's pin.
   T('11.3 B32 is HIS and present, hash-carried, and spoken only through standIn; B31 is present too (b98 holds it)', DL.LINES.B32 === 'Could not attach the package. No lead called {name}. Add {name} as a lead first, here or in the app.' && DL.LINE_HASHES.B32 === 'b4679dd36af5037d808df12e3865c8db99b7b2c39ab6117c6b1bbe4c27b82878' && 'B31' in DL.LINES && (src('src/lib/vendor/workingDoor.js').match(/'B32'/g) || []).length === 2);
-  T('11.4 byte 24 renders by position for exactly two, byte 23 lists her own names with " · "', DL.twoPackages('bridal', [{ name: 'Bridal', total: '80,000' }, { name: 'bridal', total: '1,20,000' }]) === 'Two packages are called bridal: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.'
+  T('11.4 byte 24 renders by position for exactly two, byte 23 lists her own names with " · "', DL.twoPackages('bridal', [{ name: 'Bridal', total: '80,000' }, { name: 'bridal', total: '1,20,000' }]) === 'Two packages are called bridal: 1. Bridal (Rs 80,000) 2. bridal (Rs 1,20,000). Reply with the number.'
     && DL.twoPackages('x', [{ name: 'a', total: '1' }]) === null && DL.twoPackages('x', [{ name: 'a', total: null }, { name: 'b', total: '1' }]) === null
     && DL.noSuchPackage('Gold', ['A', ' ', null, 'B']) === 'You have no package called Gold. Yours are: 1. A 2. B. Reply with the number.' && DL.noSuchPackage('Gold', []) === null);
 
@@ -597,7 +601,7 @@ async function main() {
   // 14.8 RE-PINNED (CE-44 LCV-10, the third B-2 cut): R-44.40, THE FOUNDER'S, SUPERSEDES never-nearest FOR ONE SLIP (a Damerau distance of 1 or the same words reordered); the resolver itself is still exact, so the door OFFERS the one near package as a QUESTION, B36, and still attaches NOTHING.
   T('14.8 never fuzzy in the RESOLVER, but one letter off now ASKS "Did you mean Photographs and film? Reply YES or NO." (R-44.40) and attaches nothing', o.keys.join() === 'B36' && o.reply === 'Did you mean Photographs and film? Reply YES or NO.' && lpsIn(db).length === 0);
   o = await run(db, 'x', [att('Walk P7 Dated', 'BRIDAL')]);
-  T('14.9 two of one name is B24 with each row\'s own name and total; nothing written', o.reply === 'Two packages are called BRIDAL: Bridal (Rs 80,000) · bridal (Rs 1,20,000). Say which one.' && o.skipHarvest === true && lpsIn(db).length === 0);
+  T('14.9 two of one name is B24 with each row\'s own name and total; nothing written', o.reply === 'Two packages are called BRIDAL: 1. Bridal (Rs 80,000) 2. bridal (Rs 1,20,000). Reply with the number.' && o.skipHarvest === true && lpsIn(db).length === 0);
   o = await run(db, 'Attach Photographs and film to Walk P5 Book', [att('Walk P5 Book', 'Photographs and film')]);
   T('14.10 THE CARD: a BOOKED lead is B29, from attachPackage\'s own 422 already_booked; nothing written', o.reply === RULED2.B29 && o.toolCalls[0].result === 'refused:already_booked' && lpsIn(db).length === 0);
   o = await run(db, 'Attach Photographs and film to Walk P6 Undated', [att('Walk P6 Undated', 'Photographs and film')]);
@@ -608,7 +612,7 @@ async function main() {
   // 14.13 RE-PINNED (CE-44 LCV-10 PART B-2, second cut; F-44.102): no_fee now speaks HIS OWN byte B33, recorded refused:no_fee; every other refusal is still B30 (14.20, 14.21).
   T('14.13 attachPackage\'s no_fee refusal speaks B33, his own pwa byte, recorded refused:no_fee; nothing written', o.reply === 'Could not attach the package. No fee yet has no fee yet. Set its fee in the app first.' /* cut 2a: V5 names the package */ && o.toolCalls[0].result === 'refused:no_fee' && lpsIn(db).length === 0);
   o = await run(db, 'x', [att('Twin', 'Photographs and film')]);
-  T('14.14 two leads of one name reuse B8\'s shape as it stands', o.reply === 'Two clients are called Twin: Twin (1 April 2027) · twin (2 May 2027). Say which one.' && lpsIn(db).length === 0);
+  T('14.14 two leads of one name reuse B8\'s shape as it stands', o.reply === 'Two clients are called Twin: 1. Twin (1 April 2027) 2. twin (2 May 2027). Reply with the number.' && lpsIn(db).length === 0);
   o = await run(db, 'Attach a package to Walk P7 Dated', [{ act: 'attach_package', client_as_spoken: 'Walk P7 Dated' }]);
   // 14.15 RE-PINNED (CE-44 LCV-10 PART B-2, second cut; R-44.36): no package named is now the door's B31 with her sorted names, nothing written.
   T('14.15 NO PACKAGE NAMED is B31, his byte, with HER OWN names sorted; nothing written', o.door === true && o.reply === `Which package for Walk P7 Dated? ${__NUM(OWN_LIST)}. Reply with the number.` && lpsIn(db).length === 0);
@@ -769,10 +773,10 @@ async function main() {
     [["      if (typeof a.package_as_spoken === 'string' && a.package_as_spoken.trim()) out.package_as_spoken = a.package_as_spoken.trim();\n", '']], [],
     async (rq) => rq(LDf).normaliseRequest({ route: 'task', acts: [att('S', 'P')] }), (q) => !('package_as_spoken' in q.acts[0]));
   await mut('20.6 N6 a nearest match in the resolver: one letter off attaches (reddens 14.8)', WDf,
-    [['    const hits = pkgs.filter((p) => p && key(p.name) === key(said));', "    const hits = pkgs.filter((p) => p && key(p.name).replace(/s/g, '') === key(said).replace(/s/g, ''));"]], [],
+    [['    const hits = pinned.length === 1 ? pinned : pkgs.filter((p) => p && key(p.name) === key(said));', "    const hits = pinned.length === 1 ? pinned : pkgs.filter((p) => p && key(p.name).replace(/s/g, '') === key(said).replace(/s/g, ''));"]] /* cut 2c, labelled (c-45.54): the anchor follows the line 2c rewrote; the mutation unchanged */, [],
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photograph and film')]), (x) => x.lps.length === 1);
   await mut('20.7 N7 the vendor filter dropped from the resolver: another vendor\'s package makes two of one name (reddens 14.3)', WDf,
-    [["    .eq('vendor_id', vendorId).is('deleted_at', null);\n  return (error || !Array.isArray(data)) ? null : data;", "    .is('deleted_at', null);\n  return (error || !Array.isArray(data)) ? null : data;"]], [],
+    [["    .eq('vendor_id', vendorId).is('deleted_at', null);\n  // F-44.178 (CE-45 ELZ-1 cut 2c): ONE stable order", "    .is('deleted_at', null);\n  // F-44.178 (CE-45 ELZ-1 cut 2c): ONE stable order"]] /* cut 2c, labelled (c-45.54): the anchor follows the line 2c rewrote; the mutation unchanged */, [],
     async (rq) => attCase(rq, 'x', [att('Walk P7 Dated', 'Photographs and film')]), (x) => x.r.door !== true || x.r.keys.join() !== 'B22');
   await mut('20.8 N8 the read-back from what was HEARD instead of the row (reddens 14.18)', WDf,
     [['      const vals = { client: a.client, package: snap.name, total: digits(row.total) };', '      const vals = { client: a.client, package: a.heard || \'Photographs and film\', total: digits(80000) };']], [],

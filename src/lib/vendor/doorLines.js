@@ -49,11 +49,11 @@ const LINES = Object.freeze({
   // a date the door cannot read
   B7: "I could not read that date. Say it like 5 December.",
   // two clients share the name she used (F-44.9, F-44.16)
-  B8: "Two clients are called {name}: {name} ({date}) · {name} ({date}). Say which one.",
+  B8: "Two clients are called {name}: 1. {name} ({date}) 2. {name} ({date}). Reply with the number.",
   // an invoice SERVED (F-44.49)
   B9: "Invoice {number} for {client} is already made. Find it in the invoices list.",
   // more than one live invoice on her client
-  B10: "{client} has {n} invoices: {numbers}. Which one?",
+  B10: "Which invoice for {client}? 1. {number} 2. {number}. Reply with the number.",
   // an invoice asked for a client with no fee
   B11: "Could not make the invoice. {client} has no fee yet.",
   // a second money act in one message
@@ -82,7 +82,7 @@ const LINES = Object.freeze({
   // no package of hers by that name; {list} is HER OWN live names joined with " · "
   B23: "You have no package called {name}. Yours are: {list}. Reply with the number.",
   // two of her packages share the name (rendered by position, as B8 is)
-  B24: "Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.",
+  B24: "Two packages are called {name}: 1. {name} (Rs {total}) 2. {name} (Rs {total}). Reply with the number.",
   // the lead has no day-precision wedding date (computeSchedule's no_wedding_date)
   B25: "Could not attach the package. {client} has no wedding date yet. Add {client}'s wedding date first.",
   // a handover package and no delivery date said, or one equal to the wedding date (R-44.34 (b), R-44.35, F-44.92)
@@ -155,7 +155,7 @@ const LINES = Object.freeze({
   B52: "No shoot for {client} on the calendar.",
   // two or more upcoming shoots for her lead: rendered BY POSITION through shootsLine() below (repeated slots, as B8 is); three or more extend the
   // list by the same " · " (the chair's K5 ruling, derived and disclosed as B40's no-reason form is). The door keeps its OWN note (SHOOT_ASKS).
-  B53: "Two shoots for {client}: {date} · {date}. Say the date.",
+  B53: "Which shoot for {client}? 1. {date} 2. {date}. Reply with the number.",
   // a calendar act with no date (his, 23 September 2026; B7's register). A DATE note of the door's own kind: her whole next message is the day
   B54: "Which day? Say it like 5 December.",
   // P7 cut 3 (CE-45 LCV-14) · THE TEAM AND THE PAYMENT REMINDER, all his (22 and 23 September 2026, "All proposed lines accepted"; LCV-12's designs file
@@ -172,7 +172,7 @@ const LINES = Object.freeze({
   // in P7, no exit reaches it, as B39 and B77 were carried before their cut
   B60: "No one called {name} on your team. Add {name} to your team in the app first.",
   // two active members share the name: rendered BY POSITION through membersLine() below, as B8 is; three or more take R-45.9's derived form
-  B61: "Two on your team are called {name}: {name} ({role}) · {name} ({role}). Say which one.",
+  B61: "Two on your team are called {name}: 1. {name} ({role}) 2. {name} ({role}). Reply with the number.",
   // an assignment naming no member. The door keeps its OWN note (MEMBER_ASKS): her whole next message is the member
   B62: "Who? Say the name.",
   // a payment reminder SENT: {client} the LEAD ROW's name; {milestone}, {amount}, {date} the payment_schedules ROW's own
@@ -260,9 +260,9 @@ const LINE_HASHES = Object.freeze({
   B5: '923fe7d7eebe9443d522a0037be01125e1958af1d047372dfc6d742220a6be45',
   B6: '728d219fdb8a4ce07778dcf346665975d7ab651f7501efa6ff3f8a7144eb3029',
   B7: '44b5c385d187f3cc29ce05c210a524a8be162ab127f2bf97cbe22bc90dd8e331',
-  B8: 'ecf5d241deae90b77bc9d840928aacc2a1fc781f3fd2b6ea9cb2a25db7675166',
+  B8: '641f9ef0fc83f5a2ea925a1538e899fe1e21574a5f1b69fc21589f3f48f459b8',
   B9: '3253966dab22fb365c4f8ed5e0676c1c6196f6df7e3f47a122d1e32d00a0faa2',
-  B10: 'c82103b3177a6a44cafcf364be426df89901ab0407fd3776092a84b3afcad81d',
+  B10: '4ccc6df43c551302cad645fd5e7133bdefe4ca063af8acde96a87e313ae600f7',
   B11: '90f1edf7055b45d6c898df911ba442b70b47119f2523a5c8b7bfdd8dd00cb8ed',
   B12: '7723dc04452784fe3c6e7b1e9d145fa1323048aaa39da70a9d52aeae2c22ee09',
   B13: '45f9284524fc2546d8ca5a34ae51d036efc1a887f2104a35a473e283dda9658c',
@@ -276,7 +276,7 @@ const LINE_HASHES = Object.freeze({
   B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
   B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c',
   B23: '583d20e906f253e15230693679cc9ad4b93f81b601be6e3434b825c2959819de',
-  B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a',
+  B24: 'feea6dd46ad7d8c2c8defcb6b1d43f857fda7a8ed0373f2f76a2aaffe2f8e640',
   B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785',
   B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484',
   B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
@@ -304,14 +304,14 @@ const LINE_HASHES = Object.freeze({
   B50: '11ff0598c04b4779886e7d4555eb3a7e8827643ec2191236da9b78b501e86dc4',
   B51: '6e87ed6e362b53c41a0feedceb97a5460e88ee8cc836026ba7ed67bf8ad02216',
   B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb',
-  B53: 'fd391aa7f9c88cfb1a5bdc18a3544be87c514728adc6caacf883b1c2cf9651e3',
+  B53: 'aa55335d1132fb578845bc1ddfdbf9f0258c825c026c6a595700b114d124a5a3',
   B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
   B56: 'd434900fe046a14f2bc58dec7d35f367f4fac70d99b08a849b7cf2be1b064b5a',
   B57: '992956ec3f4de01d0a5de21e3703a4c3d0cf3e1f6e9b627aac4e14329639a9e4',
   B58: '73b92a93a9b8c1fb51dad5aff7d87309bbca7909b86fe9402f26b8d2c250fc20',
   B59: '306e713bae4ef8766639d333200a49e3149fe7c1c2a7e47a3b45336b01485a03',
   B60: '17edb3d32c82b222c51e47f734f001c9d3e4a7ac9b24093be0adec83d52ec3a7',
-  B61: '646620f66e3229cbd4d7bf322d8a6a0ec211531822c0a4af6b9d6e2c31b2627e',
+  B61: 'c871b25c99cabac56eccad1e623137968d157b3217f208fc31d91636daa178be',
   B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265',
   B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc',
   B68: '60ad19c5dfdfc5e50b4a72bb470f722649049554cfb64ea2ab6866f82585e415',
@@ -404,15 +404,26 @@ function invoiceReady(number, client) {
 
 // Byte 8 has repeated slots, so it is rendered by position: the name she used, then exactly TWO
 // candidates, each a name and a full-month date. Anything else is null (the door stands aside).
+// CE-45 ELZ-1 cut 2c (R-45.23, his V9, V10, V12, V14, V15): a pick among records lists them NUMBERED in the ONE order its note keeps. The head
+// and the tail are read from HIS line (the text before "1. " and from ". Reply with the number."), so the hash rides his exact bytes; two options
+// read "Two ...", more read the count in its place (the shoots and members lines' own precedent); no cap (F4).
+function numberedPick(key, subs, items) {
+  try {
+    const t = LINES[key]; const i1 = t.indexOf('1. '); const iR = t.lastIndexOf('. Reply with the number.');
+    if (i1 < 0 || iR < 0 || !Array.isArray(items) || items.length < 2) return null;
+    const its = items.map(slot); if (its.some((x) => x === null)) return null;
+    let head = t.slice(0, i1);
+    for (const [k, v] of Object.entries(subs)) { const sv = slot(v); if (sv === null) return null; head = head.split(`{${k}}`).join(sv); }
+    if (/\{\w+\}/.test(head)) return null;
+    if (items.length > 2 && head.startsWith('Two ')) head = `${items.length} ${head.slice(4)}`;
+    return `${head}${its.map((x, n) => `${n + 1}. ${x}`).join(' ')}${t.slice(iR)}`;
+  } catch (_e) { return null; }
+}
 function twoClients(name, candidates) {
   try {
-    const n = slot(name);
-    if (n === null || !Array.isArray(candidates) || candidates.length !== 2) return null;
-    const parts = candidates.map((x) => [slot(x && x.name), slot(x && x.date)]);
-    if (parts.some(([a, b]) => a === null || b === null)) return null;
-    const fill = [n, parts[0][0], parts[0][1], parts[1][0], parts[1][1]];
-    let i = 0;
-    return LINES.B8.replace(/\{(name|date)\}/g, () => fill[i++]);
+    if (!Array.isArray(candidates) || candidates.length < 2) return null;
+    const items = candidates.map((x) => { const a = slot(x && x.name); const b = slot(x && x.date); return a === null || b === null ? null : `${a} (${b})`; });
+    return items.some((x) => x === null) ? null : numberedPick('B8', { name }, items);
   } catch (_e) { return null; }
 }
 
@@ -420,13 +431,9 @@ function twoClients(name, candidates) {
 // its total in Indian grouping WITHOUT the letters (the template carries "Rs"). Anything else is null.
 function twoPackages(name, candidates) {
   try {
-    const n = slot(name);
-    if (n === null || !Array.isArray(candidates) || candidates.length !== 2) return null;
-    const parts = candidates.map((x) => [slot(x && x.name), slot(x && x.total)]);
-    if (parts.some(([a, b]) => a === null || b === null)) return null;
-    const fill = [n, parts[0][0], parts[0][1], parts[1][0], parts[1][1]];
-    let i = 0;
-    return LINES.B24.replace(/\{(name|total)\}/g, () => fill[i++]);
+    if (!Array.isArray(candidates) || candidates.length < 2) return null;
+    const items = candidates.map((x) => { const a = slot(x && x.name); const b = slot(x && x.total); return a === null || b === null ? null : `${a} (Rs ${b})`; });
+    return items.some((x) => x === null) ? null : numberedPick('B24', { name }, items);
   } catch (_e) { return null; }
 }
 
@@ -481,15 +488,7 @@ function blockedLine(date, reason) {
 // extends by the same " · " ("3 shoots for {client}: {date} · {date} · {date}. Say the date."); a derivation of his byte, disclosed as B40's no-reason form
 // is; the hash-carried template is unchanged. Fewer than two, or any unusable value, is null.
 function shootsLine(client, dates) {
-  try {
-    const c = slot(client);
-    if (c === null || !Array.isArray(dates) || dates.length < 2) return null;
-    const ds = dates.map(slot);
-    if (ds.some((d) => d === null)) return null;
-    const two = LINES.B53.replace('{client}', c).replace('{date}', ds[0]).replace('{date}', ds[1]);
-    if (ds.length === 2) return two;
-    return `${ds.length}${two.slice('Two'.length)}`.replace(`${ds[0]} · ${ds[1]}.`, `${ds.join(' · ')}.`);
-  } catch (_e) { return null; }
+  try { return numberedPick('B53', { client }, dates); } catch (_e) { return null; }
 }
 
 // Byte 61 has repeated slots, as byte 8 has: the name she used, then the members IN THE ORDER GIVEN, each its own row name and a word that tells
@@ -499,14 +498,9 @@ function shootsLine(client, dates) {
 // two, or any unusable value, is null.
 function membersLine(name, members) {
   try {
-    const n = slot(name);
-    if (n === null || !Array.isArray(members) || members.length < 2) return null;
-    const parts = members.map((x) => [slot(x && x.name), slot(x && x.role)]);
-    if (parts.some(([a, b]) => a === null || b === null)) return null;
-    const one = (p) => `${p[0]} (${p[1]})`;
-    const two = LINES.B61.replace('{name}', n).replace('{name} ({role}) · {name} ({role})', `${one(parts[0])} · ${one(parts[1])}`);
-    if (parts.length === 2) return two;
-    return `${parts.length}${two.slice('Two'.length)}`.replace(`${one(parts[0])} · ${one(parts[1])}.`, `${parts.map(one).join(' · ')}.`);
+    if (!Array.isArray(members) || members.length < 2) return null;
+    const items = members.map((x) => { const a = slot(x && x.name); const b = slot(x && x.role); return a === null || b === null ? null : `${a} (${b})`; });
+    return items.some((x) => x === null) ? null : numberedPick('B61', { name }, items);
   } catch (_e) { return null; }
 }
 
@@ -562,12 +556,7 @@ function weekLines(payments, shoots) {
 
 // Byte 10's {numbers}: joined with " · ", the founder's own separator (D3, D6 after c-44.5).
 function invoiceNumbers(client, numbers) {
-  try {
-    if (!Array.isArray(numbers) || numbers.length < 2) return null;
-    const list = numbers.map(slot);
-    if (list.some((x) => x === null)) return null;
-    return render('B10', { client, n: list.length, numbers: list.join(' · ') });
-  } catch (_e) { return null; }
+  try { return numberedPick('B10', { client }, numbers); } catch (_e) { return null; }
 }
 
 // THE LEFTOVER REPLY, ONE BUILDER (R-44.37): the founder's line, then TWO of his examples chosen at random, each on
@@ -587,4 +576,4 @@ function leftover(covered, rand) {
 // The keys the door may name for a line it spoke, beside the lifecycle bytes it reads from LINES.
 const DOOR_KEYS = Object.freeze(Object.keys(LINES).filter((k) => k !== 'LEFTOVER'));
 
-module.exports = { sortedNameList, numberedNames, namelessLine, newLeadsLine, dayLines, weekLines, membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };
+module.exports = { numberedPick, sortedNameList, numberedNames, namelessLine, newLeadsLine, dayLines, weekLines, membersLine, shootsLine, blockedLine, showFrame, whichPackage, leftover, EXAMPLE_ACTS, LINES, EXAMPLES, LINE_HASHES, EXAMPLE_HASHES, DOOR_KEYS, sha256, assertLineHashes, render, invoiceReady, twoClients, twoPackages, noSuchPackage, invoiceNumbers };

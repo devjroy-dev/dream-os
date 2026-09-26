@@ -1,4 +1,8 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (his V9, V10, V12, V14, V15): the rendered picks re-pinned to his numbered forms, the same options in the
+// same order; a cell titled "exactly two" now reads "two or more" by F4's ruling (no cap), named at its title.
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (R-45.23, his V9, V10, V12, V14, V15): B8, B10, B24, B53 and B61 re-pinned to his numbered bytes and hashes;
+// two OR MORE options render numbered (F4); what each cell proves is unchanged unless its own label says it flipped.
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (R-45.23, the founder's V1 to V8, 25 September 2026): B4, B5, B25, B32, B33, B39, B60 and B76
 // re-pinned to his new bytes (templates, rendered forms and hashes); what each cell proves is unchanged (LSP_2's precedent; e-136's re-cut).
 // scripts/b105_lcv13_move_cancel_bench.js · TDW CE-45 · LCV-13 · LC-Victor P7 CUT 2b: MOVE AND CANCEL A SHOOT (asked YES or NO), CAL_ASKS and SHOOT_ASKS, the shoot resolver, B48 to B53 and B76, THE DAY-SHEET RELOCATION (daySheet.js readDaySpine), on b104's harness verbatim (lines 3 to 275 of b104 carried byte for byte; the PGRST116 double, C-44.3). b104's own header follows:
@@ -326,7 +330,7 @@ async function main() {
   const cx = (client, date) => req([{ act: 'cancel_event', ...(client ? { client_as_spoken: client } : {}), ...(date ? { date_as_spoken: date } : {}) }]);
   const B48 = (c, dt) => `Move ${c}'s shoot to ${dt}? Reply YES or NO.`;
   const B50 = (c, dt) => `Cancel ${c}'s shoot on ${dt}? Reply YES or NO.`;
-  const B53A = 'Two shoots for Walk Seventeen Alpha: 8 January 2027 · 9 January 2027. Say the date.';
+  const B53A = 'Which shoot for Walk Seventeen Alpha? 1. 8 January 2027 2. 9 January 2027. Reply with the number.';
   const B7 = 'I could not read that date. Say it like 5 December.';
   let x; let d;
 
@@ -339,7 +343,7 @@ async function main() {
     && WD.validNote({ ...good48, acts: [{ act: 'cancel_event', client_as_spoken: 'Verma' }] }) === null && WD.validNote({ ...good48, acts: [good48.acts[0], { act: 'lead', client_as_spoken: 'x' }] }) === null);
   T('1.5 validNote admits a B53 note over two candidates and refuses one candidate', !!WD.validNote({ asked: 'B53', acts: [{ act: 'cancel_event', client_as_spoken: 'Rao' }], tries: 0, event_ids: ['a', 'b'] }) && WD.validNote({ asked: 'B53', acts: [{ act: 'cancel_event', client_as_spoken: 'Rao' }], tries: 0, event_ids: ['a'] }) === null);
   T('1.6 TOTAL: hostile notes are null and never throw', (() => { try { return [null, 7, 'x', [], { asked: 'B48' }, { asked: 'B53', acts: 'x' }, { asked: 'B48', acts: [null], event_id: 1 }, { asked: 'B53', acts: [{ act: 'edit_event', client_as_spoken: 'X', date_as_spoken: 'y' }], event_ids: [1, 2] }].every((n) => WD.validNote(n) === null); } catch (_e) { return false; } })());
-  T('1.7 B53 renders by position: exactly two is his byte verbatim; three carry the count as a numeral and extend by " · " (R-45.9, derived); one is null', typeof DL.shootsLine === 'function' && DL.shootsLine('Rao', ['3 January 2027', '4 January 2027']) === 'Two shoots for Rao: 3 January 2027 · 4 January 2027. Say the date.' && DL.shootsLine('Rao', ['a', 'b', 'c']) === '3 shoots for Rao: a · b · c. Say the date.' && DL.shootsLine('Rao', ['a', 'b', 'c', 'd']) === '4 shoots for Rao: a · b · c · d. Say the date.' && DL.shootsLine('Rao', ['a']) === null);
+  T('1.7 B53 renders by position: exactly two is his byte verbatim; three carry the count as a numeral and extend by " · " (R-45.9, derived); one is null', typeof DL.shootsLine === 'function' && DL.shootsLine('Rao', ['3 January 2027', '4 January 2027']) === 'Which shoot for Rao? 1. 3 January 2027 2. 4 January 2027. Reply with the number.' && DL.shootsLine('Rao', ['a', 'b', 'c']) === 'Which shoot for Rao? 1. a 2. b 3. c. Reply with the number.' && DL.shootsLine('Rao', ['a', 'b', 'c', 'd']) === 'Which shoot for Rao? 1. a 2. b 3. c 4. d. Reply with the number.' && DL.shootsLine('Rao', ['a']) === null);
 
   sec('2 MOVE, asked YES or NO (the records\' rows 6 and 7; ruling 3)');
   d = makeDb(estate());
@@ -431,9 +435,9 @@ async function main() {
   d = makeDb(estate());
   d.tables['public.events'].push(evRow({ id: 'e-alpha-11', title: 'Walk Seventeen Alpha', event_date: '2027-11-22', linked_lead_id: ALPHA }));
   x = await turnC(d, 'Move the Walk Seventeen Alpha shoot to 5 May 2027', mv('Walk Seventeen Alpha', '5 May 2027'));
-  const t23 = x.reply === '3 shoots for Walk Seventeen Alpha: 8 January 2027 · 9 January 2027 · 22 November 2027. Say the date.' && J(noteIn(d).event_ids) === 'e-alpha-8,e-alpha-9,e-alpha-11';
+  const t23 = x.reply === 'Which shoot for Walk Seventeen Alpha? 1. 8 January 2027 2. 9 January 2027 3. 22 November 2027. Reply with the number.' && J(noteIn(d).event_ids) === 'e-alpha-8,e-alpha-9,e-alpha-11';
   x = await turnC(d, '22 November 2027', NONE);
-  T('2.23 R-45.9, THE THREE-ROW PLANT: three shoots → "3 shoots for Walk Seventeen Alpha: 8 January 2027 · 9 January 2027 · 22 November 2027. Say the date."; her day picks the row → B48 for 5 May 2027', t23 && x.reply === B48('Walk Seventeen Alpha', '5 May 2027') && noteIn(d).event_id === 'e-alpha-11');
+  T('2.23 R-45.9, THE THREE-ROW PLANT: three shoots → "Which shoot for Walk Seventeen Alpha? 1. 8 January 2027 2. 9 January 2027 3. 22 November 2027. Reply with the number."; her day picks the row → B48 for 5 May 2027', t23 && x.reply === B48('Walk Seventeen Alpha', '5 May 2027') && noteIn(d).event_id === 'e-alpha-11');
 
   sec('3 CANCEL, asked YES or NO (the records\' rows 8 and 9)');
   d = makeDb(estate());
@@ -525,7 +529,7 @@ async function main() {
   sec('6 THE LAWS');
   const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')) : [];
   T('6.1 W-1 NONE and the manifest names exactly this cut\'s paths', man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)) && JSON.stringify(man.slice().sort()) === JSON.stringify([MAN, 'scripts/b105_lcv13_move_cancel_bench.js', WDf, DLf, 'src/lib/vendor/daySheet.js', 'src/api/vendor/day.js', 'docs/handovers/TDW_CE45_LCV13_P7_2B_HANDOVER.md', 'scripts/b90_lcv_p5_bench.js', 'scripts/b92_lcv_p6a_bench.js', 'scripts/b93_lcv9_chain_out_bench.js', 'scripts/b94_lcv10_bench.js', 'scripts/b95_lcv10_note_bench.js', 'scripts/b97_lcv10_name_bench.js', 'scripts/b98_lcv10_package_bench.js', 'scripts/b99_lcv10_didyoumean_bench.js', 'scripts/b102_lcv11_fix1_bench.js', 'scripts/b103_lcv12_rehear_bench.js', 'scripts/b104_lcv12_calendar_bench.js', 'scripts/b0457_crud_crew_bench.js', 'scripts/b6_s2_bench.js'].sort()));
-  const SIX = { B48: 'fb8734312f58ff98f2061be1e6559996f7ac7d7ae0c05910094d72257b39239e', B49: '420a5f16d6dd179e663e5f64e2cae71499cbd3114034b533ed4c033f24b935a1', B50: '11ff0598c04b4779886e7d4555eb3a7e8827643ec2191236da9b78b501e86dc4', B51: '6e87ed6e362b53c41a0feedceb97a5460e88ee8cc836026ba7ed67bf8ad02216', B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb', B53: 'fd391aa7f9c88cfb1a5bdc18a3544be87c514728adc6caacf883b1c2cf9651e3' };
+  const SIX = { B48: 'fb8734312f58ff98f2061be1e6559996f7ac7d7ae0c05910094d72257b39239e', B49: '420a5f16d6dd179e663e5f64e2cae71499cbd3114034b533ed4c033f24b935a1', B50: '11ff0598c04b4779886e7d4555eb3a7e8827643ec2191236da9b78b501e86dc4', B51: '6e87ed6e362b53c41a0feedceb97a5460e88ee8cc836026ba7ed67bf8ad02216', B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb', B53: 'aa55335d1132fb578845bc1ddfdbf9f0258c825c026c6a595700b114d124a5a3' };
   T('6.2 LINES holds 58: the six 2b bytes his, each its hash literal; nothing else minted', Object.keys(DL.LINES).length === 83 /* RE-PINNED (CE-45 ELZ-1 cut 2b, labelled): B86 and B87 his (F-44.175's stopgap), LINES 83 */ /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his (R-45.16, the screenshot save); b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): 79 since B80 to B83, his; b109 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): 75 since B69 to B74, B78, B79, his (ASK 7: each form its own key); b108 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 3, labelled): 67 since B56 to B62, B67, B68, his (B60 carried, unspoken); b106 holds them */ && Object.keys(SIX).every((k) => DL.LINE_HASHES[k] === SIX[k] && sha(DL.LINES[k]) === SIX[k]));
   T('6.3 the money functions and the live-row block are untouched (planMoney, planPayment, planBooking, applyRow, reread; as at 541f145 and 3af9a01)', sha(src(WDf).slice(src(WDf).indexOf('async function planMoney'), src(WDf).indexOf('async function planInvoice'))) === '3e0abcc8a6f2fb0431a425a5e26336c80ead283d2f56d2b70cd927821d3ea530' && sha(src(WDf).slice(src(WDf).indexOf('async function applyRow'), src(WDf).indexOf('// The agent\'s current thread'))) === '8987e9f617aacdc6744d5ef590c5a6f44aebf2cc3d4c4f036e482fd6d2d1dfad'
     && sha(src(WDf).slice(src(WDf).indexOf('async function reread'), src(WDf).indexOf('function doorAnswer'))) === '380844e17a9fce4c392e05a320a7a29549a4674dbaccd6d3779c131ca69e6db8' && sha(src(WDf).slice(src(WDf).indexOf('    // 1 · the pending check'), src(WDf).indexOf('    const liveAtStart'))) === '5289029740782e70dcfb678590d0f8eebaa363a0c8e806c3496b97714edf2e18');
@@ -537,7 +541,7 @@ async function main() {
     d = makeDb(estate());
     const P2 = { lane: 'pwa' };
     x = await turnC(d, 'Move the Walk Seventeen Alpha shoot to 22 November 2027', mv('Walk Seventeen Alpha', '22 November 2027'), P2);
-    T('7.1 THE CARD, STEP 1: "Move the Walk Seventeen Alpha shoot to 22 November 2027" → "Two shoots for Walk Seventeen Alpha: 8 January 2027 · 9 January 2027. Say the date."', x.reply === B53A);
+    T('7.1 THE CARD, STEP 1: "Move the Walk Seventeen Alpha shoot to 22 November 2027" → "Which shoot for Walk Seventeen Alpha? 1. 8 January 2027 2. 9 January 2027. Reply with the number."', x.reply === B53A);
     x = await turnC(d, '8 January 2027', NONE, P2);
     T('7.2 THE CARD, STEP 2: "8 January 2027" → "Move Walk Seventeen Alpha\'s shoot to 22 November 2027? Reply YES or NO."', x.reply === "Move Walk Seventeen Alpha's shoot to 22 November 2027? Reply YES or NO.");
     x = await turnC(d, 'No', NONE, P2);

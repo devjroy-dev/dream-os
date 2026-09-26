@@ -1,4 +1,7 @@
 'use strict';
+// LABELED AMENDMENT · CE-45 ELZ-1 cut 2c (his V9, V10, V12, V14, V15): B8, B10, B24, B53 and B61 re-pinned to his numbered bytes, hashes and rendered
+// forms (the same options in the same order); a cell titled "exactly two" now reads "two or more" by F4's ruling. Applied BY HAND at cda36fa (the carry:
+// 7505ff2, then 5cba98e, then back to cda36fa).
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (R-45.23, his V11 and V13): B23 and B31 list their options NUMBERED and end "Reply with the number.";
 // B31 names the client; B23 now leaves a package note (F5). Templates, rendered forms and hashes re-pinned; what each cell proves is unchanged.
 const __NUM = (s) => String(s).split(' · ').map((x, i) => `${i + 1}. ${x}`).join(' ');
@@ -196,9 +199,9 @@ async function main() {
     B5: 'Could not confirm the booking. {client} has no package yet. Attach a package to {client} first.',
     B6: 'When did the payment come in?',
     B7: 'I could not read that date. Say it like 5 December.',
-    B8: 'Two clients are called {name}: {name} ({date}) · {name} ({date}). Say which one.',
+    B8: 'Two clients are called {name}: 1. {name} ({date}) 2. {name} ({date}). Reply with the number.',
     B9: 'Invoice {number} for {client} is already made. Find it in the invoices list.',
-    B10: '{client} has {n} invoices: {numbers}. Which one?',
+    B10: 'Which invoice for {client}? 1. {number} 2. {number}. Reply with the number.',
     B11: 'Could not make the invoice. {client} has no fee yet.',
     B12: 'One payment at a time. Tell me the next one after this.',
     B13: 'Invoice {number} for {client} is ready. Find it in the invoices list.',
@@ -213,7 +216,7 @@ async function main() {
     // H1 (CE-44 LCV-8, P6a-2): B22 to B28 his at R-44.34 and R-44.35; B29 and B30 his bytes REUSED from the pwa (twins named in doorLines.js).
     B22: 'Package attached: {client} · {package} · Rs {total}.',
     B23: 'You have no package called {name}. Yours are: {list}. Reply with the number.',
-    B24: 'Two packages are called {name}: {name} (Rs {total}) · {name} (Rs {total}). Say which one.',
+    B24: 'Two packages are called {name}: 1. {name} (Rs {total}) 2. {name} (Rs {total}). Reply with the number.',
     B25: 'Could not attach the package. {client} has no wedding date yet. Add {client}\'s wedding date first.',
     B26: 'When is the delivery date for {client}?',
     B27: 'Package attached: {client} · {package} · Rs {total} · Delivery {date}.',
@@ -251,7 +254,7 @@ async function main() {
     B50: "Cancel {client}'s shoot on {date}? Reply YES or NO.",
     B51: "Cancelled: {client} · shoot · {date}.",
     B52: "No shoot for {client} on the calendar.",
-    B53: "Two shoots for {client}: {date} · {date}. Say the date.",
+    B53: "Which shoot for {client}? 1. {date} 2. {date}. Reply with the number.",
     B54: "Which day? Say it like 5 December.",
     B75: "Couldn't put that on the calendar — nothing was changed.",
     B76: "No lead called {name}. Add {name} as a lead first, here or in the app.",
@@ -262,7 +265,7 @@ async function main() {
     B58: "Assigned: {member} · {client} · shoot · {date}.",
     B59: "{member}'s already on the {client} shoot.",
     B60: "No one called {name} on your team. Add {name} to your team in the app first.",
-    B61: "Two on your team are called {name}: {name} ({role}) · {name} ({role}). Say which one.",
+    B61: "Two on your team are called {name}: 1. {name} ({role}) 2. {name} ({role}). Reply with the number.",
     B62: "Who? Say the name.",
     B67: "Reminder sent to {client}: {milestone} · Rs {amount} · due {date}.",
     B68: "Nothing is due from {client}.",
@@ -293,15 +296,15 @@ async function main() {
     B1: '1fb5297d3c1193543d8385e514fe42b1856be16deb6cabf2e83cf036169ed4ba', B2: 'cd29bd0dfbde4e0dba9cf4df73e12bc7b69880aea0337562e77d96228e8259eb',
     B3: 'a6a5c9b1c22d6a82413e6bb856363e8a98e902a4b092368a16ef21bb6b30066d', B4: '1a395c37bf80588e2a5be318c0c0939d1f955ea6a26dacaf36403da829916a7a',
     B5: '923fe7d7eebe9443d522a0037be01125e1958af1d047372dfc6d742220a6be45', B6: '728d219fdb8a4ce07778dcf346665975d7ab651f7501efa6ff3f8a7144eb3029',
-    B7: '44b5c385d187f3cc29ce05c210a524a8be162ab127f2bf97cbe22bc90dd8e331', B8: 'ecf5d241deae90b77bc9d840928aacc2a1fc781f3fd2b6ea9cb2a25db7675166',
-    B9: '3253966dab22fb365c4f8ed5e0676c1c6196f6df7e3f47a122d1e32d00a0faa2', B10: 'c82103b3177a6a44cafcf364be426df89901ab0407fd3776092a84b3afcad81d',
+    B7: '44b5c385d187f3cc29ce05c210a524a8be162ab127f2bf97cbe22bc90dd8e331', B8: '641f9ef0fc83f5a2ea925a1538e899fe1e21574a5f1b69fc21589f3f48f459b8',
+    B9: '3253966dab22fb365c4f8ed5e0676c1c6196f6df7e3f47a122d1e32d00a0faa2', B10: '4ccc6df43c551302cad645fd5e7133bdefe4ca063af8acde96a87e313ae600f7',
     B11: '90f1edf7055b45d6c898df911ba442b70b47119f2523a5c8b7bfdd8dd00cb8ed', B12: '7723dc04452784fe3c6e7b1e9d145fa1323048aaa39da70a9d52aeae2c22ee09',
     B13: '45f9284524fc2546d8ca5a34ae51d036efc1a887f2104a35a473e283dda9658c', B14: '68dbaf45c2129785ac3e0644f30973d1ee8a8d3838313a6069b3417b8a4b2249',
     B16: 'a7fe91f49891ed319667b750d32ddcd55dabda117f328f7f0712f685c20b3830', B17: 'b332f4de8e4698181a5d67735814f183a25319abdfa568c3e56b4040f24e8927',
     B18: 'f6d70e738f124ab29e818590116913b8cb744e777f722c7157e70dbe0ca366a0', B19: 'ec10d50e073b11a83206a1c89c276be61f0e476bee762671d383820d74ecfaf8',
     B20: 'fcfa046d1cf3e8191d12637a6d707078d093df2c5d191b499a6491877d925653', B21: 'ceb7ebc7a3efd2b7d2ff2250c3fff652146624c6bdb7065f28cfe255c52ba9ed',
     B22: 'bbca851eb1d8df31d57d2ff778b67db8bea5e84e10975efe138b36e82db2823c', B23: '583d20e906f253e15230693679cc9ad4b93f81b601be6e3434b825c2959819de',
-    B24: '85943481b6496e4cda801f3865c1bdbfa80b760e0f82dcec5a3a2e5d57b57c8a', B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785',
+    B24: 'feea6dd46ad7d8c2c8defcb6b1d43f857fda7a8ed0373f2f76a2aaffe2f8e640', B25: 'e0af1706ab33b3a0ca43e138b7060390ce3790ddf761c9a14959bb8d31daf785',
     B26: 'ddf2ed942fc9b724116dfd16bf117789dfbbab07cea4a023fdee62120f702484', B27: 'fcbbbddfd50565bfac2269cae1570d550ec93055609e2b5d70c407949879473d',
     B28: 'a2d7f31aa0ba6c0f3238cebe4791d4d610b31d1eb37085b20a81ecf9bb85b986', B29: 'a3f8c714b924542bafba121ffdb08248f4c0cb34080d9c907088dcfb143ea14d',
     B30: '5b79740334d8529ab36a64d1dda786c35d403d794b27ed44fcf6a7faf7cff927',
@@ -327,7 +330,7 @@ async function main() {
     B50: '11ff0598c04b4779886e7d4555eb3a7e8827643ec2191236da9b78b501e86dc4',
     B51: '6e87ed6e362b53c41a0feedceb97a5460e88ee8cc836026ba7ed67bf8ad02216',
     B52: '6b8b4700bc8bae40c3a656339c756092791c393d34fb927ec7c9618017e6b1eb',
-    B53: 'fd391aa7f9c88cfb1a5bdc18a3544be87c514728adc6caacf883b1c2cf9651e3',
+    B53: 'aa55335d1132fb578845bc1ddfdbf9f0258c825c026c6a595700b114d124a5a3',
     B54: 'fc952e30b355667df5891a96d09a99894f5f1100c026af515a41a5dbf69cc6ab',
     B75: '1d87cfb5ba7b1c70fd81fa3d0019f4acfe0bbdb7642a047802577ae9e182b209',
     B76: '90befbeea38250f99dc0743161e1b191aa45aea7bf3938cb9e7ccd8ee8178bb8',
@@ -337,7 +340,7 @@ async function main() {
     B58: '73b92a93a9b8c1fb51dad5aff7d87309bbca7909b86fe9402f26b8d2c250fc20',
     B59: '306e713bae4ef8766639d333200a49e3149fe7c1c2a7e47a3b45336b01485a03',
     B60: '17edb3d32c82b222c51e47f734f001c9d3e4a7ac9b24093be0adec83d52ec3a7',
-    B61: '646620f66e3229cbd4d7bf322d8a6a0ec211531822c0a4af6b9d6e2c31b2627e',
+    B61: 'c871b25c99cabac56eccad1e623137968d157b3217f208fc31d91636daa178be',
     B62: '13adf3035c94c14c96159d2c831ee3d37d8d8996c391252c1b4a808c1ca90265',
     B67: '3a7aeb7f1301e6f4a80b6e3f0ec2b5e0405fe916ace395f6e3eb3b4fe0589cbc',
     B68: '60ad19c5dfdfc5e50b4a72bb470f722649049554cfb64ea2ab6866f82585e415',
@@ -371,7 +374,7 @@ async function main() {
   T('1.6 byte 13 with a client is V1 exactly', DL.invoiceReady('TDW/DEV440/11', 'Tandon') === 'Invoice TDW/DEV440/11 for Tandon is ready. Find it in the invoices list.');
   T('1.7 byte 13 with no client is V1_NOCLIENT exactly (the conditional kept)', DL.invoiceReady('TDW/DEV440/11', null) === 'Invoice TDW/DEV440/11 is ready. Find it in the invoices list.');
   T('1.8 a template with a missing slot renders null, never a half sentence', DL.render('B2', { client: 'Meera' }) === null && DL.render('B99', {}) === null);
-  T('1.9 byte 8 renders only for exactly two candidates with dates', DL.twoClients('Priya', [{ name: 'Priya', date: '5 December 2026' }, { name: 'Priya', date: '9 January 2027' }]) === 'Two clients are called Priya: Priya (5 December 2026) · Priya (9 January 2027). Say which one.'
+  T('1.9 byte 8 renders for TWO OR MORE candidates with dates (F4, cut 2c: no cap), never for one or a missing date', DL.twoClients('Priya', [{ name: 'Priya', date: '5 December 2026' }, { name: 'Priya', date: '9 January 2027' }]) === 'Two clients are called Priya: 1. Priya (5 December 2026) 2. Priya (9 January 2027). Reply with the number.'
     && DL.twoClients('Priya', [{ name: 'Priya', date: 'x' }]) === null && DL.twoClients('Priya', [{ name: 'Priya', date: null }, { name: 'Priya', date: 'y' }]) === null);
   T('1.10 D1 renders with the invoice number the door made', DL.render('D1', { client: 'Meera', number: 'TDW/DEV440/23' }) === 'Booked: Meera. Client, event and invoice TDW/DEV440/23 are ready.');
   T('1.11 the door\'s keys are its own map, not additions to LINE_KEYS (b88 1.2 holds)', HR.DOOR_LINE_KEYS.every((k) => DL.DOOR_KEYS.includes(k)) && Object.values(HR.LINE_KEYS).every((ks) => ks.every((k) => k === null || Object.prototype.hasOwnProperty.call(LH.LINES, k))));
@@ -517,7 +520,7 @@ async function main() {
   r = await run(db, 'Tara is confirmed', req([{ act: 'booking_confirmed', client_as_spoken: 'Tara' }]));
   T('5.29 a lead with no package speaks B5', r.out.reply === 'Could not confirm the booking. Tara has no package yet. Attach a package to Tara first.');
   r = await run(db, 'Priya is confirmed', req([{ act: 'booking_confirmed', client_as_spoken: 'Priya' }]));
-  T('5.30 two leads sharing the name speak B8 with their full-month dates, and harvest is skipped', r.out.reply === 'Two clients are called Priya: Priya (5 December 2026) · Priya (9 January 2027). Say which one.' && r.out.skipHarvest === true);
+  T('5.30 two leads sharing the name speak B8 with their full-month dates, and harvest is skipped', r.out.reply === 'Two clients are called Priya: 1. Priya (5 December 2026) 2. Priya (9 January 2027). Reply with the number.' && r.out.skipHarvest === true);
   db = makeDb(world());
   r = await run(db, 'Sarah paid the middle today and Meera is confirmed', req([{ act: 'milestone_paid', client_as_spoken: 'Sarah', date_as_spoken: 'today', milestone: 'middle' }, { act: 'booking_confirmed', client_as_spoken: 'Meera' }]));
   T('5.31 two money acts: ONE is staged and B12 says so', db.tables['public.pending_money_acts'].length === 1 && r.out.reply.endsWith('\n\nOne payment at a time. Tell me the next one after this.'));
@@ -528,11 +531,11 @@ async function main() {
   r = await run(db, 'Raise the invoice for Walk45', req([{ act: 'invoice', client_as_spoken: 'Walk45' }]), { gen });
   T('5.33 no invoice yet, a fee on the binder: MINTED, B13', r.out.reply === 'Invoice TDW/DEV440/30 for Walk45 is ready. Find it in the invoices list.' && r.out.refresh === true && r.out.documents.length === 1);
   r = await run(db, 'Khanna invoice', req([{ act: 'invoice', client_as_spoken: 'Khanna' }]), { gen });
-  T('5.34 more than one live invoice asks B10 by number', r.out.reply === 'Khanna has 2 invoices: TDW/DEV440/21 · TDW/DEV440/22. Which one?');
+  T('5.34 more than one live invoice asks B10 by number', r.out.reply === 'Which invoice for Khanna? 1. TDW/DEV440/21 2. TDW/DEV440/22. Reply with the number.');
   r = await run(db, 'Anjali invoice', req([{ act: 'invoice', client_as_spoken: 'Anjali' }]), { gen });
   T('5.35 no fee speaks B11', r.out.reply === 'Could not make the invoice. Anjali has no fee yet.');
   r = await run(db, 'Rao invoice', req([{ act: 'invoice', client_as_spoken: 'Rao' }]), { gen });
-  T('5.36 two binders sharing the name speak B8 with their dates, harvest skipped', r.out.reply === 'Two clients are called Rao: Rao (16 December 2026) · Rao (2 January 2027). Say which one.' && r.out.skipHarvest === true);
+  T('5.36 two binders sharing the name speak B8 with their dates, harvest skipped', r.out.reply === 'Two clients are called Rao: 1. Rao (16 December 2026) 2. Rao (2 January 2027). Reply with the number.' && r.out.skipHarvest === true);
   const before = writes(db);
   r = await run(db, 'Invoice for Nobody', req([{ act: 'invoice', client_as_spoken: 'Nobody' }]), { gen });
   T('5.37 F-44.57: an invoice whose client resolves to no binder sends the WHOLE message to the chain', r.out.door === false && r.out.why === 'invoice_unresolved' && writes(db) === before);

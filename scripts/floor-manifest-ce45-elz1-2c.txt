@@ -1,0 +1,20 @@
+# CE-45 ELZ-1 · cut 2c · the same-named picks (V9, V10, V12, V14, V15), F-44.178's stable orders, F1's pin through L, F2's lift on planAssign · rung b132 · base cda36fa
+# floor-base unchanged: the differential at cda36fa read only b132 new.
+docs/handovers/TDW_CE45_ELZ1_2c_HANDOVER.md
+scripts/b105_lcv13_move_cancel_bench.js
+scripts/b106_lcv14_team_reminder_bench.js
+scripts/b107_lcv14_kind_client_bench.js
+scripts/b112_lcv15_lsp2_bench.js
+scripts/b114_lcv15_lsp3b_bench.js
+scripts/b118a_elz1_cut2a_bench.js
+scripts/b118b_elz1_cut2b_bench.js
+scripts/b132_elz1_cut2c_bench.js
+scripts/b90_lcv_p5_bench.js
+scripts/b92_lcv_p6a_bench.js
+scripts/b93_lcv9_chain_out_bench.js
+scripts/b95_lcv10_note_bench.js
+scripts/b98_lcv10_package_bench.js
+scripts/floor-manifest-ce45-elz1-2c.txt
+src/lib/vendor/doorLines.js
+src/lib/vendor/relayToCouple.js
+src/lib/vendor/workingDoor.js

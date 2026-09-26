@@ -654,7 +654,7 @@ async function sendContentTemplate(supabase, { vendor, couplePhone, brideName, b
 }
 
 module.exports = {
-  sharedLinePrefix, withSharedLinePrefix, // CE-45 ELZ-1 F-44.176, exported for b119
+  sharedLinePrefix, withSharedLinePrefix, // CE-45 ELZ-1 F-44.176, exported for b131
   relayToCouple,
   ringDoorbell,
   sendContentTemplate,

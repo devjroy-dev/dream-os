@@ -303,7 +303,7 @@ async function main() {
   r = await turn(db, 'Attach Tri to Asha Walk Fifteen', ATT('Tri'));
   const r24 = r.keys;
   r = await turn(db, '1', NONE);
-  T('3.7 B24 (two packages of one name) is NOT read by number in 2b (cut 2c binds a package id): "1" attaches nothing', r24 === 'B24' && !db.tables['public.lead_packages'].some((x) => x.lead_id === 'l-asha' && !x.deleted_at));
+  T('3.7 [FLIPPED at ELZ-1 cut 2c, V12] B24 (two packages of one name) IS read by number: "1" attaches the FIRST SHOWN (p-t1), by id', r24 === 'B24' && db.tables['public.lead_packages'].some((x) => x.lead_id === 'l-asha' && !x.deleted_at && x.package_id === 'p-t1')); /* LABELED AMENDMENT · CE-45 ELZ-1 cut 2c: the boundary cell flipped as designed */
 
   sec('4 F-44.175: a question the door does not own names where to look (his three messages, his export of 25 September)');
   const FIND = req([{ act: 'find' }], 'search');
@@ -336,7 +336,7 @@ async function main() {
   const body = (t, name) => { const i = t.search(new RegExp(`^(async )?function ${name}\\b`, 'm')); if (i < 0) return ''; let j = t.indexOf('(', i); let d = 0; for (; j < t.length; j += 1) { if (t[j] === '(') d += 1; else if (t[j] === ')') { d -= 1; if (d === 0) break; } } const k = t.indexOf('{', j); d = 0; for (let m = k; m < t.length; m += 1) { if (t[m] === '{') d += 1; else if (t[m] === '}') { d -= 1; if (d === 0) return t.slice(i, m + 1); } } return ''; };
   const shaB = (x) => require('crypto').createHash('sha256').update(x, 'utf8').digest('hex');
   const wds = src(WDf);
-  T('6.1 planMoney, planPayment, planBooking, applyRow, reread byte-identical; planAssign unchanged since 08025d4', ['planMoney', 'planPayment', 'planBooking', 'applyRow', 'reread'].every((f) => shaB(body(wds, f)) === PIN[f]) && body(wds, 'planAssign') === body(require('child_process').execSync('git show 08025d4:src/lib/vendor/workingDoor.js', { cwd: P('.'), encoding: 'utf8', maxBuffer: 1 << 26 }), 'planAssign'));
+  T('6.1 planMoney, planPayment, planBooking, applyRow, reread byte-identical; planAssign unchanged since 08025d4', ['planMoney', 'planPayment', 'planBooking', 'applyRow', 'reread'].every((f) => shaB(body(wds, f)) === PIN[f]) && shaB(body(wds, 'planAssign')) === '77d5418c1b81967df34d0030e52b035e300811666628fb3b18685f651db80658' /* RE-PINNED (CE-45 ELZ-1 cut 2c, F2's ruling: planAssign's byte-identity lifted for 2c ONLY, three sites proven in b132 5.2; the lift ENDS here and this is its identity from now) */);
 
   sec('7 mutations of production code, each reddening its cell');
   await mut('7.1 M1 the fact check always passing: a figureless quote is staged (reddens 1.4)', WDf, [['  return [facts.package, facts.total].every((f) => typeof f === \'string\' && f && b.includes(f));', '  return true;']], [],

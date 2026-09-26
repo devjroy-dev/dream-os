@@ -165,7 +165,7 @@ async function turn({ leads, inbound = 'Hi', script = [], describe = null, at = 
   T('4.1 the eight lines are his bytes exactly', Object.entries(HISV).every(([k, v]) => DL.LINES[k] === v));
   T('4.2 LINE_HASHES agree with every line (the hash law holds)', DL.assertLineHashes() === true && Object.keys(HISV).every((k) => DL.LINE_HASHES[k] === sha(HISV[k])));
   T('4.3 B33 names the package, and the attach plan carries its name to the refusal', DL.render('B33', { package: 'Silver' }) === 'Could not attach the package. Silver has no fee yet. Set its fee in the app first.' && /packageName: pkg\.name/.test(read('src/lib/vendor/workingDoor.js')) && /DL\.render\('B33', \{ package: a\.packageName \}\)/.test(read('src/lib/vendor/workingDoor.js')));
-  T('4.4 V11 and V13 landed at cut 2b (B23, B31 numbered, his); V9, V10, V12, V14, V15 ride cut 2c: B8 and B53 keep their bytes (LABELED AMENDMENT, ELZ-1 cut 2b)', DL.LINES.B31 === 'Which package for {client}? {list}. Reply with the number.' && DL.LINES.B8.startsWith('Two clients are called {name}') && DL.LINES.B53.endsWith('Say the date.'));
+  T('4.4 [FLIPPED at ELZ-1 cut 2c] V11 and V13 landed at 2b; V9, V10, V12, V14, V15 landed at 2c: B8 and B53 now end "Reply with the number." (LABELED AMENDMENT, ELZ-1 cut 2c)', DL.LINES.B31 === 'Which package for {client}? {list}. Reply with the number.' && DL.LINES.B8.endsWith('Reply with the number.') && DL.LINES.B53.endsWith('Reply with the number.'));
 
   sec('5 the money functions byte-identical to b115\'s pins');
   const PIN = JSON.parse(read('scripts/b115_lcv15_lsp4_bench.js').match(/const PIN = (\{[^\n]*\});/)[1]);

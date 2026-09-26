@@ -421,7 +421,12 @@ const SHOOT_ASKS = Object.freeze(['B53']);
 const MEMBER_ASKS = Object.freeze(['B62']);
 // LSP_2 · R-45.16: 'IMG' is the note a calendar screenshot's preview leaves (proposal_id, count); her whole message answers it, read by the door's own grammar.
 const IMG_ASKS = Object.freeze(['IMG']);
-const ASKS = Object.freeze([...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS, ...CAL_ASKS, ...SHOOT_ASKS, ...MEMBER_ASKS, ...IMG_ASKS]);
+// CE-45 ELZ-1 cut 2c (V9): B8, two or more clients of one name, is a NOTE carrying the lead ids in the order shown; a number pins one (F1).
+const PICK_CLIENT = Object.freeze(['B8']);
+const PICK_INVOICE = Object.freeze(['B10']); // cut 2c (V10): the invoice pick, its ids in the order shown
+// cut 2c (V14, V15): crew picks: B61 (a member) and B53C (a shoot for an assignment; a note kind only, it speaks his B53 line), ids in order shown
+const PICK_CREW = Object.freeze(['B61', 'B53C']);
+const ASKS = Object.freeze([...PICK_CLIENT, ...PICK_INVOICE, ...PICK_CREW, ...DATE_ASKS, ...NAME_ASKS, ...PKG_ASKS, ...OFFER_ASKS, ...RELAY_ASKS, ...CAL_ASKS, ...SHOOT_ASKS, ...MEMBER_ASKS, ...IMG_ASKS]);
 // CE-45 LCV-15 LSP_2 · F-44.148: UNSAID marks an act whose HEARD client F-44.118's floor stripped (a name not in her words). It is a Symbol, so the ear can
 // never send it and JSON never carries it; the floor is its one writer. An act so marked needs its client back even when its kind does not (assign_crew:
 // a member with no client is a team add, so without the mark the stripped act silently became a different, smaller act, B56 alone, 24 September 07:42).
@@ -474,9 +479,12 @@ function validNote(n) {
       if (CAL_ASKS.includes(n.asked) && (typeof n.event_id !== 'string' || !n.event_id)) return null;
       if (SHOOT_ASKS.includes(n.asked) && (!Array.isArray(n.event_ids) || n.event_ids.length < 2 || n.event_ids.length > 20 || !n.event_ids.every((x) => typeof x === 'string' && x))) return null;
     }
+    else if (PICK_CREW.includes(n.asked)) { if (acts.length !== 1 || acts[0].act !== 'assign_crew' || !Array.isArray(n.pick_ids) || n.pick_ids.length < 2 || n.pick_ids.length > 20 || !n.pick_ids.every((x) => typeof x === 'string' && x)) return null; }
+    else if (PICK_INVOICE.includes(n.asked)) { if (acts.length !== 1 || acts[0].act !== 'invoice' || !Array.isArray(n.invoice_ids) || n.invoice_ids.length < 2 || n.invoice_ids.length > 20 || !n.invoice_ids.every((x) => typeof x === 'string' && x)) return null; }
+    else if (PICK_CLIENT.includes(n.asked)) { if (!allKindsCovered(acts) || !Array.isArray(n.lead_ids) || n.lead_ids.length < 2 || n.lead_ids.length > 20 || !n.lead_ids.every((x) => typeof x === 'string' && x) || typeof n.pick_name !== 'string' || !n.pick_name.trim()) return null; }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(RELAY_ASKS.includes(n.asked) && typeof n.quote_lp === 'string' && n.quote_lp ? { quote_lp: n.quote_lp } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
+    return { asked: n.asked, acts, tries, ...(n.asked === 'B24' && Array.isArray(n.package_ids) && n.package_ids.length >= 2 && n.package_ids.length <= 20 && n.package_ids.every((x) => typeof x === 'string' && x) ? { package_ids: n.package_ids.slice() } : {}), ...(PICK_CLIENT.includes(n.asked) ? { lead_ids: n.lead_ids.slice(), pick_name: n.pick_name.trim(), pick_kind: n.pick_kind === 'binder' ? 'binder' : 'lead' } : {}), ...(PICK_INVOICE.includes(n.asked) ? { invoice_ids: n.invoice_ids.slice() } : {}), ...(PICK_CREW.includes(n.asked) ? { pick_ids: n.pick_ids.slice() } : {}), ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(RELAY_ASKS.includes(n.asked) && typeof n.quote_lp === 'string' && n.quote_lp ? { quote_lp: n.quote_lp } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
   } catch (_e) { return null; }
 }
 
@@ -492,16 +500,73 @@ function calNoteFields(n) {
 }
 
 // ── reads ─────────────────────────────────────────────────────────────────────────────────────────
+// CE-45 ELZ-1 cut 2c: the B8 note's name and ids, read from the message's acts (the act whose client names two or more leads). TOTAL.
+async function clientPickOf(supabase, vendor, acts, agentId) {
+  try {
+    for (const a of (Array.isArray(acts) ? acts : [])) {
+      const name = spokenText(a && a.client_as_spoken); if (!name) continue;
+      if (a.act === 'invoice') { // planInvoice's ambiguity is among BINDERS, in planInvoice's own order
+        const { data } = await supabase.schema('engine').from('records').select('id, client, date').eq('agent_id', agentId).eq('hidden', false);
+        const bs = (Array.isArray(data) ? data : []).filter((b) => key(b.client) === key(name)).sort(byDateThenId((b) => b.date));
+        if (bs.length > 1) return { name, ids: bs.map((b) => String(b.id)), kind: 'binder' };
+        continue;
+      }
+      const rows = await leadsNamed(supabase, vendor.id, name, a.act === 'milestone_paid');
+      if (rows && rows.length > 1) return { name, ids: rows.map((r) => String(r.id)), kind: 'lead' };
+    }
+    return null;
+  } catch (_e) { return null; }
+}
+// The picked lead, re-read BY ID: live, this vendor's, still carrying the noted name, booked where required; anything else is null. TOTAL.
+async function pinnedLead(supabase, vendorId, id, name, bookedOnly) {
+  try {
+    const { data, error } = await supabase.from('leads').select('id, name, state, binder_id').eq('vendor_id', vendorId).eq('id', id).is('deleted_at', null).maybeSingle();
+    if (error || !data || key(data.name) !== key(name)) return null;
+    if (bookedOnly && key(data.state) !== 'booked') return null;
+    return data;
+  } catch (_e) { return null; }
+}
+// cut 2c: a picked binder, re-read BY ID (this agent's, not hidden, still carrying the name). TOTAL.
+async function pinnedBinder(supabase, agentId, id, name) {
+  try {
+    const { data, error } = await supabase.schema('engine').from('records').select('id, client').eq('agent_id', agentId).eq('id', id).eq('hidden', false).maybeSingle();
+    return error || !data || key(data.client) !== key(name) ? null : data;
+  } catch (_e) { return null; }
+}
+// cut 2c (V10): the picked invoice, served by id: live, this vendor's, this binder's, not cancelled, with its document; else not ok. TOTAL.
+async function servePicked(supabase, vendor, inv) {
+  try {
+    const { data, error } = await supabase.from('invoices').select('id, invoice_number, pdf_url, state, binder_id').eq('vendor_id', vendor.id).eq('id', inv.invoiceId).is('deleted_at', null).maybeSingle();
+    if (error || !data || data.state === 'cancelled' || String(data.binder_id) !== String(inv.binder.id) || !data.invoice_number || !data.pdf_url) return { ok: false };
+    return { ok: true, invoice_number: data.invoice_number, pdf_url: data.pdf_url, made: 'served' };
+  } catch (_e) { return { ok: false }; }
+}
+// F1: the replay's lifecycle. resolveLead returns the PINNED lead for the pinned name and delegates everything else untouched.
+function pinLifecycle(base, name, lead) {
+  return { ...base, resolveLead: async (sb, vendorId, n, bookedOnly) => {
+    if (key(n) !== key(name)) return base.resolveLead(sb, vendorId, n, bookedOnly);
+    if (bookedOnly && key(lead.state) !== 'booked') return { ok: false, reason: 'not_found' };
+    return { ok: true, lead };
+  } };
+}
 async function leadsNamed(supabase, vendorId, name, bookedOnly) {
   const { data, error } = await supabase.from('leads').select('id, name, state, wedding_date, binder_id')
     .eq('vendor_id', vendorId).is('deleted_at', null);
   if (error || !Array.isArray(data)) return null;
   let hits = data.filter((l) => key(l.name) === key(name));
   if (bookedOnly) hits = hits.filter((l) => key(l.state) === 'booked');
-  return hits;
+  return hits.sort(byDateThenId((l) => l.wedding_date)); // F-44.178 (CE-45 ELZ-1 cut 2c): ONE order, shown and noted alike
+}
+// F-44.178: the stable order every same-name pick is shown and noted in: the date ascending, no date last, then the record id. TOTAL.
+function byDateThenId(dateOf) {
+  return (a, b) => {
+    const da = dateOf(a) ? String(dateOf(a)) : null; const db = dateOf(b) ? String(dateOf(b)) : null;
+    if (da !== db) { if (da === null) return 1; if (db === null) return -1; return da < db ? -1 : 1; }
+    const ia = String(a && a.id); const ib = String(b && b.id); return ia < ib ? -1 : ia > ib ? 1 : 0;
+  };
 }
 function sameName(name, rows, dateOf) {
-  if (!Array.isArray(rows) || rows.length !== 2) return null;
+  if (!Array.isArray(rows) || rows.length < 2) return null; // cut 2c (F4): no cap
   const cands = rows.map((r) => ({ name: String(r.name || r.client || '').trim(), date: dateOf(r) ? longDateYear(dateOf(r)) : null }));
   return DL.twoClients(String(name).trim(), cands);
 }
@@ -597,17 +662,24 @@ async function planInvoice(supabase, vendor, agentId, act) {
     .select('id, client, phone, amount, amount_received, note, date, hidden')
     .eq('agent_id', agentId).eq('hidden', false);
   if (error || !Array.isArray(data)) return null;
-  const hits = data.filter((b) => key(b.client) === key(name));
+  // CE-45 ELZ-1 cut 2c: a picked binder (act.binder_id, from a B8 pick) is honoured only while live and still carrying the name; F-44.178:
+  // same-named binders in ONE order (date ascending, no date last, then id), shown and noted alike.
+  const pinnedB = typeof act.binder_id === 'string' ? data.filter((b) => String(b.id) === act.binder_id && key(b.client) === key(name)) : [];
+  const hits = (pinnedB.length === 1 ? pinnedB : data.filter((b) => key(b.client) === key(name))).sort(byDateThenId((b) => b.date));
   if (!hits.length) return { noBinder: true, name }; // F-44.57, superseded by R-44.27: no binder is B15's, spoken by standIn(); chain in, the whole message still goes to the chain
-  if (hits.length > 1) { const line = sameName(name, hits, (b) => b.date); return line ? { speak: line, key: 'B8', skipHarvest: true } : null; }
+  if (hits.length > 1) { const line = sameName(name, hits, (b) => b.date); return line ? { speak: line, key: 'B8', skipHarvest: true, pickIds: hits.map((b) => String(b.id)), pickKind: 'binder' } : null; }
   const binder = hits[0];
   const client = String(binder.client || '').trim();
   if (!(Number(binder.amount) > 0)) { const line = DL.render('B11', { client }); return line ? { speak: line, key: 'B11' } : null; }
-  const { data: invs, error: iErr } = await supabase.from('invoices').select('id, invoice_number, state, deleted_at')
+  const { data: invs, error: iErr } = await supabase.from('invoices').select('id, invoice_number, state, deleted_at, created_at')
     .eq('binder_id', binder.id).eq('vendor_id', vendor.id).is('deleted_at', null);
   if (iErr || !Array.isArray(invs)) return null;
-  const live = invs.filter((i) => i.state !== 'cancelled' && i.invoice_number);
-  if (live.length > 1) { const line = DL.invoiceNumbers(client, live.map((i) => i.invoice_number)); return line ? { speak: line, key: 'B10' } : null; }
+  // F-44.178: the live invoices in ONE order (created_at ascending, then id); cut 2c (V10): a picked invoice (act.invoice_id) is honoured
+  // only while it is among them; B10 hands its ids to the pick note.
+  const live = invs.filter((i) => i.state !== 'cancelled' && i.invoice_number).sort(byDateThenId((i) => i.created_at));
+  const pinnedI = typeof act.invoice_id === 'string' ? live.find((i) => String(i.id) === act.invoice_id) : null;
+  if (pinnedI) return { invoice: { binder, client, invoiceId: String(pinnedI.id) } };
+  if (live.length > 1) { const line = DL.invoiceNumbers(client, live.map((i) => i.invoice_number)); return line ? { speak: line, key: 'B10', pickIds: live.map((i) => String(i.id)) } : null; }
   return { invoice: { binder, client } };
 }
 
@@ -787,7 +859,7 @@ async function shootsOf(supabase, vendorId, lead) {
     if (error || !Array.isArray(data)) return null;
     const name = key(lead && lead.name);
     return data.filter((e) => e && typeof e.id === 'string' && (e.linked_lead_id === lead.id || (!!name && key(e.title) === name)) && isDateKey(e.event_date))
-      .sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+      .sort(byDateThenId((e) => e.event_date)); // F-44.178 (CE-45 ELZ-1 cut 2c): same-day shoots ordered by id too, shown and noted alike
   } catch (_e) { return null; }
 }
 // the shoot rows by id, live only (a SHOOT note's candidates re-read on her answer; a row cancelled or deleted since drops out)
@@ -873,7 +945,9 @@ const TEAM_SELECT = 'id, name, role, phone, created_at';
 async function membersOf(supabase, vendorId) {
   try {
     const { data, error } = await supabase.from('team_members').select(TEAM_SELECT).eq('vendor_id', vendorId).eq('active', true).is('deleted_at', null);
-    return (error || !Array.isArray(data)) ? null : data.filter((m) => m && typeof m.id === 'string' && typeof m.name === 'string' && m.name.trim());
+    // F-44.178 (CE-45 ELZ-1 cut 2c): ONE stable order, the name (case-folded) then the id
+    return (error || !Array.isArray(data)) ? null : data.filter((m) => m && typeof m.id === 'string' && typeof m.name === 'string' && m.name.trim())
+      .sort((a, b) => { const ka = key(a.name); const kb = key(b.name); if (ka !== kb) return ka < kb ? -1 : 1; return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
   } catch (_e) { return null; }
 }
 // B61's {role}: the row's role; with none, the phone's last four; else the day the row was added, full month (the designs file §3.3)
@@ -924,7 +998,9 @@ async function planAssign(supabase, vendor, act, nowMs, L, offers) {
     const dated = spotless(act.date_as_spoken);
     const rows = await membersOf(supabase, vendor.id);
     if (!rows) return null;
-    const exact = rows.filter((m) => key(m.name) === key(member));
+    // CE-45 ELZ-1 cut 2c, F2's lift (V15): a picked member (act.member_id) is honoured only while active and still carrying the spoken name
+    const pinM = typeof act.member_id === 'string' ? rows.filter((m) => String(m.id) === act.member_id && key(m.name) === key(member)) : [];
+    const exact = pinM.length === 1 ? pinM : rows.filter((m) => key(m.name) === key(member));
     if (!client && !dated) {
       if (exact.length) { const line = DL.render('B57', { member: String(exact[0].name).trim() }); return line ? { speak: line, key: 'B57' } : null; }
       if (offers === true) return { offer: { slot: 'member', said: member, rows } };
@@ -948,9 +1024,11 @@ async function planAssign(supabase, vendor, act, nowMs, L, offers) {
       shoots = await shootsOf(supabase, vendor.id, lead);
       if (!shoots) return null;
       if (iso) shoots = shoots.filter((r) => r.event_date === iso);
+      // cut 2c, F2's lift (V14): a picked shoot (act.event_id) is honoured only while it is still one of hers
+      if (typeof act.event_id === 'string') { const ps = shoots.filter((r) => String(r.id) === act.event_id); if (ps.length === 1) shoots = ps; }
       const name = String(lead.name || '').trim();
       if (!shoots.length) { const line = DL.render('B52', { client: name }); return line ? { speak: line, key: 'B52' } : null; }
-      if (shoots.length > 1) { const line = DL.shootsLine(name, shoots.map((r) => longDateYear(r.event_date))); return line ? { speak: line, key: 'B53' } : null; }
+      if (shoots.length > 1) { const line = DL.shootsLine(name, shoots.map((r) => longDateYear(r.event_date))); return line ? { speak: line, key: 'B53', pickIds: shoots.map((r) => String(r.id)), pickKind: 'event' } : null; }
     } else {
       shoots = await shootsOnDay(supabase, vendor.id, iso);
       if (!shoots) return null;
@@ -958,7 +1036,7 @@ async function planAssign(supabase, vendor, act, nowMs, L, offers) {
       if (shoots.length > 1) return { many: true };
     }
     const shoot = shoots[0];
-    if (exact.length > 1) { const line = DL.membersLine(member, exact.map((m) => ({ name: m.name, role: memberWord(m) }))); return line ? { speak: line, key: 'B61', skipHarvest: true } : null; }
+    if (exact.length > 1) { const line = DL.membersLine(member, exact.map((m) => ({ name: m.name, role: memberWord(m) }))); return line ? { speak: line, key: 'B61', skipHarvest: true, pickIds: exact.map((m) => String(m.id)), pickKind: 'member' } : null; }
     if (!exact.length) {
       if (offers === true) return { offer: { slot: 'member', said: member, rows } };
       return { assign: { event: shoot, member: null, addName: member } };
@@ -1273,7 +1351,8 @@ async function fileLead(supabase, vendor, lane, plan, L) {
 async function packagesOf(supabase, vendorId) {
   const { data, error } = await supabase.from('vendor_packages').select('id, name, total, delivery_basis')
     .eq('vendor_id', vendorId).is('deleted_at', null);
-  return (error || !Array.isArray(data)) ? null : data;
+  // F-44.178 (CE-45 ELZ-1 cut 2c): ONE stable order, the name (case-folded) then the id, so B24's same-named options are shown and noted alike
+  return (error || !Array.isArray(data)) ? null : data.slice().sort((a, b) => { const ka = key(a && a.name); const kb = key(b && b.name); if (ka !== kb) return ka < kb ? -1 : 1; const ia = String(a && a.id); const ib = String(b && b.id); return ia < ib ? -1 : ia > ib ? 1 : 0; });
 }
 async function planAttach(supabase, vendor, act, nowMs, L) {
   try {
@@ -1298,11 +1377,14 @@ async function planAttach(supabase, vendor, act, nowMs, L) {
     const pkgs = await packagesOf(supabase, vendor.id);
     if (!pkgs) return null;
     if (!said) { const line = DL.whichPackage(pkgs.map((p) => p && p.name), client); return line ? { speak: line, key: 'B31', skipHarvest: true } : null; }
-    const hits = pkgs.filter((p) => p && key(p.name) === key(said));
+    // CE-45 ELZ-1 cut 2c (V12): a picked package (act.package_id from B24's number) is honoured only while it is live and still carries the
+    // spoken name; otherwise the name decides again from the CURRENT packages (a vanished or renamed pick never binds another).
+    const pinned = typeof act.package_id === 'string' ? pkgs.filter((p) => p && String(p.id) === act.package_id && key(p.name) === key(said)) : [];
+    const hits = pinned.length === 1 ? pinned : pkgs.filter((p) => p && key(p.name) === key(said));
     if (!hits.length) { const line = DL.noSuchPackage(said, pkgs.map((p) => p && p.name)); return line ? { speak: line, key: 'B23' } : null; }
     if (hits.length > 1) {
-      const line = hits.length === 2 ? DL.twoPackages(said, hits.map((p) => ({ name: p.name, total: digits(p.total) }))) : null;
-      return line ? { speak: line, key: 'B24', skipHarvest: true } : null;
+      const line = DL.twoPackages(said, hits.map((p) => ({ name: p.name, total: digits(p.total) }))); // cut 2c (F4): two or more
+      return line ? { speak: line, key: 'B24', skipHarvest: true, pickIds: hits.map((p) => String(p.id)) } : null;
     }
     const pkg = hits[0];
     const body = { package_id: pkg.id };
@@ -1782,6 +1864,51 @@ async function preTurn(args, depsIn) {
           return { ...askAgain(line, 'B37', note.tries + 1), note: { asked: 'B37', acts: note.acts, tries: note.tries + 1, draft_id: note.draft_id } };
         }
       }
+    } else if (note && PICK_CLIENT.includes(note.asked)) {
+      // CE-45 ELZ-1 cut 2c (V9, V16; F1): a bare number picks the Nth lead SHOWN. The lead is re-read BY ID (live, this vendor's, the same
+      // name, booked where a milestone needs it); the noted acts replay with L's resolveLead PINNED to it for that name, so every plan
+      // builder, the money functions included and byte-identical, receives exactly that lead. A vanished or changed lead never binds
+      // another: the pick is asked again from the current records, once, then B3.
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      const n = bareNumber(message);
+      const bookedOnly = note.acts.some((a) => a && a.act === 'milestone_paid');
+      const id = n && n <= note.lead_ids.length ? note.lead_ids[n - 1] : null;
+      // a BINDER pick (planInvoice's same-named binders): the binder is re-read by id and pinned on the invoice acts; the rest re-ask
+      if (id && note.pick_kind === 'binder') {
+        const b = await pinnedBinder(supabase, agentId, id, note.pick_name);
+        if (b) { fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) ? { ...a, binder_id: String(b.id) } : { ...a })) }; st.answered = note.asked; }
+      }
+      const lead = id && note.pick_kind !== 'binder' ? await pinnedLead(supabase, vendor.id, id, note.pick_name, bookedOnly) : null;
+      if (lead) {
+        // a lead pick carries the lead's binder to an invoice act naming the same client (F3 within each kind; the binder pin)
+        fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) && lead.binder_id ? { ...a, binder_id: String(lead.binder_id) } : { ...a })) }; st.answered = note.asked;
+        L.lifecycle = pinLifecycle(L.lifecycle, note.pick_name, lead);
+      } else if (fromNote) { /* a binder pick answered above */ } else if (n || !heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string')) {
+        if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+        const rows = await leadsNamed(supabase, vendor.id, note.pick_name, bookedOnly);
+        const line = rows && rows.length > 1 ? sameName(note.pick_name, rows, (r) => r.wedding_date) : null;
+        if (!line) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'pick_gone' };
+        return { ...askAgain(line, 'B8', note.tries + 1), note: { asked: 'B8', acts: note.acts, tries: note.tries + 1, lead_ids: rows.map((r) => String(r.id)), pick_name: note.pick_name } };
+      }
+    } else if (note && PICK_CREW.includes(note.asked)) {
+      // cut 2c (V14, V15): a bare number is the Nth member or shoot SHOWN, pinned by id on the replayed act; planAssign honours it only while
+      // it still stands (else the current ones are asked again); out of range replays unpinned, which asks again (once, then B3)
+      const n = bareNumber(message);
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      if (n || !heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string')) {
+        const id = n && n <= note.pick_ids.length ? note.pick_ids[n - 1] : null;
+        const field = note.asked === 'B61' ? 'member_id' : 'event_id';
+        fromNote = { route: 'task', acts: note.acts.map((a) => (id ? { ...a, [field]: id } : { ...a })) }; st.answered = note.asked;
+      }
+    } else if (note && PICK_INVOICE.includes(note.asked)) {
+      // cut 2c (V10): a bare number is the Nth invoice SHOWN, pinned by id on the act; planInvoice honours it only while it is still live
+      // (else the current invoices are asked again); out of range replays the act unpinned, which asks again (once, then B3)
+      const n = bareNumber(message);
+      const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
+      if (n || !heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string')) {
+        const id = n && n <= note.invoice_ids.length ? note.invoice_ids[n - 1] : null;
+        fromNote = { route: 'task', acts: note.acts.map((a) => (id ? { ...a, invoice_id: id } : { ...a })) }; st.answered = note.asked;
+      }
     } else if (note && PKG_ASKS.includes(note.asked)) {
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? st.ear.request.acts : [];
       const pkgs = (await packagesOf(supabase, vendor.id)) || [];
@@ -1790,9 +1917,13 @@ async function preTurn(args, depsIn) {
       // then B3). B24 is NOT read by number here: its options share one name, so a number must bind a package id (cut 2c).
       const pickN = NUMBER_PICK_PKG.includes(note.asked) ? bareNumber(message) : null;
       const shown = pickN ? (DL.sortedNameList(pkgs.map((p) => p && p.name)) || []) : [];
-      const said = pickN && pickN <= shown.length ? shown[pickN - 1] : message.trim();
-      const own = pkgs.filter((p) => p && key(p.name) === key(said));
-      if (own.length === 1) { fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, package_as_spoken: String(own[0].name) } : { ...a })) }; st.answered = note.asked; }
+      // CE-45 ELZ-1 cut 2c (V12): after B24 a bare number is the Nth package SHOWN, by id (its note keeps the ids); the id rides the act.
+      const n24 = note.asked === 'B24' && Array.isArray(note.package_ids) ? bareNumber(message) : null;
+      const byId = n24 && n24 <= note.package_ids.length ? pkgs.find((p) => p && String(p.id) === note.package_ids[n24 - 1]) : null;
+      if (byId) { fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, package_as_spoken: String(byId.name), package_id: String(byId.id) } : { ...a })) }; st.answered = note.asked; }
+      const said = byId ? String(byId.name) : (pickN && pickN <= shown.length ? shown[pickN - 1] : message.trim());
+      const own = byId ? [byId] : pkgs.filter((p) => p && key(p.name) === key(said));
+      if (byId) { /* answered by id above */ } else if (own.length === 1) { fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, package_as_spoken: String(own[0].name) } : { ...a })) }; st.answered = note.asked; }
       else {
         const echo = (a) => key(a.package_as_spoken) === key(said) || key(a.client_as_spoken) === key(said);
         const movedOn = heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string' && !echo(a) && (a.act !== 'attach_package' || (!!spokenText(a.package_as_spoken) && key(a.package_as_spoken) !== key(note.acts[0].package_as_spoken || ''))));
@@ -1831,7 +1962,10 @@ async function preTurn(args, depsIn) {
       const own = resolveSpokenDate(message.trim(), { direction: 'future', nowMs });
       const rows = await shootsById(supabase, vendor.id, note.event_ids);
       if (!rows) return CHAIN(st.ear, 'calendar_unsayable');
-      const hit = own.ok ? rows.filter((r) => r.event_date === own.iso) : [];
+      // cut 2c (V14): a bare number is the Nth shoot SHOWN (the note keeps event_ids in shootsOf's one order); the date is read as before
+      const n53 = bareNumber(message);
+      const byN = n53 && n53 <= note.event_ids.length ? rows.filter((r) => String(r.id) === note.event_ids[n53 - 1]) : [];
+      const hit = byN.length === 1 ? byN : (own.ok ? rows.filter((r) => r.event_date === own.iso) : []);
       const quiet = { toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: 'B53' };
       if (hit.length === 1) {
         let iso = null;
@@ -1976,6 +2110,7 @@ async function preTurn(args, depsIn) {
         // the same distance and the same refusals; YES runs planInvoice with the candidate's own binder name through the same plan.
         if (p && p.noBinder && !liveAtStart && !fromNote) { const offer = await offerFor(a, 'client', p.name, await bindersOf(supabase, agentId)); if (offer) return offer; }
         if (!p || p.noBinder) return CHAIN(st.ear, 'invoice_unresolved', p && p.noBinder ? { name: p.name } : null);
+        if (p && p.key === 'B10' && Array.isArray(p.pickIds)) st.invoicePick = { act: a, ids: p.pickIds }; // cut 2c (V10)
         plans.push({ act: a, plan: p });
       }
     }
@@ -2013,6 +2148,7 @@ async function preTurn(args, depsIn) {
     for (const a of team) {
       const probe = a.act === 'assign_crew' ? await planAssign(supabase, vendor, a, nowMs, L, offers) : await planReminder(supabase, vendor, a, L);
       if (!probe) return CHAIN(st.ear, 'team_unsayable');
+      if (Array.isArray(probe.pickIds)) st.crewPick = { act: a, ids: probe.pickIds, kind: probe.pickKind }; // cut 2c (V14, V15)
       if (probe.ask) {
         const n = { asked: 'B62', acts: [noteAct(a), ...acts.filter((x) => x !== a).map(noteAct).filter(Boolean)], tries: 0 };
         return { door: true, reply: probe.ask.line, keys: ['B62'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, ...(validNote(n) ? { note: n } : {}), ...(st.answered ? { answered: st.answered } : {}), why: 'member_asked' };
@@ -2049,7 +2185,7 @@ async function preTurn(args, depsIn) {
         if (!st.wrote) return CHAIN(st.ear, 'attach_unsayable');
         st.lines.push(DL.LINES.B30); st.keys.push('B30'); attachMissed = true; continue;
       }
-      if (ap.speak) { st.lines.push(ap.speak); st.keys.push(ap.key); if (ap.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(ap.key)) st.dateAsks.push({ key: ap.key, act: a }); if (PKG_ASKS.includes(ap.key)) st.pkgAsks.push({ key: ap.key, act: a }); attachMissed = true; continue; }
+      if (ap.speak) { st.lines.push(ap.speak); st.keys.push(ap.key); if (ap.skipHarvest) st.skipHarvest = true; if (DATE_ASKS.includes(ap.key)) st.dateAsks.push({ key: ap.key, act: a }); if (PKG_ASKS.includes(ap.key)) st.pkgAsks.push({ key: ap.key, act: a, ids: Array.isArray(ap.pickIds) ? ap.pickIds : null }); attachMissed = true; continue; }
       st.wrote = true; // the re-attach retires the live row before it inserts; either may land inside a call that throws
       if (!st.fallback) st.fallback = DL.LINES.B30;
       const f = await fileAttach(supabase, vendor, ap, L);
@@ -2062,13 +2198,15 @@ async function preTurn(args, depsIn) {
       if (plan.speak) { st.lines.push(plan.speak); st.keys.push(plan.key); if (plan.skipHarvest) st.skipHarvest = true; continue; }
       st.wrote = true; // an invoice may be minted inside the call, even if the call then fails
       st.fallback = glitchLine();
-      const gen = await L.generateInvoiceForBinder(supabase, vendor, plan.invoice.binder);
+      // CE-45 ELZ-1 cut 2c (V10): the PICKED invoice is served itself, re-read by id (live, this vendor's, this binder's, not cancelled, with its
+      // document); never handed to the generator, which would serve the booking's or the newest. No document: the glitch line, nothing else served.
+      const gen = plan.invoice.invoiceId ? await servePicked(supabase, vendor, plan.invoice) : await L.generateInvoiceForBinder(supabase, vendor, plan.invoice.binder);
       if (!gen || !gen.ok) continue; // written or not, it is the door's now: the fallback speaks if nothing else does
       const served = gen.made === 'served';
       const line = served ? DL.render('B9', { number: gen.invoice_number, client: plan.invoice.client }) : DL.invoiceReady(gen.invoice_number, plan.invoice.client);
       if (line) { st.lines.push(line); st.keys.push(served ? 'B9' : 'B13'); }
       st.documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: plan.invoice.client, binder_id: plan.invoice.binder.id });
-      st.toolCalls.push({ name: HANDS.invoice, input: { binder_id: plan.invoice.binder.id }, result: served ? 'served' : 'minted' });
+      st.toolCalls.push({ name: HANDS.invoice, input: { binder_id: plan.invoice.binder.id, ...(plan.invoice.invoiceId ? { invoice_id: plan.invoice.invoiceId } : {}) }, result: served ? 'served' : 'minted' });
       st.refresh = true;
     }
     // P7 cut 2a: THE CALENDAR, after leads, attaches and invoices and before the relay and the money act (ruling (b)), in message order. Each
@@ -2168,10 +2306,30 @@ async function preTurn(args, depsIn) {
     if (!st.wrote && st.keys.length === 1 && st.keys[0] === 'B18') {
       st.note = { asked: 'B18', acts: acts.map((a) => (a.act === 'lead' && eventOnly(a.client_as_spoken) ? (({ client_as_spoken: _c, ...rest }) => rest)(a) : { ...a })), tries: fromNote ? note.tries + 1 : 0 };
     }
+    // CE-45 ELZ-1 cut 2c (V9, F1, F3): a turn whose ONLY line is B8 and which wrote nothing keeps a pick note: EVERY act of the message,
+    // the name, and the lead ids in the order shown (leadsNamed's one order). One re-ask, then B3.
+    if (!st.wrote && st.keys.length === 1 && st.keys[0] === 'B8') {
+      const pick = await clientPickOf(supabase, vendor, acts, agentId);
+      const tries = fromNote && note && PICK_CLIENT.includes(note.asked) ? note.tries + 1 : 0;
+      if (pick && tries <= 1) st.note = { asked: 'B8', acts: acts.map((a) => ({ ...a })), tries, lead_ids: pick.ids, pick_name: pick.name, pick_kind: pick.kind };
+    }
+    // cut 2c (V14, V15): a turn whose only line is planAssign's B53 or B61 keeps the crew pick, the ids in the order shown
+    if (!st.wrote && st.keys.length === 1 && ['B53', 'B61'].includes(st.keys[0]) && st.crewPick) {
+      const kind = st.keys[0] === 'B61' ? 'B61' : 'B53C';
+      const tries = fromNote && note && PICK_CREW.includes(note.asked) ? note.tries + 1 : 0;
+      if (tries > 1) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+      st.note = { asked: kind, acts: [{ ...st.crewPick.act }], tries, pick_ids: st.crewPick.ids };
+    }
+    // cut 2c (V10): a turn whose only line is B10 keeps the invoice pick: the act and the live invoices' ids in the order shown
+    if (!st.wrote && st.keys.length === 1 && st.keys[0] === 'B10' && st.invoicePick) {
+      const tries = fromNote && note && PICK_INVOICE.includes(note.asked) ? note.tries + 1 : 0;
+      if (tries > 1) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
+      st.note = { asked: 'B10', acts: [{ ...st.invoicePick.act }], tries, invoice_ids: st.invoicePick.ids };
+    }
     if (st.pkgAsks.length === 1 && !st.dateAsks.length) {
       const w = st.pkgAsks[0]; const tries = fromNote && note && PKG_ASKS.includes(note.asked) ? note.tries + 1 : 0;
       if (tries > 1 && !st.wrote && !st.toolCalls.length) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
-      if (tries <= 1) st.note = { asked: w.key, acts: [(({ package_as_spoken: _p, ...rest }) => rest)(w.act), ...silenced.map((a) => ({ ...a }))], tries };
+      if (tries <= 1) st.note = { asked: w.key, acts: [(({ package_as_spoken: _p, ...rest }) => rest)(w.act), ...silenced.map((a) => ({ ...a }))], tries, ...(w.key === 'B24' && w.ids ? { package_ids: w.ids } : {}) }; // package_ids: cut 2c (V12)
     }
     if (st.relayNote && !st.dateAsks.length && !st.pkgAsks.length && !st.note) st.note = st.relayNote;
     if (st.dateAsks.length === 1) {
