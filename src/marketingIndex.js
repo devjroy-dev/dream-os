@@ -20,6 +20,7 @@ const { createClient } = require('@supabase/supabase-js');
 const {
   handleVerifyChallenge, verifyMetaSignature, normalizeMetaInbound, extractStatuses,
   changesWithPnid, buildSingleChangeBody, laneForPnid, routeChange,
+  isWhatsAppBody, // CE-45 IGD-1 cut 2a-i · F-44.162
 } = require('./lib/metaInbound');
 const ownNumberMap = require('./lib/ownNumber/wabaMap');     // CE-45 G6-1 2a (read-first G1/G2)
 const ownNumberEvents = require('./lib/ownNumber/events');
@@ -202,6 +203,13 @@ app.post('/webhook/meta', async (req, res) => {
 
   // Fast 200 to Meta; fork + forward run async (throughput irrelevant at test scale).
   res.status(200).send('ok');
+
+  // CE-45 IGD-1 cut 2a-i · F-44.162: only WhatsApp bodies are routed. Anything else (an Instagram field ticked on this app's
+  // shared callback) is dropped here, before routeChange, and never forwarded to the WhatsApp vendor lane.
+  if (!isWhatsAppBody(req.body)) {
+    console.warn(`${SERVICE_TAG} dropped a non-WhatsApp body (object ${String(req.body && req.body.object).slice(0, 40)})`);
+    return;
+  }
 
   try {
     for (const { phoneNumberId, entryId, change } of changesWithPnid(req.body)) {

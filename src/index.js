@@ -33,6 +33,7 @@ const { buildLlmForTurn, abandonActiveThread } = require('./api/vendor-engine/ch
 const { matchModeWord, applyModeFlip, MODE_FLIP_LINES, matchFreshWord, FRESH_THREAD_LINE } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words · TDW_04.5 F-04.98 C3: WA fresh word
 const { processVendorInbound, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M2: dormant Meta inbound (vendor lane)
+const igInbound = require('./lib/instagram/igInbound'); // CE-45 IGD-1 cut 2a-i: the Instagram door (receiving half)
 const razorpay      = require('./lib/billing/razorpay');  // TDW_10 billing: verifier + normaliser
 const billingLedger = require('./lib/billing/ledger');    // TDW_10 billing: the SOLE writer of billing_events
 const tierFlip      = require('./lib/billing/tierFlip');  // TDW_10 billing: the ONE flip path (two feeders, TDW_11:59)
@@ -153,6 +154,30 @@ const vendorInboundDeps = {
   matchFreshWord, FRESH_THREAD_LINE, abandonActiveThread, // TDW_04.5 F-04.98 C3
   checkImageThrottle, markRejectionSent, extractCalendarFromImage, webhookCore, supabase, anthropic,
 };
+
+// ── CE-45 IGD-1 cut 2a-i · THE INSTAGRAM DOOR (read-first F1, ruled): Meta sends Instagram DMs HERE, on its own callback,
+// set in the Instagram Login use case's "Configure webhooks" (never the shared receiver's URL). GET answers Meta's challenge
+// with IG_VERIFY_TOKEN. POST checks the signature against IG_APP_SECRET or META_APP_SECRET and logs WHICH matched (E3;
+// the name only, never a byte), answers 200 at once, then records each DM on its Instagram thread (igInbound.recordInbound).
+// Cut 2a-i never replies: Eliza's turn is wired in 2b, the Send API in 2a-ii. The lane is dark unless igInbound.laneOpen.
+app.get('/webhook/instagram', (req, res) => {
+  if (metaInbound.handleVerifyChallenge(req, res, process.env.IG_VERIFY_TOKEN)) return;
+  return res.status(400).send('Bad Request');
+});
+app.post('/webhook/instagram', async (req, res) => {
+  const sig = igInbound.verifyIgSignature(req.rawBody, req.headers['x-hub-signature-256'], process.env);
+  if (!sig.ok) { console.warn('[webhook:instagram] invalid X-Hub-Signature-256'); return res.status(403).send('Forbidden'); }
+  console.log(`[webhook:instagram] signature matched ${sig.which}`);
+  res.status(200).send('ok');
+  try {
+    for (const msg of igInbound.parseIgMessages(req.body)) {
+      const r = await igInbound.recordInbound(supabase, msg, process.env);
+      if (!r.ok) console.warn(`[webhook:instagram] not recorded: ${r.why}`);
+    }
+  } catch (e) {
+    console.error('[webhook:instagram] error:', e && e.message);
+  }
+});
 
 // ── Vendor inbound — Meta Cloud API, the only inbound (M2b). The Twilio /webhook/whatsapp
 // and /webhook/twilio-status routes are DELETED; both now answer 404, which is the sunset's

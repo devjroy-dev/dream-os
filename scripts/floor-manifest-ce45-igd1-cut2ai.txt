@@ -1,0 +1,18 @@
+# scripts/floor-manifest-ce45-igd1-cut2ai.txt
+# CE-45 · IGD-1 · CUT 2a-i (dream-os): the Instagram door's receiving half, 0173, F-44.162's cure, rung b119; b121 1.1 re-aimed by label to bd9d153 (the chair, 26 Sept 2026);
+# the two handovers (cut 1b's and 2a-i's). BASE: 1b37c26. F-19.16: a dirty path outside this list is a STOP.
+# A-45.3: ONE new folder, declared as a folder line, with its one file.
+src/lib/instagram/
+src/lib/instagram/igInbound.js
+src/index.js
+src/lib/metaInbound.js
+src/marketingIndex.js
+db/migrations/0173_ig_dm.sql
+docs/db/PUBLIC_SCHEMA.md
+docs/handovers/TDW_CE45_IGD1_1b_HANDOVER.md
+docs/handovers/TDW_CE45_IGD1_2ai_HANDOVER.md
+scripts/b119_igd1_ig_door_bench.js
+scripts/b121_g61_own_number_srv_bench.js
+scripts/lib/b119r_0173_plant.sql
+scripts/lib/b119r_0173_rehearse.sh
+scripts/floor-manifest-ce45-igd1-cut2ai.txt

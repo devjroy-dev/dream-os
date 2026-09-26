@@ -24,6 +24,16 @@ SELECT, INSERT, UPDATE and DELETE on `vendor_wabas` and `vendor_wa_events` (anon
 Note for every reader (F-44.169): on this project a table created by `postgres` in public reaches `service_role` with only
 TRUNCATE, REFERENCES, TRIGGER and MAINTAIN, so each table-creating migration grants it in its own file (A-45.8, b128).
 
+**AND 0173 (`0173_ig_dm.sql`, CE-45 IGD-1 cut 2a-i), once the founder applies it:** alters only, creates no table (so A-45.8
+grants nothing; `service_role`'s table grants on all three were witnessed by G6-1's census of 25 September 2026). It adds
+`conversations.channel text NOT NULL DEFAULT 'whatsapp'` (CHECK `conversations_channel_check`: 'whatsapp' or 'instagram') and
+`conversations.counterparty_ig_id text`, with the partial UNIQUE index `conversations_vendor_ig_thread_uidx` on
+(vendor_id, counterparty_ig_id) WHERE kind = 'couple_thread' AND counterparty_ig_id IS NOT NULL; `leads.counterparty_ig_id text`,
+with the partial UNIQUE index `leads_vendor_ig_uidx` on (vendor_id, counterparty_ig_id) WHERE counterparty_ig_id IS NOT NULL; and
+`vendors.reply_quiet_minutes integer NOT NULL DEFAULT 120` (CHECK `vendors_reply_quiet_minutes_check`: 60, 120, 240 or 480).
+None of that is described below; 0173 is its witness until the snapshot is regenerated. Its rehearsal on a throwaway Postgres is
+`scripts/lib/b119r_0173_rehearse.sh` (A-45.8).
+
 **Repo tip at authoring:** `713340a` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
 **Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0168` across 152 files, and it is not contiguous: **16 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
 **⏳ HOW TO TELL WHETHER THIS DOCUMENT IS STILL TRUE.** If `db/migrations/` holds any file newer than the ladder tip named above, **this document is STALE for any table those migrations touch — the migration is the witness until regen.** Check the directory before you cite a column from this file. F-09.185 is what happens otherwise: a committed handover asserted `public.messages` at 18 columns on this document's word, while `0105` had made it 20 and the document said nothing.

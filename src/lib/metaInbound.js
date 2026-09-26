@@ -342,6 +342,13 @@ function laneForPnid(pnid, env = process.env) {
 //                                              message_template_status_update reach index.js :199/:222 (at 46af98d),
 //                                              which they never did while the receiver dropped them)
 //   an unknown PNID                 -> 'drop'  (logged, as before)
+// CE-45 IGD-1 cut 2a-i · F-44.162 (LATENT, minted 25 Sept 2026): every body the shared receiver routes must be WhatsApp's.
+// An Instagram body (comments or mentions arrive as entry[].changes[] with no PNID) would otherwise fall to routeChange's
+// 'vendor' and reach the WhatsApp vendor lane. The receiver asks this FIRST and drops anything else, with a log line.
+function isWhatsAppBody(body) {
+  return !!body && typeof body === 'object' && body.object === 'whatsapp_business_account';
+}
+
 function routeChange(lane, phoneNumberId, own) {
   if (lane === 'marketing' || lane === 'bride' || lane === 'vendor') return lane;
   if (own && own.vendor_id) return 'own';
@@ -355,6 +362,7 @@ module.exports = {
   extractTemplateStatusUpdates,
   handleVerifyChallenge,
   verifyMetaSignature,
+  isWhatsAppBody,
   normalizeMetaInbound,
   extractStatuses,
   // F-05.78 REOPENED-SCOPED (R-35.19/.20) — additive; bride lane is the only consumer

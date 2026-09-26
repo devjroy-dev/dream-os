@@ -104,7 +104,12 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
 
 (async () => {
   sec('1  the source and the boundary');
-  const diffIdx = execSync('git diff --name-only HEAD -- src/index.js src/engine src/lib/sendWa.js src/lib/whatsapp.js', { cwd: ROOT }).toString().trim();
+  // RE-AIMED BY LABEL · CE-45 IGD-1 cut 2a-i · R-45.14 and the chair's ruling of 26 September 2026 (LCV-16's general cure, first cut
+  // in LSP_5 and carried here after LSP_5's revert; LCV-16 takes it at these bytes when LSP_5 re-lands). This cell read the UNCOMMITTED
+  // tree (`git diff HEAD`), so any later delivery touching these paths reddened it before its own commit (2a-i's index.js does). The
+  // claim is G6-1's sitting's, so it is pinned to that sitting's commit, bd9d153: the four paths are untouched THERE, true at every tip
+  // and in every working tree.
+  const diffIdx = execSync('git diff --name-only bd9d153^ bd9d153 -- src/index.js src/engine src/lib/sendWa.js src/lib/whatsapp.js', { cwd: ROOT }).toString().trim();
   ok(diffIdx === '', '1.1 src/index.js, src/engine, sendWa.js and whatsapp.js are untouched (G1, W-1, 2b)', diffIdx);
   const idx = read('src/api/vendor/solutions/index.js');
   ok(/router\.use\('\/number', require\('\.\/number'\)\);/.test(idx), '1.2 the doors mount at /api/v2/vendor/solutions/number beside their siblings (FK1)');
