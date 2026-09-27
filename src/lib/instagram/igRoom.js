@@ -12,7 +12,10 @@
 //   off            proved, switch off
 //   paused         switch on, but her token cannot be used (tokenForCall refuses: lapsed or withdrawn)
 //   waiting        switch on, the lane not open for her (reachable only once the door shows beyond the lane; kept for the grant)
-//   on             switch on, token usable, lane open
+//   on             switch on, token usable, lane open, AND her account's webhook subscription made (dm_subscribed_at set)
+//                  (CE-46 IGD-2 cut 2c, F-44.212: switched on, proved and open but NOT subscribed answers 'waiting', whose
+//                  existing line the pwa already draws with its Turn off; the door's new `live` field is false there, for
+//                  FE-4's plainer line. Nothing is delivered to an unsubscribed account, so 'on' there was untrue.)
 // authorize_url is minted only when she must authorise (not_connected, paused): the connect's "messages" flavour, armed on her row.
 // The quiet time reads and writes vendors.reply_quiet_minutes (0173; 60 | 120 | 240 | 480). Its effect lands in cut 2b.
 const igInbound = require('./igInbound');
@@ -23,7 +26,8 @@ function deriveState({ conn, tokenOk, laneOpen }) {
   if (!conn || !conn.messages_granted_at) return 'not_connected';
   if (conn.dm_state !== 'on') return 'off';
   if (!tokenOk) return 'paused';
-  return laneOpen ? 'on' : 'waiting';
+  if (!laneOpen) return 'waiting';
+  return conn.dm_subscribed_at ? 'on' : 'waiting';
 }
 
 function needsAuthorize(state) { return state === 'not_connected' || state === 'paused'; }
@@ -45,7 +49,19 @@ async function answer(vendorId, deps) {
   const tokenOk = r.conn && r.conn.messages_granted_at ? await deps.tokenOk(vendorId) : false;
   const state = deriveState({ conn: r.conn, tokenOk, laneOpen });
   const authorize_url = needsAuthorize(state) ? await deps.mintAuthorize(vendorId) : null;
-  return { status: 200, body: { ok: true, state, authorize_url } };
+  return { status: 200, body: { ok: true, state, authorize_url, live: state === 'on' } };
+}
+
+// CE-46 IGD-2 cut 2c (F-44.212): the connect's messages callback calls this after it has PROVED the grant. If she had already
+// turned the switch on (the room's designed order: Turn on, then Instagram authorises), her account is subscribed now and
+// dm_subscribed_at stamped, as flip does. deps: { supabase, now(), subscribe() -> {ok} }.
+async function subscribeIfOn(vendorId, deps) {
+  const r = await readConn(deps.supabase, vendorId);
+  if (!r.ok || !r.conn || r.conn.dm_state !== 'on') return { subscribed: false, why: r.ok ? 'not_on' : 'read' };
+  const s = await deps.subscribe();
+  if (!s || !s.ok) return { subscribed: false, why: 'refused' };
+  await deps.supabase.from('vendor_ig_connections').update({ dm_subscribed_at: deps.now() }).eq('vendor_id', vendorId);
+  return { subscribed: true };
 }
 
 async function flip(vendorId, on, deps) {
@@ -85,4 +101,4 @@ async function quiet(vendorId, deps, minutes) {
   return { status: 200, body: { ok: true, minutes: data.reply_quiet_minutes } };
 }
 
-module.exports = { QUIET, deriveState, needsAuthorize, answer, flip, quiet };
+module.exports = { QUIET, deriveState, needsAuthorize, answer, flip, quiet, subscribeIfOn };

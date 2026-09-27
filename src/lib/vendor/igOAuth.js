@@ -273,10 +273,30 @@ function authorizeUrl(state, opts = {}) {
   return `${AUTHORIZE_URL}?${q.toString()}`;
 }
 
+// CE-46 IGD-2 (the chair's ruling after M4's walk refusal): Meta's own reason, for the LOG only. error.message, error_subcode
+// and fbtrace_id say WHY a leg was refused; the old line kept only the code, so M4's "(400, 100)" could not name its cause.
+// Only these three fields are read from Meta's error body, never the request (it carries the secret, the code or the token).
+// The message is cut to 300 characters and any run of 40 or more token-like characters is masked, in case Meta ever echoes one.
+// The returned `error` string is UNCHANGED: it can reach the vendor (ig.js :228), so Meta's words never go there.
+function metaDetail(body) {
+  const e = body && body.error && typeof body.error === 'object' ? body.error : null;
+  if (!e) return 'no error body';
+  const msg = typeof e.message === 'string'
+    ? e.message.slice(0, 300).replace(/[A-Za-z0-9_\-|.]{40,}/g, '[masked]')
+    : '(no message)';
+  const sub = e.error_subcode !== undefined && e.error_subcode !== null ? ` · subcode ${String(e.error_subcode).slice(0, 20)}` : '';
+  const trace = typeof e.fbtrace_id === 'string' ? ` · fbtrace ${e.fbtrace_id.slice(0, 40)}` : '';
+  return `${msg}${sub}${trace}`;
+}
+function logMetaRefusal(where, status, code, body) {
+  console.warn(`[ig:meta] ${where} refused (${status}${code ? `, ${code}` : ''}): ${metaDetail(body)}`);
+}
+
 // A refusal shape shared by every network leg. Meta's error CODE travels; the
 // request never does, because the request carries the secret.
 function metaRefusal(where, res, body) {
   const code = body && body.error && (body.error.code || body.error.type);
+  logMetaRefusal(where, res.status, code, body);
   return {
     ok: false,
     error: `Instagram refused the ${where} (${res.status}${code ? `, ${code}` : ''}).`,
@@ -430,6 +450,7 @@ async function listInstagramMedia(accessToken, opts = {}) {
     const body = await res.json().catch(() => null);
     if (!res.ok) {
       const code = body && body.error && (body.error.code || body.error.type);
+      logMetaRefusal('photo list', res.status, code, body);   // CE-46 IGD-2: Meta's reason to the log only
       // THE SECRETS LAW: the URL carries the access token, so the URL never
       // travels into the error. Status and Meta's own code, nothing more.
       return {
@@ -598,6 +619,7 @@ function refreshDecision({ expiresAt, connectedAt, now = Date.now() }) {
 }
 
 module.exports = {
+  metaDetail,
   IG_CALLBACK_PATH,
   IG_SCOPE,
   INSIGHTS_SCOPE,

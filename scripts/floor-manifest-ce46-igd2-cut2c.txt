@@ -1,0 +1,23 @@
+# scripts/floor-manifest-ce46-igd2-cut2c.txt
+# CE-46 · IGD-2 · CUT 2c (dream-os): the dark walk's three findings cured. E3 (IG_APP_SECRET only), F-44.194 (ig_account_id,
+# 0176, findByIgAccountId), F-44.212 (subscribeIfOn; 'on' only once subscribed; the door's live field), the metaRefusal logging.
+# Rungs b136b, b136c; b119, b119b, b136 re-pinned by label.
+# BASE: de38b5c (the chair, 27 September 2026; built on 6efcf91 and carried by command). F-19.16: a dirty path outside this list is a STOP.
+# A-45.3: no new folder.
+src/api/vendor/ig.js
+src/index.js
+src/lib/instagram/igInbound.js
+src/lib/instagram/igReply.js
+src/lib/instagram/igRoom.js
+src/lib/vendor/igConnection.js
+src/lib/vendor/igOAuth.js
+db/migrations/0176_ig_account_id.sql
+scripts/b136b_igd2_meta_refusal_bench.js
+scripts/b136c_igd2_walk_cures_bench.js
+scripts/lib/b136cr_0176_plant.sql
+scripts/lib/b136cr_0176_rehearse.sh
+scripts/b119_igd1_ig_door_bench.js
+scripts/b119b_igd1_ig_room_bench.js
+scripts/b136_igd2_ig_reply_bench.js
+docs/handovers/TDW_CE46_IGD2_2c_HANDOVER.md
+scripts/floor-manifest-ce46-igd2-cut2c.txt

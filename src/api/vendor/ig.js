@@ -52,6 +52,7 @@ const POSTS_RETURN_PATH = require('../../lib/pwaPaths').vendorPath('posts');
 // CE-45 IGD-1 cut 2a-ii: the MESSAGES flavour returns to the room "WhatsApp and Instagram" (/vendor/number), where it was tapped.
 const NUMBER_RETURN_PATH = require('../../lib/pwaPaths').vendorPath('number');
 const igMeta = require('../../lib/instagram/igMeta');
+const igRoom = require('../../lib/instagram/igRoom');   // CE-46 IGD-2 cut 2c: subscribeIfOn (F-44.212)
 
 function backToPortfolio(res, params, flavour) {
   const q = new URLSearchParams(params);
@@ -173,6 +174,13 @@ router.get('/callback', asyncHandler(async (req, res) => {
     console.error('[ig:callback] could not persist connection for vendor', v.vendorId, saved.error);
     return backToPortfolio(res, { ig: 'failed', reason: 'store' }, flavour);
   }
+  // CE-46 IGD-2 cut 2c (F-44.194): the professional-account id webhooks address, beside ig_user_id. Best-effort: never fails the connect.
+  if (profile.ok && profile.igUserId) {
+    const a = await igConn.setAccountId(supabase, v.vendorId, profile.igUserId);
+    if (!a.ok) console.error('[ig:callback] account id not stored for vendor', v.vendorId, a.error);
+  } else {
+    console.warn('[ig:callback] no account id from the profile read for vendor', v.vendorId);
+  }
 
   // THE INSIGHTS FLAVOUR PROVES ITS GRANT BEFORE STORING IT (4b-3b, 15b). One
   // account read on the new token: granted → insights_granted_at lands and the
@@ -199,6 +207,12 @@ router.get('/callback', asyncHandler(async (req, res) => {
     if (probe.granted) {
       const g = await igConn.markMessagesGranted(supabase, v.vendorId);
       if (!g.ok) console.error('[ig:callback] messages grant not stored for vendor', v.vendorId, g.error);
+      // CE-46 IGD-2 cut 2c (F-44.212): if she turned the switch on before Instagram authorised, subscribe her account now.
+      const sub = await igRoom.subscribeIfOn(v.vendorId, {
+        supabase, now: () => new Date().toISOString(),
+        subscribe: () => igMeta.setSubscribed({ fetchImpl: fetch, token: long.accessToken, on: true }),
+      });
+      if (!sub.subscribed && sub.why !== 'not_on') console.warn('[ig:callback] subscription not made for vendor', v.vendorId, sub.why);
     } else {
       ig = 'no_scope';
       console.warn('[ig:callback] messages scope not on the token for vendor', v.vendorId, probe.status || probe.why);

@@ -6,7 +6,7 @@
 //      service mounts /webhook/instagram; the shared receiver drops a non-WhatsApp body BEFORE it walks any change, and its
 //      destructure binds isWhatsAppBody (e-146); the door never calls the couple turn and never sends (2a-i records only).
 //   §2 parseIgMessages: object "instagram", entry[].messaging[] (F-44.161's shape), echoes flipped, every hostile body empty, no throw.
-//   §3 verifyIgSignature: IG_APP_SECRET or META_APP_SECRET, and WHICH matched (E3); neither, or no secret, refuses.
+//   §3 verifyIgSignature: IG_APP_SECRET only, and WHICH matched (E3 settled at cut 2c); META_APP_SECRET, no secret, refuses.
 //   §4 laneOpen: the capability ON, or the vendor named in IG_DM_WALK_VENDOR_IDS (F7); otherwise closed.
 //   §5 recordInbound on a fake store: unknown account; lane closed; one thread per sender (made, then reused, a race tolerated);
 //      the row's channel, sent_by, direction and message_sid; Meta's retry is a duplicate, not an error.
@@ -35,7 +35,8 @@ const capPath = require.resolve(P('src/lib/capabilities.js'));
 const connPath = require.resolve(P('src/lib/vendor/igConnection.js'));
 require.cache[capPath] = { id: capPath, filename: capPath, loaded: true, exports: { on: (k) => k === 'perm.instagram_business_manage_messages' && CAP.on } };
 require.cache[connPath] = { id: connPath, filename: connPath, loaded: true, exports: {
-  findByIgUserId: async (_s, id) => (CONN.map[String(id)] ? { ok: true, vendorId: CONN.map[String(id)] } : { ok: false, error: 'not_found' }) } };
+  // RE-PINNED BY LABEL, CE-46 IGD-2 cut 2c (F-44.194): the DM webhook looks the account up by findByIgAccountId; the double is the same map
+  findByIgAccountId: async (_s, id) => (CONN.map[String(id)] ? { ok: true, vendorId: CONN.map[String(id)] } : { ok: false, error: 'not_found' }) } };
 const IG_FILE = P('src/lib/instagram/igInbound.js');
 function load(src) {
   const m = new Module(IG_FILE, module); m.filename = IG_FILE; m.paths = Module._nodeModulePaths(path.dirname(IG_FILE));
@@ -129,7 +130,8 @@ const dm = (over = {}) => ({ object: 'instagram', entry: [{ id: 'ACC1', time: 1,
   const hdr = (secret) => 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
   const env = { IG_APP_SECRET: 'ig-secret', META_APP_SECRET: 'meta-secret' };
   const a = IG.verifyIgSignature(raw, hdr('ig-secret'), env); const b = IG.verifyIgSignature(raw, hdr('meta-secret'), env);
-  ok(a.ok && a.which === 'IG_APP_SECRET' && b.ok && b.which === 'META_APP_SECRET', '3.1 either secret is accepted and the match is NAMED (E3)');
+  ok(a.ok && a.which === 'IG_APP_SECRET' && !b.ok && b.which === null,
+    '3.1 IG_APP_SECRET is accepted and NAMED; a body signed with META_APP_SECRET is refused (RE-PINNED BY LABEL, CE-46 IGD-2 cut 2c: E3 settled on the dark walk\u2019s first delivered webhook, the fallback removed)');
   ok(!IG.verifyIgSignature(raw, hdr('other'), env).ok && !IG.verifyIgSignature(raw, hdr('ig-secret'), {}).ok
     && !IG.verifyIgSignature(raw, undefined, env).ok && !IG.verifyIgSignature(raw, 'sha1=' + 'a'.repeat(40), env).ok
     && !IG.verifyIgSignature(Buffer.from(raw.toString() + ' '), hdr('ig-secret'), env).ok,
@@ -185,8 +187,8 @@ const dm = (over = {}) => ({ object: 'instagram', entry: [{ id: 'ACC1', time: 1,
   ok(M && M.laneOpen('V1', { IG_DM_WALK_VENDOR_IDS: 'V2' }) === true, 'M2 an allowlist that opens for anyone once set is caught (4.1 would redden)');
   M = mut("if (!laneOpen(who.vendorId, env)) return { ok: false, why: 'lane_closed' };", '');
   if (M) { const S2 = fakeStore(); const rr = await M.recordInbound(S2, one[0], {}); ok(rr.ok === true, 'M3 the lane gate removed records on a closed lane (5.2 would redden)'); } else ok(false, 'M3 anchor');
-  M = mut("for (const name of ['IG_APP_SECRET', 'META_APP_SECRET'])", "for (const name of ['META_APP_SECRET'])");
-  ok(M && !M.verifyIgSignature(raw, hdr('ig-secret'), env).ok, 'M4 dropping IG_APP_SECRET refuses an Instagram-signed DM (3.1 would redden)');
+  M = mut("for (const name of ['IG_APP_SECRET'])", "for (const name of ['IG_APP_SECRET', 'META_APP_SECRET'])");
+  ok(M && M.verifyIgSignature(raw, hdr('meta-secret'), env).ok, 'M4 restoring the META_APP_SECRET fallback accepts the other secret\u2019s body (3.1 would redden; RE-PINNED BY LABEL, cut 2c)');
   const mkMut = mk.replace('if (!isWhatsAppBody(req.body))', 'if (false)');
   const hM = mkMut.slice(mkMut.indexOf("app.post('/webhook/meta'"));
   ok(!(hM.indexOf('if (!isWhatsAppBody(req.body))') > -1), 'M5 the receiver\u2019s guard removed is caught by 1.5\u2019s reading');

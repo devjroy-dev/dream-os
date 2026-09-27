@@ -179,6 +179,28 @@ async function saveToken(supabase, vendorId, { igUserId, igUsername, accessToken
   return { ok: true };
 }
 
+// CE-46 IGD-2 cut 2c (F-44.194, ruled (a)): a DM webhook addresses the PROFESSIONAL account (the 1784... id, /me user_id), not the
+// Instagram-scoped id the token exchange returns (ig_user_id). The webhook's account is found HERE, on ig_account_id (0176).
+// findByIgUserId stays on ig_user_id because Meta's signed requests (deauthorize and data deletion, ig.js :314 and :366) carry
+// the scoped id; b07_p4a §11.9 holds that bridge.
+async function findByIgAccountId(supabase, igAccountId) {
+  const { data, error } = await supabase
+    .from(TABLE).select('vendor_id, ig_account_id').eq('ig_account_id', String(igAccountId)).maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: 'not_found' };
+  return { ok: true, vendorId: data.vendor_id };
+}
+
+// CE-46 IGD-2 cut 2c (F-44.194): the professional-account id, from the profile read's user_id, beside ig_user_id. A SEPARATE,
+// best-effort write after saveToken, so a connect never fails over it (and never before 0176 is applied: the error is returned,
+// the caller logs it, the connection stands).
+async function setAccountId(supabase, vendorId, igAccountId) {
+  if (!igAccountId) return { ok: false, error: 'no_account_id' };
+  const { error } = await supabase.from(TABLE).update({ ig_account_id: String(igAccountId) }).eq('vendor_id', vendorId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 /** Persist a refreshed token. connected_at is NOT touched — it is the birth date. */
 async function updateToken(supabase, vendorId, { accessToken, expiresAt }) {
   const now = new Date().toISOString();
@@ -229,6 +251,8 @@ module.exports = {
   SAFE_COLUMNS,
   getConnection,
   findByIgUserId,
+  findByIgAccountId,
+  setAccountId,
   readToken,
   tokenForCall,
   markInsightsGranted,

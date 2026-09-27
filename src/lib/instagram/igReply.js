@@ -160,7 +160,7 @@ async function deadLetter(deps, { msg, payload, error }) {
   } catch (e) { console.error('[instagram:dead-letter] capture failed:', e && e.message); }
   try {
     if (!msg || msg.echo) return;
-    const who = await deps.findByIgUserId(deps.supabase, msg.accountId);
+    const who = await deps.findByIgAccountId(deps.supabase, msg.accountId);   // cut 2c (F-44.194)
     if (!who || !who.ok) return;
     const tok = await deps.tokenForCall(deps.supabase, who.vendorId);
     if (!tok || !tok.ok) return;

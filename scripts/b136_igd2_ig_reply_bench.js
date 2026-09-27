@@ -62,7 +62,7 @@ const V = 'v-440'; const C = 'c-ig-1'; const IGSID = 'IGSID_COUPLE'; const ACC =
 const NOW = Date.UTC(2026, 8, 27, 12, 0, 0);
 function seed(over = {}) {
   return {
-    vendor_ig_connections: [{ vendor_id: V, ig_user_id: ACC, dm_state: 'on' }],
+    vendor_ig_connections: [{ vendor_id: V, ig_user_id: 'SCOPED_2846', ig_account_id: ACC, dm_state: 'on' }],   // cut 2c: the webhook matches ig_account_id (F-44.194)
     conversations: [{ id: C, vendor_id: V, kind: 'couple_thread', channel: 'instagram', counterparty_ig_id: IGSID, ig_stopped_at: null }],
     vendors: [{ id: V, user_id: 'u-440', business_name: 'Dev Roy Photography', routing_handle: 'DEV440', enquiry_routing: 'tdw', enquiry_phone: null, reply_quiet_minutes: 120 }],
     users: [{ id: 'u-440', name: 'Dev', phone: '+919999900000' }],
@@ -78,7 +78,7 @@ function harness(db, { reply = 'Hi! You have reached Dev Roy Photography. What i
     fetchImpl: async (url, init) => { log.posts.push({ url, body: JSON.parse(init.body) }); mid += 1; return { ok: true, status: 200, json: async () => ({ message_id: `mid${mid}` }) }; },
     runTurn: async (input) => { log.turns.push(input); if (turnThrows) throw new Error('turn threw'); return { reply, toolCalls: [{ name: 'respond_to_couple' }], vendorNotification: 'New enquiry on Instagram. Wedding in Jaipur. Lead saved.', leadName: null }; },
     tokenForCall: async () => (tokOk ? { ok: true, accessToken: 'TOK', igUserId: ACC } : { ok: false, error: 'expired' }),
-    findByIgUserId: async () => ({ ok: true, vendorId: V }),
+    findByIgAccountId: async () => ({ ok: true, vendorId: V }),   // cut 2c (F-44.194), re-pinned by label
     sendAlert: async (a) => { log.alerts.push(a); return { sent: true }; },
     scrub: (t) => `[scrubbed] ${t}`,
     captureDeadLetter: async (a) => { log.dead.push(a); },

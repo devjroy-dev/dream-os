@@ -25,8 +25,10 @@ const { turnKey, withTurnLock } = require('../turnLock');
 const GATE = 'perm.instagram_business_manage_messages';
 const s = (v, max = 200) => (typeof v === 'string' && v.length > 0 && v.length <= max ? v : null);
 
+// E3 SETTLED (CE-46 IGD-2 cut 2c; the dark walk's first delivered webhook, 27 September 2026, logged "signature matched
+// IG_APP_SECRET"): the Instagram app's secret is the only one; the META_APP_SECRET fallback is removed.
 function verifyIgSignature(rawBody, header, env) {
-  for (const name of ['IG_APP_SECRET', 'META_APP_SECRET']) {
+  for (const name of ['IG_APP_SECRET']) {
     const secret = env && env[name];
     if (secret && metaInbound.verifyMetaSignature(rawBody, header, secret)) return { ok: true, which: name };
   }
@@ -78,7 +80,7 @@ async function findOrMakeThread(supabase, vendorId, igsid) {
 }
 
 async function recordInbound(supabase, msg, env) {
-  const who = await igConnection.findByIgUserId(supabase, msg.accountId);
+  const who = await igConnection.findByIgAccountId(supabase, msg.accountId);   // cut 2c: the webhook addresses the professional account (F-44.194)
   if (!who || !who.ok) return { ok: false, why: 'unknown_account' };
   if (!laneOpen(who.vendorId, env)) return { ok: false, why: 'lane_closed' };
   const t = await findOrMakeThread(supabase, who.vendorId, msg.igsid);

@@ -167,7 +167,7 @@ const igLaneDeps = {
   supabase, anthropic, fetchImpl: (...a) => fetch(...a), nowMs: () => Date.now(),
   runTurn: (input) => runCoupleAgenticTurn(input),
   tokenForCall: require('./lib/vendor/igConnection').tokenForCall,
-  findByIgUserId: require('./lib/vendor/igConnection').findByIgUserId,
+  findByIgAccountId: require('./lib/vendor/igConnection').findByIgAccountId,   // cut 2c (F-44.194)
   sendAlert: (args) => require('./lib/vendor/enquiryAlert').sendVendorEnquiryAlert(args),
   scrub: (t, v, w) => require('./lib/vendorInbound').scrubModelFrame(t, v, w),
   leadsLink: require('./lib/pwaPaths').vendorUrl('leads'),

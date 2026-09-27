@@ -95,7 +95,9 @@ require.cache[capPath] = { id: capPath, filename: capPath, loaded: true, exports
   ok(d({ conn: null }) === 'not_connected' && d({ conn: { messages_granted_at: null, dm_state: 'on' } }) === 'not_connected'
     && d({ conn: { messages_granted_at: 't', dm_state: 'off' } }) === 'off' && d({ conn: { messages_granted_at: 't', dm_state: 'on' }, tokenOk: false }) === 'paused'
     && d({ conn: { messages_granted_at: 't', dm_state: 'on' }, tokenOk: true, laneOpen: false }) === 'waiting'
-    && d({ conn: { messages_granted_at: 't', dm_state: 'on' }, tokenOk: true, laneOpen: true }) === 'on', '5.1 the five states derive from the row, the token and the lane');
+    && d({ conn: { messages_granted_at: 't', dm_state: 'on', dm_subscribed_at: 's' }, tokenOk: true, laneOpen: true }) === 'on'
+    && d({ conn: { messages_granted_at: 't', dm_state: 'on', dm_subscribed_at: null }, tokenOk: true, laneOpen: true }) === 'waiting',
+    '5.1 the five states derive from the row, the token and the lane (RE-PINNED BY LABEL, CE-46 IGD-2 cut 2c, F-44.212: \u2018on\u2019 only once her account is subscribed; proved, on and open but unsubscribed reads \u2018waiting\u2019)');
   function store(conn, quietMin = 120) {
     const st2 = { conn: conn ? { ...conn } : null, quiet: quietMin, updates: [] };
     const from = (t) => { const q = { t, op: 'select', row: null }; const api = {
