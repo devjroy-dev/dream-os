@@ -94,8 +94,9 @@ const dm = (over = {}) => ({ object: 'instagram', entry: [{ id: 'ACC1', time: 1,
     '1.2 0173\u2019s two partial UNIQUEs (one Instagram thread and one lead per vendor and sender), in one transaction');
   const idx = strip(read('src/index.js'));
   ok(/app\.get\('\/webhook\/instagram'/.test(idx) && /handleVerifyChallenge\(req, res, process\.env\.IG_VERIFY_TOKEN\)/.test(idx)
-    && /app\.post\('\/webhook\/instagram'/.test(idx) && /igInbound\.verifyIgSignature\(req\.rawBody/.test(idx) && /igInbound\.recordInbound\(supabase, msg, process\.env\)/.test(idx),
-    '1.3 the vendor service mounts GET and POST /webhook/instagram: the challenge on IG_VERIFY_TOKEN, the signature, then record');
+    && /app\.post\('\/webhook\/instagram'/.test(idx) && /igInbound\.verifyIgSignature\(req\.rawBody/.test(idx) && /igInbound\.receive\(supabase, msg, process\.env, igLaneDeps\)/.test(idx)
+    && /const recorded = await recordInbound\(supabase, msg, env\);/.test(read('src/lib/instagram/igInbound.js')),
+    '1.3 the vendor service mounts GET and POST /webhook/instagram: the challenge on IG_VERIFY_TOKEN, the signature, then record (RE-AIMED BY LABEL, CE-46 IGD-2 cut 2b: the route records through igInbound.receive, which calls recordInbound first; the subject is unchanged)');
   const post = idx.slice(idx.indexOf("app.post('/webhook/instagram'"), idx.indexOf("app.post('/webhook/instagram'") + 900);
   ok(post.indexOf('return res.status(403)') > -1 && post.indexOf('return res.status(403)') < post.indexOf("res.status(200).send('ok')"),
     '1.4 an unsigned POST is refused (403) before the 200, and nothing is parsed');

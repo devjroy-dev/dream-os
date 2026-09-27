@@ -34,6 +34,7 @@ const { matchModeWord, applyModeFlip, MODE_FLIP_LINES, matchFreshWord, FRESH_THR
 const { processVendorInbound, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M2: dormant Meta inbound (vendor lane)
 const igInbound = require('./lib/instagram/igInbound'); // CE-45 IGD-1 cut 2a-i: the Instagram door (receiving half)
+const igReply = require('./lib/instagram/igReply');     // CE-46 IGD-2 cut 2b: the Instagram lane's caller
 const razorpay      = require('./lib/billing/razorpay');  // TDW_10 billing: verifier + normaliser
 const billingLedger = require('./lib/billing/ledger');    // TDW_10 billing: the SOLE writer of billing_events
 const tierFlip      = require('./lib/billing/tierFlip');  // TDW_10 billing: the ONE flip path (two feeders, TDW_11:59)
@@ -158,8 +159,22 @@ const vendorInboundDeps = {
 // ── CE-45 IGD-1 cut 2a-i · THE INSTAGRAM DOOR (read-first F1, ruled): Meta sends Instagram DMs HERE, on its own callback,
 // set in the Instagram Login use case's "Configure webhooks" (never the shared receiver's URL). GET answers Meta's challenge
 // with IG_VERIFY_TOKEN. POST checks the signature against IG_APP_SECRET or META_APP_SECRET and logs WHICH matched (E3;
-// the name only, never a byte), answers 200 at once, then records each DM on its Instagram thread (igInbound.recordInbound).
-// Cut 2a-i never replies: Eliza's turn is wired in 2b, the Send API in 2a-ii. The lane is dark unless igInbound.laneOpen.
+// the name only, never a byte), answers 200 at once, then records each DM on its Instagram thread and, CE-46 IGD-2 cut 2b,
+// hands a new couple message to igReply under the thread's turn lock (igInbound.receive). A throw is dead-lettered as service
+// 'instagram' (failedTurns.js refuses to replay it) with the failed-turn line to the couple. The lane is dark unless laneOpen.
+// CE-46 IGD-2 cut 2b: the Instagram lane's dependencies, built once (igReply.reply's deps plus the route's dead-letter needs).
+const igLaneDeps = {
+  supabase, anthropic, fetchImpl: (...a) => fetch(...a), nowMs: () => Date.now(),
+  runTurn: (input) => runCoupleAgenticTurn(input),
+  tokenForCall: require('./lib/vendor/igConnection').tokenForCall,
+  findByIgUserId: require('./lib/vendor/igConnection').findByIgUserId,
+  sendAlert: (args) => require('./lib/vendor/enquiryAlert').sendVendorEnquiryAlert(args),
+  scrub: (t, v, w) => require('./lib/vendorInbound').scrubModelFrame(t, v, w),
+  leadsLink: require('./lib/pwaPaths').vendorUrl('leads'),
+  captureDeadLetter: (a) => webhookCore.captureDeadLetter(a),
+  gracefulLine: webhookCore.GRACEFUL_TURN_LINE,
+};
+igLaneDeps.reply = (args) => igReply.reply(igLaneDeps, args);
 app.get('/webhook/instagram', (req, res) => {
   if (metaInbound.handleVerifyChallenge(req, res, process.env.IG_VERIFY_TOKEN)) return;
   return res.status(400).send('Bad Request');
@@ -171,8 +186,14 @@ app.post('/webhook/instagram', async (req, res) => {
   res.status(200).send('ok');
   try {
     for (const msg of igInbound.parseIgMessages(req.body)) {
-      const r = await igInbound.recordInbound(supabase, msg, process.env);
-      if (!r.ok) console.warn(`[webhook:instagram] not recorded: ${r.why}`);
+      try {
+        const r = await igInbound.receive(supabase, msg, process.env, igLaneDeps);
+        if (!r.recorded.ok) console.warn(`[webhook:instagram] not recorded: ${r.recorded.why}`);
+        else if (r.reply) console.log(`[webhook:instagram] turn: ${r.reply.why}`);
+      } catch (e) {
+        console.error('[webhook:instagram] turn threw:', e && e.message);
+        await igReply.deadLetter(igLaneDeps, { msg, payload: req.body, error: e });
+      }
     }
   } catch (e) {
     console.error('[webhook:instagram] error:', e && e.message);

@@ -95,6 +95,8 @@ router.post('/:id/replay', requireAdmin, asyncHandler(async (req, res) => {
     .from('failed_turns').select('id, service, phone, payload, state').eq('id', id).single();
   if (loadErr || !row) return errRes(res, 404, 'Failed turn not found.');
   if (row.state !== 'dead') return errRes(res, 409, `Already ${row.state}.`);
+  // CE-46 IGD-2 cut 2b (F7 (a)): an Instagram turn is never replayed into the WhatsApp door; its DM is already on its thread.
+  if (row.service === 'instagram') return errRes(res, 409, 'An Instagram turn is not replayed. The message is on its thread; discard this one.', 'replay_refused_instagram');
 
   const secret = process.env.INTERNAL_REPLAY_SECRET;
   const base   = selfUrlFor(row.service);

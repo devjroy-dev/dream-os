@@ -1,0 +1,17 @@
+# scripts/floor-manifest-ce46-igd2-cut2b.txt
+# CE-46 · IGD-2 · CUT 2b (dream-os): Eliza answers Instagram DMs through the caller (igReply.js), the hand-off (igInbound.receive),
+# the route's dead-letter catch, failedTurns.js's Instagram refusal (F7 (a)), 0175 (STOP), rung b136; b119 1.3 re-aimed by label.
+# BASE: 6034c10 (the chair, 27 September 2026; built on 7b4c036, carried by command to dc1dfd1 and then 6034c10). F-19.16: a dirty path outside this list is a STOP.
+# A-45.3: no new folder (src/lib/instagram/ exists).
+src/lib/instagram/igReply.js
+src/lib/instagram/igInbound.js
+src/index.js
+src/api/admin/failedTurns.js
+db/migrations/0175_ig_dm_stop.sql
+scripts/b136_igd2_ig_reply_bench.js
+scripts/b119_igd1_ig_door_bench.js
+scripts/lib/b136r_0175_plant.sql
+scripts/lib/b136r_0175_rehearse.sh
+docs/handovers/TDW_CE46_IGD2_2b_HANDOVER.md
+scripts/floor-manifest-ce46-igd2-cut2b.txt
+docs/handovers/TDW_CE45_IGD1_SEAT_CLOSE.md

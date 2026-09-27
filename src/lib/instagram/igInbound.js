@@ -12,13 +12,15 @@
 //   recordInbound      finds her by the account id, finds or makes ONE Instagram couple_thread per sender (0173's partial UNIQUE),
 //                      and writes the message row: channel 'instagram', sent_by 'couple' (or 'vendor' for an echo), the mid in
 //                      message_sid (its UNIQUE index drops Meta's retries, which run for 36 hours).
-// NOT IN THIS CUT: the reply. Eliza's turn is wired in cut 2b (the counterparty parameter); the Send API, the 24-hour window and
-// the 1000-byte split are cut 2a-ii. Until then a DM is received and recorded, never answered. The one clock read stamps the
-// thread's last_message_at, as the WhatsApp couple lane does (vendorInbound.js :190).
+//   receive            CE-46 IGD-2 cut 2b (F1 (a) ruled): records the DM, then, for a new couple message (not a retry, not an
+//                      echo), hands it to the caller (igReply.reply, injected) under withTurnLock keyed on the THREAD, so two DMs
+//                      from one couple never run two turns at once. The turn's own throw reaches the route's dead-letter catch.
+// The one clock read in recordInbound stamps the thread's last_message_at, as the WhatsApp couple lane does (vendorInbound.js :190).
 const metaInbound = require('../metaInbound');
 const webhookCore = require('../webhookCore');
 const cap = require('../capabilities');
 const igConnection = require('../vendor/igConnection');
+const { turnKey, withTurnLock } = require('../turnLock');
 
 const GATE = 'perm.instagram_business_manage_messages';
 const s = (v, max = 200) => (typeof v === 'string' && v.length > 0 && v.length <= max ? v : null);
@@ -91,4 +93,15 @@ async function recordInbound(supabase, msg, env) {
   return { ok: true, conversationId: t.id, vendorId: who.vendorId, echo: msg.echo, made: t.made };
 }
 
-module.exports = { GATE, verifyIgSignature, parseIgMessages, laneOpen, findOrMakeThread, recordInbound };
+// deps: { reply(args) -> result, nowMs() }. Returns { recorded, reply } where reply is null when no turn was asked for.
+async function receive(supabase, msg, env, deps) {
+  const recorded = await recordInbound(supabase, msg, env);
+  if (!recorded.ok || recorded.dup || recorded.echo) return { recorded, reply: null };
+  const receivedAtMs = deps.nowMs();
+  const reply = await withTurnLock(turnKey('instagram', recorded.conversationId), () => deps.reply({
+    vendorId: recorded.vendorId, conversationId: recorded.conversationId, igsid: msg.igsid, text: msg.text, receivedAtMs,
+  }));
+  return { recorded, reply };
+}
+
+module.exports = { GATE, verifyIgSignature, parseIgMessages, laneOpen, findOrMakeThread, recordInbound, receive };
