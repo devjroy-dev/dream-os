@@ -24,6 +24,7 @@ const {
 } = require('./lib/metaInbound');
 const ownNumberMap = require('./lib/ownNumber/wabaMap');     // CE-45 G6-1 2a (read-first G1/G2)
 const ownNumberEvents = require('./lib/ownNumber/events');
+const ownNumberForward = require('./lib/ownNumber/forward'); // CE-46 G6-2 2b (F6 (a))
 const {
   sidSeen, recordSid, captureDeadLetter, GRACEFUL_TURN_LINE,
 } = require('./lib/webhookCore');
@@ -227,11 +228,14 @@ app.post('/webhook/meta', async (req, res) => {
       } else if (route === 'bride' || route === 'vendor') {
         await forwardChange(route, subBody, phoneNumberId);
       } else if (route === 'own') {
-        try { await ownNumberEvents.handle(supabase, own, change); }
+        let kept = false;
+        try { await ownNumberEvents.handle(supabase, own, change); kept = true; }
         catch (e) {
           console.error(`${SERVICE_TAG} own-number change for ${own.vendor_id} failed:`, e && e.message);
           await captureDeadLetter({ supabase, service: 'ingress-own-number', phone: null, payload: subBody, error: e });
         }
+        // CE-46 G6-2 2b (F6 (a)): recorded first, then a couple's message goes to the vendor service's own-number route.
+        if (kept) await ownNumberForward.forwardOwn({ own, change, captureDeadLetter, supabase, tag: SERVICE_TAG });
       } else {
         console.warn(`${SERVICE_TAG} unknown recipient PNID ${phoneNumberId || '(none)'}, dropping change`);
       }

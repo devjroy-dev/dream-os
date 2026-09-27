@@ -3,14 +3,16 @@
 // { open, reason, reason_text, launch, number } beside `ok`. FE_1 validates it and renders the shell on
 // anything it cannot read, so a failure here is dark, never a broken screen.
 //
-// ⚠ WALK MODE IS THE ONLY WAY THIS DOOR OPENS IN 2a (read-first F2, ruled; c-45.3: a scope stated in
-// prose carries a mechanism, and this is it). `open` is true ONLY when flag.own_number reads 'armed' AND
-// the vendor is the one named in OWN_NUMBER_WALK_VENDOR_ID. The status 'on' is deliberately NOT
-// honoured: until 2b a couple writing to a connected number gets no reply, so no real vendor may
-// connect. 2b is the cut that edits `openFor` below; nothing else may.
-//
-// The per-tier rows (flag.own_number.<tier>, seeded by 0171, FQ3) are read and REPORTED here so the
-// switchboard's state is visible in the door's reason, but they gate nothing until 2b.
+// ⚠ THE ONE GATE (CE-46 G6-2 2b, the chair's F7 (a), 27 September 2026; `openFor` below, and nothing else).
+// It opens for a vendor when EITHER:
+//   · walk mode: flag.own_number reads 'armed' AND the vendor is OWN_NUMBER_WALK_VENDOR_ID (unchanged from 2a), OR
+//   · flag.own_number reads 'on' AND her tier's row (flag.own_number.<tier>, seeded 'off' by 0171, FQ3) reads 'on'.
+// 'on' without her tier's row 'on' stays shut. When the caller passes her number's `status` (the answering seam,
+// src/lib/ownNumber/turn.js), the gate is also shut unless that status is 'active': a pending, suspended or
+// migrated_out number never answers (§7b constraint 3). The door and the connect pass no status: they decide
+// whether she may START connecting, before any row exists.
+// R-45.32 still holds by DATA, not by code: flag.own_number stays off for every vendor but DEV440 until the
+// founder's word after 2b's walk.
 //
 // ⚠ A NUMBER ON FILE IS SHOWN WHETHER OR NOT THE DOOR IS OPEN: a vendor whose number is connected must
 // always see its state, pause included (§7b constraint 3).
@@ -37,15 +39,19 @@ function launchFrom(env = process.env) {
   };
 }
 
-/** THE GATE. Pure: the two switch rows, the vendor, the env. 2b edits this function and no other. */
-function openFor({ masterRow, vendorId, env = process.env }) {
+/** THE GATE. Pure: the switch rows, the vendor, the env, and (at the answering seam only) her number's status. */
+function openFor({ masterRow, tierRow, vendorId, env = process.env, status }) {
   const walkVendor = env.OWN_NUMBER_WALK_VENDOR_ID || '';
-  const status = masterRow ? masterRow.status : null;
-  if (status === 'armed' && walkVendor && vendorId === walkVendor) return { open: true, reason: null };
+  const master = masterRow ? masterRow.status : null;
+  const tier = tierRow ? tierRow.status : null;
+  const numberOk = status === undefined || status === 'active';
+  const numberReason = `her number is ${status || 'not connected'}`;
+  if (master === 'armed' && walkVendor && vendorId === walkVendor) return numberOk ? { open: true, reason: null } : { open: false, reason: numberReason };
+  if (master === 'on' && tier === 'on') return numberOk ? { open: true, reason: null } : { open: false, reason: numberReason };
   if (!masterRow) return { open: false, reason: `${MASTER} has no row on the switchboard` };
-  if (status === 'armed') return { open: false, reason: `${MASTER} is armed for the walk vendor only` };
-  if (status === 'on') return { open: false, reason: `${MASTER} is on, but 2a honours walk mode only (2b opens it)` };
-  return { open: false, reason: `${MASTER} is ${status} on the switchboard` };
+  if (master === 'armed') return { open: false, reason: `${MASTER} is armed for the walk vendor only` };
+  if (master === 'on') return { open: false, reason: `${MASTER} is on, but her tier's switch is ${tier || 'absent'}` };
+  return { open: false, reason: `${MASTER} is ${master} on the switchboard` };
 }
 
 function numberView(row) {
@@ -57,7 +63,7 @@ async function answer({ vendor, supabase, env = process.env, capApi = cap }) {
   const masterRow = await capApi.get(MASTER);
   const tk = tierKey(vendor && vendor.tier);
   const tierRow = tk ? await capApi.get(tk) : null;
-  const gate = openFor({ masterRow, vendorId: vendor && vendor.id, env });
+  const gate = openFor({ masterRow, tierRow, vendorId: vendor && vendor.id, env });
   const launch = gate.open ? launchFrom(env) : null;
   const open = gate.open && !!launch;
   const reason = gate.open && !launch ? 'META_APP_ID or OWN_NUMBER_CONFIG_ID is not set on this service' : gate.reason;

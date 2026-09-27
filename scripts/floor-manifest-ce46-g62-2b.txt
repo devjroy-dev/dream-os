@@ -1,0 +1,19 @@
+# CE-46 · G6-2 · 2b · a couple writes to her own number and TDW answers on it · base 6efcf91 (built on 7e03e32, carried by command) · r3
+# floor-base unchanged: the differential at da9c7ef (83 benches, engine built both sides) read identical exits and PASS lines 4408 = 4408; output deltas b121 (re-labelled) and b07_p5 (path only).
+docs/handovers/TDW_CE45_G61_0172_HANDOVER.md
+docs/handovers/TDW_CE46_G62_2b_HANDOVER.md
+scripts/b121_g61_own_number_srv_bench.js
+scripts/b137_g62_own_number_turn_bench.js
+scripts/floor-manifest-ce46-g62-2b.txt
+scripts/lib/b137_pgdouble.js
+src/index.js
+src/lib/ownNumber/connect.js
+src/lib/ownNumber/door.js
+src/lib/ownNumber/forward.js
+src/lib/ownNumber/route.js
+src/lib/ownNumber/send.js
+src/lib/ownNumber/token.js
+src/lib/ownNumber/turn.js
+src/lib/ownNumber/wabaMap.js
+src/lib/vendorInbound.js
+src/marketingIndex.js

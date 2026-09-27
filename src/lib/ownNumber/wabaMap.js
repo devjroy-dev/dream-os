@@ -31,4 +31,31 @@ async function lookup(supabase, { phoneNumberId, wabaId }, now = Date.now) {
   }
 }
 
-module.exports = { lookup, _reset, CACHE_MS };
+// ── CE-46 G6-2 2b · F-44.207 (b): IS THIS SENDER ON TDW'S SHARED LINE A CONNECTED OWN NUMBER? ──────────────────────
+// A relay from TDW's line to a lead whose phone is a vendor's own number lands on that number; if the own-number turn
+// answered it, TDW's line would read that number writing in as a client and answer back: a loop between our own lines.
+// vendorInbound.js asks this ONCE at the head of its couple branch and gives such a sender no couple turn.
+// display_number is Meta's display form ("+91 87577 88550"), so the match is by digits over the ACTIVE rows, read at most
+// once per CACHE_MS. A failed read answers false and is logged: the shared lane then behaves exactly as before this cut.
+let activeCache = null; // { at, set }
+async function activeOwnDigits(supabase, now = Date.now) {
+  if (activeCache && now() - activeCache.at < CACHE_MS) return activeCache.set;
+  try {
+    const { data, error } = await supabase.from('vendor_wabas').select('display_number').eq('status', 'active');
+    if (error) { console.warn(`[own-number] active-number read: ${error.message}`); return new Set(); }
+    const set = new Set((data || []).map((r) => String((r && r.display_number) || '').replace(/\D/g, '')).filter((d) => d.length >= 10));
+    activeCache = { at: now(), set };
+    return set;
+  } catch (e) {
+    console.warn(`[own-number] active-number read: ${e && e.message}`);
+    return new Set();
+  }
+}
+async function isConnectedOwnNumber(supabase, phone, now = Date.now) {
+  const d = String(phone == null ? '' : phone).replace(/\D/g, '');
+  if (d.length < 10) return false;
+  return (await activeOwnDigits(supabase, now)).has(d);
+}
+function _resetActive() { activeCache = null; }
+
+module.exports = { lookup, _reset, CACHE_MS, activeOwnDigits, isConnectedOwnNumber, _resetActive };

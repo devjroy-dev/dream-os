@@ -542,6 +542,13 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     }
 
     if (!vendor) {
+      // ── CE-46 G6-2 2b · F-44.207 (b), ruled: a sender whose phone is a CONNECTED OWN NUMBER (vendor_wabas, active) gets
+      // no couple turn on TDW's line, so a relay to a lead at a vendor's own number can never loop between our own lines.
+      // ONE bounded guard; src/lib/ownNumber/wabaMap.js isConnectedOwnNumber holds the read.
+      if (await require('./ownNumber/wabaMap').isConnectedOwnNumber(supabase, phone)) {
+        console.log(`[routing:own-number] ${phone} is a connected own number: no couple turn (F-44.207)`);
+        return;
+      }
       // ── Couple routing — disambiguation-aware (Session 8.5 Step 10) ──
       //
       // Order:

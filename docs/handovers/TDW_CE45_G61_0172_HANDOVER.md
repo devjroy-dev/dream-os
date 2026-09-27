@@ -37,3 +37,13 @@ Standing cure for **F-44.169** going forward: **A-45.8**, pinned by b128.
 0172 pasted in Supabase (one transaction), then the report query in its own tab (both tables: service_role with all
 seven). Then /vendor/number opened once, and Railway's dream-os log shows no new "permission denied" line (the room stays
 the shell: 2a is dark until S4).
+
+## The walk, as recorded (25 September 2026)
+
+Carried into the tree by G6-2 (CE-46) with its first dream-os delivery, verbatim from G6-1's seat-close (27 September 2026).
+
+Part A 23:29 IST: 0172's BEGIN, two GRANTs, COMMIT in Supabase, "Success. No rows returned". A2: vendor_wa_events and
+vendor_wabas each with postgres and service_role holding DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE; no anon
+or authenticated row. Part B: b128 13/0, FLOOR = NAMED BASE, 2f49ac0..08025d4, five of five byte-identical to 0172_1b. Part C
+23:51 to 23:54 IST: Railway dream-os 2b7836a9, Deploy Logs "wabas": no logs found; /solutions/number 304 where it was 500.
+F-44.168 cured on production (confirmed again by IGD-1, 26 September). A-45.8 standing, pinned by b128.

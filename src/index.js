@@ -200,6 +200,10 @@ app.post('/webhook/instagram', async (req, res) => {
   }
 });
 
+// ── CE-46 G6-2 2b · A VENDOR'S OWN NUMBER (F6 (a)): the shared receiver forwards her couples' messages HERE, never to
+// /webhook/meta. src/lib/ownNumber/route.js holds the trust rule and the handler; this line only mounts it.
+{ const own = require('./lib/ownNumber/route'); app.post(own.ROUTE, own.ownInboundRoute({ supabase, anthropic })); }
+
 // ── Vendor inbound — Meta Cloud API, the only inbound (M2b). The Twilio /webhook/whatsapp
 // and /webhook/twilio-status routes are DELETED; both now answer 404, which is the sunset's
 // witnessed proof. Delivery statuses arrive here via extractStatuses. ────────────────────

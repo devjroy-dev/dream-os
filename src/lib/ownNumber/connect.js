@@ -44,9 +44,12 @@ async function connect({ vendor, body, supabase, env = process.env, fetchImpl = 
   const b = readBody(body);
   if (!b) return refuse('bad_body', TEXT_FAILED);
 
-  // 1 · the gate, exactly the door's (walk mode only in 2a).
-  const masterRow = await (capApi || require('../capabilities')).get(door.MASTER);
-  if (!door.openFor({ masterRow, vendorId: vendor.id, env }).open) return refuse('closed', TEXT_FAILED);
+  // 1 · the gate, exactly the door's (door.js openFor, the one gate).
+  const caps = capApi || require('../capabilities');
+  const masterRow = await caps.get(door.MASTER);
+  const tk = door.tierKey(vendor && vendor.tier);
+  const tierRow = tk ? await caps.get(tk) : null; // CE-46 G6-2 2b: the one gate reads her tier's row (F7 (a))
+  if (!door.openFor({ masterRow, tierRow, vendorId: vendor.id, env }).open) return refuse('closed', TEXT_FAILED);
   const appId = env.META_APP_ID; const appSecret = env.META_APP_SECRET;
   if (!appId || !appSecret) return refuse('not_configured', TEXT_FAILED);
 

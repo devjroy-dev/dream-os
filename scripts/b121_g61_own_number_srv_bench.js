@@ -117,8 +117,11 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
   ok((nr.match(/requireAuth, resolveVendor\(\)/g) || []).length === 2, '1.3 both doors are hers alone: requireAuth then resolveVendor(), mode A');
   const mk = read('src/marketingIndex.js');
   ok(/const own = lane \? null : await ownNumberMap\.lookup\(supabase, \{ phoneNumberId, wabaId: entryId \}\);/.test(mk) && /const route = routeChange\(lane, phoneNumberId, own\);/.test(mk)
-    && /else if \(route === 'own'\) \{\s+try \{ await ownNumberEvents\.handle\(supabase, own, change\); \}/.test(mk) && !/forwardChange\('own'/.test(mk),
-    '1.4 the receiver asks the map only when no env lane owns the change, and handles own-number traffic in place, never forwarded');
+    && /else if \(route === 'own'\) \{\s+let kept = false;\s+try \{ await ownNumberEvents\.handle\(supabase, own, change\); kept = true; \}/.test(mk) && !/forwardChange\('own'/.test(mk),
+    // RE-AIMED BY LABEL, CE-46 G6-2 2b (F6 (a), ruled): own-number traffic is still RECORDED in place first and never goes
+    // through forwardChange (so never to /webhook/meta); only after it is kept does forward.js send a couple's message to
+    // the vendor service's own route. b137 §7 drives that forward.
+    '1.4 the receiver asks the map only when no env lane owns the change, records own-number traffic in place first, never through forwardChange');
   const mig = read('db/migrations/0171_own_number.sql');
   ok((mig.match(/ENABLE ROW LEVEL SECURITY/g) || []).length === 2 && /^BEGIN;$/m.test(mig) && /^COMMIT;$/m.test(mig) && mig.indexOf('ENABLE ROW LEVEL SECURITY') < mig.indexOf('COMMIT;'),
     '1.5 0171 enables RLS on both new tables inside its one transaction (SEC-1)');
@@ -137,7 +140,9 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
   const D = fresh('src/lib/ownNumber/door.js');
   const g = (status, id, env = ENV) => D.openFor({ masterRow: status ? { status } : null, vendorId: id, env }).open;
   ok(g('armed', WALK) && !g('armed', OTHER) && !g('on', WALK) && !g('on', OTHER) && !g('off', WALK) && !g(null, WALK) && !g('armed', WALK, { ...ENV, OWN_NUMBER_WALK_VENDOR_ID: '' }),
-    '2.2 walk mode is the only opening: armed AND the walk vendor; on, off, absent, or no walk vendor set -> shut (F2)');
+    // RE-LABELLED, CE-46 G6-2 2b (F7 (a)): the cell's cases are unchanged and still hold; 'on' now opens only WITH her tier's
+    // row 'on' (b137 §2), which none of these cases passes.
+    '2.2 without her tier\u2019s row on, walk mode is the only opening: armed AND the walk vendor; on, off, absent, or no walk vendor set -> shut');
   ok(D.launchFrom(ENV).app_id === '1425513376067685' && D.launchFrom({ ...ENV, OWN_NUMBER_CONFIG_ID: '' }) === null && D.launchFrom(ENV).extras.shared === null
     && JSON.stringify(D.launchFrom({ ...ENV, OWN_NUMBER_EXTRAS_SHARED: '{"setup":{},"x":1}' }).extras.shared) === '{"setup":{},"x":1}' && D.launchFrom({ ...ENV, OWN_NUMBER_EXTRAS_SHARED: '{bad' }).extras.shared === null,
     '2.3 the launch comes from Railway only; a missing id means nothing to launch; per-way extras are passed through, junk ignored');
@@ -220,8 +225,9 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
       '4.1 the walk vendor on an armed switch: open, with the launch', JSON.stringify(a));
     ok(b.open === false && b.launch === null && b.number && b.number.status === 'suspended' && b.number.way === 'shared',
       '4.2 anyone else: shut, and a number on file is still shown with its state (§7b constraint 3)', JSON.stringify(b));
-    ok(c.open === false && /2a honours walk mode only/.test(c.reason) && /flag\.own_number\.signature is absent/.test(c.reason),
-      '4.3 ON reads shut, and the reason names the master and her tier\u2019s row (FQ3)', c.reason); }
+    // RE-AIMED BY LABEL, CE-46 G6-2 2b (F7 (a)): ON with her tier's row absent is still shut; the reason now names her tier.
+    ok(c.open === false && /her tier's switch is absent/.test(c.reason) && /flag\.own_number\.signature is absent/.test(c.reason),
+      '4.3 ON without her tier\u2019s row reads shut, and the reason names the master and her tier\u2019s row (FQ3)', c.reason); }
 
   sec('5  the receiver\u2019s own-number events');
   const pnidMsg = { field: 'messages', value: { metadata: { phone_number_id: '106' }, messages: [{ from: '919888294440', id: 'wamid.1', type: 'text', text: { body: 'hi' } }] } };
@@ -262,8 +268,9 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
     return { applied: true, red, restored: sha(read(rel)) === before };
   };
   const res = [];
-  res.push(['M1 openFor honours ON', await mutate('src/lib/ownNumber/door.js', "if (status === 'armed' && walkVendor && vendorId === walkVendor) return { open: true, reason: null };",
-    "if ((status === 'armed' && walkVendor && vendorId === walkVendor) || status === 'on') return { open: true, reason: null };",
+  // RE-AIMED BY LABEL, CE-46 G6-2 2b (F7 (a)): the same disease, ON opening without her tier's row, on the ruled line.
+  res.push(['M1 openFor honours ON without her tier', await mutate('src/lib/ownNumber/door.js', "if (master === 'on' && tier === 'on')",
+    "if (master === 'on')",
     async () => !fresh('src/lib/ownNumber/door.js').openFor({ masterRow: { status: 'on' }, vendorId: OTHER, env: ENV }).open)]);
   res.push(['M2 own traffic forwarded to the vendor lane', await mutate('src/lib/metaInbound.js', "  if (own && own.vendor_id) return 'own';\n", '',
     async () => fresh('src/lib/metaInbound.js').routeChange(null, '106', { vendor_id: WALK }) === 'own')]);
