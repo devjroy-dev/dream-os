@@ -56,7 +56,7 @@ function monthAlone(s, today, direction) {
   return monthRange(mo > tm ? ty : ty + 1, mo);
 }
 
-function relative(s, today) {
+function relative(s, today, direction) {
   const [ty, tm] = today.split('-').map(Number);
   const wd = weekday(today);
   if (/^(today)$/.test(s)) return { from: today, to: today };
@@ -67,7 +67,8 @@ function relative(s, today) {
   if (/^(next|coming) year$/.test(s)) return { from: iso(ty + 1, 1, 1), to: iso(ty + 1, 12, 31) };
   if (/^(last|previous) year$/.test(s)) return { from: iso(ty - 1, 1, 1), to: iso(ty - 1, 12, 31) };
   // THE WEEK: "this week" is today and the six days after it, the same seven days the door's week (dueWeek.js) has always meant.
-  if (/^(this|the) week$/.test(s)) return { from: today, to: addDays(today, 6) };
+  // Read in the PAST (cut 1d: "leads added this week"), this week is the seven days ending today; otherwise today and the six after it.
+  if (/^(this|the) week$/.test(s)) return direction === 'past' ? { from: addDays(today, -6), to: today } : { from: today, to: addDays(today, 6) };
   if (/^(next|coming|the coming) week$/.test(s)) { const mon = addDays(today, ((8 - wd) % 7) || 7); return { from: mon, to: addDays(mon, 6) }; }
   if (/^(last|previous) week$/.test(s)) { const mon = addDays(today, -(((wd + 6) % 7) + 7)); return { from: mon, to: addDays(mon, 6) }; }
   // THE WEEKEND: Saturday and Sunday. "This weekend" on a Saturday is today and tomorrow; on a Sunday, today alone.
@@ -93,7 +94,7 @@ function resolveSpokenRange(spoken, opts) {
     if (typeof spoken !== 'string' || !spoken.trim()) return { ok: false, reason: 'none' };
     if (spoken.length > SPOKEN_MAX) return { ok: false, reason: 'unreadable' };
     const s = spoken.toLowerCase().replace(/[?!]+$/g, '').replace(/\s+/g, ' ').trim().replace(/^(in|on|for|during|over|of) /, '');
-    const rel = relative(s, today);
+    const rel = relative(s, today, direction);
     if (rel) return out(rel.from, rel.to);
     const mon = monthAlone(s, today, direction);
     if (mon) return out(mon.from, mon.to);

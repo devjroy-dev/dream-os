@@ -1,0 +1,8 @@
+# CE-46 ASK-1 · cut 1d · the m2 miss cured in code (leads added_as_spoken, crew in events, this week in the past) · both lanes OFF · base 9dff862
+# floor-base unchanged; touched askTools.js, spokenRange.js; their readers: b130a, b130m only (derived by command before the run).
+docs/handovers/TDW_CE46_ASK1_CUT1D_HANDOVER.md
+scripts/b130a_ask1_floor_bench.js
+scripts/b130m_ask1_measure.js
+scripts/floor-manifest-ce46-ask1-cut1d.txt
+src/lib/vendor/askTools.js
+src/lib/vendor/spokenRange.js

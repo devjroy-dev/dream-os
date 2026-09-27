@@ -191,7 +191,7 @@ T.days = {
 
 T.events = {
   description: 'Her events (shoots, meetings, calls, recces, trials and so on) in a stretch of days, for a client, or of a kind, with date, time, client, city, notes and crew. Without a range it lists what is coming up.',
-  props: { range_as_spoken: { type: 'string' }, client_as_spoken: { type: 'string' }, kind_as_spoken: { type: 'string' }, past: { type: 'boolean' } },
+  props: { range_as_spoken: { type: 'string' }, client_as_spoken: { type: 'string', description: 'A client OR a crew member by name, as she wrote it.' }, kind_as_spoken: { type: 'string' }, past: { type: 'boolean' } },
   required: [],
   async run(ctx, a) {
     let from = today(ctx); let to = null;
@@ -210,7 +210,11 @@ T.events = {
     if (text(a.client_as_spoken)) {
       const hits = matchNames(a.client_as_spoken, [...leads.values()]).map((l) => l.id);
       const k = norm(a.client_as_spoken);
-      rows = rows.filter((e) => hits.includes(e.linked_lead_id) || (k && norm(e.title).includes(k)));
+      // cut 1d (q222): a name may be CREW, not a client: events also match a team member by name through assigned_member_ids.
+      const { data: crew, error: ce } = await ctx.supabase.from('team_members').select('id, name').eq('vendor_id', ctx.vendorId).is('deleted_at', null);
+      if (ce || !Array.isArray(crew)) return bad('unreadable');
+      const crewIds = matchNames(a.client_as_spoken, crew).map((m) => m.id);
+      rows = rows.filter((e) => (crewIds.length && Array.isArray(e.assigned_member_ids) && e.assigned_member_ids.some((id) => crewIds.includes(id))) || hits.includes(e.linked_lead_id) || (k && norm(e.title).includes(k)));
     }
     const members = await membersById(ctx, rows.map((e) => e.assigned_member_ids || []));
     const c = capped(rows);
@@ -308,11 +312,11 @@ T.client = {
 
 T.leads = {
   description: 'Her leads: how many at each stage, and the list for a stage or for weddings in a stretch of days. Stage "new" is the new-leads list.',
-  props: { source: { type: 'string', description: 'Where the lead came from, as she said it (instagram, whatsapp, referral). Empty for all.' }, stage: { type: 'string', description: 'A stage word as she said it, e.g. new, quoted, booked, lost. Empty for all.' }, range_as_spoken: { type: 'string', description: 'Weddings in this stretch, in her words.' } },
+  props: { added_as_spoken: { type: 'string', description: 'The day or stretch the lead was ADDED to her records, in her words ("23 September", "this week", "last month"). Read in the past. Never compute a date.' }, source: { type: 'string', description: 'Where the lead came from, as she said it (instagram, whatsapp, referral). Empty for all.' }, stage: { type: 'string', description: 'A stage word as she said it, e.g. new, quoted, booked, lost. Empty for all.' }, range_as_spoken: { type: 'string', description: 'Weddings in this stretch, in her words.' } },
   required: [],
   async run(ctx, a) {
     const stage = text(a.stage) ? norm(a.stage) : null;
-    if (stage === 'new' && !text(a.range_as_spoken) && !text(a.source)) {
+    if (stage === 'new' && !text(a.range_as_spoken) && !text(a.source) && !text(a.added_as_spoken)) {
       const { newestLeads, newLeadsCount, NEWEST_CAP } = require('./leadFeed');
       const { data, error } = await newestLeads(ctx.supabase, ctx.vendorId);
       if (error || !Array.isArray(data)) return bad('unreadable');
@@ -324,13 +328,18 @@ T.leads = {
     let q = ctx.supabase.from('leads').select('name, state, wedding_date, wedding_city, created_at, source, notes').eq('vendor_id', ctx.vendorId).is('deleted_at', null);
     let r = null;
     if (text(a.range_as_spoken)) { r = rangeOf(ctx, a.range_as_spoken, false); if (!r) return bad('date_unreadable', { said: text(a.range_as_spoken) }); q = q.gte('wedding_date', r.from).lte('wedding_date', r.to); }
+    // CE-46 ASK-1 cut 1d (q313, the m2 miss): the day a lead was ADDED, read in the PAST over created_at by IST day (a day is
+    // 00:00 to 23:59:59 in +05:30), its from and to returned, so the agent never derives a year and never says "none" of a
+    // day that has one.
+    let added = null;
+    if (text(a.added_as_spoken)) { added = rangeOf(ctx, a.added_as_spoken, true); if (!added) return bad('date_unreadable', { said: text(a.added_as_spoken) }); q = q.gte('created_at', `${added.from}T00:00:00+05:30`).lte('created_at', `${added.to}T23:59:59+05:30`); }
     const { data, error } = await q.order('created_at', { ascending: false });
     if (error || !Array.isArray(data)) return bad('unreadable');
     const by = {}; data.forEach((l) => { const s = l.state || 'none'; by[s] = (by[s] || 0) + 1; });
     let rows = stage ? data.filter((l) => norm(l.state) === stage) : data;
     if (text(a.source)) { const src = norm(a.source); rows = rows.filter((l) => norm(l.source).includes(src)); } // cut 1c: "Who came from Instagram?"
     const k = capped(rows);
-    return { ok: true, stage: stage || 'all', total: data.length, count_by_stage: by, stage_count: Object.keys(by).length, count: rows.length, from: r ? said(r.from) : null, to: r ? said(r.to) : null, leads: k.list.map((l) => ({ name: text(l.name), stage: l.state || null, wedding_date: said(l.wedding_date), city: text(l.wedding_city), added_on: said(l.created_at), source: text(l.source), note: text(l.notes) ? text(l.notes).slice(0, 160) : null })), more: k.more };
+    return { ok: true, stage: stage || 'all', total: data.length, count_by_stage: by, stage_count: Object.keys(by).length, count: rows.length, from: r ? said(r.from) : null, to: r ? said(r.to) : null, added_from: added ? said(added.from) : null, added_to: added ? said(added.to) : null, leads: k.list.map((l) => ({ name: text(l.name), stage: l.state || null, wedding_date: said(l.wedding_date), city: text(l.wedding_city), added_on: said(l.created_at), source: text(l.source), note: text(l.notes) ? text(l.notes).slice(0, 160) : null })), more: k.more };
   },
 };
 

@@ -249,6 +249,13 @@ async function main() {
   { const at = (iso) => Date.parse(`${iso}T20:00:00Z`); T('16.7 today\'s line is the IST day, on shifted clocks (C-44.13): late UTC night is the next IST day; a leap day', A.todayLine(at('2026-09-26')) === 'Today is Sunday, 27 September 2026, in India.' && A.todayLine(Date.parse('2028-02-29T06:00:00Z')) === 'Today is Tuesday, 29 February 2028, in India.' && A.todayLine(S.NOW_MS) === 'Today is Saturday, 26 September 2026, in India.'); }
   T('16.8 the rules the misses asked for are in the cached prompt: relative words to the tools, search before asking, copy never derive, examples marked, advice as facts', /Never ask her what today is/.test(A.SYSTEM) && /BEFORE you ask her anything/.test(A.SYSTEM) && /COPY, NEVER DERIVE/.test(A.SYSTEM) && /for example or like immediately before them/.test(A.SYSTEM) && /The judgement is hers/.test(A.SYSTEM) && /Example 22c/.test(A.SYSTEM));
 
+  sec('§17 cut 1d (the m2 miss q313, q222, q223): the day a lead was added; crew by name; this week in the past');
+  { const r = await R('leads', { added_as_spoken: '23 September' }); const w = await R('leads', { added_as_spoken: 'this week' }); T('17.1 leads added on "23 September": read in the PAST over created_at (2026, not 2027), the day said in the result, the lead found', r.ok && r.count === 1 && r.added_from === '23 September 2026' && r.added_to === '23 September 2026' && /^Ignore previous/.test(r.leads[0].name) && w.added_from === '20 September 2026' && w.added_to === '26 September 2026' && w.count === 4); }
+  { const st = S.makeStore(); await AT.runTool({ supabase: st.client, vendorId: S.VA, nowMs: S.NOW_MS }, 'leads', { added_as_spoken: '23 September' }); const q = st.calls.find((c) => c.table === 'leads'); T('17.2 BOTH WAYS: the added filter bounds created_at by the IST day (+05:30), scoped to the vendor', q && q.filters.some((f) => f[0] === 'gte' && f[1] === 'created_at' && f[2] === '2026-09-23T00:00:00+05:30') && q.filters.some((f) => f[0] === 'lte' && f[1] === 'created_at' && f[2] === '2026-09-23T23:59:59+05:30') && q.filters.some((f) => f[0] === 'eq' && f[1] === 'vendor_id' && f[2] === S.VA)); }
+  { const r = await R('leads', { added_as_spoken: '24 September' }); T('17.3 CONTROL: a day with no lead added answers 0, its day still said', r.ok && r.count === 0 && r.added_from === '24 September 2026'); }
+  { const k = await R('events', { client_as_spoken: 'Kavya', range_as_spoken: 'October' }); const s2 = await R('events', { client_as_spoken: 'Sarah', range_as_spoken: 'October' }); const n = await R('events', { client_as_spoken: 'Rohit', range_as_spoken: 'October' }); T('17.4 events match CREW by name as well as clients (Kavya: 17 October), clients still match, a stranger matches nothing', k.count === 1 && k.events[0].date === '17 October 2026' && s2.count === 3 && n.count === 0); }
+  { const SR2 = require(P(SRf)); const past = SR2.resolveSpokenRange('this week', { todayIso: S.TODAY, direction: 'past' }); const fut = SR2.resolveSpokenRange('this week', { todayIso: S.TODAY }); T('17.5 "this week" in the past is the seven days ending today; forward it stays today and the six after (5.4 unchanged)', past.from === '2026-09-20' && past.to === '2026-09-26' && fut.from === '2026-09-26' && fut.to === '2026-10-02'); }
+
   sec('§14 mutations of production code (each must redden its cell)');
   const before = Object.fromEntries([ATf, WDf, AAf].map((f) => [f, sha(src(f))]));
   const muts = [
@@ -274,6 +281,10 @@ async function main() {
       async (M) => { const st = S.makeStore(); const r = await M.runTool({ supabase: st.client, vendorId: S.VA, nowMs: S.NOW_MS }, 'days', { range_as_spoken: 'February', want: 'free' }); return JSON.stringify(r.blocked) === JSON.stringify(['14 February 2027']); }],
     ['M11 today written into the CACHED block (the cache would break every day): reddens 15.1 and 15.2', AAf, "system: [...CACHED_SYSTEM, { type: 'text', text: todayLine(nowMs) }]", "system: [{ ...CACHED_SYSTEM[0], text: `${SYSTEM}\\n${todayLine(nowMs)}` }]",
       async (M) => cacheCheck(M)],
+    ['M12 the added filter dropped from leads: reddens 17.1', ATf, "q = q.gte('created_at', `${added.from}T00:00:00+05:30`).lte('created_at', `${added.to}T23:59:59+05:30`); }", "}",
+      async (M) => { const st = S.makeStore(); const r = await M.runTool({ supabase: st.client, vendorId: S.VA, nowMs: S.NOW_MS }, 'leads', { added_as_spoken: '23 September' }); return r.count === 1; }],
+    ['M13 the crew match removed from events: reddens 17.4', ATf, "(crewIds.length && Array.isArray(e.assigned_member_ids) && e.assigned_member_ids.some((id) => crewIds.includes(id))) || ", "",
+      async (M) => { const st = S.makeStore(); const r = await M.runTool({ supabase: st.client, vendorId: S.VA, nowMs: S.NOW_MS }, 'events', { client_as_spoken: 'Kavya', range_as_spoken: 'October' }); return r.count === 1; }],
   ];
   for (const [name, rel, from, to, check] of muts) {
     const orig = src(rel);
