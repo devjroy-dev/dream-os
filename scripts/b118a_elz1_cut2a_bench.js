@@ -23,11 +23,15 @@ function T(n, c) { if (c) { pass += 1; console.log(`  PASS  ${n}`); } else { fai
 const sec = (t) => console.log(`\n${t}`);
 
 // the model double
-let SCRIPT = []; const CAPTURED = [];
+let SCRIPT = []; // LABELED AMENDMENT · CE-46 ELZ-2 cut 2 (the prompt cache, F5 (b)): the couple turn now sends its system as ONE text block carrying the cache
+// breakpoint (engine.js systemBlocks); this double reads the block's text back into params.system so every cell below reads the same
+// string as before, and keeps the blocks as params.systemBlocks. What the cells prove is unchanged.
+function systemText(s) { return typeof s === 'string' ? s : Array.isArray(s) ? s.map((b) => (b && typeof b.text === 'string') ? b.text : '').join('\n') : String(s); }
+const CAPTURED = [];
 const llmPath = require.resolve(P('src/lib/llm.js'));
 const realLlm = require(llmPath);
 require.cache[llmPath].exports = { ...realLlm, llmCreate: async (provider, params) => {
-  CAPTURED.push(JSON.parse(JSON.stringify(params)));
+  CAPTURED.push({ ...JSON.parse(JSON.stringify(params)), system: systemText(params.system), systemBlocks: JSON.parse(JSON.stringify(params.system)) });
   const step = SCRIPT.shift() || { name: 'respond_to_couple', input: { message: 'ok' } };
   return { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: `t${CAPTURED.length}`, ...step }], usage: { input_tokens: 1, output_tokens: 1 } };
 } };

@@ -1,0 +1,13 @@
+# CE-46 ELZ-2 · cut 2 · the prompt cache (one breakpoint at the end of the whole system, F5 (b); the probe m135c) · base dc1dfd1
+# floor-base unchanged: the differential at dc1dfd1 over the 28 readers of engine.js and coupleSystemPrompt.js plus b135 and m135c reads only
+# b117a (+5 cells, §9) and the new probe (bare exit 0) differing; b08_p5_eliza, b115, b118a, b135 re-pinned by label (the system's text read
+# back from the block), each green both sides.
+docs/handovers/TDW_CE46_ELZ2_CUT2_HANDOVER.md
+scripts/b08_p5_eliza_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b117a_elz1_couple_bench.js
+scripts/b118a_elz1_cut2a_bench.js
+scripts/b135_elz2_channel_turn_bench.js
+scripts/floor-manifest-ce46-elz2-cut2.txt
+scripts/m135c_couple_cache_probe.js
+src/agent/engine.js

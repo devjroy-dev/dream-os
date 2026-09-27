@@ -36,7 +36,9 @@ const EN = 'src/agent/engine.js';
 // LABELED AMENDMENT · CE-46 ELZ-2 cut 1 (the channel-aware turn; W-1 lift bounded to the phone sites, the parameter and the source value):
 // runCoupleAgenticTurn re-pinned (was 48d978fd7a6e at 9dff862); the cap 820 -> 860 (resolveCounterparty, clientWord and the channel note
 // sit outside the pinned body; engine.js is 854 lines at the cut). Every other pin unchanged.
-const PIN = {"runCoupleAgenticTurn":"c846323d17834b485eb7dc900693e23f465a4077edc91e62426b0a92ec62ae17","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
+// LABELED AMENDMENT · CE-46 ELZ-2 cut 2 (the prompt cache, F5 (b)): runCoupleAgenticTurn re-pinned (was c846323d1783 at dc1dfd1); the cap
+// 860 -> 880 (the cache note and the usage line, 17 lines, inside the body). Every other pin unchanged.
+const PIN = {"runCoupleAgenticTurn":"8abaa8fb82c9e5741d33ce63892f0ff13af8a61bf301a924b3006f5ea9782f7c","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
 const DELETED = ['src/agent/tools.js', 'src/agent/systemPrompt.js', 'src/agent/classifier.js', 'src/lib/vendor/replyToCouple.js'];
 const ISLAND = ['handleOnboarding', 'executeTool', 'commit_event_proposals', 'WA_MUTATING_TOOLS'];
 
@@ -49,7 +51,7 @@ const ISLAND = ['handleOnboarding', 'executeTool', 'commit_event_proposals', 'WA
   T('1.2 no file under src names handleOnboarding, executeTool, commit_event_proposals or WA_MUTATING_TOOLS outside a comment', live.length === 0);
   T('1.3 CONTROL: the grep finds them where comments still name them (an empty answer is not a broken grep)', hits.length > 0);
   // LABELED · ELZ-1 cut 1: the cap moves from 740 to 770 lines with R-45.26 (the fact read and the fourth tool); one export still.
-  T('1.4 engine.js is the couple lane alone: 860 lines or fewer, one exported name', en.split('\n').length <= 860 && JSON.stringify(Object.keys(require(P(EN)))) === '["runCoupleAgenticTurn"]');
+  T('1.4 engine.js is the couple lane alone: 880 lines or fewer, one exported name', en.split('\n').length <= 880 && JSON.stringify(Object.keys(require(P(EN)))) === '["runCoupleAgenticTurn"]');
 
   sec('2 the couple lane, byte-identical (C-44.7, hashes from cd71986)');
   for (const f of ['runCoupleAgenticTurn', 'relayAttributionPrefix', 'markRelayProvenance', 'mergeSameRole']) T(`2.1 ${f} is byte-identical to its pin (cd71986; the couple turn and the prefix at ELZ-1 cut 1)`, sha(body(en, f)) === PIN[f]);

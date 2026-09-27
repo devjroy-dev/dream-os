@@ -33,6 +33,10 @@ function T(n, c) { if (c) { pass += 1; console.log(`  PASS  ${n}`); } else { fai
 const sec = (t) => console.log(`\n${t}`);
 
 // ── the model double: records what the model was handed; answers as scripted ──
+// LABELED AMENDMENT · CE-46 ELZ-2 cut 2 (the prompt cache, F5 (b)): the couple turn now sends its system as ONE text block carrying the cache
+// breakpoint (engine.js systemBlocks); this double reads the block's text back into params.system so every cell below reads the same
+// string as before, and keeps the blocks as params.systemBlocks. What the cells prove is unchanged.
+function systemText(s) { return typeof s === 'string' ? s : Array.isArray(s) ? s.map((b) => (b && typeof b.text === 'string') ? b.text : '').join('\n') : String(s); }
 const CAPTURED = [];
 let SCRIPT = [];
 const llmPath = require.resolve(P('src/lib/llm.js'));
@@ -40,7 +44,7 @@ const realLlm = require(llmPath);
 require.cache[llmPath].exports = {
   ...realLlm,
   llmCreate: async (provider, params) => {
-    CAPTURED.push({ provider, params: JSON.parse(JSON.stringify(params)) });
+    CAPTURED.push({ provider, params: { ...JSON.parse(JSON.stringify(params)), system: systemText(params.system), systemBlocks: JSON.parse(JSON.stringify(params.system)) } });
     const step = SCRIPT.shift() || { name: 'respond_to_couple', input: { message: 'ok' } };
     return { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: `t${CAPTURED.length}`, ...step }], usage: { input_tokens: 1, output_tokens: 1 } };
   },
@@ -283,6 +287,21 @@ async function mutated(rel, from, to, fn) {
   const m10 = await mutated('src/lib/vendor/coupleDateState.js', "    if (v.blocked === true || v.sold === true) return 'booked';", "    if (v.blocked === true || v.sold === true) return 'unsure';", async () => (await run(ON, verdictRow({ blocked: true, slots: [] }))).r.state);
   T('8.11 M10 (1c) a blocked day read as unsure reddens 3.2 (the founder\'s "booked" never reached)', m10 === 'unsure');
   T('8.7 every mutated file is restored byte for byte', !read('src/agent/coupleThreadFacts.js').includes('inConversation: false,') && read('src/lib/brideInbound.js').includes('matchOptOutExact(trimmedBody)'));
+
+  sec('9 the prompt cache (CE-46 ELZ-2 cut 2, the chair\'s F5 (b); F-44.182: the envelope here, the hit by the probe m135c)');
+  {
+    const r = await replay({ at: '2026-09-24 15:00:34+00', inbound: 'Hi', rows: upTo(ALL, '2026-09-24 15:00:30.512624+00') });
+    const blocks = r.calls[0] && r.calls[0].params.systemBlocks;
+    T('9.1 the system goes as ONE text block, its text the very string the shell composed', Array.isArray(blocks) && blocks.length === 1 && blocks[0].type === 'text' && blocks[0].text === r.calls[0].params.system);
+    T('9.2 the breakpoint sits on the LAST system block: cache_control ephemeral, nowhere else', blocks && blocks[blocks.length - 1].cache_control && blocks[blocks.length - 1].cache_control.type === 'ephemeral' && !r.calls[0].params.tools.some((t) => t.cache_control));
+    T('9.3 no reorder: the header still opens the block (the soul after it, as before this cut)', typeof blocks[0].text === 'string' && /^You answer messages for Dev Roy Photography, /.test(blocks[0].text));
+    const m11 = await mutated('src/agent/engine.js', "const systemBlocks = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];", "const systemBlocks = [{ type: 'text', text: systemPrompt }];", async () => {
+      const r2 = await replay({ at: '2026-09-24 15:00:34+00', inbound: 'Hi', rows: upTo(ALL, '2026-09-24 15:00:30.512624+00') });
+      const b2 = r2.calls[0].params.systemBlocks; return !!(b2 && b2[b2.length - 1].cache_control);
+    });
+    T('9.4 M11 the breakpoint removed reddens 9.2', m11 === false);
+    T('9.5 engine.js restored byte for byte after M11', read('src/agent/engine.js').includes("const systemBlocks = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];"));
+  }
 
   console.log(`\nb117a_elz1_couple_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
   if (fail) { console.log('FAILED:'); failed.forEach((f) => console.log(`  ${f}`)); process.exit(1); }

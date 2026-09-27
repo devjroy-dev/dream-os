@@ -119,13 +119,17 @@ if (MUTATE) applyMutation(MUTATE);
 // Everything the turn hands the model is captured here. Nothing else about the
 // turn is stubbed: the gate, the router, the allow-set, the shell assembly and
 // the tool loop are all production code doing production work.
+// LABELED AMENDMENT · CE-46 ELZ-2 cut 2 (the prompt cache, F5 (b)): the couple turn now sends its system as ONE text block carrying the cache
+// breakpoint (engine.js systemBlocks); this double reads the block's text back into params.system so every cell below reads the same
+// string as before, and keeps the blocks as params.systemBlocks. What the cells prove is unchanged.
+function systemText(s) { return typeof s === 'string' ? s : Array.isArray(s) ? s.map((b) => (b && typeof b.text === 'string') ? b.text : '').join('\n') : String(s); }
 const CAPTURED = [];
 const llmPath = require.resolve(path.join(ROOT, 'src/lib/llm.js'));
 const realLlm = require(llmPath);
 require.cache[llmPath].exports = {
   ...realLlm,
   llmCreate: async (provider, params) => {
-    CAPTURED.push({ provider, params });
+    CAPTURED.push({ provider, params: { ...params, system: systemText(params.system), systemBlocks: params.system } });
     return {
       stop_reason: 'tool_use',
       content: [{ type: 'tool_use', id: 't1', name: 'respond_to_couple',

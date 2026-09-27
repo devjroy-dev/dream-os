@@ -439,18 +439,30 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   const modelToUse  = route.model;
   console.log(`[couple-agent] model selected: ${modelToUse} (provider=${route.provider})`);
 
+  // ── CE-46 ELZ-2 cut 2 · THE PROMPT CACHE (the chair's F5 (b), 27 September 2026; F-44.182: proven by probe, m135c) ──────────
+  // ONE breakpoint at the END of the whole system, no reorder: the system goes as one text block carrying cache_control, so the
+  // prefix Anthropic hashes is tools + this system (its order: tools, system, messages). The bytes the model reads are the same
+  // string as before; only the envelope changes. On DeepSeek llm.js strips cache_control (translateFor) and the block array
+  // travels as ASK-1's already does. What this earns is honest and bounded: a HIT inside one turn (iteration 2 after a tool call
+  // rereads the identical prefix) whenever the prefix clears the model's minimum (4,096 tokens on Haiku 4.5, Anthropic's page
+  // 27 September 2026), and across turns only for the same vendor, branch and facts within the cache's 5 minutes; a branch under
+  // the minimum caches nothing and the probe records that as BELOW. The usage line below is the live witness (cache_creation,
+  // cache_read), a log line and nothing else.
+  const systemBlocks = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
+
   while (iterations < MAX_ITERATIONS) {
     iterations++;
 
     const response = await llmCreate(route.provider, {
       model: modelToUse,
       max_tokens: 512,
-      system: systemPrompt,
+      system: systemBlocks,
       tools: COUPLE_TOOLS,
       messages,
     });
 
-    console.log(`[couple-agent] iteration ${iterations}, stop_reason: ${response.stop_reason}`);
+    const u = (response && response.usage) || {};
+    console.log(`[couple-agent] iteration ${iterations}, stop_reason: ${response.stop_reason}; usage in=${u.input_tokens ?? '?'} cache_creation=${u.cache_creation_input_tokens ?? 0} cache_read=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens ?? '?'}`);
 
     const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
 
