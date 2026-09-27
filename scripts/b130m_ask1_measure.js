@@ -21,7 +21,7 @@
 //             cache_creation_input_tokens on the first, cache_read_input_tokens on the second, and each call's dollar cost. Two
 //             short calls, max_tokens 16. --model=haiku|deepseek.
 // A-45.15 FOR --live (as the chair relayed it): the projected cost is printed FIRST and the run REFUSES to start without
-//   --budget=<USD>; every run is RECORDED as it goes (one JSON line per run, in /tmp/b130m/<model>.jsonl); the run STOPS at the first
+//   --budget=<USD>; every run is RECORDED as it goes (one JSON line per run, under scripts/records/b130m/, A-46.3); the run STOPS at the first
 //   credit or billing error and when the spend reaches the budget; --resume runs only what did not run (keyed by question id and
 //   repetition), and the verdict is read over everything recorded. Cost per run is computed from the API's own usage fields.
 // TOLERANCE (the chair): m2 and m3 at ZERO misses; m1, m4 and m5 at most ONE in twenty, per rule per model. Above it the prompt is
@@ -240,15 +240,23 @@ async function probe() {
 }
 
 async function live() {
-  const fs = require('fs'); const os = require('os');
+  const fs = require('fs');
   const { llmCreate } = require(P('src/lib/llm.js'));
   const which = arg('model', ''); if (!MODELS[which]) { console.log('--live needs --model=haiku or --model=deepseek (one model a run)'); return false; }
   const budget = Number(arg('budget', 'NaN')); const price = PRICES[which];
   const limit = Number(arg('limit', 0)); let qs = agentQuestions(); if (limit > 0) qs = qs.slice(0, limit);
   const plan = []; for (const q of qs) { const N = q.strat === 'missed' ? Number(arg('n-missed', 10)) : Number(arg('n-rest', 1)); for (let i = 0; i < N; i += 1) plan.push({ q, key: `${q.id}#${i}` }); }
-  const dir = path.join(os.tmpdir(), 'b130m'); fs.mkdirSync(dir, { recursive: true }); const file = path.join(dir, `${which}.jsonl`);
+  // A-46.3 (CE-46 ASK-2 cut 2a, F3 (a) as ruled; e-197's cure): the record lives UNDER THE REPO ROOT, never in /tmp, at
+  // scripts/records/b130m/ (ignored by git: .gitignore `scripts/records/`). Its default name carries the model, the tip and the
+  // clock, so two runs never collide; --record=<path> names it outright. An EXISTING path REFUSES (exit 2) unless --resume,
+  // which reads what is kept and APPENDS. Nothing is ever renamed or written over.
+  const dir = path.join(ROOT, 'scripts', 'records', 'b130m'); fs.mkdirSync(dir, { recursive: true });
+  try { const ig = path.join(ROOT, 'scripts', 'records', '.gitignore'); if (!fs.existsSync(ig)) fs.writeFileSync(ig, '*\n'); } catch (_e) { /* the root .gitignore line is the founder's, applied with this cut */ }
+  const tip = (() => { try { return require('child_process').execSync('git rev-parse --short HEAD', { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (_e) { return 'notip'; } })();
+  const clock = new Date().toISOString().replace(/[-:]/g, '').replace(/T(\d{4})\d{2}\.\d+Z$/, '-$1');
+  const file = path.resolve(ROOT, arg('record', path.join(dir, `b130m_${which}_${tip}_${clock}.jsonl`)));
+  if (fs.existsSync(file) && !argv.includes('--resume')) { console.log(`REFUSED: ${file} exists (A-46.3). A record is never written over: name another with --record=<path>, or --resume to read it and append. Nothing was called.`); process.exit(2); }
   const done = new Map(); if (argv.includes('--resume') && fs.existsSync(file)) fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).forEach((l) => { try { const r = JSON.parse(l); if (r.key && r.final && r.ok === true) done.set(r.key, r); } catch (_e) { /* a torn line */ } }); // --resume runs only what has no KEPT result: an errored run runs again
-  if (!argv.includes('--resume') && fs.existsSync(file)) fs.renameSync(file, `${file}.${Date.now()}.old`);
   const todo = plan.filter((p) => !done.has(p.key));
   const per = Number(arg('per-question-usd', which === 'haiku' ? 0.0045 : 0.0012));
   console.log(`PROJECTED: ${todo.length} runs to go of ${plan.length} (${done.size} already recorded), about $${(todo.length * per).toFixed(2)} at about $${per} a question (${price ? price.src : 'price unknown'}); record: ${file}`);

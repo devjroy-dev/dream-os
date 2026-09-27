@@ -87,8 +87,13 @@ function todayLine(nowMs) {
   const [y, m, dd] = d.split('-').map(Number);
   return `Today is ${WEEKDAYS[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()]}, ${longDateYear(d)}, in India.`;
 }
-function requestParams(model, messages, nowMs) {
-  return { model, max_tokens: MAX_TOKENS, system: [...CACHED_SYSTEM, { type: 'text', text: todayLine(nowMs) }], tools: CACHED_TOOLS, messages };
+// THE LAST ROUND IS TEXT-ONLY (CE-46 ASK-2 cut 2a, F2 (b) as ruled; q335's too_many_rounds on the run of record): on round
+// MAX_ROUNDS the request carries NO tools, so the model must answer from the results it already holds, and a question that
+// needs one round more than the bound still gets an answer instead of the glitch line. The cached prefix (tools, system) is
+// unchanged for every other round; the tool-less final round is its own prefix (system alone, still above the minimum).
+function requestParams(model, messages, nowMs, opts) {
+  const final = !!(opts && opts.final === true);
+  return { model, max_tokens: MAX_TOKENS, system: [...CACHED_SYSTEM, { type: 'text', text: todayLine(nowMs) }], ...(final ? {} : { tools: CACHED_TOOLS }), messages };
 }
 
 function sumUsage(a, b) {
@@ -143,7 +148,7 @@ async function answerQuestion(ctx, deps = {}) {
       const messages = alternate([...thread, { role: 'user', content: String(c.message).trim().slice(0, 2000) }]);
       if (!messages.length || messages[messages.length - 1].role !== 'user') messages.push({ role: 'user', content: String(c.message).trim().slice(0, 2000) });
       for (let round = 1; round <= MAX_ROUNDS; round += 1) {
-        const resp = await create(seat.provider, requestParams(seat.model, messages, toolCtx.nowMs));
+        const resp = await create(seat.provider, requestParams(seat.model, messages, toolCtx.nowMs, { final: round === MAX_ROUNDS }));
         usage = sumUsage(usage, resp && resp.usage);
         // A reply cut at the token ceiling is never an answer: a list that ends mid-way would read as the whole (cut 1b).
         if (resp && resp.stop_reason === 'max_tokens') return { ok: false, error: 'truncated' };

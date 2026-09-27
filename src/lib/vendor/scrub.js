@@ -171,7 +171,10 @@ const { rupees: _rupeesHome } = require('../witnessLine');
 const REGISTER_RE = new RegExp(
   [
     // ₹/Rs/INR + number + optional scale word  ·  OR a bare number + scale word
-    String.raw`(?:₹|\bRs\.?|\bINR)\s*([\d,]+(?:\.\d+)?)(?:\s*(cr|crore|crores|l|lakh|lakhs|lac|lacs|k|thousand)\b)?`,
+    // F-44.210 (CE-46 ASK-2 cut 2a): a comma is part of the figure ONLY when a digit follows it. `[\d,]+` took the comma
+    // AFTER a figure as well ("Rs 76,000, due" re-dressed as "Rs 76,000 due"), eating the punctuation on every money line
+    // that a comma follows. A comma before a space, a word or the end of the line is punctuation and survives. b138 pins it.
+    String.raw`(?:₹|\bRs\.?|\bINR)\s*(\d+(?:,\d+)*(?:\.\d+)?)(?:\s*(cr|crore|crores|l|lakh|lakhs|lac|lacs|k|thousand)\b)?`,
     String.raw`\b(\d+(?:\.\d+)?)\s*(cr|crore|crores|l|lakh|lakhs|lac|lacs|k|thousand)\b`,
   ].join('|'),
   'gi',

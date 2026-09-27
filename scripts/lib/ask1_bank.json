@@ -1,5 +1,5 @@
 {
- "version": "ask1-bank-v2",
+ "version": "ask1-bank-v3",
  "today": "2026-09-26",
  "count": 362,
  "questions": [
@@ -3522,9 +3522,11 @@
    "expect": {
     "kind": "fact",
     "tools": [
-     "team"
+     "team",
+     "events"
     ]
-   }
+   },
+   "amended": "cut 2a by label (F4 as ruled): the right answer comes through events' crew match since 1d; team or events"
   },
   {
    "id": "q223",
@@ -4260,16 +4262,20 @@
    "id": "q272",
    "text": "What time is Isha's wedding?",
    "lane": "both",
-   "family": "nothing",
+   "family": "client",
    "witnessed": false,
    "source": "kickoff",
    "strat": "rest",
    "expect": {
-    "kind": "not_in_records",
+    "kind": "fact",
     "tools": [
      "client"
+    ],
+    "facts": [
+     "5 March 2027"
     ]
-   }
+   },
+   "amended": "cut 2a by label (F4 as ruled): a fact, the wedding date from the store (la-isha 2027-03-05); the absent time is said beside it"
   },
   {
    "id": "q273",
@@ -4519,9 +4525,15 @@
    "source": "kickoff",
    "strat": "rest",
    "expect": {
-    "kind": "handback",
-    "tools": []
-   }
+    "kind": "fact",
+    "tools": [
+     "day"
+    ],
+    "facts": [
+     "24 October 2026"
+    ]
+   },
+   "amended": "cut 2a by label (F4 as ruled): 24 October 2026 is BLOCKED in the store (ea-block-oct2), so no booking is due and no hand-back; the day's state is the fact"
   },
   {
    "id": "q291",

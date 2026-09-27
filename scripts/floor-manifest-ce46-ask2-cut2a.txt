@@ -1,0 +1,10 @@
+# CE-46 ASK-2 · cut 2a · F-44.210 (scrub's comma), the text-only last round (F2 b), the record home (A-46.3), bank v3 · both lanes OFF · base da9c7ef (r2; 2a was cut on dc1dfd1, carried onto 6034c10 and da9c7ef by command, diff byte-identical each time)
+# floor-base unchanged; touched scrub.js, askAgent.js; their readers (grep -l "scrub\|askAgent\|ask1_bank" scripts/*.js, 20) identical by name and count at base and cut except b130a 119 -> 126; b138 new.
+docs/handovers/TDW_CE46_ASK2_CUT2A_HANDOVER.md
+scripts/b130a_ask1_floor_bench.js
+scripts/b130m_ask1_measure.js
+scripts/b138_scrub_comma_bench.js
+scripts/floor-manifest-ce46-ask2-cut2a.txt
+scripts/lib/ask1_bank.json
+src/lib/vendor/askAgent.js
+src/lib/vendor/scrub.js
