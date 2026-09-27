@@ -31,7 +31,17 @@ call on the credit error, 16 calls did not run, exit 3; --resume then reports 16
 ## 3 · The measure (the founder's run, his keys, block 2M; rates to the chair)
 
 Projected: about $0.27 without history and $0.28 with, 160 listener calls each on claude-haiku-4-5-20251001; budget $1 each.
-RATES: to be filled from his two TOTAL lines (heard as a relay N/160 without history; N/160 with history; errors; spend).
+RATES (his run, 27 September 2026, claude-haiku-4-5-20251001, N = 10; both under budget; filed with cut 1's docs):
+  m181 TOTAL (live without history): heard as a relay 40/160 (25.0%), errors 0, spent $0.2922 by the API's own usage
+  m181 TOTAL (live with history): heard as a relay 125/160 (78.1%), errors 0, spent $0.3121 by the API's own usage
+By client (relay hits of 80): walk twin 34 without, 79 with; Sarah 6 without, 46 with. "tell walk twin we're confirmed" was heard as
+booking_confirmed 7/10 without history and never with it; every miss with history is none/none. The weakest live case is a bare
+greeting (hello, hi, good morning) to a one-word name with no recent relay: 0/30 without history, 8/30 with. The two threads differ
+in length as well as in name (six rows against four), so the name's own share is not isolated by this run.
+THE CURE, ruled by the chair on these rates (27 September) and NOT in this seat's package: a door-side rule in code on the vendor
+lane, the listener untouched: a message that opens with a relay verb (tell, bata, batao, message, send) followed by a name matching
+ONE known client of hers is a relay by construction, the body the rest, the ear consulted only for details; the same match on two
+clients numbers them (R-45.23). Its own package after the channel-aware turn lands, the next seat's under R-46.1.
 
 ## 4 · Open
 

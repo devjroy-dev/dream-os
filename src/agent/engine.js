@@ -179,12 +179,13 @@ function mergeSameRole(acc, msg) {
 // must reach someone). The LAST date read of the turn decides. {client}: the lead's name, else "...NNNN"; {date}: the day as
 // "5 March 2028", else the words she used. Joined after any capture or returning notification. TOTAL: never throws.
 const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-function dateLineFor(audit, { leadName, couplePhone }) {
+function dateLineFor(audit, { leadName, cp }) {
   try {
     const reads = (Array.isArray(audit) ? audit : []).filter((t) => t && t.name === 'date_state');
     const last = reads[reads.length - 1];
     if (!last || last.state === 'free') return null;
-    const client = (typeof leadName === 'string' && leadName.trim()) ? leadName.trim() : `...${String(couplePhone || '').slice(-4)}`;
+    // CE-46 ELZ-2 cut 1: {client} through clientWord (WhatsApp: the last four digits as before; Instagram: the founder's word).
+    const client = clientWord(leadName, cp || { channel: 'whatsapp_shared', phone: null });
     let date = null;
     if (typeof last.dateIso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(last.dateIso)) {
       const [y, m, d] = last.dateIso.split('-').map(Number); date = `${d} ${MONTHS_LONG[m - 1]} ${y}`;
@@ -209,7 +210,41 @@ async function recordVendorNotice(supabase, vendor, vendorUser, text) {
   } catch (e) { try { console.warn('[couple-agent] vendor notice not recorded:', e && e.message); } catch (_e) { /* */ } return false; }
 }
 
-async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic }) {
+// ── CE-46 ELZ-2 cut 1 · THE CHANNEL-AWARE TURN (the chair's F1 (a), 27 September 2026; W-1 lift bounded to the phone sites) ──────
+// ONE turn answers on TDW's shared line, on a vendor's own number and on Instagram. The channel enters as ONE optional parameter,
+// `counterparty`, defaulting to today's shape so the four WhatsApp callers (vendorInbound.js) are byte-identical (the A-dedupe(α)
+// precedent above; b135 pins the four call sites):
+//   { channel: 'whatsapp_shared' | 'whatsapp_own' | 'instagram',
+//     phone: E.164 | null,            the couple's key on WhatsApp (both channels)
+//     igsid: string | null,           the couple's key on Instagram (leads.counterparty_ig_id, 0173; F-44.190: no phone there)
+//     enquireLink: string | null,     Instagram only: the studio's WhatsApp link (a fifth FACT from enquireLinkFor, §7c), given to
+//                                     the prompt so she can offer it in her words when the couple would rather talk on WhatsApp
+//                                     (IGD-1's Q2, the founder); never read on a WhatsApp channel
+//     chatted_before: boolean }       whatsapp_own only (the founder's Q4 = 2): G6-2's caller says the couple has written to this
+//                                     number before, so the prompt skips the first-contact greeting; no text of its own
+// The turn COMPOSES; the lane's caller sends and records (F2 (a)); no prefix on Eliza's replies on any channel (F3 (a), c-46.7);
+// the quiet time is the caller's (F4 (a)). On Instagram the persona path runs regardless of couple.eliza_enabled (the founder's
+// Q2 = 1): the Instagram room's own switch is the lane's only control and the caller has already read it; the shared line's
+// readLaneFlag read below stays as it is (F-44.206 cured at the lane, not by an engine byte).
+function resolveCounterparty(counterparty, couplePhone) {
+  const c = counterparty && typeof counterparty === 'object' ? counterparty : {};
+  const channel = ['whatsapp_shared', 'whatsapp_own', 'instagram'].includes(c.channel) ? c.channel : 'whatsapp_shared';
+  const phone = channel === 'instagram' ? null : ((typeof c.phone === 'string' && c.phone) ? c.phone : (couplePhone || null));
+  const igsid = channel === 'instagram' && typeof c.igsid === 'string' && c.igsid.trim() ? c.igsid.trim() : null;
+  const enquireLink = channel === 'instagram' && typeof c.enquireLink === 'string' && c.enquireLink.trim() ? c.enquireLink.trim() : null;
+  const chattedBefore = channel === 'whatsapp_own' && c.chatted_before === true;
+  return { channel, phone, igsid, enquireLink, chattedBefore };
+}
+// The client's word on the vendor's notice when no name is on file: the last four digits on WhatsApp (his bytes, unchanged); on
+// Instagram there is no number, so the founder's word (IGD-2's V1b, his yes of 27 September).
+const IG_CLIENT_WORD = 'An Instagram client';
+function clientWord(leadName, cp) {
+  if (typeof leadName === 'string' && leadName.trim()) return leadName.trim();
+  return cp.channel === 'instagram' ? IG_CLIENT_WORD : `...${String(cp.phone || '').slice(-4)}`;
+}
+
+async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic, counterparty }) {
+  const cp = resolveCounterparty(counterparty, couplePhone);
   // The row the door wrote holds what she ACTUALLY sent (γ refused: the audit row
   // is never rewritten to match a derived value). This is the string to filter on.
   const inboundBodyAsStored = (rawInboundBody === undefined || rawInboundBody === null)
@@ -250,11 +285,15 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // CE-45 ELZ-1 cut 2a (F-44.165): soft-deleted leads are not the client, and duplicates must not blank the answer. DEV440 held
   // seven rows for one number, six deleted; .maybeSingle() over seven errored to null, so a named, booked client was a stranger.
   // The live rows only, the newest first, one row.
+  // CE-46 ELZ-2 cut 1 (F-44.190): the key is the channel's: phone on WhatsApp, leads.counterparty_ig_id on Instagram (0173's partial
+  // UNIQUE leads_vendor_ig_uidx). One read, one column chosen by the channel; the WhatsApp read is byte-identical in its clauses.
+  const leadKeyColumn = cp.channel === 'instagram' ? 'counterparty_ig_id' : 'phone';
+  const leadKeyValue = cp.channel === 'instagram' ? cp.igsid : cp.phone;
   const { data: existingLeadForCouple } = await supabase
     .from('leads')
     .select('id, name, intent_summary, intent_summary_at')
     .eq('vendor_id', vendor.id)
-    .eq('phone', couplePhone)
+    .eq(leadKeyColumn, leadKeyValue)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -278,8 +317,11 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   let weddingShape = null;
   let knownBrideName = null;
   try {
-    const { data: coupleUser } = await supabase
-      .from('users').select('id, name').eq('phone', couplePhone).maybeSingle();
+    // CE-46 ELZ-2 cut 1: users are keyed by phone; an Instagram counterparty has none, so the read is SKIPPED there (no wedding
+    // shape, no known name from Frost; the chair's ruling with IGD-2, 27 September).
+    const { data: coupleUser } = cp.phone
+      ? await supabase.from('users').select('id, name').eq('phone', cp.phone).maybeSingle()
+      : { data: null };
     if (coupleUser) {
       if (coupleUser.name && coupleUser.name.trim()) knownBrideName = coupleUser.name.trim();
       const { data: coupleRec } = await supabase
@@ -293,7 +335,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     console.warn('[couple-agent] wedding-shape/name lookup failed (non-fatal):', e.message);
   }
 
-  console.log(`[couple-agent] isReturningBride=${isReturningBride} phone=${couplePhone}${leadName ? ` name=${leadName}` : ''}`);
+  console.log(`[couple-agent] isReturningBride=${isReturningBride} channel=${cp.channel} ${leadKeyColumn}=${leadKeyValue}${leadName ? ` name=${leadName}` : ''}`);
 
   // ── THE LANE GATE (FORK 5(a), CE-ruled) ─────────────────────────────────────
   // ONE gate, inside the turn, because `vendorInbound.js` reaches this function
@@ -306,7 +348,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // `useEliza:false` is proven identical to the pre-cure composer across 112
   // permutations. The flip is one admin_config row and sixty seconds, and it is
   // the founder's hand.
-  const useEliza = await readLaneFlag(supabase, 'couple.eliza_enabled');
+  // CE-46 ELZ-2 cut 1 (the founder's Q2 = 1): on Instagram the persona path runs; the flag is not consulted there.
+  const useEliza = cp.channel === 'instagram' ? true : await readLaneFlag(supabase, 'couple.eliza_enabled');
   console.log(`[couple-agent] lane=${useEliza ? 'eliza' : 'legacy'}`);
 
   // CE-45 ELZ-1 cut 1 · FACT 1 (§11 rule 1, F-44.125): the thread's WHOLE record, not the ten-minute window, says whether this
@@ -314,7 +357,9 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   const conversationFacts = await threadFacts({ supabase, conversationId: conversation.id, inboundBodyAsStored, historyLength: history.length });
   console.log(`[couple-agent] inConversation=${conversationFacts.inConversation} prior=${conversationFacts.priorCount}`);
 
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts });
+  // CE-46 ELZ-2 cut 1: the channel's two facts for the shell: the studio's WhatsApp link (Instagram only) and chatted_before
+  // (own number only). Neither is a sentence; the shell says what each means for what she writes.
+  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore });
 
   const messages = [
     ...history,
@@ -516,7 +561,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           .from('leads')
           .select('id')
           .eq('vendor_id', vendor.id)
-          .eq('phone', couplePhone)
+          .eq(leadKeyColumn, leadKeyValue)   // CE-46 ELZ-2 cut 1 (F-44.190): the channel's key, as the read above
           .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -560,7 +605,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           // Create new lead
           const { data: newLead } = await supabase.from('leads').insert({
             vendor_id:    vendor.id,
-            phone:        couplePhone,
+            phone:        cp.phone,                       // CE-46 ELZ-2 cut 1: null on Instagram (F-44.190)
+            counterparty_ig_id: cp.igsid,                 // 0173; null on WhatsApp
             name:         resolvedName,
             wedding_date: event_date,
             // F-08.87. NULL when no date was given — `leads_wedding_date_precision_check`
@@ -575,7 +621,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             function_count: input.function_count || null,
             wedding_days:   input.wedding_days   || null,
             functions:      input.functions      || null,
-            source:       'whatsapp',
+            source:       cp.channel === 'instagram' ? 'instagram' : 'whatsapp',   // CE-46 ELZ-2 cut 1 (the chair with IGD-2)
             notes:        input.notes        || null,
             state:        'new',
           }).select('id').single();
@@ -663,9 +709,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             budgetMax:   input.budget_max,
           });
 
+          // CE-46 ELZ-2 cut 1 (C2; the founder's Q3 yes, IGD-2's V1): on Instagram there is no number to name, so his line is
+          // "New enquiry on Instagram. {summary}. Lead saved."; on WhatsApp the bytes are unchanged.
+          const notifHead = cp.channel === 'instagram' ? 'New enquiry on Instagram.' : `New enquiry from ${cp.phone}.`;
           const notifMsg = enrichment
-            ? `New enquiry from ${couplePhone}. ${summary}. Lead saved.\n\n${enrichment}`
-            : `New enquiry from ${couplePhone}. ${summary}. Lead saved.`;
+            ? `${notifHead} ${summary}. Lead saved.\n\n${enrichment}`
+            : `${notifHead} ${summary}. Lead saved.`;
 
           // CE-45 ELZ-1 cut 2b (F-44.174): the vendor_self RECORD is written once, at the end of the turn, from the SAME text the
           // vendor is sent (the capture's notice joined with any date line); writing it here recorded less than was sent.
@@ -690,7 +739,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           toolCallsAudit.push({ name: 'vendor_notification', message: notifMsg });
         }
 
-        console.log(`[couple-agent] lead captured for ${couplePhone} — ${summary}`);
+        console.log(`[couple-agent] lead captured for ${leadKeyValue} (${cp.channel}) — ${summary}`);
         toolCallsAudit.push({ name: 'capture_couple_lead', input: toolUse.input, result: 'Lead saved.' });
         toolResults.push({
           type: 'tool_result',
@@ -729,7 +778,11 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   let returningBrideNotif = null;
   if (isReturningBride) {
-    const verbatimFallback = `${leadName || `...${couplePhone.slice(-4)}`} just messaged: "${inboundMessage}"`;
+    // CE-46 ELZ-2 cut 1 (C3; the founder's Q3 yes, IGD-2's V1b): on Instagram "{name, else An Instagram client} just messaged on
+    // Instagram: "{message}""; on WhatsApp his bytes are unchanged (F-44.190: the old form threw on a null phone).
+    const verbatimFallback = cp.channel === 'instagram'
+      ? `${clientWord(leadName, cp)} just messaged on Instagram: "${inboundMessage}"`
+      : `${leadName || `...${cp.phone.slice(-4)}`} just messaged: "${inboundMessage}"`;
     try {
       const summary = await getReturningBrideIntent({
         inboundMessage,
@@ -779,7 +832,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   // CE-45 ELZ-1 cut 2b (F-44.174): ONE text, sent and recorded alike. The vendor's WhatsApp gets vendorNotification (vendorInbound);
   // his vendor_self thread gets the same bytes here, so the door's next turn sees what he saw ("tell her ..." resolves).
-  const vendorNotification = withDateLine(isReturningBride ? returningBrideNotif : firstContactNotif, dateLineFor(toolCallsAudit, { leadName: existingLeadForCouple?.name || capturedLeadName || null, couplePhone }));
+  const vendorNotification = withDateLine(isReturningBride ? returningBrideNotif : firstContactNotif, dateLineFor(toolCallsAudit, { leadName: existingLeadForCouple?.name || capturedLeadName || null, cp }));
   await recordVendorNotice(supabase, vendor, vendorUser, vendorNotification);
 
   return {

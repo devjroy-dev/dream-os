@@ -222,20 +222,24 @@ await t('§1.1 flag OFF -> the model is handed the LEGACY prompt, unnamed', asyn
   const p = c.params.system;
   assert.ok(!/\bEliza\b/.test(p), 'Eliza reached the wire with the lane flag off');
   // LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26; the founder: no "assistant", no persona name unprompted; F-44.157 the studio's
-  // name): the headers open "You answer WhatsApp messages for {studio}"; the Eliza path carries the name only as the answer to
+  // LABELED AMENDMENT · CE-46 ELZ-2 cut 1 (the founder's Q6, 27 September 2026; F-44.191): the header names no channel, "You answer messages
+  // for {studio}"; the cells below read that byte.
+  // name): the headers open "You answer messages for {studio}"; the Eliza path carries the name only as the answer to
   // "what's your name". The property (OFF unnamed, ON named and souled) is unchanged. This fixture's vendor has no business_name,
   // so the studio's name falls to the person, Swati.
-  assert.ok(/You answer WhatsApp messages for Swati, /.test(p), 'the legacy header is not what shipped');
+  assert.ok(/You answer messages for Swati, /.test(p), 'the legacy header is not what shipped');
 });
 
 await t('§1.2 flag ON -> the model is handed ELIZA, named and souled', async () => {
   const c = await drive({ elizaEnabled: true });
   const p = c.params.system;
   // LABELED AMENDMENT · CE-45 ELZ-1 cut 1 (R-45.26; the founder: no "assistant", no persona name unprompted; F-44.157 the studio's
-  // name): the headers open "You answer WhatsApp messages for {studio}"; the Eliza path carries the name only as the answer to
+  // LABELED AMENDMENT · CE-46 ELZ-2 cut 1 (the founder's Q6, 27 September 2026; F-44.191): the header names no channel, "You answer messages
+  // for {studio}"; the cells below read that byte.
+  // name): the headers open "You answer messages for {studio}"; the Eliza path carries the name only as the answer to
   // "what's your name". The property (OFF unnamed, ON named and souled) is unchanged. This fixture's vendor has no business_name,
   // so the studio's name falls to the person, Swati.
-  assert.ok(/You answer WhatsApp messages for Swati, /.test(p) && /Your name, if anyone asks, is Eliza\./.test(p), 'the Eliza header never reached the model');
+  assert.ok(/You answer messages for Swati, /.test(p) && /Your name, if anyone asks, is Eliza\./.test(p), 'the Eliza header never reached the model');
   assert.ok(p.includes(soul.ELIZA_SOUL), 'the soul is not in the prompt the model received');
 });
 

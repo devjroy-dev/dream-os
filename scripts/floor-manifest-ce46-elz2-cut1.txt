@@ -1,0 +1,12 @@
+# CE-46 ELZ-2 · cut 1 · the channel-aware turn (the counterparty parameter, the founder's Q2/Q3/Q4/Q6) · base 31cd6fd (r2: carried by command from 9dff862 onto ASK-1's 1d; the nine paths overlap none of its six)
+# floor-base unchanged: the differential at 9dff862 and again at 31cd6fd over the 28 benches reading engine.js or coupleSystemPrompt.js reads only b135 differing;
+# b115, b118a and b08_p5_eliza re-pinned by label (each green both sides after the amendment).
+docs/handovers/TDW_CE46_ELZ2_CUT1_HANDOVER.md
+docs/handovers/TDW_CE46_ELZ2_M181_HANDOVER.md
+scripts/b08_p5_eliza_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b118a_elz1_cut2a_bench.js
+scripts/b135_elz2_channel_turn_bench.js
+scripts/floor-manifest-ce46-elz2-cut1.txt
+src/agent/coupleSystemPrompt.js
+src/agent/engine.js

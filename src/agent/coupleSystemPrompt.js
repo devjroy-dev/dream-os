@@ -90,7 +90,14 @@ const { studioName } = require('./studioName');
 //     and let the flag carry only the PERSONA — the name, the soul, the
 //     register. That splits F-08.52's cure from Eliza, which the omnibus ruled
 //     were one thing, so it is the chair's to rule and not mine to take.
-function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza = false, conversation = null }) {
+// ═══ CE-46 ELZ-2 cut 1 · THE CHANNEL-AWARE TURN (the chair's rulings of 27 September 2026; W-1 lift at :117/:127 and these blocks) ═══
+// `channel` ('whatsapp_shared' | 'whatsapp_own' | 'instagram'; absent means the shared line) decides two channel facts and nothing else:
+//   `enquireLink` (Instagram only; the studio's WhatsApp link from enquireLinkFor, §7c): she may OFFER it, in her words, when the
+//                 couple would rather talk on WhatsApp (IGD-1's Q2, the founder). Never pushed; never read on a WhatsApp channel.
+//   `chattedBefore` (own number only; the founder's Q4 = 2): the couple has written to this number before, so no first-contact
+//                 greeting. FACT 1 (the thread's own record) still wins when it says in conversation.
+// The header no longer names a channel (the founder's Q6, 27 September: "You answer messages for {studio}, ..."; F-44.191).
+function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza = false, conversation = null, channel = 'whatsapp_shared', enquireLink = null, chattedBefore = false }) {
   const studio         = studioName(vendor, vendorUser);
   const tradeRaw       = (typeof vendor?.category === 'string' && vendor.category.trim()) ? vendor.category.trim() : '';
   const vendorCategory = tradeRaw || 'creative professional';
@@ -114,7 +121,7 @@ function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadNam
   // the dash the founder's law forbids (b117m --show-misses, 25 Sept: Haiku copied the history's "assistant — ..." dash).
   const lastAsked = typeof c.lastAsked === 'string' && c.lastAsked.trim() ? c.lastAsked.trim().replace(/\s*[\u2013\u2014]\s*/g, ', ') : null;
 
-  const elizaHeader = `You answer WhatsApp messages for ${studio}, a ${vendorCategory} based in ${vendorCity}. ${travelsText} Your name, if anyone asks, is ${assistantName}.
+  const elizaHeader = `You answer messages for ${studio}, a ${vendorCategory} based in ${vendorCity}. ${travelsText} Your name, if anyone asks, is ${assistantName}.
 
 ${ELIZA_SOUL}
 
@@ -124,7 +131,7 @@ The studio above is ${studio}, a ${vendorCategory}, based in ${vendorCity}. ${tr
 IF THEY ASK WHETHER YOU ARE A PERSON
 Your answer, in your own rhythm: "${admissionLine}" Then carry straight on with what they actually asked.`;
 
-  const legacyHeader = `You answer WhatsApp messages for ${studio}, a ${vendorCategory} based in ${vendorCity}. ${travelsText}`;
+  const legacyHeader = `You answer messages for ${studio}, a ${vendorCategory} based in ${vendorCity}. ${travelsText}`;
 
   const header = useEliza ? elizaHeader : legacyHeader;
 
@@ -139,6 +146,18 @@ Your answer, in your own rhythm: "${admissionLine}" Then carry straight on with 
 - Do not call yourself an assistant and do not give yourself a name unless they ask who you are.
 - Plain Indian English, plain text, no markdown, no bullet points.
 - The person writing may be a bride, a groom, a family member or a company, and the occasion may not be a wedding. Wherever the guidance above says "she" or "the couple", read it as whoever is writing.`;
+
+  // ── CE-46 ELZ-2 cut 1 · the channel's facts (see the header note above) ──
+  const onInstagram = channel === 'instagram';
+  const link = onInstagram && typeof enquireLink === 'string' && enquireLink.trim() ? enquireLink.trim() : null;
+  const linkBlock = link
+    ? `\nIF THEY WOULD RATHER TALK ON WHATSAPP
+${studio} also takes enquiries on WhatsApp at ${link}. If they say they would prefer WhatsApp, or ask for a number, give them that link in your own words and carry on here until they move. Do not offer it unasked.`
+    : '';
+  const chattedBlock = (!inConversation && channel === 'whatsapp_own' && chattedBefore === true)
+    ? `\nTHIS CLIENT HAS WRITTEN TO ${studio.toUpperCase()} ON THIS NUMBER BEFORE
+Do not introduce yourself or the studio and do not open with a greeting. Answer what they wrote, then ask the next thing you need.`
+    : '';
 
   // ── FACT 3's meaning (R-45.25; the founder: never an "I don't have access" message) ──
   // cut 1c (a) F-44.171, accepted by the founder as low-likelihood and cured by one sentence only: every date question calls
@@ -167,7 +186,7 @@ Greet them once, as the studio, in the same message as your first question.`;
     return `${header}
 
 ${voiceBlock}
-
+${linkBlock}${chattedBlock}
 ${conversationBlock}
 
 YOUR GOAL
@@ -254,7 +273,7 @@ YOU ALREADY KNOW THEIR WEDDING (from their own planning app; do NOT re-ask it if
 ${shapeBlock}${nameBlock}
 
 ${voiceBlock}
-
+${linkBlock}${chattedBlock}
 ${conversationBlock}
 
 WHO YOU ARE WHEN THEY ARRIVE
