@@ -34,6 +34,12 @@ with the partial UNIQUE index `leads_vendor_ig_uidx` on (vendor_id, counterparty
 None of that is described below; 0173 is its witness until the snapshot is regenerated. Its rehearsal on a throwaway Postgres is
 `scripts/lib/b119r_0173_rehearse.sh` (A-45.8).
 
+**AND 0180 (`0180_own_number_business_token.sql`, CE-46 G6-3 cut three, F-44.224), once the founder applies it:** alters only,
+creates no table (A-45.8 grants nothing; RLS on since 0171; 0172's service_role grants cover it). It adds
+`vendor_wabas.business_token text`: her business integration system user token from the Embedded Signup code exchange, stored
+SEALED by `src/lib/vendor/tokenVault.js` (AES-256-GCM, `v1.<iv>.<tag>.<ct>`), opened only by `src/lib/ownNumber/token.js`. No expiry
+column (F-a2 (c)). None of it is described below; 0180 is its witness until the snapshot is regenerated.
+
 **AND 0174 (`0174_ig_dm_switch.sql`, CE-45 IGD-1 cut 2a-ii), once the founder applies it:** alters `public.vendor_ig_connections`
 only, creates no table: `messages_granted_at timestamptz` (the messages permission proved on her token), `dm_state text NOT NULL
 DEFAULT 'off'` (CHECK `vendor_ig_connections_dm_state_check`: 'off' or 'on'; "paused" and "waiting" are derived, never stored),

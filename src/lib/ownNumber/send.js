@@ -1,5 +1,7 @@
 'use strict';
-// src/lib/ownNumber/send.js · CE-46 · G6-2 · 2b · A REPLY LEAVES FROM HER OWN NUMBER (F2 T-c; F-44.176; joint ruling 1).
+// src/lib/ownNumber/send.js · CE-46 · G6-2 · 2b · A REPLY LEAVES FROM HER OWN NUMBER (F-44.176; joint ruling 1).
+// CE-46 G6-3 cut three (a), F-44.224: the token is HER business token as stored at the connect (token.js opens its seal);
+// TDW's system token (META_WABA_TOKEN) is no longer on this path. A refusal from Meta is logged with the token masked.
 //
 // · FROM: her PNID (vendor_wabas.phone_number_id), with her business token (token.js). Never TDW's shared line, and
 //   so NO "{studio}: " prefix: F-44.176 decides the prefix by the sending number, and the joint ruling says no studio
@@ -15,7 +17,7 @@
 // · EVERY SEND LOGS recipient and wamid; every failure logs Meta's message (R-40.92). The token is never logged.
 const { sendMetaText } = require('../metaCloud');
 const { defaultIsOptedOut } = require('../sendWa');
-const { businessTokenFor } = require('./token');
+const { businessTokenFor, mask } = require('./token');
 const { graphVersion } = require('./meta');
 
 const MAX_CHARS = 4096;
@@ -48,10 +50,16 @@ async function sendOnHerNumber({ row, to, text, supabase, env = process.env, dep
   const parts = splitText(text);
   if (!parts.length) throw new OwnSendRefused('empty reply');
   if (await isOptedOut({ to, supabase })) throw new OwnSendRefused('opted_out');
-  const token = await tokenFor(row, { env, fetchImpl: deps.fetchImpl || fetch });
+  const token = tokenFor(row, deps.vaultApi ? { vaultApi: deps.vaultApi } : undefined);
   const sent = [];
   for (const part of parts) {
-    const r = await send({ to, text: part }, { token, phoneNumberId: row.phone_number_id, graphVersion: graphVersion(env), fetchImpl: deps.fetchImpl });
+    let r;
+    try {
+      r = await send({ to, text: part }, { token, phoneNumberId: row.phone_number_id, graphVersion: graphVersion(env), fetchImpl: deps.fetchImpl });
+    } catch (e) {
+      console.error(`[own-number:out] ${row.vendor_id} to=${to} refused token=${mask(token)}: ${e && e.message}`);
+      throw e;
+    }
     console.log(`[own-number:out] ${row.vendor_id} to=${to} wamid=${(r && r.wamid) || '(none)'} chars=${part.length}`);
     sent.push({ text: part, wamid: (r && r.wamid) || null });
   }

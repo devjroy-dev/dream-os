@@ -9,7 +9,9 @@
 // Answers 200 at once and then runs the caller, which never throws.
 const webhookCore = require('../webhookCore');
 
-function ownInboundRoute({ supabase, anthropic, env = process.env, handle = require('./turn').handleOwnInbound, isInternal = webhookCore.isInternalReplay }) {
+function ownInboundRoute({ supabase, anthropic, env = process.env, handle = require('./turn').handleOwnInbound, isInternal = webhookCore.isInternalReplay, vault = require('../vendor/tokenVault') }) {
+  // CE-46 G6-3 cut three (a), F-a1: ONE boot line stating the vault's state (built once, at the mount). A boolean, never a value.
+  console.log(`[own-number] token vault ${vault.isConfigured() ? 'configured' : 'NOT configured: connects refuse not_configured and nothing is sealed'}`);
   return async (req, res) => {
     if (!isInternal(req)) { console.warn('[own-number:route] refused: not the ingress'); return res.status(403).send('Forbidden'); }
     const b = req.body || {};

@@ -25,6 +25,9 @@ const P = (r) => path.join(ROOT, r);
 const read = (r) => fs.readFileSync(P(r), 'utf8');
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 let pass = 0; let fail = 0; const failed = [];
+// CE-46 G6-3 cut three (a): the connect now seals her token with tokenVault; a test key (never a real one) is set before any
+// module loads. 3.4 and 3.10 are re-pinned by label below; rung b141 holds the cure's own cells.
+process.env.INTEGRATION_TOKEN_KEY = 'b121'.repeat(16);
 function ok(c, name, info) { if (c) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}${info === undefined ? '' : '  [' + String(info).slice(0, 220) + ']'}`); } }
 const sec = (t) => console.log(`\n§${t}`);
 const fresh = (rel) => { const k = require.resolve(P(rel)); delete require.cache[k]; return require(k); };
@@ -191,8 +194,9 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
     const reg = calls.find((c) => c.step.endsWith('/register'));
     ok(reg && reg.body.messaging_product === 'whatsapp' && reg.body.pin === M.pinFor('106540352242922', 'app-secret') && reg.auth === 'Bearer BT-her-token',
       '3.3 register carries the derived PIN and HER token');
-    ok(db.t.vendor_wabas.length === 1 && !JSON.stringify(db.t).includes('BT-her-token') && !JSON.stringify(db.t).includes(reg.body.pin),
-      '3.4 her token and her PIN are written nowhere (FK5, F3)'); }
+    const vt = require(P('src/lib/vendor/tokenVault.js')).open(db.t.vendor_wabas[0].business_token);
+    ok(db.t.vendor_wabas.length === 1 && !JSON.stringify(db.t).includes('BT-her-token') && !JSON.stringify(db.t).includes(reg.body.pin) && vt.ok && vt.value === 'BT-her-token',
+      '3.4 (re-pinned by label, cut three F-44.224) her token is kept ONLY sealed (it opens to the exchanged bytes; never in clear); her PIN is written nowhere (F3)'); }
   { const { r, db, calls } = await run({ body: BODY_SHARED });
     const steps = calls.map((c) => `${c.method} ${c.step}`);
     ok(r.ok && r.number.status === 'active' && r.number.way === 'shared' && db.t.vendor_wabas[0].sync_started_at === '2026-09-24T10:00:00.000Z',
@@ -206,25 +210,25 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
   { const stamps = [];
     for (const iso of ['2026-09-25T00:30:00+05:30', '2027-03-15T12:00:00Z', '2028-02-29T23:59:59+05:30']) { const { db } = await run({ body: BODY_SHARED, now: () => new Date(iso) }); stamps.push(db.t.vendor_wabas[0].sync_started_at === new Date(iso).toISOString()); }
     ok(stamps.every(Boolean), '3.9 the stamp is the injected clock\u2019s, on three shifted instants (next day IST, months ahead, a leap day) (C-44.13)'); }
-  { const seed = { vendor_wabas: [{ id: 'x', vendor_id: WALK, business_id: 'b', waba_id: 'w0', phone_number_id: 'p0', display_number: '+91 1', connect_way: 'shared', status: 'active' }] };
+  { const seed = { vendor_wabas: [{ id: 'x', vendor_id: WALK, business_id: 'b', waba_id: 'w0', phone_number_id: 'p0', display_number: '+91 1', connect_way: 'shared', status: 'active', business_token: 'v1.sealed.before.b121' }] }; // re-pinned by label: a connected row HOLDS a token (cut three; a tokenless one is re-exchanged, b141)
     const a = await run({ body: BODY_SHARED, seed });
     const seedOut = { vendor_wabas: [{ ...seed.vendor_wabas[0], status: 'migrated_out' }] };
     const b = await run({ body: BODY_MOVED, seed: seedOut });
     ok(!a.r.ok && a.r.reason === 'already_connected' && a.calls.length === 0 && b.r.ok && b.db.t.vendor_wabas.length === 1 && b.db.t.vendor_wabas[0].waba_id === '524126980791429',
-      '3.10 re-connect is refused while connected, before Meta; a moved-out row is replaced, never stacked (F6)'); }
+      '3.10 (re-labelled, cut three) re-connect is refused while connected WITH a token, before Meta; a moved-out row is replaced, never stacked (F6)'); }
   { const { r, db } = await run({ body: { ...BODY_SHARED, business_id: null } });
     ok(!r.ok && r.reason === 'session_incomplete' && db.t.vendor_wabas.length === 0, '3.11 without her WABA and business from the session nothing is written (declared limit)'); }
 
   sec('4  the door\u2019s answer');
   { freshAll(); const Dx = fresh('src/lib/ownNumber/door.js');
-    const db = fakeDb({ vendor_wabas: [{ vendor_id: OTHER, business_id: 'b', waba_id: 'w', phone_number_id: 'p', display_number: '+91 98882 94440', connect_way: 'shared', status: 'suspended', quality_rating: 'RED' }] });
+    const db = fakeDb({ vendor_wabas: [{ vendor_id: OTHER, business_id: 'b', waba_id: 'w', phone_number_id: 'p', display_number: '+91 98882 94440', connect_way: 'shared', status: 'suspended', quality_rating: 'RED', business_token: 'v1.sealed.b121' }] }); // re-pinned by label, cut three F-a3b: a row connected after the cure holds a token; a tokenless one is b141's
     const a = await Dx.answer({ vendor: vend(), supabase: db, env: ENV, capApi: ARMED });
     const b = await Dx.answer({ vendor: vend(OTHER), supabase: db, env: ENV, capApi: ARMED });
     const c = await Dx.answer({ vendor: vend(), supabase: fakeDb(), env: ENV, capApi: ON });
     ok(a.open === true && a.launch && a.launch.config_id === '3333333333333333' && a.number === null && a.reason === null,
       '4.1 the walk vendor on an armed switch: open, with the launch', JSON.stringify(a));
     ok(b.open === false && b.launch === null && b.number && b.number.status === 'suspended' && b.number.way === 'shared',
-      '4.2 anyone else: shut, and a number on file is still shown with its state (§7b constraint 3)', JSON.stringify(b));
+      '4.2 (re-labelled, cut three F-a3b) anyone else: shut, and a number on file WITH a token is still shown with its state (§7b constraint 3)', JSON.stringify(b));
     // RE-AIMED BY LABEL, CE-46 G6-2 2b (F7 (a)): ON with her tier's row absent is still shut; the reason now names her tier.
     ok(c.open === false && /her tier's switch is absent/.test(c.reason) && /flag\.own_number\.signature is absent/.test(c.reason),
       '4.3 ON without her tier\u2019s row reads shut, and the reason names the master and her tier\u2019s row (FQ3)', c.reason); }

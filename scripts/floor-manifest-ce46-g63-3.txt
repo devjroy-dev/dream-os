@@ -1,0 +1,16 @@
+# CE-46 · G6-3 · cut three · F-44.224 the token cure (0180, tokenVault, re-exchange in place, T-c removed) and F-44.196's vendor limb · base 79a3102 (carried from 0ac1a01)
+db/migrations/0180_own_number_business_token.sql
+docs/db/PUBLIC_SCHEMA.md
+docs/handovers/TDW_CE46_G63_CUT3_HANDOVER.md
+scripts/b121_g61_own_number_srv_bench.js
+scripts/b137_g62_own_number_turn_bench.js
+scripts/b141_g63_business_token_bench.js
+scripts/floor-manifest-ce46-g63-3.txt
+scripts/lib/b137_pgdouble.js
+src/lib/ownNumber/connect.js
+src/lib/ownNumber/door.js
+src/lib/ownNumber/events.js
+src/lib/ownNumber/route.js
+src/lib/ownNumber/send.js
+src/lib/ownNumber/token.js
+src/lib/ownNumber/turn.js

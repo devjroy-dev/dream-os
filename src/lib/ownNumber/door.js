@@ -68,15 +68,19 @@ async function answer({ vendor, supabase, env = process.env, capApi = cap }) {
   const open = gate.open && !!launch;
   const reason = gate.open && !launch ? 'META_APP_ID or OWN_NUMBER_CONFIG_ID is not set on this service' : gate.reason;
   const { data, error } = await supabase.from('vendor_wabas')
-    .select('status, display_number, connect_way, quality_rating')
+    .select('status, display_number, connect_way, quality_rating, business_token')
     .eq('vendor_id', vendor.id).maybeSingle();
   if (error) throw new Error(`vendor_wabas read: ${error.message}`);
+  // CE-46 G6-3 cut three, F-a3b (ruled 28 September 2026): an active or suspended number with NO stored business token (connected
+  // before the token cure) cannot be answered on, so the room is told there is no number and offers the connect again; that
+  // connect is the in-place re-exchange (connect.js, F-a3 (a)). The column is read for PRESENCE ONLY: it never leaves this function.
+  const tokenless = !!data && (data.status === 'active' || data.status === 'suspended') && !data.business_token;
   return {
     open,
     reason: open ? null : `${reason}${tk ? ` · ${tk} is ${tierRow ? tierRow.status : 'absent'}` : ''}`,
     reason_text: open ? null : 'This opens once we finish connecting the service.',
     launch: open ? launch : null,
-    number: numberView(data),
+    number: tokenless ? null : numberView(data),
   };
 }
 

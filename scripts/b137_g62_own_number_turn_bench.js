@@ -11,6 +11,10 @@ const fs = require('fs'); const path = require('path'); const crypto = require('
 const ROOT = path.resolve(__dirname, '..'); const P = (r) => path.join(ROOT, r);
 const read = (r) => fs.readFileSync(P(r), 'utf8'); const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const { makeDb } = require('./lib/b137_pgdouble');
+// CE-46 G6-3 cut three (a), F-44.224: her token is now the one kept at the connect, sealed by tokenVault under INTEGRATION_TOKEN_KEY.
+// The bench sets a test key (never a real one) before any module loads; §3 is re-pinned by label from T-c to the stored token.
+process.env.INTEGRATION_TOKEN_KEY = 'b137'.repeat(16);
+const vault = require(P('src/lib/vendor/tokenVault.js'));
 let pass = 0, fail = 0;
 const ok = (c, name, info) => { if (c) { pass++; console.log(`  PASS  ${name}`); } else { fail++; console.log(`  FAIL  ${name}${info ? `\n        ${String(info).slice(0, 400)}` : ''}`); } };
 const sec = (s) => console.log(`\n§${s}`);
@@ -27,7 +31,7 @@ function seed(over = {}) {
   return {
     vendors: [{ id: VID, user_id: 'u-dev440', business_name: 'Dev Roy Photography', tier: 'signature', status: 'active', reply_quiet_minutes: 120, category: 'photography' }],
     users: [{ id: 'u-dev440', phone: '+919888294440', name: 'Dev Roy' }, { id: 'u-bride', phone: '+919625759924', name: 'Sarah' }, { id: 'u-anj', phone: '+918757788550', name: 'Anjali' }],
-    vendor_wabas: [{ id: 'w1', vendor_id: VID, business_id: 'biz-dev440', waba_id: 'waba-1', phone_number_id: '106', display_number: '+91 87577 88550', connect_way: 'shared', status: 'active' }],
+    vendor_wabas: [{ id: 'w1', vendor_id: VID, business_id: 'biz-dev440', waba_id: 'waba-1', phone_number_id: '106', display_number: '+91 87577 88550', connect_way: 'shared', status: 'active', business_token: vault.seal(TOKEN_BIZ) }],
     conversations: [{ id: 'th-bride', vendor_id: VID, counterparty_phone: '+919625759924', kind: 'couple_thread', channel: 'whatsapp', state: 'new', last_message_at: '2026-09-26T20:53:19Z' },
       { id: '9552a49c', vendor_id: VID, counterparty_phone: '+918757788550', kind: 'couple_thread', channel: 'whatsapp', state: 'new', last_message_at: '2026-09-15T20:35:05Z' }],
     leads: [{ id: 'ce4ca3ac', vendor_id: VID, name: 'Anjali', phone: '+918757788550', state: 'booked', deleted_at: null }],
@@ -49,7 +53,7 @@ function metaFetch(calls, { tokenOk = true, sendOk = true } = {}) {
   };
 }
 async function runCaller({ db, capApi = caps(), ch = change(), env = ENV, reply = 'Yes, Dev Roy Photography is free on 14 February 2027.', fetchOpts = {}, now = NOW } = {}) {
-  freshAll(); require(P('src/lib/ownNumber/token.js'))._reset();
+  freshAll();
   const T = require(P('src/lib/ownNumber/turn.js')); const S = require(P('src/lib/ownNumber/send.js'));
   const calls = []; const turns = []; const alerts = []; const dead = []; const logs = [];
   const fetchImpl = metaFetch(calls, fetchOpts);
@@ -104,29 +108,21 @@ const wroteTo = (db, t) => db.writes.filter((w) => w.table === t);
     '2.3 at the answering seam only an active number answers; the door and connect (no status) are unchanged by it');
 
   // ── §3 T-c: her business token ──────────────────────────────────────────────────────────────────────────────────
-  sec('3  token.js: her business token by fetch_only, in memory only (F2, T-c)');
-  const TK = fresh('src/lib/ownNumber/token.js'); TK._reset();
-  const tcalls = []; const tf = metaFetch(tcalls);
-  const t1 = await TK.businessTokenFor({ vendor_id: VID, business_id: 'biz-dev440' }, { env: ENV, fetchImpl: tf, now: () => 1000 });
-  const c0 = tcalls[0]; const form = new URLSearchParams(c0.init.body);
-  ok(t1 === TOKEN_BIZ && c0.url === 'https://graph.facebook.com/v25.0/biz-dev440/system_user_access_tokens' && c0.init.method === 'POST'
-    && c0.init.headers.Authorization === `Bearer ${TOKEN_SYS}` && form.get('fetch_only') === 'true'
-    && form.get('appsecret_proof') === crypto.createHmac('sha256', SECRET).update(TOKEN_SYS).digest('hex'),
-    '3.1 POST /v25.0/<HER business id>/system_user_access_tokens, TDW system token as Bearer, fetch_only=true, appsecret_proof = HMAC-SHA256(app secret, system token)');
-  await TK.businessTokenFor({ vendor_id: VID, business_id: 'biz-dev440' }, { env: ENV, fetchImpl: tf, now: () => 1000 + 59_999 });
-  const n2 = tcalls.length;
-  await TK.businessTokenFor({ vendor_id: VID, business_id: 'biz-dev440' }, { env: ENV, fetchImpl: tf, now: () => 1000 + 60_000 });
-  ok(n2 === 1 && tcalls.length === 2, '3.2 held in memory for 60 s per vendor, fetched again after');
-  let refused = null; TK._reset();
-  try { await TK.businessTokenFor({ vendor_id: VID, business_id: 'b' }, { env: ENV, fetchImpl: metaFetch([], { tokenOk: false }), now: () => 1 }); } catch (e) { refused = e; }
-  ok(refused && refused.name === 'TokenError' && /business_management/.test(refused.message), '3.3 a refused fetch throws with Meta\u2019s own message (R-40.92), which is how the dark walk names a missing scope');
-  let noSecret = null; TK._reset();
-  try { await TK.businessTokenFor({ vendor_id: VID, business_id: 'b' }, { env: { META_WABA_TOKEN: 'x' }, fetchImpl: tf }); } catch (e) { noSecret = e; }
-  ok(noSecret && /META_APP_SECRET/.test(noSecret.message), '3.4 no app secret: refused before any Meta call');
+  sec('3  token.js: her business token, stored at the connect and sealed (re-pinned by label, CE-46 G6-3 cut three (a); T-c retired)');
+  // THE BOTH-SIDES CLAUSE: the old T-c cells (3.1 to 3.4: POST system_user_access_tokens, 60 s memory, scope refusal, app secret)
+  // drove a shape production refused ((#33), 28 September W1) and that no caller now sends; they are RETIRED, not kept.
+  const TK = fresh('src/lib/ownNumber/token.js');
+  ok(TK.businessTokenFor({ vendor_id: VID, business_token: vault.seal(TOKEN_BIZ) }) === TOKEN_BIZ && TK._reset === undefined,
+    '3.1 (re-pinned) her token opens from the sealed column; no memory cache, no fetch');
+  let nt = null; try { TK.businessTokenFor({ vendor_id: VID, business_token: null }); } catch (e) { nt = e; }
+  ok(nt && nt.name === 'TokenError' && nt.reason === 'no_token', '3.2 (re-pinned) a row with no stored token refuses as no_token');
+  let unop = null; try { TK.businessTokenFor({ vendor_id: VID, business_token: 'v1.x.y.z' }); } catch (e) { unop = e; }
+  ok(unop && unop.reason === 'unopenable' && !String(unop.message).includes(TOKEN_BIZ), '3.3 (re-pinned) a seal that will not open refuses as unopenable, carrying no token');
+  ok(!/system_user_access_tokens|META_WABA_TOKEN|fetch_only/.test(read('src/lib/ownNumber/token.js').replace(/\/\/.*$/gm, '')), '3.4 (re-pinned) token.js calls no Meta endpoint and reads no system token (comment-stripped)');
 
   // ── §4 the send from her number ─────────────────────────────────────────────────────────────────────────────────
   sec('4  send.js: from her PNID, her token, no prefix, opt-out first');
-  const S = fresh('src/lib/ownNumber/send.js'); fresh('src/lib/ownNumber/token.js')._reset(); const S2 = require(P('src/lib/ownNumber/send.js'));
+  const S = fresh('src/lib/ownNumber/send.js'); const S2 = S;
   const scalls = []; const sdb = makeDb(seed());
   const TEXT = 'Yes, Dev Roy Photography is free on 14 February 2027.';
   const sent = await S2.sendOnHerNumber({ row: seed().vendor_wabas[0], to: '+919625759924', text: TEXT, supabase: sdb, env: ENV, deps: { fetchImpl: metaFetch(scalls) } });
@@ -176,7 +172,7 @@ const wroteTo = (db, t) => db.writes.filter((w) => w.table === t);
   ok(R.alerts.length === 1 && R.alerts[0].toPhone === '+919888294440' && R.alerts[0].text === '[scrubbed] Sarah asked about 14 February 2027.' && R.alerts[0].vendorId === VID,
     '5.5 the vendor\u2019s notice goes to HER TDW WhatsApp (her login phone), scrubbed by the shared line\u2019s own scrubModelFrame');
   ok(!R.logs.some((l) => l.includes(TOKEN_BIZ) || l.includes(TOKEN_SYS)) && !JSON.stringify(db.tables).includes(TOKEN_BIZ),
-    '5.6 her token is in no log line and no table (never stored)');
+    '5.6 (re-labelled, cut three) her token IN CLEAR is in no log line and no table: stored sealed, never plain');
   const anj = db.tables.conversations.find((c) => c.id === '9552a49c'); const lead = db.tables.leads[0];
   ok(anj.last_message_at === '2026-09-15T20:35:05Z' && lead.state === 'booked' && lead.deleted_at === null && !db.writes.some((w) => w.table === 'leads'),
     '5.7 Anjali\u2019s thread 9552a49c and lead ce4ca3ac (8757788550 as a client) are untouched by the lane');
@@ -236,9 +232,9 @@ const wroteTo = (db, t) => db.writes.filter((w) => w.table === t);
   db = makeDb(seed()); R = await runCaller({ db, fetchOpts: { sendOk: false } });
   ok(R.r.outcome === 'send_failed' && msgs(db).filter((m) => m.direction === 'outbound').length === 0 && R.dead.length === 1 && R.dead[0].service === 'own-number-turn',
     '5e.2 Meta refuses the send: a dead letter, NO outbound row (never a false "sent")');
-  db = makeDb(seed()); R = await runCaller({ db, fetchOpts: { tokenOk: false } });
-  ok(R.r.outcome === 'send_failed' && R.dead.length === 1 && /business_management/.test(String(R.dead[0].error && R.dead[0].error.message)),
-    '5e.3 the token fetch refused for scope: a dead letter carrying Meta\u2019s message, nothing sent');
+  db = makeDb(seed({ vendor_wabas: [{ ...seed().vendor_wabas[0], business_token: null }] })); R = await runCaller({ db });
+  ok(R.r.outcome === 'send_failed' && R.dead.length === 1 && /no business token/.test(String(R.dead[0].error && R.dead[0].error.message)) && msgs(db).filter((m) => m.direction === 'outbound').length === 0,
+    '5e.3 (re-pinned, cut three) her row holds no token (connected before the cure): a dead letter naming it, nothing sent');
   const Tm = fresh('src/lib/ownNumber/turn.js');
   const img = { field: 'messages', value: { messages: [{ from: '919625759924', id: 'w', type: 'image', image: {} }] } };
   ok(Tm.textMessageOf(img) === null && (await Tm.handleOwnInbound({ supabase: makeDb(seed()), vendorId: VID, change: img })).outcome === 'not_text', '5e.4 a non-text message gets no turn (recorded by the receiver only)');
@@ -334,8 +330,8 @@ const wroteTo = (db, t) => db.writes.filter((w) => w.table === t);
     async () => { const x = makeDb(seed({ vendor_wa_events: [hist('919625759924')] })); const q = await runCaller({ db: x }); return q.turns[0].counterparty.chatted_before === true; })]);
   out.push(['M4 the receiver forwards echoes', await mutate('src/lib/ownNumber/forward.js', [["return !!change && change.field === 'messages' &&", "return !!change && (change.field === 'messages' || true) &&"]],
     async () => !fresh('src/lib/ownNumber/forward.js').forwardable({ field: 'smb_message_echoes', value: { messages: [{}] } }))]);
-  out.push(['M5 a studio prefix on her number', await mutate('src/lib/ownNumber/send.js', [['const r = await send({ to, text: part },', "const r = await send({ to, text: 'Dev Roy Photography: ' + part },"]],
-    async () => { const c = []; fresh('src/lib/ownNumber/token.js')._reset(); const s = require(P('src/lib/ownNumber/send.js')); await s.sendOnHerNumber({ row: seed().vendor_wabas[0], to: '+919625759924', text: 'Hello', supabase: makeDb(seed()), env: ENV, deps: { fetchImpl: metaFetch(c) } }); return JSON.parse(c.find((z) => /\/messages$/.test(z.url)).init.body).text.body === 'Hello'; })]);
+  out.push(['M5 a studio prefix on her number', await mutate('src/lib/ownNumber/send.js', [['r = await send({ to, text: part },', "r = await send({ to, text: 'Dev Roy Photography: ' + part },"]],
+    async () => { const c = []; const s = fresh('src/lib/ownNumber/send.js'); await s.sendOnHerNumber({ row: seed().vendor_wabas[0], to: '+919625759924', text: 'Hello', supabase: makeDb(seed()), env: ENV, deps: { fetchImpl: metaFetch(c) } }); return JSON.parse(c.find((z) => /\/messages$/.test(z.url)).init.body).text.body === 'Hello'; })]);
   out.push(['M6 the vendorInbound guard removed', await mutate('src/lib/vendorInbound.js', [["      if (await require('./ownNumber/wabaMap').isConnectedOwnNumber(supabase, phone)) {", '      if (false) {']],
     async () => (await driveShared('918757788550')).seen.ensure === 0)]);
   out.push(['M7 her own login phone answered', await mutate('src/lib/ownNumber/turn.js', [["return 'self';", "return 'couple';"]],

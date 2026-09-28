@@ -70,8 +70,13 @@ async function handle(supabase, own, change, now = () => new Date()) {
   }
   const next = nextStatus(fresh, field, value);
   if (next && (next.status !== fresh.status || next.paused_reason !== (fresh.paused_reason || null))) {
+    // CE-46 G6-3 cut three (a), F-a4: when Meta says she is gone (GONE -> migrated_out), her stored business token is nulled in
+    // the same update. Meta's own invalidation is hers (Business Settings > Integrations > Connected apps); no revoke call is
+    // made or assumed here.
+    const patch = { status: next.status, paused_reason: next.paused_reason, updated_at: now().toISOString() };
+    if (next.status === 'migrated_out') patch.business_token = null;
     const up = await supabase.from('vendor_wabas')
-      .update({ status: next.status, paused_reason: next.paused_reason, updated_at: now().toISOString() })
+      .update(patch)
       .eq('vendor_id', own.vendor_id).select('status');
     if (up.error || !up.data || up.data.length !== 1) throw new Error(`vendor_wabas status: ${up.error ? up.error.message : 'no row'}`);
     console.warn(`[own-number] ${own.vendor_id} ${fresh.status} -> ${next.status} (${next.paused_reason || 'cleared'})`);

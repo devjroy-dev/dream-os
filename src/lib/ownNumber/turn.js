@@ -9,6 +9,7 @@
 //                   'active'. Shut -> nothing more: recorded and silent (F8 (a)).
 //   3 · senders     silent, recorded only by the receiver, never a couple thread:
 //                     her own login phone writing to her own number (F5 (a));
+//                     a registered vendor, by users.phone joined to vendors.user_id (cut three (b), F-44.196's vendor limb);
 //                     any of TDW's own line numbers, resolved as sendWa.resolveFrom does (F-44.207 (a));
 //                     a member of her team, by phone, from team_members (F4, crew only; supplier, vendor and family have
 //                     no source and are their own later item).
@@ -28,7 +29,8 @@
 //                   line's own arguments plus counterparty { channel: 'whatsapp_own', phone, igsid: null, chatted_before }.
 //                   Nothing else is added. The persona gate on this channel is the turn's (engine.js reads
 //                   couple.eliza_enabled on every channel but Instagram); this caller does not touch it.
-//   8 · the send    from her number, over T-c (send.js). Each part recorded as an outbound row, channel 'whatsapp_own',
+//   8 · the send    from her number, with her stored business token (send.js, token.js; cut three (a), T-c removed).
+//                   Each part recorded as an outbound row, channel 'whatsapp_own',
 //                   message_sid its wamid. A failed send is a dead letter and no row: never a false "sent".
 //   9 · the notice  the turn's vendorNotification to her TDW WhatsApp, through the shared line's own door
 //                   (sendVendorEnquiryAlert), scrubbed by the shared line's own scrubModelFrame.
@@ -58,10 +60,28 @@ function tdwLineDigits(resolveFrom) {
   return ['vendor', 'bride', 'marketing'].map((l) => digits(resolveFrom(l))).filter((d) => d.length >= 10);
 }
 
+// CE-46 G6-3 cut three (b), F-44.196's vendor limb (ruled 28 September 2026): a sender who is a REGISTERED VENDOR (her phone on a
+// users row that a vendors row names as user_id) is silent by source, before any couple thread or ensureCoupleRow. Not "any user":
+// couples are users too, and a returning bride must keep her turn. The rule's source is 0028_pin_auth.sql's trigger (a vendor's
+// user can never be a couple). Specimen: 28 September 10:46, a co-founder's second number reached ensureCoupleRow and failed
+// "already registered as vendor". Supplier and family limbs stay open: no source.
+async function isRegisteredVendor({ supabase, senderDigits }) {
+  const forms = [`+${senderDigits}`, senderDigits];
+  if (senderDigits.length === 12 && senderDigits.startsWith('91')) forms.push(senderDigits.slice(2)); // a bare Indian mobile
+  const u = await supabase.from('users').select('id').in('phone', forms);
+  if (u && u.error) throw new Error(`users read: ${u.error.message}`);
+  const ids = ((u && u.data) || []).map((r) => r && r.id).filter(Boolean);
+  if (!ids.length) return false;
+  const v = await supabase.from('vendors').select('id').in('user_id', ids).limit(1);
+  if (v && v.error) throw new Error(`vendors read: ${v.error.message}`);
+  return ((v && v.data) || []).length > 0;
+}
+
 async function senderKind({ supabase, vendor, senderDigits, resolveFrom }) {
   if (tdwLineDigits(resolveFrom).includes(senderDigits)) return 'tdw_line';
   const u = await supabase.from('users').select('id, phone').eq('id', vendor.user_id).maybeSingle();
   if (u && u.data && digits(toE164(u.data.phone)) === senderDigits) return 'self';
+  if (await isRegisteredVendor({ supabase, senderDigits })) return 'vendor';
   const t = await supabase.from('team_members').select('phone').eq('vendor_id', vendor.id).is('deleted_at', null);
   if (t && t.error) throw new Error(`team_members read: ${t.error.message}`);
   if (((t && t.data) || []).some((r) => r && r.phone && digits(toE164(r.phone)) === senderDigits)) return 'crew';
@@ -139,7 +159,7 @@ async function _handle({ supabase, anthropic, vendorId, change, env, d, msg }) {
   const phone = `+${senderDigits}`; // the shared line's own counterparty form (vendorInbound.metaInputsFrom)
 
   // 2 · the gate
-  const w = await supabase.from('vendor_wabas').select('vendor_id, business_id, phone_number_id, status').eq('vendor_id', vendorId).maybeSingle();
+  const w = await supabase.from('vendor_wabas').select('vendor_id, business_id, phone_number_id, status, business_token').eq('vendor_id', vendorId).maybeSingle();
   if (w.error) throw new Error(`vendor_wabas read: ${w.error.message}`);
   const v = await supabase.from('vendors').select('*').eq('id', vendorId).maybeSingle();
   if (v.error) throw new Error(`vendors read: ${v.error.message}`);
@@ -233,4 +253,4 @@ async function handleOwnInbound({ supabase, anthropic, vendorId, change, env = p
   });
 }
 
-module.exports = { handleOwnInbound, textMessageOf, tdwLineDigits, senderKind, isQuiet, chattedBefore };
+module.exports = { handleOwnInbound, textMessageOf, tdwLineDigits, senderKind, isRegisteredVendor, isQuiet, chattedBefore };

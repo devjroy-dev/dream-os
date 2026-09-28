@@ -15,8 +15,16 @@
 // Refusals carry `reason` (for logs) and `reason_text` (plain words). FE_1 draws its OWN expiry byte
 // for 'code_expired' and the server's reason_text otherwise, so reason_text here is never a new
 // vendor-facing byte class: it states what happened in the words the room already uses.
+//
+// CE-46 G6-3 CUT THREE (a), F-44.224 (ruled 28 September 2026): THE TOKEN THE EXCHANGE RETURNS IS KEPT. It is her business
+// integration system user token, the one that sends (Meta's Tech Provider onboarding page, Step 1). It is sealed by
+// src/lib/vendor/tokenVault.js before it touches a row (F-a1 (a)), and the connect refuses 'not_configured' BEFORE the exchange
+// when the vault has no valid key, so a bad deploy can never spend a 30-second code and then fail to keep what it bought.
+// F-a3 (a): a row that is active or suspended but holds NO token (connected before this cure) is re-exchanged IN PLACE: her
+// row is updated, never deleted, never stacked. A row that holds a token is still refused as before (F6).
 const meta = require('./meta');
 const door = require('./door');
+const tokenVault = require('../vendor/tokenVault');
 
 const FINISH_SHARED = 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
 const FINISH_MOVED = 'FINISH';
@@ -40,7 +48,7 @@ function wayOf(event) {
   return null;
 }
 
-async function connect({ vendor, body, supabase, env = process.env, fetchImpl = fetch, capApi, now = () => new Date() }) {
+async function connect({ vendor, body, supabase, env = process.env, fetchImpl = fetch, capApi, now = () => new Date(), vault = tokenVault }) {
   const b = readBody(body);
   if (!b) return refuse('bad_body', TEXT_FAILED);
 
@@ -52,13 +60,17 @@ async function connect({ vendor, body, supabase, env = process.env, fetchImpl = 
   if (!door.openFor({ masterRow, tierRow, vendorId: vendor.id, env }).open) return refuse('closed', TEXT_FAILED);
   const appId = env.META_APP_ID; const appSecret = env.META_APP_SECRET;
   if (!appId || !appSecret) return refuse('not_configured', TEXT_FAILED);
+  if (!vault.isConfigured()) return refuse('not_configured', TEXT_FAILED); // F-a1: before the exchange, never after
 
-  // 2 · her row: refused while pending or active (F6); a migrated_out row is replaced below.
-  const cur = await supabase.from('vendor_wabas').select('id, status').eq('vendor_id', vendor.id).maybeSingle();
+  // 2 · her row: refused while pending, or active/suspended WITH a token (F6); active/suspended WITHOUT a token is re-exchanged
+  //     in place (F-a3 (a)); a migrated_out row is replaced below. `has_token` is a boolean; the sealed value is not read here.
+  const cur = await supabase.from('vendor_wabas').select('id, status, business_token').eq('vendor_id', vendor.id).maybeSingle();
   if (cur.error) throw new Error(`vendor_wabas read: ${cur.error.message}`);
-  if (cur.data && (cur.data.status === 'pending' || cur.data.status === 'active' || cur.data.status === 'suspended')) {
+  const hasToken = !!(cur.data && cur.data.business_token);
+  if (cur.data && (cur.data.status === 'pending' || ((cur.data.status === 'active' || cur.data.status === 'suspended') && hasToken))) {
     return refuse('already_connected', TEXT_FAILED);
   }
+  const reExchange = !!(cur.data && (cur.data.status === 'active' || cur.data.status === 'suspended') && !hasToken);
 
   // 3 · the exchange, first of every Meta call.
   let token;
@@ -89,19 +101,29 @@ async function connect({ vendor, body, supabase, env = process.env, fetchImpl = 
       await meta.register({ phoneNumberId: pnid, token, pin, env, fetchImpl });
     }
 
-    // 7 · the row. A migrated_out row is replaced (F6), never stacked.
-    if (cur.data) {
-      const del = await supabase.from('vendor_wabas').delete().eq('id', cur.data.id).select('id');
-      if (del.error || !del.data || del.data.length !== 1) throw new Error(`vendor_wabas replace: ${del.error ? del.error.message : 'no row removed'}`);
-    }
+    // 7 · the row, her token sealed in it. A migrated_out row is replaced (F6), never stacked; a tokenless active or suspended
+    //     row is updated in place (F-a3 (a)), never deleted.
     const row = {
       vendor_id: vendor.id, business_id: b.business_id, waba_id: b.waba_id, phone_number_id: pnid,
       display_number: String(n.display_phone_number), connect_way: way,
       status: way === 'shared' ? 'pending' : 'active',
       quality_rating: n.quality_rating ? String(n.quality_rating) : null, tier: vendor.tier || null,
+      business_token: vault.seal(token),
     };
-    const ins = await supabase.from('vendor_wabas').insert(row).select('status, display_number, connect_way, quality_rating');
-    if (ins.error || !ins.data || ins.data.length !== 1) throw new Error(`vendor_wabas insert: ${ins.error ? ins.error.message : 'no row'}`);
+    let ins;
+    if (reExchange) {
+      ins = await supabase.from('vendor_wabas').update({ ...row, paused_reason: null, updated_at: now().toISOString() })
+        .eq('id', cur.data.id).select('status, display_number, connect_way, quality_rating');
+      if (ins.error || !ins.data || ins.data.length !== 1) throw new Error(`vendor_wabas re-exchange: ${ins.error ? ins.error.message : 'no row'}`);
+      console.log(`[own-number] ${vendor.id} re-exchanged in place (F-a3): her token kept`);
+    } else {
+      if (cur.data) {
+        const del = await supabase.from('vendor_wabas').delete().eq('id', cur.data.id).select('id');
+        if (del.error || !del.data || del.data.length !== 1) throw new Error(`vendor_wabas replace: ${del.error ? del.error.message : 'no row removed'}`);
+      }
+      ins = await supabase.from('vendor_wabas').insert(row).select('status, display_number, connect_way, quality_rating');
+      if (ins.error || !ins.data || ins.data.length !== 1) throw new Error(`vendor_wabas insert: ${ins.error ? ins.error.message : 'no row'}`);
+    }
 
     // 8 · SHARED: the once-only sync, inside Meta's 24 hours, started now. Her contacts first, then her
     //     history. A refusal of history is hers to make (2593109 arrives later on the history webhook).

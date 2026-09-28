@@ -17,7 +17,8 @@ function makeDb(seed = {}, { unique = { messages: ['message_sid'] }, failReads =
   function q(table) {
     const st = { table, filters: [], cols: '*', lim: null, op: 'select', payload: null, ret: false };
     const match = (r) => st.filters.every(([k, c, v]) => k === 'eq' ? String(r[c]) === String(v) : k === 'is' ? (r[c] === undefined ? null : r[c]) === v
-      : k === 'gte' ? String(r[c]) >= String(v) : k === 'contains' ? containsJson(r[c], v) : true);
+      : k === 'gte' ? String(r[c]) >= String(v) : k === 'contains' ? containsJson(r[c], v)
+      : k === 'in' ? v.map(String).includes(String(r[c])) : true); // 'in': CE-46 G6-3 cut three, PostgREST's in.(...)
     const run = () => {
       const rows = tables[table] || (tables[table] = []);
       if (st.op === 'select') {
@@ -41,6 +42,7 @@ function makeDb(seed = {}, { unique = { messages: ['message_sid'] }, failReads =
       update(p) { st.op = 'update'; st.payload = p; return b; },
       eq(c, v) { st.filters.push(['eq', c, v]); return b; }, is(c, v) { st.filters.push(['is', c, v]); return b; },
       gte(c, v) { st.filters.push(['gte', c, v]); return b; }, contains(c, v) { st.filters.push(['contains', c, v]); return b; },
+      in(c, v) { st.filters.push(['in', c, Array.isArray(v) ? v : []]); return b; },
       order() { return b; }, limit(n) { st.lim = n; return b; },
       maybeSingle() { const r = run(); if (r.error) return Promise.resolve(r); if (r.data.length > 1) return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'multiple rows' } }); return Promise.resolve({ data: r.data[0] || null, error: null }); },
       single() { const r = run(); if (r.error) return Promise.resolve(r); if (r.data.length !== 1) return Promise.resolve({ data: null, error: { code: 'PGRST116', message: `${r.data.length} rows` } }); return Promise.resolve({ data: r.data[0], error: null }); },
