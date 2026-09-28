@@ -95,16 +95,26 @@ function fakeMeta(opts = {}) {
     if (p === 'oauth/access_token') return J({ access_token: u.searchParams.get('grant_type') ? 'LONG-TOKEN' : 'SHORT-TOKEN', expires_in: 5184000 });
     if (p === 'me') return J({ id: 'FB1' });
     if (p === 'me/permissions') return J({ data: meta.NEEDED_SCOPES.map((permission) => ({ permission, status: 'granted' })) });
-    if (p === 'me/accounts') return J({ data: [{ id: 'PAGE1', name: 'The Dream Wedding', instagram_business_account: { id: 'IG1', username: 'thedreamwedding_in' } }] });
-    if (p === 'me/adaccounts') return J({ data: [{ id: 'act_4417', name: 'Swati Roy Makeup', account_status: 1, currency: 'INR' }] });
+    const PAGE = { id: 'PAGE1', name: 'The Dream Wedding', instagram_business_account: { id: 'IG1', username: 'thedreamwedding_in' } };
+    if (p === 'me/accounts') return J({ data: opts.portfolioOnly ? [] : [PAGE] });
+    if (p === 'me/businesses') return J({ data: opts.portfolioOnly ? [{ id: 'B1', name: 'thedreamwedding', owned_pages: { data: [PAGE] } }] : [] });
+    if (p === 'me/adaccounts') return J({ data: [{ id: 'act_4417', name: 'Swati Roy Makeup', account_status: 1, currency: 'INR' }]
+      .concat(opts.twoAccounts ? [{ id: 'act_9999', name: 'Dev Roy', account_status: 1, currency: 'INR' }] : []) });
+    if (p === 'PAGE1' && u.searchParams.get('fields') === 'access_token') return J({ id: 'PAGE1', access_token: 'PAGE-TOKEN' });
+    if (p === 'PAGE1/posts') return J({ data: [{ id: '1008033895736362_555', message: 'Meher and Kabir. Jaipur', full_picture: 'https://x/fb.jpg', created_time: new Date().toISOString() }] });
     if (p === 'act_4417' && init.method === 'GET') return J(acct);
-    if (p === 'IG1/media') return J({ data: [{ id: '17890000000000001', caption: 'Aanya and Rohan', media_type: 'IMAGE', like_count: 212, comments_count: 18, timestamp: new Date(Date.now() - 7 * 864e5).toISOString(), boost_eligibility_info: { eligible_to_boost: true } }] });
-    if (/\/insights$/.test(p) && p.startsWith('1789')) return J({ data: [{ name: 'saved', values: [{ value: 48 }] }, { name: 'reach', values: [{ value: 3100 }] }] });
+    if (p === 'IG1/media') return J({ data: [
+      { id: '17890000000000001', caption: 'Aanya and Rohan', media_type: 'IMAGE', timestamp: new Date(Date.now() - 7 * 864e5).toISOString(), boost_eligibility_info: { eligible_to_boost: true },
+        ...(opts.noLikes ? {} : { like_count: 212, comments_count: 18 }) },
+      { id: '17890000000000002', caption: 'Newest one', media_type: 'IMAGE', timestamp: new Date(Date.now() - 1 * 864e5).toISOString(), boost_eligibility_info: { eligible_to_boost: true },
+        ...(opts.noLikes ? {} : { like_count: 3, comments_count: 0 }) }] });
+    if (/\/insights$/.test(p) && p.startsWith('1789')) return opts.noInsights ? J({ error: { code: 10, message: 'Application does not have permission' } }, 400)
+      : J({ data: [{ name: 'saved', values: [{ value: 48 }] }, { name: 'reach', values: [{ value: 3100 }] }] });
     if (p === 'search') return J({ data: [{ key: '1035921', name: 'Lucknow', type: 'city', region: 'Uttar Pradesh', country_name: 'India' }] });
     if (init.method === 'POST' && opts.refuseAt && p.endsWith(opts.refuseAt)) return J({ error: { code: 100, message: 'Invalid parameter' } }, 400);
     if (init.method === 'POST' && /^act_4417\/(campaigns|adsets|adcreatives|ads)$/.test(p)) return J({ id: `${p.split('/')[1]}-id` });
     if (init.method === 'POST') return J({ success: true });
-    if (/\/insights$/.test(p)) return J({ data: [{ date_start: '2026-10-01', reach: '1240', spend: '210.5', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '2' }] }] });
+    if (/\/insights$/.test(p)) return J({ data: [{ date_start: '2026-10-01', impressions: '1802', reach: '1240', clicks: '61', spend: '210.5', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '2' }] }] });
     if (/^ads-id$/.test(p)) return J({ status: 'ACTIVE', effective_status: 'PENDING_REVIEW' });
     return J({ data: [] });
   }
@@ -265,6 +275,72 @@ function goodSettings() {
     });
   }
 
+  sec('6  cut1e: portfolio Pages, the chooser, the Page token, Page posts, not-hers, five figures, the fallback');
+  {
+    const db = fakeDb(); const m = fakeMeta({ portfolioOnly: true }); adsRouter._setFetch(m.f); armed(db); connected(db);
+    await withServer(db, async (call) => {
+      const r = await call('GET', '/');
+      ok(r.json.gaps && r.json.gaps.gap === null && r.json.gaps.page.id === 'PAGE1', '6.1 a Page reached only through a portfolio is found (me/accounts empty, me/businesses owned_pages)', JSON.stringify(r.json.gaps));
+    });
+  }
+  {
+    const db = fakeDb(); const m = fakeMeta({ twoAccounts: true }); adsRouter._setFetch(m.f); armed(db); connected(db);
+    await withServer(db, async (call) => {
+      const r = await call('GET', '/');
+      ok(r.json.gaps.gap === 'choose' && r.json.gaps.choose.accounts.length === 2 && !r.json.gaps.choose.pages, '6.2 two active ad accounts: she chooses; nothing is picked for her', JSON.stringify(r.json.gaps));
+      const bad = await call('POST', '/choose', { ad_account_id: 'act_1234' });
+      ok(bad.status === 400, '6.3 an id Meta does not list for her is refused');
+      const c = await call('POST', '/choose', { ad_account_id: 'act_9999' });
+      ok(c.json.gaps && c.json.gaps.gap === null && c.json.gaps.account.id === 'act_9999', '6.4 her tap is stored and honoured (the second account, not the first found)', JSON.stringify(c.json.gaps));
+      const again = await call('GET', '/');
+      ok(again.json.gaps.gap === null && again.json.gaps.account.id === 'act_9999', '6.5 her pick holds on the next read');
+    });
+  }
+  ok(meta.gapsFrom({ scopes: meta.NEEDED_SCOPES, pageList: [{ id: 'A', name: 'a', ig: { id: '1' } }, { id: 'B', name: 'b', ig: { id: '2' } }], accounts: [{ id: 'act_1', status: 1 }] }).gap === 'choose',
+    '6.6 two linked Pages and no pick: choose (pure)');
+  {
+    const db = fakeDb(); const m = fakeMeta(); adsRouter._setFetch(m.f); armed(db); connected(db);
+    await withServer(db, async (call) => {
+      const posts = await call('GET', '/posts');
+      const fbp = (posts.json.posts || []).find((x) => x.source === 'facebook');
+      ok(fbp && fbp.id === '1008033895736362_555', '6.7 her Facebook Page posts are listed beside her Instagram posts (G4)', JSON.stringify(posts.json.posts));
+      const set = (mediaId) => { const g = goodSettings(); g.media_id = mediaId; return g; };
+      const b0 = m.calls.length;
+      const pr = await call('POST', '/prepare', { settings: set('17890000000000001') });
+      await call('POST', '/run', { settings: pr.json.settings, confirm: pr.json.confirm });
+      const creates = m.calls.slice(b0).filter((c) => c.method === 'POST' && /^act_4417\//.test(c.p));
+      ok(creates.length === 4 && creates.every((c) => c.auth === 'Bearer PAGE-TOKEN'), '6.8 the four objects are created with the Page token, never her user token', JSON.stringify(creates.map((c) => c.auth)));
+      const b1 = m.calls.length;
+      const pr2 = await call('POST', '/prepare', { settings: set('1008033895736362_555') });
+      await call('POST', '/run', { settings: pr2.json.settings, confirm: pr2.json.confirm });
+      const c2 = m.calls.slice(b1).filter((c) => c.method === 'POST' && /^act_4417\//.test(c.p));
+      ok(c2.length === 4 && c2[1].form.destination_type === 'MESSENGER' && c2[2].form.object_story_id === '1008033895736362_555' && /MESSAGE_PAGE/.test(c2[2].form.call_to_action),
+        '6.9 a Facebook Page post boosts to Messenger with object_story_id (G4 as read)', JSON.stringify(c2.map((c) => c.form)).slice(0, 200));
+      const b2 = m.calls.length;
+      const pr3 = await call('POST', '/prepare', { settings: set('17899999999999999') });
+      const r3 = await call('POST', '/run', { settings: pr3.json.settings, confirm: pr3.json.confirm });
+      ok(r3.status === 400 && r3.json.code === 'ADS_NOT_HER_POST' && m.calls.slice(b2).filter((c) => c.method === 'POST').length === 0,
+        '6.10 a post that is not hers on Meta (an example) never reaches a create call (R-46.16)');
+      const res = await call('GET', '/results');
+      const d = res.json.ad && res.json.ad.by_day && res.json.ad.by_day[0];
+      ok(d && d.impressions === 1802 && d.clicks === 61 && d.reach === 1240 && d.conversations === 2 && d.spend === 210.5, '6.11 the five figures: impressions, reach, clicks, results, spend (G3)', JSON.stringify(d));
+    });
+  }
+  {
+    const db = fakeDb(); const m = fakeMeta({ noInsights: true }); adsRouter._setFetch(m.f); armed(db); connected(db);
+    await withServer(db, async (call) => {
+      const st = await call('GET', '/start');
+      ok(st.json.suggestion && st.json.suggestion.basis === 'likes' && st.json.suggestion.id === '17890000000000001', '6.12 insights refused: the likes line (the most liked)', JSON.stringify(st.json.suggestion));
+    });
+  }
+  {
+    const db = fakeDb(); const m = fakeMeta({ noInsights: true, noLikes: true }); adsRouter._setFetch(m.f); armed(db); connected(db);
+    await withServer(db, async (call) => {
+      const st = await call('GET', '/start');
+      ok(st.json.suggestion && st.json.suggestion.basis === 'newest' && st.json.suggestion.id === '17890000000000002', '6.13 insights and likes refused: the newest post', JSON.stringify(st.json.suggestion));
+    });
+  }
+
   if (!process.env.B144_CHILD) {
     sec('6  mutations of production code (each must redden a child run; restored by sha)');
     const MUTS = [
@@ -276,6 +352,10 @@ function goodSettings() {
       ['src/lib/ads/connection.js', "const SAFE_COLUMNS = 'vendor_id, ", "const SAFE_COLUMNS = 'access_token, vendor_id, ", 'M6 the token in SAFE_COLUMNS'],
       ['src/lib/ads/targeting.js', "const effKind = kind === 'daily' && hours <= 24 ? 'lifetime' : kind;", "const effKind = kind;", 'M7 one day keeps a daily amount'],
       ['src/api/vendor/ads.js', "  const row = await ads.draft(r.supabase, req.vendor.id, { adAccountId: r.gaps.account.id, settings: { ...v.settings, post },", "  const row0 = await ads.draft(r.supabase, req.vendor.id, { adAccountId: r.gaps.account.id, settings: { ...v.settings, post },", 'M8 the row written after Meta (renamed away)'],
+      ['src/lib/ads/meta.js', "for (const edge of ['owned_pages', 'client_pages']) {", "for (const edge of []) {", 'M9 portfolio Pages not read (the walk\'s false "no Page")'],
+      ['src/lib/ads/meta.js', "let account = active.length === 1 ? active[0] : active.find((a) => a.id === pick.ad_account_id);", "let account = active[0];", 'M10 the first ad account found, not hers'],
+      ['src/api/vendor/ads.js', "const ids = await meta.createPaused({ token: pt,", "const ids = await meta.createPaused({ token: r.token,", 'M11 the objects made with her user token, not the Page token'],
+      ['src/api/vendor/ads.js', "if (!source) return errRes(res, 400, 'Choose one of your own posts.', 'ADS_NOT_HER_POST');", "if (!source) source = 'instagram';", 'M12 a post that is not hers reaches a create call'],
     ];
     for (const [rel, from, to, name] of MUTS) {
       const file = path.join(ROOT, rel); const orig = fs.readFileSync(file, 'utf8'); const h = sha(orig);

@@ -47,10 +47,15 @@ async function readGaps(supabase, vendorId) {
       meta.pages({ token: t.token, fetchImpl: _fetch }),
       meta.adAccounts({ token: t.token, fetchImpl: _fetch }),
     ]);
-    const g = meta.gapsFrom({ scopes, pageList, accounts });
-    await conn.saveAssets(supabase, vendorId, {
-      page: g.page || null, ig: g.ig || null, account: g.gap === null ? g.account : null,
-    });
+    // Her stored pick (cut1e 2): honoured while it is still among what Meta lists; never overwritten by a 'choose'.
+    const c = await conn.getConnection(supabase, vendorId);
+    const pick = c.ok && c.connection ? { page_id: c.connection.page_id, ad_account_id: c.connection.ad_account_id } : {};
+    const g = meta.gapsFrom({ scopes, pageList, accounts, pick });
+    if (g.gap !== 'choose') {
+      await conn.saveAssets(supabase, vendorId, {
+        page: g.page || null, ig: g.ig || null, account: g.gap === null ? g.account : null,
+      });
+    }
     return g;
   } catch (e) {
     if (e && e.tokenDead) return { gap: 'expired' };
@@ -145,14 +150,49 @@ async function readyOrRefuse(req, res) {
 }
 const metaDown = (res, e) => okRes(res, { gaps: { gap: e && e.tokenDead ? 'expired' : 'meta_unavailable' } });
 
+// Her posts, both kinds (G4): Instagram posts and reels with their insights, then her Facebook Page's latest posts read
+// with the Page token. The suggestion is drawn from Instagram only (saves and reach, then likes, then newest). A Page
+// token that cannot be had leaves Facebook posts out; it never blocks the Instagram ones.
+async function herPosts(r) {
+  const media = await meta.igMedia({ token: r.token, igUserId: r.gaps.ig.id, fetchImpl: _fetch });
+  const eligible = media.filter((m) => m.eligible).slice(0, 12);
+  for (const m of eligible) {
+    try { m.insights = await meta.mediaInsights({ token: r.token, mediaId: m.id, fetchImpl: _fetch }); } catch (e) { if (e && e.tokenDead) throw e; m.insights = null; }
+  }
+  let fb = [];
+  try {
+    const pt = await meta.pageToken({ token: r.token, pageId: r.gaps.page.id, fetchImpl: _fetch });
+    fb = await meta.pagePosts({ token: pt, pageId: r.gaps.page.id, fetchImpl: _fetch });
+  } catch (e) { if (e && e.tokenDead) throw e; fb = []; }
+  const ig = media.map((m) => eligible.find((x) => x.id === m.id) || m);
+  return { posts: ig.concat(fb), suggestion: meta.suggest(eligible) };
+}
+
+// THE CHOOSER (cut1e 2): her tap, never the first found. Each id must be one Meta lists for her login right now.
+router.post('/choose', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const g = await gate(req);
+  if (!g.open) return errRes(res, 403, 'Ads are not switched on for this account yet.', 'ADS_CLOSED');
+  const supabase = req.app.locals.supabase;
+  const t = await conn.readToken(supabase, req.vendor.id);
+  if (!t.ok) return okRes(res, { gaps: { gap: t.error === 'expired' ? 'expired' : 'not_connected' } });
+  const b = req.body || {};
+  try {
+    const [pageList, accounts] = await Promise.all([
+      meta.pages({ token: t.token, fetchImpl: _fetch }), meta.adAccounts({ token: t.token, fetchImpl: _fetch }),
+    ]);
+    const c = await conn.getConnection(supabase, req.vendor.id);
+    const cur = c.ok && c.connection ? c.connection : {};
+    const page = b.page_id ? pageList.find((p) => p.id === String(b.page_id) && p.ig) : pageList.find((p) => p.id === cur.page_id);
+    const account = b.ad_account_id ? accounts.find((a) => a.id === String(b.ad_account_id) && a.status === meta.ACTIVE) : accounts.find((a) => a.id === cur.ad_account_id);
+    if ((b.page_id && !page) || (b.ad_account_id && !account)) return errRes(res, 400, 'That is not one of yours on Meta.', 'ADS_CHOOSE');
+    await conn.saveAssets(supabase, req.vendor.id, { page: page ? { id: page.id, name: page.name } : null, ig: page ? page.ig : null, account: account || null });
+    return okRes(res, { gaps: await readGaps(supabase, req.vendor.id) });
+  } catch (e) { return okRes(res, { gaps: { gap: e && e.tokenDead ? 'expired' : 'meta_unavailable' } }); }
+}));
+
 router.get('/posts', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const r = await readyOrRefuse(req, res); if (!r) return;
-  try {
-    const media = await meta.igMedia({ token: r.token, igUserId: r.gaps.ig.id, fetchImpl: _fetch });
-    const eligible = media.filter((m) => m.eligible).slice(0, 12);
-    for (const m of eligible) m.insights = await meta.mediaInsights({ token: r.token, mediaId: m.id, fetchImpl: _fetch });
-    return okRes(res, { posts: media.map((m) => eligible.find((x) => x.id === m.id) || m), suggestion: meta.suggest(eligible) });
-  } catch (e) { return metaDown(res, e); }
+  try { return okRes(res, await herPosts(r)); } catch (e) { return metaDown(res, e); }
 }));
 
 // Meta's option lists: places, languages, interests, life_events. The list is Meta's; TDW adds and removes nothing.
@@ -175,11 +215,9 @@ router.get('/start', requireAuth, resolveVendor(), asyncHandler(async (req, res)
       const found = await meta.search({ token: r.token, kind: 'places', q: req.vendor.city, fetchImpl: _fetch });
       cityPlace = found.find((p) => p.type === 'city') || null;
     }
-    const media = await meta.igMedia({ token: r.token, igUserId: r.gaps.ig.id, fetchImpl: _fetch });
-    const eligible = media.filter((m) => m.eligible).slice(0, 12);
-    for (const m of eligible) m.insights = await meta.mediaInsights({ token: r.token, mediaId: m.id, fetchImpl: _fetch });
-    const pick = meta.suggest(eligible);
-    return okRes(res, { facts, settings: target.startingValues({ cityPlace, minDailyMinor: facts.minDailyMinor, mediaId: pick ? pick.id : null }), suggestion: pick });
+    const hp = await herPosts(r);
+    const pick = hp.suggestion;
+    return okRes(res, { facts, posts: hp.posts, settings: target.startingValues({ cityPlace, minDailyMinor: facts.minDailyMinor, mediaId: pick ? pick.id : null }), suggestion: pick });
   } catch (e) { return metaDown(res, e); }
 }));
 
@@ -212,17 +250,22 @@ router.post('/run', requireAuth, resolveVendor(), asyncHandler(async (req, res) 
   // Gap (1), the chair's yes: the chosen post's picture and the first line of its caption ride in the stored settings
   // (jsonb, no migration) so the Posts card and Your ads can show them. Read from Meta, never from the client. The echo
   // is over v.settings alone; `post` is added after the echo and validate() ignores it on a duplicate.
-  let post = null;
+  // R-46.16: only a post that is HERS on Meta can reach a create call; an example never can (it has no id Meta lists).
+  let post = null; let source = null;
   try {
-    const media = await meta.igMedia({ token: r.token, igUserId: r.gaps.ig.id, fetchImpl: _fetch });
-    const m = media.find((x) => x.id === v.settings.media_id);
-    if (m) post = { url: m.url || null, caption_line: String(m.caption || '').split(/[\n.]/)[0].trim().slice(0, 60) || null };
+    const hp = await herPosts(r);
+    const m = hp.posts.find((x) => x.id === v.settings.media_id && x.eligible);
+    if (m) { source = m.source; post = { url: m.url || null, caption_line: String(m.caption || '').split(/[\n.]/)[0].trim().slice(0, 60) || null, source }; }
   } catch (_e) { post = null; }
+  if (!source) return errRes(res, 400, 'Choose one of your own posts.', 'ADS_NOT_HER_POST');
   const row = await ads.draft(r.supabase, req.vendor.id, { adAccountId: r.gaps.account.id, settings: { ...v.settings, post }, days: v.days, totalMinor: v.total_minor, currency: facts.currency });
   if (!row.ok) return errRes(res, 500, row.error);
   try {
-    const ids = await meta.createPaused({ token: r.token, adAccountId: r.gaps.account.id, pageId: r.gaps.page.id, igUserId: r.gaps.ig.id,
-      mediaId: v.settings.media_id, adset: v.adset, welcome: v.settings.welcome, fetchImpl: _fetch });
+    // Meta's click-to-Instagram guide (read 29 September 2026): the calls need a Page token from a person with the
+    // ADVERTISE task. It is fetched here, used for the four objects, and never stored.
+    const pt = await meta.pageToken({ token: r.token, pageId: r.gaps.page.id, fetchImpl: _fetch });
+    const ids = await meta.createPaused({ token: pt, adAccountId: r.gaps.account.id, pageId: r.gaps.page.id, igUserId: r.gaps.ig.id,
+      mediaId: v.settings.media_id, source, adset: v.adset, welcome: v.settings.welcome, fetchImpl: _fetch });
     await ads.saveIds(r.supabase, row.id, ids);
     await meta.setRunning({ token: r.token, ids, active: true, fetchImpl: _fetch });
     await ads.mark(r.supabase, row.id, 'running');

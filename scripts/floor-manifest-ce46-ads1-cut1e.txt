@@ -1,0 +1,11 @@
+# scripts/floor-manifest-ce46-ads1-cut1e.txt
+# CE-46 · ADS-1 · cut1e (dream-os): portfolio Pages, the chooser (never the first found), the Page access token for the
+# ad calls, Facebook Page posts boosted to Messenger (G4), impressions and clicks (G3), the three-step suggestion, no
+# create call for a post that is not hers (R-46.16). Rung b144 (81/0). BASE: 1b8789f (main; carried from 9d3d772, ELZ-3 cut 1 landed between, no overlap). No migration.
+# F-14.16: a dirty path outside this list is a STOP. A-45.3: no new folder.
+src/lib/ads/meta.js
+src/lib/ads/targeting.js
+src/api/vendor/ads.js
+scripts/b144_ads1_panel_bench.js
+docs/handovers/TDW_CE46_ADS1_1_HANDOVER.md
+scripts/floor-manifest-ce46-ads1-cut1e.txt

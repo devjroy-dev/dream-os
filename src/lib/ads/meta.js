@@ -78,14 +78,40 @@ async function grantedScopes({ token, env = process.env, fetchImpl }) {
     .map((p) => p.permission).sort();
 }
 
+const PAGE_FIELDS = 'id,name,instagram_business_account{id,username}';
+const shapePage = (p) => ({
+  id: String(p.id), name: typeof p.name === 'string' ? p.name : '',
+  ig: p.instagram_business_account && p.instagram_business_account.id
+    ? { id: String(p.instagram_business_account.id), username: p.instagram_business_account.username || null } : null,
+});
+/**
+ * Her Pages. me/accounts first; then, because me/accounts does NOT list a Page she reaches through a business
+ * portfolio (the ads walk of 29 September: "data": [] while the token held the Page, read on Meta's own tools), every
+ * portfolio's owned_pages and client_pages (needs business_management, cut1e 1). One list, no repeats, me/accounts first.
+ */
 async function pages({ token, env = process.env, fetchImpl }) {
-  const b = await call(fetchImpl, 'pages',
-    `${v(env)}/me/accounts?fields=${encodeURIComponent('id,name,instagram_business_account{id,username}')}&limit=50`, token);
-  return (b && Array.isArray(b.data) ? b.data : []).filter((p) => p && p.id).map((p) => ({
-    id: String(p.id), name: typeof p.name === 'string' ? p.name : '',
-    ig: p.instagram_business_account && p.instagram_business_account.id
-      ? { id: String(p.instagram_business_account.id), username: p.instagram_business_account.username || null } : null,
-  }));
+  const b = await call(fetchImpl, 'pages', `${v(env)}/me/accounts?fields=${encodeURIComponent(PAGE_FIELDS)}&limit=50`, token);
+  const out = (b && Array.isArray(b.data) ? b.data : []).filter((p) => p && p.id).map(shapePage);
+  let biz = null;
+  try {
+    biz = await call(fetchImpl, 'businesses',
+      `${v(env)}/me/businesses?fields=${encodeURIComponent(`id,name,owned_pages.limit(50){${PAGE_FIELDS}},client_pages.limit(50){${PAGE_FIELDS}}`)}&limit=25`, token);
+  } catch (e) { if (e && e.tokenDead) throw e; biz = null; }   // without business_management: me/accounts alone, as before
+  for (const bz of (biz && Array.isArray(biz.data) ? biz.data : [])) {
+    for (const edge of ['owned_pages', 'client_pages']) {
+      for (const p of (bz && bz[edge] && Array.isArray(bz[edge].data) ? bz[edge].data : [])) {
+        if (p && p.id && !out.some((o) => o.id === String(p.id))) out.push(shapePage(p));
+      }
+    }
+  }
+  return out;
+}
+
+/** The Page's own token: Meta's click-to-Instagram guide needs a Page token from a person with the ADVERTISE task. */
+async function pageToken({ token, pageId, env = process.env, fetchImpl }) {
+  const b = await call(fetchImpl, 'page_token', `${v(env)}/${encodeURIComponent(pageId)}?fields=access_token`, token);
+  if (!b || typeof b.access_token !== 'string' || !b.access_token) throw new MetaError('page_token', 'no page token', null);
+  return b.access_token;
 }
 
 async function adAccounts({ token, env = process.env, fetchImpl }) {
@@ -110,20 +136,28 @@ const NEEDED_SCOPES = Object.freeze(['ads_management', 'ads_read', 'instagram_ba
  * When several Pages or accounts qualify, the first in Meta's order is taken for the sentence; choosing among them is
  * the room's control, not this function's.
  */
-function gapsFrom({ scopes = [], pageList = [], accounts = [] }) {
+function gapsFrom({ scopes = [], pageList = [], accounts = [], pick = {} }) {
   const missing = NEEDED_SCOPES.filter((s) => !scopes.includes(s));
   if (missing.length) return { gap: 'scopes', missing };
   if (!pageList.length) return { gap: 'page' };
-  const linked = pageList.find((p) => p.ig);
-  if (!linked) return { gap: 'link', page: { id: pageList[0].id, name: pageList[0].name } };
+  const linkedAll = pageList.filter((p) => p.ig);
+  if (!linkedAll.length) return { gap: 'link', page: { id: pageList[0].id, name: pageList[0].name } };
+  // NEVER THE FIRST FOUND (cut1e 2): one of each is chosen silently; two or more wait for her tap, unless her stored
+  // pick is still among them.
+  let linked = linkedAll.length === 1 ? linkedAll[0] : linkedAll.find((p) => p.id === pick.page_id);
+  const active = accounts.filter((a) => a.status === ACTIVE);
+  let account = active.length === 1 ? active[0] : active.find((a) => a.id === pick.ad_account_id);
+  const choose = {};
+  if (!linked) choose.pages = linkedAll.map((p) => ({ id: p.id, name: p.name, ig: p.ig }));
+  if (!account && active.length > 1) choose.accounts = active.map((a) => ({ id: a.id, name: a.name, currency: a.currency }));
+  if (choose.pages || choose.accounts) return { gap: 'choose', choose };
   const page = { id: linked.id, name: linked.name };
   const ig = { id: linked.ig.id, username: linked.ig.username };
-  const account = accounts.find((a) => a.status === ACTIVE);
   if (!account) return { gap: 'ad_account', page, ig, inactive: accounts.length > 0 };
   return { gap: null, page, ig, account };
 }
 
-module.exports = { MetaError, exchangeCode, longLived, me, grantedScopes, pages, adAccounts, gapsFrom, NEEDED_SCOPES, ACTIVE };
+module.exports = { MetaError, exchangeCode, longLived, me, grantedScopes, pages, pageToken, adAccounts, gapsFrom, NEEDED_SCOPES, ACTIVE };
 
 // ── THE BOOST (cut 1: a MESSAGES ad from one of her Instagram posts into her Instagram Direct) ─────────────────────
 // Field names quoted from Meta's "Ads that Click to Instagram" (read 28 September 2026): campaign objective
@@ -155,8 +189,19 @@ async function igMedia({ token, igUserId, env = process.env, fetchImpl, limit = 
   return (b && Array.isArray(b.data) ? b.data : []).filter((m) => m && m.id).map((m) => ({
     id: String(m.id), caption: m.caption || '', type: m.media_type || null, url: m.media_url || m.thumbnail_url || null,
     permalink: m.permalink || null, at: m.timestamp || null,
-    likes: Number(m.like_count) || 0, comments: Number(m.comments_count) || 0,
+    likes: m.like_count === undefined ? null : Number(m.like_count) || 0, comments: m.comments_count === undefined ? null : Number(m.comments_count) || 0,
     eligible: !!(m.boost_eligibility_info && m.boost_eligibility_info.eligible_to_boost),
+    source: 'instagram',
+  }));
+}
+
+/** G4: her Facebook Page's latest posts, read with the Page token (pages_read_engagement). Each opens in the app. */
+async function pagePosts({ token, pageId, env = process.env, fetchImpl, limit = 12 }) {
+  const fields = 'id,message,full_picture,created_time,permalink_url';
+  const b = await call(fetchImpl, 'page_posts', `${v(env)}/${encodeURIComponent(pageId)}/posts?fields=${encodeURIComponent(fields)}&limit=${limit}`, token);
+  return (b && Array.isArray(b.data) ? b.data : []).filter((m) => m && /^[0-9]+_[0-9]+$/.test(String(m.id))).map((m) => ({
+    id: String(m.id), caption: m.message || '', type: 'FACEBOOK', url: m.full_picture || null, permalink: m.permalink_url || null,
+    at: m.created_time || null, likes: null, comments: null, eligible: !!m.full_picture, source: 'facebook',
   }));
 }
 
@@ -172,20 +217,22 @@ async function accountFacts({ token, adAccountId, env = process.env, fetchImpl }
  * `welcome` her greeting and quick questions (page_welcome_message, Meta's VISUAL_EDITOR shape as quoted on the
  * click-to-Instagram page). Returns the four ids; the caller stores them before anything runs.
  */
-async function createPaused({ token, adAccountId, pageId, igUserId, mediaId, adset, welcome, env = process.env, fetchImpl, now = Date.now() }) {
+async function createPaused({ token, adAccountId, pageId, igUserId, mediaId, source = 'instagram', adset, welcome, env = process.env, fetchImpl, now = Date.now() }) {
+  const fb = source === 'facebook';
   const base = `${v(env)}/${encodeURIComponent(adAccountId)}`;
   const tag = `TDW ${new Date(now).toISOString().slice(0, 10)}`;
   const campaign = await post(fetchImpl, 'campaign', `${base}/campaigns`, token,
     { name: `${tag} messages`, objective: 'OUTCOME_ENGAGEMENT', status: 'PAUSED', special_ad_categories: [] });
   const set = await post(fetchImpl, 'adset', `${base}/adsets`, token, {
     ...adset, name: `${tag} messages`, campaign_id: String(campaign.id), status: 'PAUSED',
-    billing_event: 'IMPRESSIONS', optimization_goal: 'CONVERSATIONS', destination_type: 'INSTAGRAM_DIRECT',
+    billing_event: 'IMPRESSIONS', optimization_goal: 'CONVERSATIONS', destination_type: fb ? 'MESSENGER' : 'INSTAGRAM_DIRECT',
     promoted_object: { page_id: pageId },
   });
-  const creativeForm = {
-    name: `${tag} post`, object_id: pageId, instagram_user_id: igUserId, source_instagram_media_id: mediaId,
-    call_to_action: { type: 'INSTAGRAM_MESSAGE', value: { link: 'https://www.instagram.com' } },
-  };
+  const creativeForm = fb
+    ? { name: `${tag} page post`, object_story_id: mediaId, instagram_user_id: igUserId,
+      call_to_action: { type: 'MESSAGE_PAGE', value: { app_destination: 'MESSENGER' } } }
+    : { name: `${tag} post`, object_id: pageId, instagram_user_id: igUserId, source_instagram_media_id: mediaId,
+      call_to_action: { type: 'INSTAGRAM_MESSAGE', value: { link: 'https://www.instagram.com' } } };
   if (welcome && (welcome.text || (welcome.icebreakers || []).length)) {
     creativeForm.page_welcome_message = { type: 'VISUAL_EDITOR', version: 2, landing_screen_type: 'welcome_message', media_type: 'text',
       text_format: { customer_action_type: 'ice_breakers', message: { text: welcome.text || 'Hello! Can I get more info on this?',
@@ -243,10 +290,11 @@ async function adState({ token, adId, env = process.env, fetchImpl }) {
 /** Day by day: reach, spend (the account's major units as Meta returns them), and the conversations Meta counts. */
 async function insightsByDay({ token, adId, env = process.env, fetchImpl }) {
   const b = await call(fetchImpl, 'insights',
-    `${v(env)}/${encodeURIComponent(adId)}/insights?fields=reach,spend,actions&time_increment=1&date_preset=maximum`, token);
+    `${v(env)}/${encodeURIComponent(adId)}/insights?fields=impressions,reach,clicks,spend,actions&time_increment=1&date_preset=maximum`, token);
   return (b && Array.isArray(b.data) ? b.data : []).map((d) => {
     const conv = (Array.isArray(d.actions) ? d.actions : []).find((a) => a && /messaging_conversation_started/.test(String(a.action_type)));
-    return { day: d.date_start, reach: Number(d.reach) || 0, spend: d.spend !== undefined ? Number(d.spend) : 0, conversations: conv ? Number(conv.value) || 0 : 0 };
+    return { day: d.date_start, impressions: Number(d.impressions) || 0, reach: Number(d.reach) || 0, clicks: Number(d.clicks) || 0,
+      spend: d.spend !== undefined ? Number(d.spend) : 0, conversations: conv ? Number(conv.value) || 0 : 0 };
   });
 }
 
@@ -284,8 +332,12 @@ function suggest(media, now = Date.now()) {
     const pick = withIns.slice().sort((a, b) => (b.insights.saves - a.insights.saves) || (b.insights.reach - a.insights.reach) || newer(a, b))[0];
     return { ...pick, basis: 'saves' };
   }
-  const pick = from.slice().sort((a, b) => (b.likes + b.comments) - (a.likes + a.comments) || newer(a, b))[0];
-  return { ...pick, basis: 'likes' };
+  const withLikes = from.filter((m) => Number.isFinite(m.likes) && Number.isFinite(m.comments) && (m.likes + m.comments) > 0);
+  if (withLikes.length) {
+    const pick = withLikes.slice().sort((a, b) => (b.likes + b.comments) - (a.likes + a.comments) || newer(a, b))[0];
+    return { ...pick, basis: 'likes' };
+  }
+  return { ...from.slice().sort(newer)[0], basis: 'newest' };
 }
 
-Object.assign(module.exports, { mediaInsights, igMedia, accountFacts, createPaused, updateAdset, search, SEARCH_TYPES, setRunning, adState, insightsByDay, suggest });
+Object.assign(module.exports, { mediaInsights, igMedia, pagePosts, accountFacts, createPaused, updateAdset, search, SEARCH_TYPES, setRunning, adState, insightsByDay, suggest });

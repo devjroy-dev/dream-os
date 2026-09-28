@@ -74,7 +74,8 @@ function validate(s, { now = Date.now() } = {}) {
   const bidMinor = Number(bid.amount_minor);
   if (strategy !== 'LOWEST_COST_WITHOUT_CAP' && (!Number.isInteger(bidMinor) || bidMinor <= 0)) e.push('A cost limit needs an amount.');
   const mediaId = String(x.media_id || '');
-  if (!isId(mediaId)) e.push('Choose a post.');
+  // An Instagram media id, or a Facebook Page post id (pageId_postId, G4).
+  if (!isId(mediaId) && !/^[0-9]{1,25}_[0-9]{1,25}$/.test(mediaId)) e.push('Choose a post.');
   const w = x.welcome || {};
   const welcome = { text: clean(w.text, MAX.welcome), icebreakers: (Array.isArray(w.icebreakers) ? w.icebreakers : []).map((t) => clean(t, MAX.icebreaker)).filter(Boolean) };
   if (welcome.icebreakers.length > MAX.icebreakers) e.push(`At most ${MAX.icebreakers} quick questions.`);

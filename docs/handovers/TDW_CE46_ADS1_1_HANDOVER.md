@@ -51,3 +51,24 @@ after). Check META_SCREENS' three addresses. Then the App Review recordings, sev
 - PUBLIC_SCHEMA.md's header carries no notes for 0175 and 0176 (not this cut's).
 - Cut 2 (the lead ad, leads_retrieval, the leadgen webhook, vendor_ad_leads); cut 3 (other objectives and destinations,
   custom and lookalike audiences); stories and ads from new media: later, each with its own permission line.
+
+## CUT1E (29 September 2026) · base 1b8789f (carried from 9d3d772) · the ads walk's part 1 answered
+The walk's wall: TDW said "no Page" because Meta's me/accounts does not list a Page reached through a business
+portfolio (read on Meta's own tools: me/accounts "data": [] while the token held the Page; me/businesses owned_pages had
+it). And me/adaccounts listed two active accounts, of which cut 1 would have taken the first.
+- pages(): me/accounts, then me/businesses owned_pages and client_pages with each Page's Instagram (needs
+  business_management, added to configuration 1863002924861430 by the founder's clicks; F4 reversed on this evidence).
+- gapsFrom: one of each is chosen silently; two or more return gap 'choose'; POST /ads/choose stores her tap after
+  checking each id against what Meta lists now; readGaps never overwrites a pick.
+- /run fetches the Page's own access token (Meta's click-to-Instagram guide, read 29 September 2026) and creates the
+  four objects with it; never stored.
+- G4: her Facebook Page's latest posts (/<page>/posts with the Page token) beside her Instagram posts; a Facebook post
+  boosts to Messenger (destination MESSENGER, creative object_story_id, MESSAGE_PAGE); Instagram to Instagram Direct.
+- R-46.16: /run accepts only a post Meta lists as hers and eligible (ADS_NOT_HER_POST otherwise).
+- G3: insights read impressions, reach, clicks, spend, actions. The suggestion: saves and reach, then likes and comments
+  (absent, not zero, when unread), then the newest post.
+b144 81/0 (cells 6.1 to 6.13; mutations M9 to M12 new, M1 to M12 all red and restored). b128 13/0, b119 28/0.
+THE RE-WALK after both halves land: the founder's clicks (business_management on the configuration), the connect again
+(the chooser shows THE DREAM WEDDING ADS and Dev Roy; he taps the first), the Page found through its portfolio, a read of
+act_4681657125400464?fields=is_prepay_account,funding_source_details,balance,amount_spent,spend_cap,min_daily_budget in
+the Graph Explorer, one messages ad at Meta's minimum for one day from the prepaid funds, then the recordings.
