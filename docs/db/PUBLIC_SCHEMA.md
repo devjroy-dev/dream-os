@@ -40,6 +40,15 @@ DEFAULT 'off'` (CHECK `vendor_ig_connections_dm_state_check`: 'off' or 'on'; "pa
 `dm_consented_at timestamptz` and `dm_subscribed_at timestamptz`. None of it is described below; 0174 is its witness until the
 snapshot is regenerated. Its rehearsal is `scripts/lib/b119br_0174_rehearse.sh` (A-45.8).
 
+**AND 0177 (`0177_ads.sql`, CE-46 ADS-1 cut 1), once the founder applies it:** creates `public.vendor_ad_connections` (18 columns;
+UNIQUE vendor_id; `access_token` a secret column read only by `src/lib/ads/connection.js`; `ad_account_id` NULL while she has none,
+CHECK '^act_[0-9]+$' when set) and `public.vendor_ads` (23 columns; UNIQUE ad_id; `settings jsonb` every setting she confirmed,
+`total_minor`, kind 'boost'|'lead', status 'draft'|'running'|'paused'|'ended'|'refused'; index (vendor_id, created_at DESC)), RLS on
+both in the same transaction, and grants `service_role` SELECT, INSERT, UPDATE, DELETE on both in the same file (A-45.8); inserts one
+`public.capabilities` row, `flag.ads` 'off'. None of it is described below; 0177 is its witness until the snapshot is regenerated.
+Its rehearsal is `scripts/lib/b144r_0177_rehearse.sh`. (The header carries no notes for 0175 and 0176; named here, not written by
+this cut.)
+
 **Repo tip at authoring:** `713340a` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
 **Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0168` across 152 files, and it is not contiguous: **16 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
 **⏳ HOW TO TELL WHETHER THIS DOCUMENT IS STILL TRUE.** If `db/migrations/` holds any file newer than the ladder tip named above, **this document is STALE for any table those migrations touch — the migration is the witness until regen.** Check the directory before you cite a column from this file. F-09.185 is what happens otherwise: a committed handover asserted `public.messages` at 18 columns on this document's word, while `0105` had made it 20 and the document said nothing.

@@ -1,0 +1,20 @@
+# scripts/floor-manifest-ce46-ads1-cut1.txt
+# CE-46 · ADS-1 · CUT 1 (dream-os): the ads control panel's server half, 0177, the doors at /api/v2/vendor/ads, rung b144,
+# the 0177 rehearsal, the schema note (R-46.10 to R-46.14). BASE: 0ac1a01 (main). F-19.16: a dirty path outside this list
+# is a STOP.
+# A-45.3: ONE new folder, declared as a folder line, with its six files.
+src/lib/ads/
+src/lib/ads/oauth.js
+src/lib/ads/meta.js
+src/lib/ads/connection.js
+src/lib/ads/door.js
+src/lib/ads/targeting.js
+src/lib/ads/runs.js
+src/api/vendor/ads.js
+src/api/vendor/core.js
+db/migrations/0177_ads.sql
+docs/db/PUBLIC_SCHEMA.md
+scripts/b144_ads1_panel_bench.js
+scripts/lib/b144r_0177_rehearse.sh
+docs/handovers/TDW_CE46_ADS1_1_HANDOVER.md
+scripts/floor-manifest-ce46-ads1-cut1.txt
