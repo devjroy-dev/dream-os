@@ -1,0 +1,23 @@
+# scripts/floor-manifest-ce46-web1-cut2.txt
+# CE-46 · WEB-1 cut 2 · her own domain: 0178 vendor_domains, the registrar and host clients, the service (one writer), the doors, the webhook's buy, the wiring sweep · base 5f6624d (r4: carried from 0ac1a01; the QR line; the sweep moved to :50) · F-19.16: a dirty path outside this list is a STOP.
+# r5: the new directory is declared by its own line (src/lib/domains/), as git lists an untracked directory; the estate's form (ce45-g61-srv1's src/lib/ownNumber/).
+# Rung b146 (58 cells, seven mutations inside; SEC-1 RLS pinned at 5.4b; S8's retry-then-refund pinned at 3b; the QR at 5.10; the :50 minute at 5.7b). b59 amended by label (§6.1, the QR).. One new directory: src/lib/domains/. No file is deleted. The SQL is run by the founder in the Supabase editor (§7's one exception), rehearsed by scripts/lib/b146r_0178_rehearse.sh where a throwaway Postgres exists.
+db/migrations/0178_vendor_domains.sql
+docs/handovers/TDW_CE46_WEB1_CUT2_HANDOVER.md
+scripts/b146_ce46_web1_domain_bench.js
+scripts/b59_g31_s2_google_bench.js
+scripts/floor-manifest-ce46-web1-cut2.txt
+scripts/lib/b146r_0178_plant.sql
+scripts/lib/b146r_0178_rehearse.sh
+src/api/vendor/solutions/contract.js
+src/api/vendor/solutions/domain.js
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/storefront.js
+src/cron.js
+src/index.js
+src/lib/domains/
+src/lib/domains/pricing.js
+src/lib/domains/razorpayLinks.js
+src/lib/domains/resellerclub.js
+src/lib/domains/service.js
+src/lib/domains/vercelDomains.js

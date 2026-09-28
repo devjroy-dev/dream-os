@@ -281,51 +281,12 @@ router.get('/google-reviews', requireAuth, resolveVendor(), asyncHandler(async (
 }));
 
 // ═══════════════════════════════════════════════════════════════════════════
-// GET /domain  (spec §5)
+// GET /domain · GET /domain/search · POST /domain/order · POST /domain/wire
 // ═══════════════════════════════════════════════════════════════════════════
-// R-19.4 as amended by CE-38 relay #1 item 4:
-//   `{status:'none', subdomain: handle ? lower(handle) + '.' + root : null}`
-//
-// This is the only door that reads vendor state, and it reads the one column
-// witnessed in the header. `subdomainFor` is the sole builder of that string on
-// this side — a handler that concatenated it inline would be a second home for
-// a transform whose whole point is that it has one.
-router.get('/domain', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
-  const payload = {
-    status:            'none',
-    subdomain:         contract.subdomainFor(req.vendor.routing_handle),
-    domain:            null,
-    liveUrl:           null,
-    registeredAt:      null,
-    expiresAt:         null,
-    renewalPricePaise: null,
-    autoRenew:         false,
-    forwardEmail:      null,
-    lastError:         null,
-  };
-  return sendShaped(res, 'DomainStatus', payload, 'domain');
-}));
-
-// ═══════════════════════════════════════════════════════════════════════════
-// GET /domain/search?q=  (spec §5)
-// ═══════════════════════════════════════════════════════════════════════════
-// ⚠ AN EMPTY LIST IS THE HONEST ANSWER, AND A FABRICATED ONE WOULD BE THE
-// DANGEROUS ALTERNATIVE. The registrar is not wired (P2 gate closed), so there
-// is no availability to report and no price to quote. This door could have
-// returned plausible-looking suggestions at a plausible-looking price — and
-// every one would be a made-up fact about a domain the vendor might try to buy,
-// at a number that is not the registrar's. It returns nothing and the surface
-// says the row is not live yet.
-//
-// The `q` guard is here rather than in P2 because a 400 on a missing query is a
-// property of the ROUTE, not of the registrar behind it, and P2 should inherit
-// it rather than rediscover it.
-router.get('/domain/search', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
-  const q = (req.query.q || '').trim();
-  if (!q) return errRes(res, 400, 'A search term is required.');
-  if (!env.gates().p2) return okRes(res, { results: [], live: false });
-  return sendShapedList(res, 'DomainSearchResult', [], 'results');
-}));
+// CE-46 WEB-1 cut 2: the two stubs that stood here (GET /domain answering the
+// subdomain-only shape; GET /domain/search answering an empty list behind the
+// gate) moved into domain.js, mounted at the foot, and grew the order (she pays
+// first) and the wire. Closed gate → the same answers the stubs gave.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GET /seo  (spec §6)
@@ -494,6 +455,8 @@ router.get('/benchmarks', requireAuth, resolveVendor(), asyncHandler(async (req,
 router.use('/google', require('./google'));
 // G3.1 s2 · her address as a QR — see storefront.js; one call into the tent card's QR home.
 router.use('/storefront', require('./storefront'));
+// CE-46 WEB-1 cut 2 · her own name: search, order (she pays first), wire; the buy is the webhook's (domain.js).
+router.use('/domain', require('./domain'));
 // G6 · CE-45 G6-1 2a · her own number: the room's answer and Meta's code (number.js; FK1).
 router.use('/number', require('./number'));
 // CE-45 IGD-1 cut 2a-ii · the room "WhatsApp and Instagram": its Instagram door and switch, and the quiet time (both dark by the lane).

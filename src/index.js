@@ -36,6 +36,7 @@ const metaInbound = require('./lib/metaInbound'); // TDW_05 M2: dormant Meta inb
 const igInbound = require('./lib/instagram/igInbound'); // CE-45 IGD-1 cut 2a-i: the Instagram door (receiving half)
 const igReply = require('./lib/instagram/igReply');     // CE-46 IGD-2 cut 2b: the Instagram lane's caller
 const razorpay      = require('./lib/billing/razorpay');  // TDW_10 billing: verifier + normaliser
+const domainService = require('./lib/domains/service');   // CE-46 WEB-1 cut 2: the paid domain order's buy
 const billingLedger = require('./lib/billing/ledger');    // TDW_10 billing: the SOLE writer of billing_events
 const tierFlip      = require('./lib/billing/tierFlip');  // TDW_10 billing: the ONE flip path (two feeders, TDW_11:59)
 const { resolveMetaMedia } = require('./lib/metaMedia'); // TDW_05 MEDIA-SHIM: lane-agnostic Meta media resolver
@@ -379,6 +380,22 @@ app.post('/webhook/razorpay', async (req, res) => {
   }
 
   res.status(200).send('ok'); // inside the five-second law; the flip follows
+
+  // CE-46 WEB-1 cut 2 · a paid domain order: the ONLY place the registrar buy is
+  // triggered. The link's notes name the row (tdw_kind='domain', row_id); the
+  // service refuses a row already bought, so a retried event buys nothing twice.
+  try {
+    if (normalized.event === 'payment_link.paid') {
+      const link = req.body && req.body.payload && req.body.payload.payment_link && req.body.payload.payment_link.entity;
+      const notes = (link && link.notes) || {};
+      if (notes.tdw_kind === 'domain' && notes.row_id) {
+        const out = await domainService.onPaid(supabase, { rowId: String(notes.row_id), paymentId: normalized.provider_payment_id, amountPaise: normalized.amount_paise }, app.locals.domainDeps || {});
+        console.log(`[webhook:razorpay] domain ${notes.row_id}: ${out.ok ? (out.already ? 'already bought' : 'bought and wiring') : 'refused: ' + out.reason}`);
+      }
+    }
+  } catch (err) {
+    console.error('[webhook:razorpay] domain onPaid failed:', err && err.message);
+  }
 
   try {
     if (vendorId && normalized.provider_subscription_id) {

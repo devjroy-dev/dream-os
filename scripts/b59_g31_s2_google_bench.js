@@ -175,7 +175,9 @@ cell('§5.8 VENDOR_SELECT asks for seo_title and seo_description', () => /seo_ti
 // ═══ §6 · THE QR ═══════════════════════════════════════════════════════════════
 sec('\u00a76 \u00b7 storefront/qr.png \u2014 one string, one home');
 const SF = fresh('src/api/vendor/solutions/storefront.js');
-cell('§6.1 the QR encodes the lowercase /v/ address off PWA_BASE_URL', () => SF.storefrontUrl('DEV440').endsWith('/v/dev440'));
+// ── AMENDED BY LABEL — CE-46 WEB-1 cut 2 r4 (b146), 28 September: the founder ruled her short address the one
+// TDW gives her; the QR encodes it, off PWA_BASE_URL's host, lowercase; a handle outside the label shape keeps /v/.
+cell('§6.1 the QR encodes her lowercase short address off PWA_BASE_URL (amended at WEB-1 cut 2 r4)', () => SF.storefrontUrl('DEV440') === 'https://dev440.thedreamwedding.in' && SF.storefrontUrl('shivi_900') === 'https://thedreamwedding.in/v/shivi_900');
 cell('§6.2 weddingCardPdf exports qrPng — the storefront door does not draw its own', () => typeof fresh('src/lib/weddingCardPdf.js').qrPng === 'function');
 await acell('§6.3 qrPng yields a PNG', async () => { const b = await fresh('src/lib/weddingCardPdf.js').qrPng(SF.storefrontUrl('dev440')); return Buffer.isBuffer(b) && b.slice(1, 4).toString() === 'PNG'; });
 

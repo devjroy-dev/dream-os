@@ -286,6 +286,26 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // CE-46 WEB-1 cut 2 · paid-and-failed orders tried again for a day (then refund_due, the founder's task);
+  // every `wiring` domain asked at Vercel; verified and configured → live.
+  // :50 of every hour, its own minute. (Cut 2 r3 used :40, which put an hourly job on the Search
+  // Console pull's minute at 03:40 and reddened b59 §8.1; moved at r4. Taken: :00 :05 :15 :20 :25 :30 :40 :45.)
+  // Runs only when the P2 keys exist; with none it is a no-op that logs nothing.
+  cron.schedule('50 * * * *', async () => {
+    try {
+      if (!require('./api/vendor/solutions/env').gates().p2) return;
+      const svc = require('./lib/domains/service');
+      const re = await svc.sweepRetry(supabase);   // S8: paid and failed → tried again for a day, then refund_due
+      if (re.retried || re.refundDue) console.log(`[cron:domains:retry] retried=${re.retried} bought=${re.bought} refund_due=${re.refundDue}`);
+      const out = await svc.sweepWiring(supabase);
+      if (out.checked) console.log(`[cron:domains:wiring] checked=${out.checked} live=${out.live}`);
+    } catch (err) {
+      console.error('[cron:domains:wiring] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── Demo 30-day sunset — nightly 3:45am IST (G-2) ─────────────────────────
   // Quiet rotation out of Discover, content retained, resurrectable by an admin
   // grant. NOT a takedown: `state` is left alone and `active` stays true, so a

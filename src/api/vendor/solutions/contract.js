@@ -75,13 +75,15 @@ const crypto = require('crypto');
 
 /**
  * @typedef {Object} DomainStatus
- * @property {'none'|'searching'|'registering'|'wiring'|'live'|'expired'|'error'} status
+ * @property {'none'|'searching'|'paying'|'registering'|'wiring'|'live'|'expired'|'error'|'refund_due'|'refunded'} status  `paying` added at CE-46 WEB-1 cut 2: she pays first (the founder, 27 September); `refund_due` and `refunded`: S8's policy (28 September)
  * @property {string|null} subdomain  Built ONLY by subdomainFor() below.
  * @property {string|null} domain
  * @property {string|null} liveUrl
  * @property {string|null} registeredAt
  * @property {string|null} expiresAt
  * @property {number|null} renewalPricePaise
+ * @property {number|null} pricePaise     what she pays for the order, ten percent over the registrar's price after GST (cut 2)
+ * @property {string|null} paymentUrl     the Razorpay link while `paying`; null otherwise (cut 2)
  * @property {boolean} autoRenew
  * @property {string|null} forwardEmail
  * @property {string|null} lastError
@@ -171,7 +173,7 @@ const SHAPES = Object.freeze({
   SolutionsRow:       ['slug', 'phase', 'live', 'state'],
   SolutionsIndex:     ['rows'],
   GoogleStatus:       ['status', 'accountName', 'locationName', 'reviewUrl', 'reviewRequestsSent', 'lastSyncedAt', 'lastError', 'gbpQuotaApproved'],
-  DomainStatus:       ['status', 'subdomain', 'domain', 'liveUrl', 'registeredAt', 'expiresAt', 'renewalPricePaise', 'autoRenew', 'forwardEmail', 'lastError'],
+  DomainStatus:       ['status', 'subdomain', 'domain', 'liveUrl', 'registeredAt', 'expiresAt', 'renewalPricePaise', 'pricePaise', 'paymentUrl', 'autoRenew', 'forwardEmail', 'lastError'],
   DomainSearchResult: ['domain', 'available', 'pricePaise'],
   SeoChecklist:       ['structuredData', 'sitemap', 'canonical', 'ownDomain', 'searchConsole'],
   SeoTopQuery:        ['query', 'impressions', 'clicks'],
@@ -258,7 +260,9 @@ function computeDigest() {
  * Derived, never typed from memory:
  *   node -e "console.log(require('./src/api/vendor/solutions/contract.js').computeDigest())"
  */
-const CONTRACT_DIGEST = 'a4ccb0a742fbbd87a4a9a63674922ac6d60f7576e7e9fd66696cf061267a607a';
+// CE-46 WEB-1 cut 2: DomainStatus gained pricePaise and paymentUrl; the twin literal in
+// dreamos-pwa/lib/solutions/types.ts moves in WEB-1 cut 3 (the mirror working, as G2 wrote).
+const CONTRACT_DIGEST = '2ad7b3f87f6116e9c39334583cf22af5f97a67e3a05f61b4c48ce0d9131699bc';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SHAPE() — every door runs this before it responds

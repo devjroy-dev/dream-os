@@ -4,7 +4,7 @@
 //   GET /api/v2/vendor/solutions/storefront/qr.png → image/png, 512px
 //
 // The QR encodes the page's own address, direct (R-G13.9's law for the tent
-// card, applied to the storefront): `${PWA_BASE_URL}/v/<handle>` in lowercase,
+// card, applied to the storefront): her short address `<handle>.<PWA_BASE_URL host>` (CE-46 WEB-1; `/v/<handle>` for a handle outside the label shape), lowercase,
 // which is what `vendorCard.js` publishes and what `app/v/[code]` canonicalises
 // to. The pixels come from `weddingCardPdf.qrPng` — the estate's one QR home,
 // with its ink-on-cream colours — so a vendor's tent card and her storefront QR
@@ -26,8 +26,24 @@ const { qrPng } = require('../../../lib/weddingCardPdf');
 
 const PWA_BASE = process.env.PWA_BASE_URL || 'https://thedreamwedding.in';
 
-/** Exported for the bench: the one string the QR encodes. */
-function storefrontUrl(handle) { return `${PWA_BASE}/v/${String(handle || '').toLowerCase()}`; }
+/**
+ * Exported for the bench: the one string the QR encodes.
+ * CE-46 WEB-1 (the founder, 28 September): her SHORT address, <handle>.thedreamwedding.in, is the one TDW
+ * gives her, printed and scanned. The shape rule is dreamos-pwa lib/public/vendorHost.ts's shortAddressFor,
+ * restated here because two repos cannot import each other: letters, digits and hyphens, not starting with a
+ * hyphen, at most 63, and never a reserved label. A handle outside it keeps /v/<handle>, which always works.
+ */
+const RESERVED_LABELS = Object.freeze(['www', 'demo', 'demodreamer', 'demodiscover', 'demobride']);
+function storefrontUrl(handle) {
+  const h = String(handle || '').trim().toLowerCase();
+  const base = String(PWA_BASE).replace(/\/+$/, '');
+  const root = base.replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+  if (/^[a-z0-9][a-z0-9-]{0,62}$/.test(h) && !RESERVED_LABELS.includes(h)) {
+    const scheme = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(root) ? 'http' : 'https';
+    return `${scheme}://${h}.${root}`;
+  }
+  return `${base}/v/${h}`;
+}
 
 router.get('/qr.png', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const handle = req.vendor && req.vendor.routing_handle;
