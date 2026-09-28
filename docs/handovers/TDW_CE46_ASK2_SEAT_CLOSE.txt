@@ -1,0 +1,63 @@
+ASK-2 · SEAT-CLOSE · FOR THE CHAIR · CE-46 · 27 September 2026
+R-45.33, the question agent: a vendor asks anything about her own business and gets a true answer read from her records.
+Read-only by construction. BOTH LANES ON at close, by the founder's order of 27 September. Closed under R-46.1 on the chair's word.
+
+======================================================================================================
+1 · WHAT IS ON ORIGIN (dream-os)
+======================================================================================================
+cut 2a r2   ZIP 89ab2290a171dc7ffce668db6f8f5cf78d842d02cdcf47501a2ac2c2b4588c63   base da9c7ef   landed before 6efcf91 (Railway d27e8240 18:46 IST)
+            scrub.js REGISTER_RE :174 `[\d,]+` to `\d+(?:,\d+)*` (F-44.210); askAgent.js requestParams { final } and the loop's round-4
+            tools-off (F2 b); b130m record home scripts/records/b130m/ with tip and clock in the name, --record, REFUSE on an existing path
+            unless --resume, /tmp and the .old rename deleted (A-46.3); bank v3 (q222 tools team|events; q272 fact 5 March 2027; q290 fact
+            24 October 2026 by day); b130a 126 (119 + §18 six + M14; 13.4 re-pinned by label); new rung b138 11 (nine comma forms both
+            ways, 34 worked replies and the door's money lines byte-identical through scrubText, M1); handover; manifest.
+            Cut on dc1dfd1, carried onto 6034c10 and da9c7ef by command, the diff byte-identical each time. Floor at the founder: NAMED
+            BASE, no delta, three refusals. Readers rescored on the run of record: m1 531/548 (17 missed), m2 to m5 548/548.
+cut 2       one row: admin_config 'vendor.ask_agent.pwa' = true, 2026-09-27 14:03:17.360369+00. No code.
+cut 3       one row: admin_config 'vendor.ask_agent.whatsapp' = true, 2026-09-27 14:25:23.521624+00. No code.
+            Record: docs/handovers/TDW_CE46_ASK2_CUT2_CUT3_HANDOVER.md (delivered as a file to the chair; not yet in the tree).
+
+======================================================================================================
+2 · THE WALKS AND WHAT THEY COST
+======================================================================================================
+The no-change walk (both OFF): 12/12, six a lane, every assistant row door true and ask NULL; F-44.211 seen lane by lane at M4.
+The app walk (cut 2): 13 questions, m1 12/13, m2 13/13, m3 13/13, m4 12/13, m5 13/13; Rs 7.82.
+The WhatsApp walk (cut 3): 12 questions, m1 9/12, m2 12/12, m3 12/12, m4 10/12, m5 12/12; twelve outbound bodies byte-identical to the
+engine rows; Rs 7.47.
+The founder's grep of the 548 kept replies before cut 3: 549 lines, 0 matches for UUID, short-id, Donna/Harvey, register words.
+All on claude-haiku-4-5-20251001, cache written once per five-minute window, read on every other call; the live prefix 6,191 tokens.
+
+======================================================================================================
+3 · THE SEAT'S FAULTS, THE FINDINGS
+======================================================================================================
+e-198 the B69 expected line from the raw count (named and nameless split; cure bound on every card since).
+e-199 the register pattern cited at :141 from a filtered sed window; it is :174.
+e-200 block F's comment claimed A-46.4 and its command did not carry env -u; r2 carried it.
+Findings minted here: F-44.209 (the Victor guard's rulings have no single home; R-44.29 nowhere), F-44.210 (cured). By the chair from this
+seat's read: F-44.211 (the listener's "owed to me in total" as whatsdue; ELZ-3's).
+d1 accepted: no dotfile in deploy/; b130m self-writes scripts/records/.gitignore; the root line is one printf on the chair's word.
+
+======================================================================================================
+4 · ASK-3's INHERITANCE, IN ORDER
+======================================================================================================
+1. SEARCH-FIRST AS A CODE RULE, never an absence without a search. Four live turns this sitting (Sarah past-tense on the app; "Walk p5 ke
+   event date kab hai" and "When is walk p5 event?" on WhatsApp) declared "could not find" or "could not read" with ZERO tool calls, one
+   round each. The bank: q016, q026 (the live wording exactly), q317, plus the four live replies as hand labels and this walk's Hinglish
+   miss. The mechanism is ASK-3's read-first: a forced first read of client for a name-shaped word, or a rejected reply that names an
+   absence with no read behind it; a rule on when she is searched, not a guard on a sentence (R-45.33). Measured on one paid run with (4).
+2. The invoice read: "What was the last invoice raised" reached events with kind "invoice". A tool for invoices by the date raised, or a
+   rule that an invoice question never reads events. The wrong sentence ("do not show invoices in the Calendar") joins the labels.
+3. Cut 4: lookupDoor's question branches and B86, B87 retired, their rungs re-pinned by label; the handover.
+4. DeepSeek's --probe and --live under the current model name (K11: production still announces deepseek-v4-flash for donna over the
+   facade); one paid run covering (1) and this. A-45.15 and A-46.3 hold: cost first, --budget, a fresh record name under scripts/records.
+5. The probe's prefix re-run: 6,191 live against 6,530 at 1d, unexplained.
+6. The Advisor room's em dash, for P8, named only.
+Also standing: F-44.211 with ELZ-3 (the ear and the relay rule); the root .gitignore line for scripts/records/ on the chair's word.
+
+======================================================================================================
+5 · STATE AT CLOSE
+======================================================================================================
+Both keys true; the disarms C2-3 and C3-3 in the founder's hand for the chair's word only. Nothing runnable left with the founder from
+this seat. The handover file and this close are with the chair; their landing in the tree (docs-only) is on the chair's word.
+
+The seat closes on the chair's word.

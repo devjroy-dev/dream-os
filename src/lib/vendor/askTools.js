@@ -206,6 +206,9 @@ T.events = {
     let rows = data;
     const kind = text(a.kind_as_spoken) ? norm(a.kind_as_spoken) : null;
     if (kind) rows = rows.filter((e) => norm(e.kind).includes(kind) || kind.includes(norm(e.kind)) || norm(e.title).includes(kind));
+    // r3 (O4): "when is isha walk event" was read as kind "walk" and every row fell away; the kind words may be part of a NAME, so
+    // when the kind filter empties the list, the kind words join the client words for the people read below (R2).
+    const kindEmptied = !!kind && rows.length === 0;
     const leads = await leadsById(ctx, rows.map((e) => e.linked_lead_id));
     if (text(a.client_as_spoken)) {
       const hits = matchNames(a.client_as_spoken, [...leads.values()]).map((l) => l.id);
@@ -218,7 +221,19 @@ T.events = {
     }
     const members = await membersById(ctx, rows.map((e) => e.assigned_member_ids || []));
     const c = capped(rows);
-    return { ok: true, from: said(from), to: said(to), count: rows.length, events: c.list.map((e) => eventOut(e, leads, members)), more: c.more };
+    // F-44.215 (CE-46 ASK-3 cut 5, R2 (i)): a searched absence on a table that cannot hold the answer. A wedding date lives on the
+    // lead, not in the Calendar, so "when is isha walk event" read events, found nothing forward, and said so. When client_as_spoken
+    // resolves to people through findPeople, their wedding date and stage ride beside the Calendar rows (facts by code), at most three.
+    let people; let peopleMore = 0;
+    const kindWords = kindEmptied ? norm(a.kind_as_spoken).split(' ').filter((w) => w && w !== 'event' && w !== 'events').join(' ') : ''; // "walk event": the generic word is not part of a name
+    const personWords = [text(a.client_as_spoken), kindWords || null].filter(Boolean).join(' ');
+    if (personWords) {
+      let found;
+      try { found = await findPeople(ctx, personWords); } catch (_e) { return bad('unreadable'); }
+      peopleMore = Math.max(0, found.leads.length - 3);
+      people = found.leads.slice(0, 3).map((l) => ({ name: text(l.name), stage: l.state || null, wedding_date: said(l.wedding_date), wedding_date_precision: l.wedding_date_precision || null, city: text(l.wedding_city) }));
+    }
+    return { ok: true, from: said(from), to: said(to), count: rows.length, events: c.list.map((e) => eventOut(e, leads, members)), more: c.more, ...(people ? { people, people_more: peopleMore } : {}) };
   },
 };
 
@@ -567,6 +582,46 @@ T.reminders = {
     if (e3 || !Array.isArray(tasks)) return bad('unreadable');
     const members = await membersById(ctx, tasks.map((t) => t.assigned_to_member_id));
     return { ok: true, from: said(from), to: said(to), automatic_reminders: set ? set.auto_send === true : null, payment_reminders: rems.slice(0, ROW_CAP).map((m) => ({ label: text(m.milestone_label), amount: money(m.amount_due), due: said(m.due_date), status: m.status })), payment_reminder_count: rems.length, tasks: tasks.slice(0, ROW_CAP).map((t) => ({ title: text(t.title), due: said(t.due_date), priority: t.priority, state: t.state, for: members.get(t.assigned_to_member_id) ? text(members.get(t.assigned_to_member_id).name) : null })), task_count: tasks.length };
+  },
+};
+
+// THE FOURTEENTH READ TOOL (CE-46 ASK-3 cut 5, ruled 27 September): invoices by the day they were RAISED, newest first. On the
+// WhatsApp walk of 27 September "What was the last invoice raised" reached events with kind invoice and answered from the wrong
+// table ("do not show invoices in the Calendar"); owed, paid and due read by state and window, none by the date raised. The day
+// raised is invoices.created_at (docs/db/PUBLIC_SCHEMA.md public.invoices column 15; no issued or raised column exists), read as
+// the IST day. Columns witnessed at public.invoices: invoice_number, client_name, amount_total, amount_paid, state, due_date,
+// created_at, deleted_at, vendor_id. A SELECT, scoped by code to ctx.vendorId like every tool here. F-44.214 (R3): each row carries
+// owed (amount_total less amount_paid), because the model read state "unpaid" literally and left an advance_paid invoice out of
+// "which invoices are unpaid"; the description sends unpaid, owed, pending and baaki questions to owed.
+T.invoices = {
+  description: 'Her invoices by the date they were raised, newest first: number, client, total, paid so far, still owed, state, due date and the day it was raised. Use for: what was the last invoice raised, which invoices did I raise this month, invoices for a client. A question about what is unpaid, owed, pending or baaki reads owed, not this. It gives total_invoiced and total_owed for the invoices it read: never add figures yourself, only report the totals given. An invoice question reads this, never events.',
+  props: { range_as_spoken: { type: 'string', description: 'A stretch of days in her words, read over the day each invoice was raised, e.g. "this month", "September", "last week". Leave it out for all of them.' }, client_as_spoken: { type: 'string', description: 'A client by name, as she wrote it.' }, latest: { type: 'boolean', description: 'true for the newest invoice only.' } },
+  required: [],
+  async run(ctx, a) {
+    let r = null;
+    if (text(a.range_as_spoken)) { r = rangeOf(ctx, a.range_as_spoken, true); if (!r) return bad('date_unreadable', { said: text(a.range_as_spoken) }); }
+    let q = ctx.supabase.from('invoices').select('id, invoice_number, client_name, amount_total, amount_paid, state, due_date, created_at').eq('vendor_id', ctx.vendorId).is('deleted_at', null);
+    if (r) q = q.gte('created_at', `${r.from}T00:00:00+05:30`).lte('created_at', `${r.to}T23:59:59+05:30`);
+    const { data, error } = await q.order('created_at', { ascending: false });
+    if (error || !Array.isArray(data)) return bad('unreadable');
+    let rows = data;
+    if (text(a.client_as_spoken)) { const hit = matchNames(a.client_as_spoken, rows.map((i) => ({ id: i.id, name: i.client_name }))).map((x) => x.id); rows = rows.filter((i) => hit.includes(i.id)); }
+    const total = rows.length;
+    const latest = a.latest === true;
+    if (latest) rows = rows.slice(0, 1);
+    // r3 (O3, facts by code): the totals over the rows read (a cancelled invoice counts in neither, as owed reads), so a total she
+    // asks for is a tool fact and never the model's own sum (q205 on r2's run: "invoiced Rs 2,95,000" added by the model).
+    const live = rows.filter((i) => i.state !== 'cancelled');
+    const sum = (f) => live.reduce((t, i) => t + f(i), 0);
+    const totalInvoiced = sum((i) => Number(i.amount_total) || 0);
+    const totalOwed = sum((i) => Math.max(0, (Number(i.amount_total) || 0) - (Number(i.amount_paid) || 0)));
+    const k = capped(rows);
+    const raisedOn = (iso) => { const ms = typeof iso === 'string' ? Date.parse(iso) : NaN; return Number.isFinite(ms) ? said(istTodayISO(ms)) : null; };
+    return {
+      ok: true, client: text(a.client_as_spoken), from: r ? said(r.from) : null, to: r ? said(r.to) : null, latest, count: total, total_invoiced: money(totalInvoiced), total_owed: money(totalOwed),
+      invoices: k.list.map((i) => ({ number: text(i.invoice_number), client: text(i.client_name), total: money(i.amount_total), paid: money(i.amount_paid), owed: money(Math.max(0, (Number(i.amount_total) || 0) - (Number(i.amount_paid) || 0))), state: text(i.state), due: said(i.due_date), raised_on: raisedOn(i.created_at) })),
+      more: latest ? Math.max(0, total - 1) : k.more,
+    };
   },
 };
 

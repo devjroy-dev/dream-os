@@ -36,3 +36,4 @@ src/engine/dist/
 # PRODUCTION SOURCE mutated. The untracking is the founder's own paste block —
 # its own step, because the apply chain cannot delete.
 scripts/out/
+scripts/records/

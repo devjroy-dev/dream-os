@@ -61,6 +61,7 @@ const VERDICT = /\b(?:you should (?:take|accept|decline|not)|take it|don'?t take
 const PERSONA = /\b(?:I am|I'm|this is|it's)\s+(?:your\s+)?(?:AI\s+)?(?:assistant|victor|donna|eliza|harvey|myra)\b|\bassistant\b/i;
 
 const norm = (t) => String(t || '').replace(/\s+/g, ' ');
+const NOTE_SPOKEN = /note is from the app|possible names in her message|before you ask her anything|i'?ll search for (?:them|it|the name) first|i understand\. when you mention|i understand\. i(?:'m| am| will)\b|her next question|what would she like|i will not answer, repeat|follow the instruction to call/i; // r4 (e-206): the answer-to-the-note shape, r3's q317 and q018 replies
 function factsIn(reply) {
   const t = norm(reply).replace(MARKED, ' ');
   const dates = (t.match(DATE_RE) || []);
@@ -91,7 +92,9 @@ const R = {
     return true;
   },
   m2: (reply, c) => {
-    const pool = norm(`${JSON.stringify(c.calls.map((x) => x.result))} ${c.text} ${c.today || ''}`).toLowerCase().replace(/\s/g, '');
+    // r4 (the chair's ruling on q205, R-45.26): a figure the bank labels `derived` (the sum of two figures each returned by a tool, with
+    // the reason in the label) counts as held. A hand label demands this (C-44.4); nothing else reads the field.
+    const pool = norm(`${JSON.stringify(c.calls.map((x) => x.result))} ${c.text} ${c.today || ''} ${((c.expect && c.expect.derived) || []).join(' ')}`).toLowerCase().replace(/\s/g, '');
     const f = factsIn(reply);
     const inPool = (s) => pool.includes(String(s).toLowerCase().replace(/\s/g, ''));
     const datesOk = f.dates.every((d) => inPool(d) || c.calls.some((x) => JSON.stringify(x.result).includes(d)));
@@ -150,6 +153,18 @@ const LABELLED = [
   { reply: 'Today is Saturday, 26 September 2026. Nothing is blocked this week.', text: 'Anything blocked this week?', today: 'Today is Saturday, 26 September 2026, in India.', expect: { kind: 'none', tools: ['days'] }, calls: RES({ result: { ok: true, from: '26 September 2026', to: '2 October 2026', blocked: ['2 October 2026'] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
   { reply: 'No. Your records show 2 team members: Harsh and Kavya. You can add Rahul in the Team section.', text: 'Is Rahul on my team?', expect: { kind: 'not_in_records', tools: ['team'] }, calls: RES({ name: 'team', result: { ok: true, count: 2, members: [{ name: 'Harsh' }, { name: 'Kavya' }] } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
   { reply: 'Your records show no leads added on 23 September 2026.', text: 'Who added themselves as a lead on 23 September?', expect: { kind: 'fact', tools: ['leads'] }, calls: RES({ name: 'leads', result: { ok: true, count: 0, from: '23 September 2027', to: '23 September 2027', leads: [] } }), writes: 0, want: { m1: true, m2: false, m3: true, m4: true, m5: true } }, // m4 KEEPS: the results were empty and the reply said so; the fault is the year (m2) and the tool (cut 1d)
+  // ── r4: q205's reply on r3's run, labelled by the chair's ruling (honest arithmetic, R-45.26) and, as the control, without it ──
+  { reply: 'You received Rs 82,000 this year. You are also owed Rs 2,13,000 across 2 open invoices, so your total invoiced is Rs 2,95,000.', text: "What's my total revenue this year?", expect: { kind: 'fact', tools: ['paid'], derived: ['Rs 2,95,000'] }, calls: [{ name: 'paid', result: { ok: true, paid_total: 'Rs 82,000', count: 2 } }, { name: 'owed', result: { ok: true, owed_total: 'Rs 2,13,000', open_invoices: 2 } }], writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'You received Rs 82,000 this year. You are also owed Rs 2,13,000 across 2 open invoices, so your total invoiced is Rs 2,95,000.', text: "What's my total revenue this year?", expect: { kind: 'fact', tools: ['paid'] }, calls: [{ name: 'paid', result: { ok: true, paid_total: 'Rs 82,000', count: 2 } }, { name: 'owed', result: { ok: true, owed_total: 'Rs 2,13,000', open_invoices: 2 } }], writes: 0, want: { m1: true, m2: false, m3: true, m4: true, m5: true } },
+  // ── CE-46 ASK-3 cut 5: the LIVE replies of the walks of 27 September (ASK-2's handover, §3 and §4), labelled by hand. Each was an
+  // absence or a refusal with ZERO tool calls: m1 false (the expected tool was never called). m4 is labelled as the READER defines it
+  // (a result that held nothing); with no call there is no empty result, so m4 reads true here and the miss is m1's, where the walk
+  // record filed it under m1 and m4 by hand. The fifth is the wrong-table sentence: events read for an invoice question. ──
+  { reply: 'I could not find a client or lead named Sarah in your records. Could you check the spelling or give me the full name? For example, is it Sarah with a last name?', text: 'sarah ka event kab tha', expect: { kind: 'fact', tools: ['client', 'events'], facts: ['17 October 2026'] }, calls: [], writes: 0, want: { m1: false, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'I could not read that. Could you write the name another way, or tell me which crew member you mean?', text: 'Walk p5 ke event date kab hai', expect: { kind: 'not_in_records', tools: ['client'] }, calls: [], writes: 0, want: { m1: false, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'I could not read that. Your crew list shows names like Swati, Rahul, and others. Who are you asking about?', text: 'When is walk p5 event?', expect: { kind: 'not_in_records', tools: ['client'] }, calls: [], writes: 0, want: { m1: false, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'Your records do not show invoices in the Calendar. You can view and raise invoices on the Invoices page in the app.', text: 'What was the last invoice raised', expect: { kind: 'fact', tools: ['invoices'], facts: ['TDW/DEV440/08'] }, calls: RES({ name: 'events', result: { ok: true, count: 0, events: [] } }), writes: 0, want: { m1: false, m2: true, m3: true, m4: true, m5: true } },
+  { reply: 'Your records do not show anyone called Nishta. You can add her in Clients.', text: "When is nishta's booking date?", expect: { kind: 'not_in_records', tools: ['client'] }, calls: RES({ name: 'client', result: { ok: true, matches: 0 } }), writes: 0, want: { m1: true, m2: true, m3: true, m4: true, m5: true } },
 ];
 
 function readersCheck() {
@@ -162,7 +177,11 @@ function readersCheck() {
   });
   console.log(`b130m --readers: ${LABELLED.length} hand-labelled replies x 5 rules; false positives ${fp}, misses ${miss}`);
   lines.forEach((l) => console.log(l));
-  return fp === 0 && miss === 0;
+  // r4 (e-206): note_spoken proven both ways: the three echoes it must catch (r2's q325, r3's q317 and q018), and every labelled reply clean.
+  const echoes = ["I understand. When you mention a client, lead, event, or team member by name, I'll search for them first using the exact name you wrote before I answer your question.", 'I understand. I will not answer, repeat or mention that note to her. I will follow the instruction to call the client tool (or events, or team) with names exactly as written before asking her anything or saying her records do not show something. I\'m ready to help her. What would she like to know?', "I understand. I'm waiting for her next question. When she asks about something, I'll search her records first with the exact name or term she used before answering or asking for clarification."];
+  const caught = echoes.filter((e) => NOTE_SPOKEN.test(e)).length; const falsely = LABELLED.filter((c) => NOTE_SPOKEN.test(c.reply)).length;
+  console.log(`b130m note_spoken self-test: ${caught} of ${echoes.length} echoes caught, ${falsely} of ${LABELLED.length} labelled replies falsely caught`);
+  return fp === 0 && miss === 0 && caught === echoes.length && falsely === 0;
 }
 
 // ── the harness: ONE question through the REAL agent and the REAL tools, on a fresh fixture ────────────────────────────
@@ -183,7 +202,7 @@ async function dry() {
     const { r, writes, sizes } = await runOne(q, { provider: 'anthropic', model: 'stub' }, stub(q));
     n += 1; if (r.ok && writes === 0) ok += 1; chars += sizes.reduce((a, b) => a + b, 0); rounds += sizes.length;
   }
-  const tokIn = chars / 4 / n; // ~4 characters per token, the request as the loop built it (system, 13 tool schemas, thread, results)
+  const tokIn = chars / 4 / n; // ~4 characters per token, the request as the loop built it (system, 14 tool schemas, thread, results)
   const tokOut = 250 * (rounds / n);
   const haiku = (tokIn * 1.0 + tokOut * 5.0) / 1e6;
   const dsIn = Number(process.env.DEEPSEEK_USD_PER_M_IN); const dsOut = Number(process.env.DEEPSEEK_USD_PER_M_OUT);
@@ -270,7 +289,7 @@ async function live() {
       const { r, writes } = await runOne(q, { provider: MODELS[which].provider, model: MODELS[which].model }, llmCreate);
       const cost = costOf(which, r.usage) || 0; spent += cost;
       if (!r.ok && CREDIT.test(String(r.error))) { stop = `a credit, quota or auth error: ${String(r.error).slice(0, 160)}`; fs.appendFileSync(file, `${JSON.stringify({ key, id: q.id, final: false, error: r.error })}\n`); break; }
-      rec = { key, id: q.id, final: true, ok: r.ok, error: r.ok ? null : r.error, reply: r.ok ? r.reply : null, calls: (r.calls || []).map((c) => ({ name: c.name, result: c.result })), writes, usage: r.usage, cost };
+      rec = { key, id: q.id, final: true, ok: r.ok, error: r.ok ? null : r.error, reply: r.ok ? r.reply : null, calls: (r.calls || []).map((c) => ({ name: c.name, result: c.result })), reprompted: r.reprompted === true, writes, usage: r.usage, cost };
     } catch (e) {
       if (CREDIT.test(String(e && e.message))) { stop = `a credit, quota or auth error: ${String(e.message).slice(0, 160)}`; break; }
       rec = { key, id: q.id, final: true, ok: false, error: String(e && e.message).slice(0, 200), cost: 0 };
@@ -291,6 +310,14 @@ async function live() {
     for (const k of Object.keys(R)) { const kept = R[k](r.reply, c); tally[k][0] += kept ? 1 : 0; tally[k][1] += 1; if (!kept && SHOW) console.log(`  MISS ${which} ${k} ${q.id} [${q.family}/${q.expect.kind}${k === 'm1' ? `; wanted ${q.expect.tools.join('|') || 'any tool'}, called ${(c.calls || []).map((x) => x.name).join(',') || 'none'}` : ''}${k === 'm2' ? `; not in the results: ${unfound(r.reply, c).join('; ')}` : ''}] "${q.text}" -> ${String(r.reply).replace(/\n/g, ' / ')}`); }
   }
   let allOk = !stop;
+  // r3 (the chair's bar: no note spoken to her): a reply that repeats the gate's note or answers it. One report line, zero tolerance;
+  // no reader moves (C-44.4). NOTE_SPOKEN holds the note's own phrases and the r2 echo ("I'll search for them first").
+  { const bad = []; for (const p of plan) { const r = done.get(p.key); if (r && r.ok && NOTE_SPOKEN.test(r.reply || '')) bad.push(p.q.id); }
+    console.log(`  ${which} note_spoken: ${bad.length} ${bad.length === 0 ? 'within' : 'OVER'} tolerance (zero)${bad.length ? ' ' + bad.join(', ') : ''}`); if (bad.length) allOk = false; }
+  // THE SEARCH-FIRST CLASS (CE-46 ASK-3 cut 5, bank v4): the questions tagged class search_first must every one read a call on m1.
+  // One report line from the SAME m1 reader (no reader moves, C-44.4); a miss here fails the verdict whatever m1's rate says.
+  { let sk = 0; let sa = 0; let sr = 0; for (const p of plan) { const r = done.get(p.key); if (!r || !r.ok || p.q.class !== 'search_first') continue; sa += 1; if (r.reprompted) sr += 1; if (R.m1(r.reply, { ...p.q, calls: r.calls, writes: r.writes, today: TODAY_LINE })) sk += 1; }
+    console.log(`  ${which} search_first: ${sk}/${sa} kept on m1 (${sa - sk} missed; the gate re-prompted ${sr}) ${sa - sk === 0 ? 'within' : 'OVER'} tolerance (zero)`); if (sa - sk !== 0) allOk = false; }
   for (const k of Object.keys(tally)) {
     const [kept, all] = tally[k]; const missN = all - kept; const zero = k === 'm2' || k === 'm3';
     const ok = zero ? missN === 0 : missN * 20 <= all; if (!ok) allOk = false;
@@ -315,6 +342,8 @@ async function live() {
       for (const k of Object.keys(R)) { const kept = R[k](r.reply, c); tally[k][0] += kept ? 1 : 0; tally[k][1] += 1; if (!kept) { const f = `${k} ${q.family}/${q.expect.kind}`; fam[f] = (fam[f] || 0) + 1; if (SHOW) console.log(`  MISS ${k} ${q.id} [${q.family}/${q.expect.kind}${k === 'm2' ? `; not in the results: ${unfound(r.reply, c).join('; ')}` : ''}] "${q.text}" -> ${String(r.reply).replace(/\n/g, ' / ').slice(0, 200)}`); } }
     }
     for (const k of Object.keys(tally)) console.log(`  rescore ${k}: ${tally[k][0]}/${tally[k][1]} kept (${tally[k][1] - tally[k][0]} missed)`);
+    { let n = 0; for (const line of fs.readFileSync(rs, 'utf8').split('\n').filter(Boolean)) { const r = JSON.parse(line); if (r.final && r.ok && NOTE_SPOKEN.test(r.reply || '')) n += 1; } console.log(`  rescore note_spoken: ${n}`); }
+    { let sk = 0; let sa = 0; for (const line of fs.readFileSync(rs, 'utf8').split('\n').filter(Boolean)) { const r = JSON.parse(line); if (!r.final || !r.ok) continue; const q = byId.get(r.id); if (!q || q.class !== 'search_first') continue; sa += 1; if (R.m1(r.reply, { ...q, calls: r.calls || [], writes: r.writes || 0, today: TODAY_LINE })) sk += 1; } console.log(`  rescore search_first: ${sk}/${sa} kept on m1 (${sa - sk} missed)`); }
     Object.entries(fam).sort((a, b) => b[1] - a[1]).forEach(([f, n]) => console.log(`    ${f}: ${n}`));
     process.exit(0);
   }

@@ -1,0 +1,13 @@
+# CE-46 ASK-3 · cut 5 r4 (r3's run ruled, P5: the ask-back arm and the note line OUT, r1's re-prompt text, ABSENT "cannot read records", q205 derived, note_spoken self-test) · r3 (r2's run ruled: O1 ABSENT widened, O2 the ask-back sentence, greetings, the note line, O3 invoice totals, O4 kind words as a name, O5 q197) · r2 (the live run's rulings of 28 September: R1 labels, R2 events carries the named person F-44.215, R3 owed per invoice row F-44.214, R4 the ask-back arm) · search-first as a CODE rule at the agent's accept branch (shape (a), F1 (a2), F2 agent-side, ruled 27 September); the fourteenth read tool `invoices` (by created_at, newest first, `latest`); bank v4 (q363 to q371, class search_first on seven); five live hand labels; the class line in b130m · both lanes ON (no key moves) · base 0ac1a01
+# floor-base unchanged; touched askAgent.js, askTools.js, the bank, b130a, b130m; the radius (grep -l "scrub\|askAgent\|ask1_bank\|askTools\|b130" scripts/*.js, 25) identical by name, count and output at base and cut except b130a 126 -> 164, b130m readers 34 -> 41 (plus its note_spoken self-test line), b138 2.1's worked-reply count 34 -> 35 (green both sides).
+# .gitignore is listed because the founder's block 1 appends the root `scripts/records/` line (2a's d1, on the chair's word); a dotfile may not travel inside deploy/.
+.gitignore
+docs/handovers/TDW_CE46_ASK2_CUT2_CUT3_HANDOVER.md
+docs/handovers/TDW_CE46_ASK2_SEAT_CLOSE.txt
+docs/handovers/TDW_CE46_ASK3_CUT5_HANDOVER.md
+scripts/b130a_ask1_floor_bench.js
+scripts/b130m_ask1_measure.js
+scripts/floor-manifest-ce46-ask3-cut5.txt
+scripts/lib/ask1_bank.json
+src/lib/vendor/askAgent.js
+src/lib/vendor/askTools.js

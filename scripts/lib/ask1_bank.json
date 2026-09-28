@@ -1,7 +1,7 @@
 {
- "version": "ask1-bank-v3",
+ "version": "ask1-bank-v4",
  "today": "2026-09-26",
- "count": 362,
+ "count": 371,
  "questions": [
   {
    "id": "q001",
@@ -277,11 +277,17 @@
    "source": "export",
    "strat": "missed",
    "expect": {
-    "kind": "not_in_records",
+    "kind": "fact",
     "tools": [
+     "leads",
      "client"
+    ],
+    "facts": [
+     "Sarah Kapoor",
+     "Priya Mehta"
     ]
-   }
+   },
+   "class": "search_first"
   },
   {
    "id": "q017",
@@ -458,7 +464,8 @@
     "facts": [
      "5 March 2027"
     ]
-   }
+   },
+   "class": "search_first"
   },
   {
    "id": "q027",
@@ -3091,7 +3098,8 @@
    "expect": {
     "kind": "fact",
     "tools": [
-     "owed"
+     "owed",
+     "invoices"
     ],
     "facts": [
      "Priya Mehta"
@@ -3235,7 +3243,11 @@
     "kind": "fact",
     "tools": [
      "paid"
-    ]
+    ],
+    "derived": [
+     "Rs 2,95,000"
+    ],
+    "derived_reason": "R-45.26, the chair 28 September 2026: the sum of two figures each returned by a tool (paid Rs 82,000 and owed Rs 2,13,000), both true; a tool-side total across paid and owed is ASK-4s"
    }
   },
   {
@@ -3904,7 +3916,8 @@
     "kind": "fact",
     "tools": [
      "owed",
-     "client"
+     "client",
+     "invoices"
     ]
    }
   },
@@ -4926,7 +4939,8 @@
      "leads",
      "client"
     ]
-   }
+   },
+   "class": "search_first"
   },
   {
    "id": "q318",
@@ -5528,6 +5542,167 @@
    "expect": {
     "kind": "door",
     "tools": []
+   }
+  },
+  {
+   "id": "q363",
+   "text": "sarah ka event kab tha",
+   "lane": "both",
+   "family": "hinglish",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "missed",
+   "expect": {
+    "kind": "fact",
+    "tools": [
+     "client",
+     "events"
+    ],
+    "facts": [
+     "17 October 2026"
+    ]
+   },
+   "class": "search_first"
+  },
+  {
+   "id": "q364",
+   "text": "Walk p5 ke event date kab hai",
+   "lane": "both",
+   "family": "client",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "missed",
+   "expect": {
+    "kind": "not_in_records",
+    "tools": [
+     "client",
+     "events"
+    ]
+   },
+   "class": "search_first"
+  },
+  {
+   "id": "q365",
+   "text": "When is walk p5 event?",
+   "lane": "both",
+   "family": "client",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "missed",
+   "expect": {
+    "kind": "not_in_records",
+    "tools": [
+     "client",
+     "events"
+    ]
+   },
+   "class": "search_first"
+  },
+  {
+   "id": "q366",
+   "text": "What was the last invoice raised",
+   "lane": "both",
+   "family": "money",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "missed",
+   "expect": {
+    "kind": "fact",
+    "tools": [
+     "invoices"
+    ],
+    "facts": [
+     "TDW/DEV440/08"
+    ]
+   }
+  },
+  {
+   "id": "q367",
+   "text": "any idea whaat stage nalini booking is?",
+   "lane": "both",
+   "family": "misspelt",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "missed",
+   "expect": {
+    "kind": "not_in_records",
+    "tools": [
+     "client"
+    ]
+   },
+   "class": "search_first"
+  },
+  {
+   "id": "q368",
+   "text": "Kya 24th december booking hai koi?",
+   "lane": "both",
+   "family": "hinglish",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "rest",
+   "expect": {
+    "kind": "fact",
+    "tools": [
+     "day"
+    ],
+    "facts": [
+     "24 December 2026"
+    ]
+   }
+  },
+  {
+   "id": "q369",
+   "text": "mere crew mein kaun kaun hai?",
+   "lane": "both",
+   "family": "hinglish",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "rest",
+   "expect": {
+    "kind": "fact",
+    "tools": [
+     "team"
+    ],
+    "facts": [
+     "Harsh",
+     "Kavya"
+    ]
+   }
+  },
+  {
+   "id": "q370",
+   "text": "Kal free hoon?",
+   "lane": "both",
+   "family": "hinglish",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "rest",
+   "expect": {
+    "kind": "fact",
+    "tools": [
+     "day"
+    ],
+    "facts": [
+     "27 September 2026"
+    ]
+   }
+  },
+  {
+   "id": "q371",
+   "text": "Parso ka plan kya hai?",
+   "lane": "both",
+   "family": "hinglish",
+   "witnessed": true,
+   "source": "walk",
+   "strat": "rest",
+   "expect": {
+    "kind": "fact",
+    "tools": [
+     "day"
+    ],
+    "facts": [
+     "28 September 2026"
+    ]
    }
   }
  ]
