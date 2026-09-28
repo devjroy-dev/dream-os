@@ -1,0 +1,17 @@
+# scripts/floor-manifest-ce46-web1-cut4.txt
+# CE-46 · WEB-1 cut 4 · the site's data: 0179 vendor_sites (+ stories, testimonials), siteModel, packages and site on the public card · base 7504315 (carried from 79a3102, no overlap by path; the look-saving door added) · F-19.16: a dirty path outside this list is a STOP.
+# The new directory is declared by its own line (src/lib/site/), as git lists an untracked directory.
+# Rung b148 (33 cells, four mutations inside). b44 and b55 amended by label. One new directory: src/lib/site/. No file deleted.
+db/migrations/0179_vendor_sites.sql
+docs/handovers/TDW_CE46_WEB1_CUT4_HANDOVER.md
+scripts/b148_ce46_web1_site_card_bench.js
+scripts/b44_public_vendor_card_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/floor-manifest-ce46-web1-cut4.txt
+scripts/lib/b148r_0179_plant.sql
+scripts/lib/b148r_0179_rehearse.sh
+src/api/public/vendorCard.js
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/site.js
+src/lib/site/
+src/lib/site/siteModel.js

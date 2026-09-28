@@ -127,9 +127,12 @@ const WIRE_FORBIDDEN = ['upi_id', 'gstin', 'pin_hash', 'rate_min', 'rate_max',
 /** NEVER EVEN ASKED FOR. Shorter than the list above, and that gap IS the
  *  amendment: a column can be fetched and withheld, and the two facts now have
  *  two assertions instead of one that could only ever be half right. */
+// ── AMENDED BY LABEL — CE-46 WEB-1 cut 4 (b148): `tier` LEAVES this list and STAYS on WIRE_FORBIDDEN. The
+// door reads it to decide the site's pages, look and credit (R-46.9) and never sends it; b148 §3 pins that
+// no card key or nested key carries it. Rate_min is the precedent: asked for, never sent.
 const SELECT_FORBIDDEN = ['upi_id', 'gstin', 'pin_hash', 'rate_max',
                           'razorpay_subscription_id', 'razorpay_subscription_link', 'user_id',
-                          'style_notes', 'tier', 'billing_status', 'invoice_prefix',
+                          'style_notes', 'billing_status', 'invoice_prefix',
                           'base_fee_min', 'base_fee_max', 'rejection_reason', 'reviewed_by_admin'];
 
 const SELECTS = [];   // every column list the door asked for
@@ -244,9 +247,11 @@ const B = '/api/v2/public/vendor-card';
 // ⚠ SORTED, BECAUSE §2.2 SORTS BOTH SIDES BEFORE COMPARING. Declaration order
 // is `b55`'s question, not this one's; appending here rather than inserting in
 // order would redden a correct door.
+// ── AMENDED BY LABEL — CE-46 WEB-1 cut 4 (b148), 28 September: `packages` and `site` join (F-44.241; the
+// site, R-46.7/.9). `site` carries capabilities (look, pages, credit, domain), never the tier.
 const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
-                   'enquire_link', 'enquiry_phone', 'handle', 'is_demo', 'meta', 'photos',
-                   'seal', 'starting_price', 'weddings'];   // G3.1 s2: `meta` joins (0147 §4)
+                   'enquire_link', 'enquiry_phone', 'handle', 'is_demo', 'meta', 'packages', 'photos',
+                   'seal', 'site', 'starting_price', 'weddings'];   // G3.1 s2: `meta` joins (0147 §4); WEB-1 cut 4: packages, site
 
 (async () => {
   await new Promise((r) => { server = app.listen(0, '127.0.0.1', r); });
@@ -367,12 +372,13 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_ena
     // publish (the twice-stated consent, FK3). The phone reaches the page ONLY inside enquire_link, and only
     // when she chose rung 2: the card's own `enquiry_phone` key stays null for a real vendor (vendorCard :567's
     // literal, pinned by b124 3.5). Neither column is on SELECT_FORBIDDEN. Fifteen columns now.
+    // AMENDED BY LABEL — CE-46 WEB-1 cut 4: `tier` joins (read, never sent). Sixteen columns.
     const WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
                   'discover_paused', 'enquiry_phone', 'enquiry_routing', 'id', 'rate_display', 'rate_min', 'routing_handle',
-                  'seo_description', 'seo_title', 'status'];   // G3.1 s2: thirteen; CE-45 FE_2: fifteen — 0147 §4's two join the SELECT
+                  'seo_description', 'seo_title', 'status', 'tier'];   // G3.1 s2: thirteen; CE-45 FE_2: fifteen — 0147 §4's two join the SELECT
     const asked = [...new Set(vs.flatMap((s) => s.cols.split(',').map((x) => x.trim())))].sort();
     chk(JSON.stringify(asked) === JSON.stringify(WANT),
-        '\u00a73.3 the vendors SELECT is exactly the fifteen allowlisted columns', asked.join(','));   // AMENDED BY LABEL, CE-45 FE_2 (was: thirteen)
+        '\u00a73.3 the vendors SELECT is exactly the sixteen allowlisted columns', asked.join(','));   // AMENDED BY LABEL, CE-45 FE_2 (was: thirteen)
     const forbiddenAsked = asked.filter((c) => SELECT_FORBIDDEN.includes(c));
     chk(forbiddenAsked.length === 0, '§3.4 no select-forbidden column is even ASKED FOR',
         forbiddenAsked.length ? 'ASKED: ' + forbiddenAsked.join(', ') : 'the query never sees them');

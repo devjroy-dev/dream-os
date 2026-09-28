@@ -123,6 +123,7 @@ const { sealIsVisible } = require('../../lib/vendor/seal');
 // it rather than restating five field names, so a sixth field added there
 // reaches both leaves in one edit and neither can drift into a private column.
 const { publicWedding } = require('../../lib/vendor/weddings');
+const siteModel = require('../../lib/site/siteModel');   // CE-46 WEB-1 cut 4: the site's tier rules, one home
 
 /**
  * THE WIRE SHAPE, DECLARED ONCE.
@@ -210,6 +211,14 @@ const CARD_KEYS = Object.freeze([
   // `b44` §2.2/§3.5 and `b55` diff this list; both move in this edit
   // (F-40.168's lesson — amended by label, in the same packet).
   'meta',
+  // ── CE-46 · WEB-1 cut 4 — TWO MORE NAMED FIELDS (the site, R-46.7/.9) ─────
+  // `packages` — her packages as couples may see them: name, description, the
+  //   line items' words, and the total ONLY when her rate switch is on (the same
+  //   rule startingPrice applies). Default first. F-44.241.
+  // `site` — what the site must draw: { look, pages, credit, domain }. Her TIER is
+  //   read server-side to decide these and NEVER sent (WIRE_FORBIDDEN keeps 'tier');
+  //   the card carries capabilities, not the plan's name. b44 and b55 move by label.
+  'packages', 'site',
 ]);
 
 /**
@@ -217,7 +226,12 @@ const CARD_KEYS = Object.freeze([
  * `select('*')` is not merely discouraged here; there is no code path that
  * could produce one, because these are the strings the queries are built from.
  */
-const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, date_check_enabled, about, rate_min, rate_display, seo_title, seo_description, enquiry_routing, enquiry_phone';
+const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, date_check_enabled, about, rate_min, rate_display, tier, seo_title, seo_description, enquiry_routing, enquiry_phone';
+// CE-46 WEB-1 cut 4 · `tier` joins the SELECT (read to decide the site's pages, look and credit) and stays on
+// WIRE_FORBIDDEN: it is never a key of the card. b44's SELECT_FORBIDDEN is amended by label for it.
+const PACKAGE_SELECT   = 'name, description, line_items, total, is_default, created_at';
+const SITE_SELECT      = 'look, pages, credit_shown';
+const DOMAIN_SELECT    = 'domain, status';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
 // `computed_at` is selected and WITHHELD — the page shows a fact, not an audit
 // trail, and "counted every night" is the room's sentence to the vendor, not the
@@ -285,6 +299,32 @@ function notFound(res) {
  * shaping graph onto an unauthenticated route. **If the two ever disagree,
  * `shapeVendor.js` wins.** One line, copied deliberately, named at both ends.
  */
+/**
+ * CE-46 WEB-1 cut 4 · her packages as couples see them (F-44.241). The total obeys the SAME switch as
+ * startingPrice: rate_display false → every total null. Line items carry words only ({label, detail}),
+ * as packageSeedParse writes them; nothing else of a row leaves the server.
+ */
+function publicPackages(rows, rate_display) {
+  return (Array.isArray(rows) ? rows : []).map((r) => ({
+    name: r.name || null,
+    description: r.description || null,
+    total: rate_display === false ? null : (Number.isFinite(r.total) ? r.total : null),
+    items: (Array.isArray(r.line_items) ? r.line_items : [])
+      .map((i) => (i && typeof i === 'object' ? { label: i.label ? String(i.label) : null, detail: i.detail ? String(i.detail) : null } : (typeof i === 'string' ? { label: i, detail: null } : null)))
+      .filter((i) => i && i.label),
+  })).filter((p) => p.name);
+}
+
+/** CE-46 WEB-1 cut 4 · what the site draws. The tier decides it here and is never on the wire. */
+function siteFor(tier, category, siteRow, liveDomain) {
+  return {
+    look: siteModel.lookFor(tier, category, siteRow),
+    pages: siteModel.pagesFor(tier, siteRow),
+    credit: siteModel.creditFor(tier, siteRow),
+    domain: liveDomain || null,
+  };
+}
+
 function startingPrice(rate_display, rate_min) {
   return rate_display === false ? null : (rate_min || null);
 }
@@ -329,7 +369,7 @@ function metaFor({ business_name, category, city, about, seo_title, seo_descript
  *            about: string|null, starting_price: number|null,
  *            photos: Array<{url: string, caption: string|null, hero: boolean, position: number}>}}
  */
-function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings, meta }) {
+function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings, meta, packages, site }) {
   return {
     business_name: business_name || null,
     category:      category      || null,
@@ -348,6 +388,8 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     // G2 · an OBJECT or NULL. `sealFor` has already decided; the card does not
     // second-guess it, exactly as it does not second-guess the portfolio's cap.
     seal:          seal || null,
+    packages:      Array.isArray(packages) ? packages : [],
+    site:          site || siteModel.defaultSite(category),
     // ── G3.1 · F-40.169 — THE TWO NAMES THIS BUILDER NEVER LEARNED ─────────
     // The G3.1 delivery added both to `CARD_KEYS` and to the real leg's CALL
     // SITE and never here. This function's own header says NOTHING IS SPREAD,
@@ -542,6 +584,25 @@ router.get('/:code', async (req, res) => {
         weddingRows = [];
       }
 
+      // CE-46 WEB-1 cut 4 · packages, her site row, her live domain. Each read is guarded: a failed read
+      // (0178 not yet applied, a row absent) gives the default, never a 500 on a couple's page.
+      let pkgRows = [];
+      try {
+        const { data: pk, error: pkErr } = await supabase.from('vendor_packages').select(PACKAGE_SELECT)
+          .eq('vendor_id', v.id).is('deleted_at', null)
+          .order('is_default', { ascending: false }).order('created_at', { ascending: true });
+        if (!pkErr && Array.isArray(pk)) pkgRows = pk;
+      } catch (_pkErr) { pkgRows = []; }
+      let siteRow = null;
+      try {
+        const { data: sr, error: srErr } = await supabase.from('vendor_sites').select(SITE_SELECT).eq('vendor_id', v.id).maybeSingle();
+        if (!srErr && sr) siteRow = sr;
+      } catch (_srErr) { siteRow = null; }
+      let liveDomain = null;
+      try {
+        const { data: dr, error: drErr } = await supabase.from('vendor_domains').select(DOMAIN_SELECT).eq('vendor_id', v.id).eq('status', 'live').is('deleted_at', null).limit(1);
+        if (!drErr && Array.isArray(dr) && dr[0]) liveDomain = dr[0].domain;
+      } catch (_drErr) { liveDomain = null; }
       return res.status(200).json({
         ok: true,
         card: card({
@@ -574,6 +635,8 @@ router.get('/:code', async (req, res) => {
           starting_price: startingPrice(v.rate_display, v.rate_min),
           photos:         (rows || []).map(photo),
           seal:           sealFor(sealRow),
+          packages:       publicPackages(pkgRows, v.rate_display),
+          site:           siteFor(v.tier, v.category, siteRow, liveDomain),
         }),
       });
     }
@@ -678,3 +741,9 @@ module.exports.VENDOR_SELECT = VENDOR_SELECT;
 module.exports.SEAL_SELECT = SEAL_SELECT;   // G2 · R-G2.9, so b44 can diff it
 module.exports.PORTFOLIO_SELECT = PORTFOLIO_SELECT;
 module.exports.DEMO_SELECT = DEMO_SELECT;
+
+module.exports.publicPackages = publicPackages;   // CE-46 WEB-1 cut 4 · b148 drives it
+module.exports.siteFor = siteFor;
+module.exports.PACKAGE_SELECT = PACKAGE_SELECT;
+module.exports.SITE_SELECT = SITE_SELECT;
+module.exports.DOMAIN_SELECT = DOMAIN_SELECT;

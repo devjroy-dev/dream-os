@@ -457,6 +457,8 @@ router.use('/google', require('./google'));
 router.use('/storefront', require('./storefront'));
 // CE-46 WEB-1 cut 2 · her own name: search, order (she pays first), wire; the buy is the webhook's (domain.js).
 router.use('/domain', require('./domain'));
+// CE-46 WEB-1 cut 4 · her site's look: GET /site, POST /site/look (the tier decides; Basic sees her trade's look).
+router.use('/site', require('./site'));
 // G6 · CE-45 G6-1 2a · her own number: the room's answer and Meta's code (number.js; FK1).
 router.use('/number', require('./number'));
 // CE-45 IGD-1 cut 2a-ii · the room "WhatsApp and Instagram": its Instagram door and switch, and the quiet time (both dark by the lane).

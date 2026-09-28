@@ -412,7 +412,8 @@ await (async () => {
     // ⚠ DECLARATION ORDER, NOT SORTED. `b44` §2.2 sorts both sides; this one
     // compares the list as written, and that asymmetry is deliberate — between
     // them they hold both the SET and the ORDER.
-    const want = ['business_name','category','city','handle','is_demo','enquiry_phone','about','starting_price','photos','enquire_link','seal','date_check_enabled','weddings','meta'];   // G3.1 s2: `meta` appended (0147 §4)
+    // ── AMENDED BY LABEL — CE-46 WEB-1 cut 4 (b148), 28 September: `packages` and `site` APPENDED after `meta` (F-44.241; the site, R-46.7/.9); `seal` unmoved.
+    const want = ['business_name','category','city','handle','is_demo','enquiry_phone','about','starting_price','photos','enquire_link','seal','date_check_enabled','weddings','meta','packages','site'];   // G3.1 s2: `meta` appended (0147 §4); WEB-1 cut 4: packages, site
     return VC.CARD_KEYS.join(',') === want.join(',') ? true : `CARD_KEYS is ${VC.CARD_KEYS.join(',')}`;
   });
 
