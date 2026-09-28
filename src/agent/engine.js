@@ -243,6 +243,54 @@ function clientWord(leadName, cp) {
   return cp.channel === 'instagram' ? IG_CLIENT_WORD : `...${String(cp.phone || '').slice(-4)}`;
 }
 
+// ── CE-46 ELZ-3 cut 1 · R-46.5 WITH F-44.227 (the founder's ruling of 27 September 2026; the chair's ruling A, and F-44.227's rule
+// stated by the chair 28 September 2026; W-1 lift on these helpers and the turn's notice hunks only). Before this cut the turn composed
+// a notice only on a capture and on EVERY message from a returning (named) client, so a first DM that captured nothing alerted nobody
+// (the founder's Instagram walk) and a named client's every message alerted again. F-44.227, on every lane:
+//   1 per ENQUIRY at most two notices: the first-message notice and the capture notice; later messages in the enquiry compose none;
+//   2 an enquiry is a thread whose messages are no more than 7 days apart; a message after more than 7 days of silence opens a new one;
+//   3 every notice names its line (TDW's WhatsApp, Instagram, your own number).
+// A date question inside an enquiry still reaches him as the date line alone (withDateLine; the chair's ruling on row 8).
+// THE WORDS are the founder's, verbatim through the chair on 29 September 2026 (rows 1 to 7, "ok to all"; "we dont need to use the
+// word couple"; the phone always +91 and the ten digits grouped 5-5). OWN_NUMBER_FIRST_ALERT is his row 7, yes by default: false means
+// a vendor's own number composes no first-message notice (named or not); its capture notice is unchanged.
+const OWN_NUMBER_FIRST_ALERT = true;
+const ENQUIRY_GAP_MS = 7 * 24 * 60 * 60 * 1000;
+const LINE_WORD = Object.freeze({ whatsapp_shared: "TDW's WhatsApp", instagram: 'Instagram', whatsapp_own: 'your own number' });
+// The founder's phone form: +91 and the ten digits, 5-5 (+91 96257 59924). Anything that is not an Indian mobile keeps its digits
+// behind a plus, ungrouped.
+function formatPhone(p) {
+  const d = String(p || '').replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('91')) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+  if (d.length === 10) return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
+  return d ? `+${d}` : '';
+}
+// Rows 1 to 3 and 5 (no name): "New enquiry on {line} from {phone}" (Instagram: no phone). Row 4 (a name): "New enquiry from {name} on {line}".
+function enquiryHead(name, cp) {
+  const line = LINE_WORD[cp.channel] || LINE_WORD.whatsapp_shared;
+  const n = typeof name === 'string' ? name.trim() : '';
+  if (n) return `New enquiry from ${n} on ${line}`;
+  const ph = cp.channel === 'instagram' ? '' : formatPhone(cp.phone);
+  return ph ? `New enquiry on ${line} from ${ph}` : `New enquiry on ${line}`;
+}
+// F-44.227 (2): the message in hand opens an enquiry when the thread has no earlier row, or its newest earlier row is more than 7 days
+// old. A failed thread read (lastPriorAt unknown on a thread with rows) opens nothing: no notice rather than a wrong one.
+function opensEnquiry(facts, nowMs = Date.now()) {
+  if (!facts) return false;
+  if (facts.inConversation === false) return true;
+  const t = facts.lastPriorAt ? Date.parse(facts.lastPriorAt) : NaN;
+  return Number.isFinite(t) && nowMs - t > ENQUIRY_GAP_MS;
+}
+function noticeAllowed(cp) { return !(cp.channel === 'whatsapp_own' && !OWN_NUMBER_FIRST_ALERT); }
+function firstMessageNotice(cp, inboundMessage, name) {
+  try {
+    if (!noticeAllowed(cp)) return null;
+    const message = typeof inboundMessage === 'string' ? inboundMessage.trim() : '';
+    if (!message) return null;
+    return `${enquiryHead(name, cp)}: "${message}"`;
+  } catch (_e) { return null; }
+}
+
 async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic, counterparty }) {
   const cp = resolveCounterparty(counterparty, couplePhone);
   // The row the door wrote holds what she ACTUALLY sent (γ refused: the audit row
@@ -723,7 +771,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
           // CE-46 ELZ-2 cut 1 (C2; the founder's Q3 yes, IGD-2's V1): on Instagram there is no number to name, so his line is
           // "New enquiry on Instagram. {summary}. Lead saved."; on WhatsApp the bytes are unchanged.
-          const notifHead = cp.channel === 'instagram' ? 'New enquiry on Instagram.' : `New enquiry from ${cp.phone}.`;
+          // CE-46 ELZ-3 cut 1 (F-44.227 (3), the founder's row 5): the head names its line (was 'New enquiry on Instagram.' / 'New enquiry from {phone}.').
+          const notifHead = `${enquiryHead(null, cp)}.`;
           const notifMsg = enrichment
             ? `${notifHead} ${summary}. Lead saved.\n\n${enrichment}`
             : `${notifHead} ${summary}. Lead saved.`;
@@ -789,12 +838,14 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   const firstContactNotif = toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null;
 
   let returningBrideNotif = null;
-  if (isReturningBride) {
+  // CE-46 ELZ-3 cut 1 (F-44.227 (1), (2)): a named client's message composes a notice only when it OPENS an enquiry; inside one it
+  // composes none (the intent read, a model call, is skipped with it; leads.intent_summary refreshes once per enquiry).
+  const opensThisEnquiry = opensEnquiry(conversationFacts);
+  if (isReturningBride && opensThisEnquiry && noticeAllowed(cp)) {
     // CE-46 ELZ-2 cut 1 (C3; the founder's Q3 yes, IGD-2's V1b): on Instagram "{name, else An Instagram client} just messaged on
     // Instagram: "{message}""; on WhatsApp his bytes are unchanged (F-44.190: the old form threw on a null phone).
-    const verbatimFallback = cp.channel === 'instagram'
-      ? `${clientWord(leadName, cp)} just messaged on Instagram: "${inboundMessage}"`
-      : `${leadName || `...${cp.phone.slice(-4)}`} just messaged: "${inboundMessage}"`;
+    // CE-46 ELZ-3 cut 1 (F-44.227 (3)): the named first-message line (was "{name} just messaged: …", Instagram "… just messaged on Instagram").
+    const verbatimFallback = firstMessageNotice(cp, inboundMessage, leadName);
     try {
       const summary = await getReturningBrideIntent({
         inboundMessage,
@@ -806,7 +857,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         anthropic,
       });
       returningBrideNotif = summary
-        ? `${summary}\n\nHer message: "${inboundMessage}"`
+        ? `${enquiryHead(leadName, cp)}. ${summary}\n\nMessage: "${inboundMessage}"` // the founder's row 4
         : verbatimFallback;
     } catch (err) {
       console.warn('[couple-agent] intent extraction error:', err.message);
@@ -844,7 +895,10 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   // CE-45 ELZ-1 cut 2b (F-44.174): ONE text, sent and recorded alike. The vendor's WhatsApp gets vendorNotification (vendorInbound);
   // his vendor_self thread gets the same bytes here, so the door's next turn sees what he saw ("tell her ..." resolves).
-  const vendorNotification = withDateLine(isReturningBride ? returningBrideNotif : firstContactNotif, dateLineFor(toolCallsAudit, { leadName: existingLeadForCouple?.name || capturedLeadName || null, cp }));
+  // CE-46 ELZ-3 cut 1 (F-44.227): the capture notice, else, when this message opens an enquiry, the named line (returning) or the
+  // first-message line; inside an enquiry, none (the date line may still go alone).
+  const baseNotif = firstContactNotif || (opensThisEnquiry ? (returningBrideNotif || firstMessageNotice(cp, inboundMessage, leadName)) : null);
+  const vendorNotification = withDateLine(baseNotif, dateLineFor(toolCallsAudit, { leadName: existingLeadForCouple?.name || capturedLeadName || null, cp }));
   await recordVendorNotice(supabase, vendor, vendorUser, vendorNotification);
 
   return {

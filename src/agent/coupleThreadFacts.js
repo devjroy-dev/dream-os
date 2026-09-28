@@ -51,6 +51,8 @@ function factsFromRows(rows, inboundBodyAsStored) {
     lastAsked: lastAgent ? lastAgent.body.trim() : null,
     shapeAsked: !!shapeRow,
     shapeAskedOn: shapeRow ? istDay(shapeRow.created_at) : null,
+    // CE-46 ELZ-3 cut 1 (F-44.227 (2)): the newest earlier row's time, raw, for the 7-day enquiry gap (engine.js opensEnquiry).
+    lastPriorAt: prior.length && prior[0].created_at ? prior[0].created_at : null,
   };
 }
 
@@ -66,7 +68,7 @@ async function threadFacts({ supabase, conversationId, inboundBodyAsStored, hist
     return factsFromRows(data, inboundBodyAsStored);
   } catch (_e) {
     const n = Number.isInteger(historyLength) && historyLength > 0 ? historyLength : 0;
-    return { inConversation: n > 0, priorCount: n, since: null, lastAsked: null, shapeAsked: false, shapeAskedOn: null };
+    return { inConversation: n > 0, priorCount: n, since: null, lastAsked: null, shapeAsked: false, shapeAskedOn: null, lastPriorAt: null };
   }
 }
 

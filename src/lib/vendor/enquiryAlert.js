@@ -155,9 +155,35 @@ function briefSummary(raw) {
  * NEVER THROWS. Returns a verdict:
  *   { sent, path: 'text'|'template'|null, reason?, code?, key?, sid? }
  */
+// CE-46 ELZ-3 cut 1 (R-46.5, the chair's case 4; the founder's row 6 verbatim through the chair, 29 September 2026): when the window is
+// shut and no name is on file, the brief's {{bride}} names the line: "{phone} on TDW's WhatsApp", "someone on Instagram", "{phone} on
+// your own number" (the phone as +91 and 5-5). The channel is read from the caller's ctx ('igReply:…', 'ownNumber:…', else the shared
+// line), an explicit `channel` argument winning; the phone is read from the notice's own head, which the turn composed in the
+// founder's form ("… from +91 96257 59924"), so no caller byte moves. A notice with no head (the date line alone, the chair's row 8)
+// carries no phone: then "someone on {line}" (NOT in the founder's table; put to the chair).
+const BRIEF_WHO = Object.freeze({
+  instagram: () => 'someone on Instagram',
+  whatsapp_own: (ph) => (ph ? `${ph} on your own number` : 'someone on your own number'),
+  whatsapp_shared: (ph) => (ph ? `${ph} on TDW's WhatsApp` : "someone on TDW's WhatsApp"),
+});
+const HEAD_PHONE = /\bfrom (\+91 \d{5} \d{5})\b/;
+function channelOf(channel, ctx) {
+  if (['instagram', 'whatsapp_own', 'whatsapp_shared'].includes(channel)) return channel;
+  const c = String(ctx || '');
+  if (c.startsWith('igReply')) return 'instagram';
+  if (c.startsWith('ownNumber')) return 'whatsapp_own';
+  return 'whatsapp_shared';
+}
+function briefBrideWord(brideName, channel, ctx, text) {
+  const n = typeof brideName === 'string' ? brideName.trim() : '';
+  if (n) return n;
+  const m = typeof text === 'string' ? text.match(HEAD_PHONE) : null;
+  return BRIEF_WHO[channelOf(channel, ctx)](m ? m[1] : null);
+}
+
 async function sendVendorEnquiryAlert({
   toPhone, text, vendorName, brideName, brideMessage, link,
-  supabase = null, vendorId = null, ctx = 'enquiryAlert',
+  supabase = null, vendorId = null, ctx = 'enquiryAlert', channel = null,
 } = {}, deps = {}) {
   const _sendWhatsApp     = deps.sendWhatsApp     || sendWhatsApp;
   const _sendWa           = deps.sendWa           || sendWa;
@@ -271,7 +297,7 @@ async function sendVendorEnquiryAlert({
   try {
     const vars = entry.build({
       vendorName: scrubText(vendorName || 'there'),
-      brideName:  scrubText(brideName  || 'a couple'),
+      brideName:  scrubText(briefBrideWord(brideName, channel, ctx, text)), // CE-46 ELZ-3 cut 1: the line when no name (was 'a couple')
       summary:    briefSummary(brideMessage),
       link,
     });
@@ -423,6 +449,7 @@ async function readDial(supabase) {
 }
 
 module.exports = {
+  briefBrideWord, channelOf, BRIEF_WHO, // CE-46 ELZ-3 cut 1 (b142 reads them)
   sendVendorEnquiryAlert,
   briefSummary,
   recordBriefSend,

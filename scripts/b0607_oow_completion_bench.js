@@ -325,18 +325,22 @@ await t('A1.9 THE WINDOW PREDICATE IS THE ESTATE\'S ONE HOME, not a fourth inlin
     'an inline window query appeared beside the one home');
 });
 
-await t('A1.10 SOLE-CALLER PRESERVED — nothing but the three sites calls this door', async () => {
+// LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (F-44.228): the TDW-link site, which sent the vendor's notice through sendWhatsApp directly
+// with its own fallback line, joined the one door. The sole-caller property now reads FOUR sites (the fourth: the TDW-link site,
+// ctx 'vendorInbound:notification(tdw-link)', passing the stripped message as `quoted`). Counts re-pinned by label; the property is unchanged.
+await t('A1.10 SOLE-CALLER PRESERVED — nothing but the four sites calls this door', async () => {
   const inb = code(INB);
   const hits = (inb.match(/sendVendorEnquiryAlert\(/g) || []).length;
-  assert.strictEqual(hits, 3, 'the enquiry alert acquired or lost a caller');
+  assert.strictEqual(hits, 4, 'the enquiry alert acquired or lost a caller');
 });
 
-await t('A1.11 ALL THREE CALL SITES PASS HER WORDS', async () => {
+await t('A1.11 ALL FOUR CALL SITES PASS HER WORDS', async () => {
   const inb = code(INB);
-  assert.strictEqual((inb.match(/brideMessage:/g) || []).length, 3,
+  assert.strictEqual((inb.match(/brideMessage:/g) || []).length, 4,
     'a call site sends the brief with no {{3}} to fill');
   assert.ok(/brideMessage: originalMessage/.test(inb), 'the disambiguated site passes the wrong variable');
   assert.strictEqual((inb.match(/brideMessage: body/g) || []).length, 2);
+  assert.ok(/brideMessage: stripRoutingToken\(body\) \|\| 'hi'/.test(inb), 'the TDW-link site passes the stripped message (F-44.228)');
 });
 
 await t('A1.12 {{3}} NEVER CARRIES A NEWLINE, A TAB, OR A 4-SPACE RUN', async () => {
@@ -369,7 +373,9 @@ await t('A1.15 THE TERSE BRIDE IS CARRIED HONESTLY — "hi" is what she shared',
 
 await t('A1.16 THE SCRUB DOOR IS APPLIED TO EVERY VENDOR-FACING PARAM', async () => {
   const d = code(ALERT);
-  assert.ok(/scrubText\(vendorName/.test(d) && /scrubText\(brideName/.test(d));
+  // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (R-46.5, case 4): {{bride}} is briefBrideWord(brideName, channel, ctx) (the name, else the
+  // channel word), still inside scrubText; the firewall's reach is unchanged. Re-pinned by label.
+  assert.ok(/scrubText\(vendorName/.test(d) && /scrubText\(briefBrideWord\(brideName/.test(d));
   assert.ok(/scrubText\(/.test(code(ALERT).match(/function briefSummary[\s\S]{0,400}/)[0]),
     'her sentence bypasses the firewall');
 });

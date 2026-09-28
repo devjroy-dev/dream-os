@@ -479,7 +479,10 @@ await t('§4.3 THE FIXED-COPY SITES ARE BYTE-UNCHANGED — the founder\'s veto o
     'sendWhatsApp(phone, confirmation, [])',
     'sendWhatsApp(phone, FRESH_THREAD_LINE, [])',
     'sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE)',
-    "`New enquiry via your TDW link from ${phone}. I'm collecting their details now.`",
+    // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (F-44.228, the chair's ruling of 27 September 2026): the TDW-link fallback
+    // "New enquiry via your TDW link from ${phone}. I'm collecting their details now." is DELETED from vendorInbound.js; the turn
+    // composes a notice on every first message (R-46.5) and that site now sends through the one door. The entry is retired here,
+    // the count of vetoed strings reads one fewer, and b142 §2.2 pins the deletion.
   ];
   for (const f of fixed) assert.ok(src.includes(f), `a founder-vetoed fixed string moved or was wrapped: ${f}`);
 });

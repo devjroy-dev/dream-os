@@ -141,13 +141,18 @@ async function main() {
     T('2.2 the Frost read (users by phone) is made', userReads(r.sb).length === 1 && userReads(r.sb)[0].eqs.phone === PHONE);
     const ins = leadInsert(r.sb);
     T('2.3 the insert carries phone and source whatsapp as before, and the new column counterparty_ig_id null (a cure cell: red at the base)', ins && ins.phone === PHONE && ins.source === 'whatsapp' && ins.counterparty_ig_id === null);
-    T('2.4 his capture notice bytes: "New enquiry from {phone}. ..."', typeof r.out.vendorNotification === 'string' && r.out.vendorNotification.startsWith(`New enquiry from ${PHONE}. `) && /Lead saved\./.test(r.out.vendorNotification));
+    // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (F-44.227, stated by the chair 28 September 2026: every notice names its line; a named
+    // client's notice only when the message opens an enquiry). The old bytes grepped across scripts/ first; b142 §1 pins the rule.
+    // (2) the founder's row 5, 29 September 2026: no "couple"; the phone as +91 and 5-5.
+    T('2.4 his capture notice, his row 5: "New enquiry on TDW\'s WhatsApp from +91 NNNNN NNNNN. ..."', typeof r.out.vendorNotification === 'string' && /^New enquiry on TDW's WhatsApp from \+91 \d{5} \d{5}\. /.test(r.out.vendorNotification) && /Lead saved\./.test(r.out.vendorNotification));
     T('2.5 the date line names the last four digits when no name is on file', /\.\.\.9924 asked if you're free on 5 March 2028\./.test(r.out.vendorNotification) === false && /Priya asked if you're free on 5 March 2028\./.test(r.out.vendorNotification));
     // A returning client is one with a NAME on file (engine.js: isReturningBride = !!existingLeadForCouple?.name), so the "...NNNN just
     // messaged" fallback at the old :732 is unreachable at the tree (named in the handover, not changed); the reachable fallback word is
     // the date line's (2.5, 3.11).
     const r2 = await turn({ withCp: false, lead: { id: 'l1', name: 'Sarah', intent_summary: null }, inbound: 'any update?' });
-    T('2.6 a returning client: "Sarah just messaged: ..." (his bytes)', r2.out.vendorNotification === `Sarah just messaged: "any update?"`);
+    // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (F-44.227, stated by the chair 28 September 2026: every notice names its line; a named
+    // client's notice only when the message opens an enquiry). The old bytes grepped across scripts/ first; b142 §1 pins the rule.
+    T('2.6 a returning client opening an enquiry: "New enquiry from Sarah on TDW\'s WhatsApp: ..."', r2.out.vendorNotification === `New enquiry from Sarah on TDW's WhatsApp: "any update?"`);
     T('2.7 the flag off: the legacy header (no persona) on the shared line', /^You answer messages for Dev Roy Photography, /.test(r.system) && !/Your name, if anyone asks/.test(r.system));
     const r3 = await turn({ withCp: false, flag: true });
     T('2.8 the flag on: the persona header on the shared line', /Your name, if anyone asks, is Eliza\./.test(r3.system));
@@ -163,7 +168,9 @@ async function main() {
     const ins = leadInsert(r.sb);
     T('3.3 the insert: phone null, counterparty_ig_id the igsid, source instagram', ins && ins.phone === null && ins.counterparty_ig_id === IGSID && ins.source === 'instagram');
     T('3.4 the capture read (existing lead) is keyed the same way', leadReads(r.sb).every((x) => !('phone' in x.eqs)));
-    T('3.5 V1: "New enquiry on Instagram. {summary}. Lead saved."', r.out.vendorNotification.startsWith('New enquiry on Instagram. Name: Priya, ') && /Lead saved\./.test(r.out.vendorNotification));
+    // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (F-44.227, stated by the chair 28 September 2026: every notice names its line; a named
+    // client's notice only when the message opens an enquiry). The old bytes grepped across scripts/ first; b142 §1 pins the rule.
+    T('3.5 V1, his row 5: "New enquiry on Instagram. {summary}. Lead saved."', r.out.vendorNotification.startsWith('New enquiry on Instagram. Name: Priya, ') && /Lead saved\./.test(r.out.vendorNotification));
     T('3.6 the persona path with the flag OFF (Q2 = 1): the flag is not consulted on Instagram', /Your name, if anyone asks, is Eliza\./.test(r.system) && !r.sb.log.reads.some((x) => x.table === 'admin_config'));
     T('3.7 no link handed in: no WhatsApp link block', !/IF THEY WOULD RATHER TALK ON WHATSAPP/.test(r.system));
     const rl = await turn({ counterparty: { ...cp, enquireLink: 'https://wa.me/919888294440' }, couplePhone: null });
@@ -171,10 +178,16 @@ async function main() {
     const rs = await turn({ counterparty: { channel: 'whatsapp_shared', phone: PHONE, enquireLink: 'https://wa.me/919888294440' } });
     T('3.9 the same link on the shared line is never read (no block)', !/IF THEY WOULD RATHER TALK ON WHATSAPP/.test(rs.system));
     const ru = await turn({ counterparty: cp, couplePhone: null, lead: null, inbound: 'are you free on 5 March 2028?', script: [DATE] });
-    T('3.10 an unnamed client on Instagram, a booked date: no throw on a null phone (F-44.190), the notice is the date line alone', typeof ru.out.vendorNotification === 'string' && ru.out.vendorNotification.startsWith('An Instagram client asked if you'));
-    T('3.11 the date line\'s {client} on Instagram is the founder\'s word, his line otherwise byte for byte', ru.out.vendorNotification === `An Instagram client asked if you're free on 5 March 2028. I told them you'd check and get back to them. To answer, send "Tell An Instagram client" and your message.`);
+    // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (R-46.5): on the thread's FIRST message the turn now composes the first-message line
+    // ("New enquiry on Instagram: …") ahead of the date line (b142 §1 pins the line and case 1); the date line's bytes are unchanged
+    // and still follow after one blank line. Re-pinned by label: 3.10 reads the tail, 3.11 the date line as the notice's last paragraph.
+    const ruTail = typeof ru.out.vendorNotification === 'string' ? ru.out.vendorNotification.split('\n\n').pop() : '';
+    T('3.10 an unnamed client on Instagram, a booked date: no throw on a null phone (F-44.190), the notice ends with the date line', typeof ru.out.vendorNotification === 'string' && ruTail.startsWith('An Instagram client asked if you'));
+    T('3.11 the date line\'s {client} on Instagram is the founder\'s word, his line otherwise byte for byte', ruTail === `An Instagram client asked if you're free on 5 March 2028. I told them you'd check and get back to them. To answer, send "Tell An Instagram client" and your message.`);
     const rn = await turn({ counterparty: cp, couplePhone: null, lead: { id: 'l1', name: 'Sarah', intent_summary: null }, inbound: 'any update?' });
-    T('3.12 V1b named: "Sarah just messaged on Instagram: ..."', rn.out.vendorNotification === `Sarah just messaged on Instagram: "any update?"`);
+    // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (F-44.227, stated by the chair 28 September 2026: every notice names its line; a named
+    // client's notice only when the message opens an enquiry). The old bytes grepped across scripts/ first; b142 §1 pins the rule.
+    T('3.12 V1b named, opening an enquiry: "New enquiry from Sarah on Instagram: ..."', rn.out.vendorNotification === `New enquiry from Sarah on Instagram: "any update?"`);
     T('3.13 the returning path on Instagram makes no users read either', userReads(rn.sb).length === 0);
   }
 
@@ -216,7 +229,9 @@ async function main() {
         check: async () => { const r = await turn({ counterparty: { channel: 'instagram', igsid: IGSID }, couplePhone: null }); return leadReads(r.sb)[0].eqs.counterparty_ig_id === IGSID; } },
       { n: 'M2 source always whatsapp (3.3 red)', f: E, from: "source:       cp.channel === 'instagram' ? 'instagram' : 'whatsapp',", to: "source:       'whatsapp',",
         check: async () => { const r = await turn({ counterparty: { channel: 'instagram', igsid: IGSID }, couplePhone: null, script: [CAPTURE] }); return leadInsert(r.sb).source === 'instagram'; } },
-      { n: 'M3 the WhatsApp notice head on Instagram (3.5 red)', f: E, from: "const notifHead = cp.channel === 'instagram' ? 'New enquiry on Instagram.' : `New enquiry from ${cp.phone}.`;", to: "const notifHead = `New enquiry from ${cp.phone}.`;",
+      // LABELED AMENDMENT · CE-46 ELZ-3 cut 1 (F-44.227 (3)): the capture head now reads whoWord(null, cp); M3 re-aimed at the same defect
+      // (the WhatsApp head on an Instagram capture) on the new bytes, its check reading the new Instagram head.
+      { n: 'M3 the WhatsApp notice head on Instagram (3.5 red)', f: E, from: "const notifHead = `${enquiryHead(null, cp)}.`;", to: "const notifHead = `New enquiry from ${cp.phone}.`;",
         check: async () => { const r = await turn({ counterparty: { channel: 'instagram', igsid: IGSID }, couplePhone: null, script: [CAPTURE] }); return r.out.vendorNotification.startsWith('New enquiry on Instagram.'); } },
       { n: 'M4 the flag consulted on Instagram (3.6 red)', f: E, from: "const useEliza = cp.channel === 'instagram' ? true : await readLaneFlag(supabase, 'couple.eliza_enabled');", to: "const useEliza = await readLaneFlag(supabase, 'couple.eliza_enabled');",
         check: async () => { const r = await turn({ counterparty: { channel: 'instagram', igsid: IGSID }, couplePhone: null }); return /Your name, if anyone asks/.test(r.system); } },

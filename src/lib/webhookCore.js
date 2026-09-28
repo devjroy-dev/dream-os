@@ -62,8 +62,9 @@ function _sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 // ── Graceful line for a thrown inbound turn (dead-letter path) ───────
 // The single user-facing line when a turn throws and is dead-lettered. Verbatim
-// from the spec ("Dead letters" clause).
-const GRACEFUL_TURN_LINE = 'Something hiccuped — say that again in a minute.';
+// from the spec ("Dead letters" clause). CE-46 ELZ-3 cut 1: the founder's Q7 byte (his yes recorded 27 September 2026,
+// R-45.30: plain, no dash) replaces the spec's dashed line in its ONE home; every caller reads this export.
+const GRACEFUL_TURN_LINE = 'Something went wrong on our side. Please send that again in a minute.';
 
 // ── Inbound MessageSid dedupe: the in-process LRU (fast path) ────────
 // The primary idempotency guard. Twilio retries a webhook (same MessageSid) within

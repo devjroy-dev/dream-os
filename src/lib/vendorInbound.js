@@ -117,7 +117,8 @@ function stripRoutingToken(rawBody) {
 // something. Omit it and this function behaves exactly as M-3 shipped it.
 // ── TDW_08 P5 RIDER (F-08.85, CE R-R3) — THE ONE DOOR ────────────────────────
 // The three enquiry-alert relays below (:591 disambiguated, :700 sticky, :989
-// returning) call `sendVendorEnquiryAlert` and NOTHING ELSE calls it. Direct
+// returning) call `sendVendorEnquiryAlert` and NOTHING ELSE calls it. CE-46 ELZ-3 cut 1
+// (F-44.228): the FOURTH site, the TDW link, joined them; it had stayed on sendWhatsApp. Direct
 // `sendWhatsApp` for a vendor notification is the defect this rider cured: it
 // threw on a shut 24h window, reached the function-level dead-letter, and cost
 // the BRIDE the rest of her turn. The bench asserts the sole-caller property.
@@ -1099,16 +1100,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           tool_calls: result.toolCalls,
         });
 
-        const vendorPhone = vendorUser?.phone;
-        // M-3 R3: the model half scrubs (frame only — this turn was handed
-        // `stripRoutingToken(body) || 'hi'` at :794, so THAT is the quote); the fallback
-        // is founder-vetoed fixed copy and is left byte-unchanged, never scrubbed.
-        const notif = result.vendorNotification
-          ? scrubModelFrame(result.vendorNotification, stripRoutingToken(body) || 'hi', { supabase, vendorId: matchedByTdw.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(tdw-link)' })
-          : `New enquiry via your TDW link from ${phone}. I'm collecting their details now.`;
-
-        if (vendorPhone) {
-          await sendWhatsApp(vendorPhone, notif);
+        // CE-46 ELZ-3 cut 1 · F-44.228 CURED: this site sent the vendor's notice through sendWhatsApp directly, outside the one door
+        // (F-08.85's rider above: a shut 24-hour window threw here), and carried its own fallback line for a turn that composed
+        // nothing. The turn now composes on every first message (R-46.5, engine.js firstMessageNotice), so the fallback is deleted,
+        // and the notice leaves through sendVendorEnquiryAlert like its three siblings: windowed, briefed when shut, never throwing.
+        // M-3 R3: the model half scrubs (frame only — this turn was handed `stripRoutingToken(body) || 'hi'`, so THAT is the quote).
+        if (result.vendorNotification && vendorUser?.phone) {
+          await sendVendorEnquiryAlert({
+            toPhone: vendorUser.phone,
+            text: scrubModelFrame(result.vendorNotification, stripRoutingToken(body) || 'hi', { supabase, vendorId: matchedByTdw.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(tdw-link)' }),
+            vendorName: vendorUser.name, brideName: result.leadName, link: VENDOR_LEADS_LINK,
+            // the SAME value handed to scrubModelFrame one line up (the disambiguated site's reason): the call site knows the quote
+            brideMessage: stripRoutingToken(body) || 'hi',
+            supabase, vendorId: matchedByTdw.id, ctx: 'vendorInbound:notification(tdw-link)',
+          });
         }
 
         // Enrich the engine binder's note with the vendor summary (dedup -> note_append).

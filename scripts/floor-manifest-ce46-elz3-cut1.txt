@@ -1,0 +1,19 @@
+# scripts/floor-manifest-ce46-elz3-cut1.txt
+# CE-46 · ELZ-3 · CUT 1 (dream-os): the vendor's alert on every new enquiry (R-46.5) under F-44.227 (two notices per enquiry, the
+# 7-day enquiry, every notice naming its line; coupleThreadFacts carries the newest earlier row's time), F-44.228 (the TDW-link
+# site onto the one door, its fallback deleted), the founder's Q7 byte (GRACEFUL_TURN_LINE), the shut-window brief's channel word;
+# rung b142; b06_m3, b0607, b115 and b135 re-pinned by label.
+# BASE: 9d3d772 (built on 0ac1a01, carried by command to 7504315 on 28 September and to 9d3d772 on 29 September 2026; re-derived at the cut). F-19.16: a dirty path outside this list is a STOP.
+# A-45.3: no new folder.
+src/agent/engine.js
+src/agent/coupleThreadFacts.js
+src/lib/vendorInbound.js
+src/lib/webhookCore.js
+src/lib/vendor/enquiryAlert.js
+scripts/b142_elz3_first_message_alert_bench.js
+scripts/b06_m3_bench.js
+scripts/b0607_oow_completion_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b135_elz2_channel_turn_bench.js
+docs/handovers/TDW_CE46_ELZ3_CUT1_HANDOVER.md
+scripts/floor-manifest-ce46-elz3-cut1.txt
