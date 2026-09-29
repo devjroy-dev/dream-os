@@ -1,0 +1,9 @@
+# scripts/floor-manifest-ce46-igd2-g7.txt
+# CE-46 · IGD-2 · G7 (dream-os): Meta's App Review reviewer signs in to one vendor account with a fixed code, no message sent.
+# src/lib/vendor/reviewerLogin.js (the one home), three uses in src/api/vendor/auth.js, rung b152.
+# BASE: 1b8789f (ELZ-3 cut 1; built on 9d3d772, carried by command). F-19.16: a dirty path outside this list is a STOP. A-45.3: no new folder.
+src/lib/vendor/reviewerLogin.js
+src/api/vendor/auth.js
+scripts/b152_igd2_reviewer_login_bench.js
+docs/handovers/TDW_CE46_IGD2_G7_HANDOVER.md
+scripts/floor-manifest-ce46-igd2-g7.txt

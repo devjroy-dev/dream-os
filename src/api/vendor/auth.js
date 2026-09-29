@@ -30,6 +30,7 @@ const { provisionRole } = require('../../lib/provisionRole');
 const { sendOtpCode } = require('../../lib/otpSend');
 const { ensureAuthIdentity, AuthIdentityBoundElsewhereError } = require('../../lib/ensureAuthIdentity');
 const { textPresent } = require('../../lib/onboardingPredicate');
+const { reviewerFor } = require('../../lib/vendor/reviewerLogin');   // CE-46 IGD-2 G7: Meta's reviewer account
 
 const BCRYPT_ROUNDS    = 10;
 const OTP_TTL_MS       = 5 * 60 * 1000;
@@ -147,6 +148,12 @@ router.post('/send-otp', async (req, res) => {
     return res.status(400).json({ error: 'Valid E.164 phone number required.' });
   }
   const cleanPhone = phone.trim();
+  // CE-46 IGD-2 G7: the reviewer account (REVIEWER_PHONE) signs in with REVIEWER_OTP and no message; refused if the code is unset.
+  const reviewer = reviewerFor(cleanPhone);
+  if (reviewer && reviewer.refuse) {
+    console.warn('[reviewer] refused: REVIEWER_OTP unset or not six digits (send-otp)');
+    return res.status(503).json({ error: 'This account is not available right now.', reason: 'reviewer_unavailable' });
+  }
   // Absent, blank or whitespace-only is NULL, not a refusal — see the couple
   // twin's note: this door has never turned a caller away for a missing name.
   const cleanName = textPresent(name) ? name.trim().slice(0, 80) : null;
@@ -198,7 +205,7 @@ router.post('/send-otp', async (req, res) => {
     }
   }
 
-  const otp     = generateOtp();
+  const otp     = reviewer ? reviewer.code : generateOtp();
   const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
   const expires = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
@@ -209,6 +216,10 @@ router.post('/send-otp', async (req, res) => {
   if (upsertErr) {
     console.error('[vendor:send-otp] upsert error:', upsertErr.message);
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+  if (reviewer) {
+    console.log('[reviewer] session opened for the reviewer account (send-otp; no message sent)');
+    return res.json({ ok: true });
   }
 
   try {
@@ -238,6 +249,12 @@ router.post('/forgot-pin', async (req, res) => {
     return res.status(400).json({ error: 'Valid E.164 phone number required.' });
   }
   const cleanPhone = phone.trim();
+  // CE-46 IGD-2 G7: the reviewer account, as in send-otp.
+  const reviewer = reviewerFor(cleanPhone);
+  if (reviewer && reviewer.refuse) {
+    console.warn('[reviewer] refused: REVIEWER_OTP unset or not six digits (forgot-pin)');
+    return res.status(503).json({ error: 'This account is not available right now.', reason: 'reviewer_unavailable' });
+  }
 
   const { data: userRow } = await supabase
     .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
@@ -251,7 +268,7 @@ router.post('/forgot-pin', async (req, res) => {
     return res.status(403).json({ error: 'This number is not a Maker account.', reason: 'wrong_role' });
   }
 
-  const otp     = generateOtp();
+  const otp     = reviewer ? reviewer.code : generateOtp();
   const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
   const expires = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
@@ -262,6 +279,10 @@ router.post('/forgot-pin', async (req, res) => {
   if (upsertErr) {
     console.error('[vendor:forgot-pin] upsert error:', upsertErr.message);
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+  if (reviewer) {
+    console.log('[reviewer] session opened for the reviewer account (forgot-pin; no message sent)');
+    return res.json({ ok: true });
   }
 
   try {
@@ -317,6 +338,7 @@ router.post('/verify-otp', async (req, res) => {
     return res.status(400).json({ error: 'OTP purpose mismatch.', reason: 'otp_purpose_mismatch' });
   }
 
+  if (reviewerFor(cleanPhone)) console.log(`[reviewer] verify-otp for the reviewer account purpose=${purpose}`);   // CE-46 IGD-2 G7
   const _devOk = !!(process.env.DEV_OTP && cleanOtp === process.env.DEV_OTP);
   if (_devOk) console.log(`[verify-otp] DEV_OTP bypass used phone=${cleanPhone}`);
   const valid = _devOk || await bcrypt.compare(cleanOtp, otpRow.otp_hash);
