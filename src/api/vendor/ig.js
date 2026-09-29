@@ -35,6 +35,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 
 const igImport = require('../../lib/vendor/igImport');
 const igOAuth  = require('../../lib/vendor/igOAuth');
+const igDisconnect = require('../../lib/instagram/igDisconnect');
 const igConn   = require('../../lib/vendor/igConnection');
 const igSigned = require('../../lib/vendor/igSignedRequest');
 
@@ -82,8 +83,17 @@ router.get('/status', requireAuth, resolveVendor(), asyncHandler(async (req, res
     ? igOAuth.refreshDecision({ expiresAt: conn.token_expires_at, connectedAt: conn.connected_at })
     : null;
 
+  // CE-46 G6-5: whether replies were ever on (0174's dm_consented_at), so Portfolio's disconnect sheet reads the founder's row 2 or 3.
+  // A separate read, so getConnection's safe list is untouched; a failed read answers false (row 3, the plainer line).
+  let repliesEver = false;
+  if (connected) {
+    const rr = await supabase.from('vendor_ig_connections').select('dm_consented_at').eq('vendor_id', req.vendor.id).maybeSingle();
+    repliesEver = !rr.error && igDisconnect.repliesEverOn(rr.data);
+  }
+
   return okRes(res, {
     ig_import_enabled: true,
+    replies_ever_on:  repliesEver,
     connected,
     // `expired` is H11's state and travels as its own word so the pwa renders
     // "connect again" rather than a generic failure.
@@ -271,12 +281,13 @@ router.post('/import', requireAuth, resolveVendor(), asyncHandler(async (req, re
 }));
 
 // ── DELETE /disconnect ───────────────────────────────────────────────────────
+// CE-46 G6-5 (F-i1 (a), F-i2, F-i3, ruled 29 September 2026): BOTH doors (Portfolio's Disconnect and the room's Instagram section)
+// come here, and here goes through the ONE function: Meta first (her messages subscription removed), then the row deleted.
+// A Meta refusal answers { ok:false, reason } with 200 and changes nothing (the sheet says so and she can try again).
+// The photos stay. The addendum's law: Instagram is a source, never a dependency.
 router.delete('/disconnect', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const d = await igConn.disconnect(supabase, req.vendor.id);
-  if (!d.ok) return errRes(res, 500, d.error);
-  // The photos stay. The addendum's law: Instagram is a source, never a
-  // dependency — mirrored bytes are the estate's own and outlive the connection.
+  const r = await igDisconnect.disconnectFully({ supabase: req.app.locals.supabase, vendorId: req.vendor.id });
+  if (!r.ok) return res.status(200).json({ ok: false, reason: r.reason });
   return okRes(res, { disconnected: true });
 }));
 

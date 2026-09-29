@@ -1,0 +1,9 @@
+# CE-46 · G6-5 · "Disconnect Instagram", dream-os half: the one function (Meta first, then the row deleted), both doors through it, the doors' handle and replies_ever_on · base: G6-4's cut on 1b8789f
+docs/handovers/TDW_CE46_G65_HANDOVER.md
+scripts/b136c_igd2_walk_cures_bench.js
+scripts/b153_g65_ig_disconnect_bench.js
+scripts/floor-manifest-ce46-g65.txt
+src/api/vendor/ig.js
+src/lib/instagram/igDisconnect.js
+src/lib/instagram/igMeta.js
+src/lib/instagram/igRoom.js

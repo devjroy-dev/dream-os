@@ -25,7 +25,9 @@ function makeDb(rows) {
       const st = { f: [], op: 'select', p: null, cols: null };
       const hit = () => (T[table] || []).filter((r) => st.f.every((fn) => fn(r)));
       const run = async () => {
-        if (st.cols && st.cols.some((c) => !(c in (T[table][0] || {})) && c !== 'ig_account_id')) return { data: null, error: { message: 'column does not exist' } };
+        // RE-PINNED BY LABEL · CE-46 G6-5 (b153): igRoom's read now names ig_username (0104's column, for the disconnect sheet),
+        // which these fixture rows do not carry; it is admitted beside ig_account_id. Every other unknown column still refuses.
+        if (st.cols && st.cols.some((c) => !(c in (T[table][0] || {})) && c !== 'ig_account_id' && c !== 'ig_username')) return { data: null, error: { message: 'column does not exist' } };
         if (st.op === 'update') { const h = hit(); h.forEach((r) => Object.assign(r, st.p)); return { data: h, error: null }; }
         return { data: hit(), error: null };
       };

@@ -23,7 +23,10 @@ async function setSubscribed({ fetchImpl, token, on }) {
   try {
     const r = await fetchImpl(url, { method: on ? 'POST' : 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     let body = null; try { body = await r.json(); } catch (_e) { body = null; }
-    return { ok: r.ok && !!body && body.success === true, status: r.status };
+    // CE-46 G6-5: Meta's error code travels beside the status (never the token), so the disconnect can tell "already gone" (190)
+    // from a refusal. Additive: every existing caller reads ok and status only.
+    const code = body && body.error && body.error.code != null ? Number(body.error.code) : null;
+    return { ok: r.ok && !!body && body.success === true, status: r.status, code };
   } catch (_e) { return { ok: false, why: 'network' }; }
 }
 

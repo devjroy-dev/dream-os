@@ -19,6 +19,7 @@
 // authorize_url is minted only when she must authorise (not_connected, paused): the connect's "messages" flavour, armed on her row.
 // The quiet time reads and writes vendors.reply_quiet_minutes (0173; 60 | 120 | 240 | 480). Its effect lands in cut 2b.
 const igInbound = require('./igInbound');
+const { repliesEverOn } = require('./igDisconnect');
 
 const QUIET = [60, 120, 240, 480];
 
@@ -34,7 +35,7 @@ function needsAuthorize(state) { return state === 'not_connected' || state === '
 
 async function readConn(supabase, vendorId) {
   const { data, error } = await supabase.from('vendor_ig_connections')
-    .select('vendor_id, ig_user_id, messages_granted_at, dm_state, dm_consented_at, dm_subscribed_at')
+    .select('vendor_id, ig_user_id, ig_username, messages_granted_at, dm_state, dm_consented_at, dm_subscribed_at')
     .eq('vendor_id', vendorId).maybeSingle();
   if (error) return { ok: false };
   return { ok: true, conn: data || null };
@@ -49,7 +50,12 @@ async function answer(vendorId, deps) {
   const tokenOk = r.conn && r.conn.messages_granted_at ? await deps.tokenOk(vendorId) : false;
   const state = deriveState({ conn: r.conn, tokenOk, laneOpen });
   const authorize_url = needsAuthorize(state) ? await deps.mintAuthorize(vendorId) : null;
-  return { status: 200, body: { ok: true, state, authorize_url, live: state === 'on' } };
+  // CE-46 G6-5: her handle and whether replies were ever on, for the disconnect sheet's line (the founder's rows 2 and 3).
+  // Display facts only; the token is never here.
+  const connected = state !== 'not_connected';
+  const ig_username = connected && r.conn ? r.conn.ig_username || null : null;
+  const replies_ever_on = connected ? repliesEverOn(r.conn) : false;
+  return { status: 200, body: { ok: true, state, authorize_url, ig_username, replies_ever_on, live: state === 'on' } };
 }
 
 // CE-46 IGD-2 cut 2c (F-44.212): the connect's messages callback calls this after it has PROVED the grant. If she had already
