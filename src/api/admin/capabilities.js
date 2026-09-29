@@ -52,7 +52,19 @@ router.get('/waba_templates', requireAdmin, asyncHandler(async (req, res) => {
 // list is Railway's. One predicate home: src/lib/vendorLayout.js.
 router.get('/layout', requireAdmin, asyncHandler(async (req, res) => {
   const ids = String(process.env[vendorLayout.ENV_LIST] || '').split(',').map((x) => x.trim()).filter(Boolean);
-  return okRes(res, { flag: vendorLayout.FLAG, default_on: cap.on(vendorLayout.FLAG), env: vendorLayout.ENV_LIST, vendor_ids: ids });
+  const master = await vendorLayout.masterState({ supabase: req.app.locals.supabase });
+  return okRes(res, { flag: vendorLayout.FLAG, default_on: cap.on(vendorLayout.FLAG), env: vendorLayout.ENV_LIST, vendor_ids: ids, master });
+}));
+
+// THE MASTER, "New layout for everyone" (the founder and the chair): one tap each way, instant, no deploy. The first
+// turn on records its date once (vendorLayout.setMaster); off returns every vendor but the per-vendor list to today's layout.
+router.post('/layout/master', requireAdmin, asyncHandler(async (req, res) => {
+  const to = req.body && req.body.to;
+  if (to !== 'on' && to !== 'off') return errRes(res, 400, 'to must be on or off.');
+  const supabase = req.app.locals.supabase;
+  const r = await vendorLayout.setMaster(to, whoFlipped(req), { supabase });
+  if (!r.ok) return errRes(res, r.reason === 'no_row' ? 404 : 409, r.reason);
+  return okRes(res, { master: await vendorLayout.masterState({ supabase }) });
 }));
 
 router.post('/sweep', requireAdmin, asyncHandler(async (req, res) => {
@@ -67,7 +79,9 @@ router.post('/:key/flip', requireAdmin, asyncHandler(async (req, res) => {
   const to = req.body && req.body.to;
   if (!cap.isValidKey(key)) return errRes(res, 400, 'key is not a switchboard key.');
   if (to !== 'on' && to !== 'off') return errRes(res, 400, 'to must be on or off.');
-  const r = await cap.flip(key, to, whoFlipped(req), { supabase });
+  // DESIGN-1: the first-on date is recorded once, never by hand; the master flips through its own home so the date is kept
+  if (key === vendorLayout.FIRST_ON) return errRes(res, 409, 'recorded_once');
+  const r = key === vendorLayout.FLAG ? await vendorLayout.setMaster(to, whoFlipped(req), { supabase }) : await cap.flip(key, to, whoFlipped(req), { supabase });
   if (!r.ok) return errRes(res, r.reason === 'no_row' ? 404 : 409, r.reason);
   const row = await cap.get(key, { supabase, fresh: true });
   return okRes(res, { row, before: r.before, after: r.after });

@@ -12,6 +12,13 @@
 --     new layout on for the vendors named there while the default is off.
 -- The one predicate home is src/lib/vendorLayout.js; GET /api/v2/vendor/me carries its answer as `layout`.
 --
+-- THE 30 DAYS (the founder and the chair, second row): the date the master was FIRST turned on is recorded once and
+-- shown beside it ("Classic layout kept until <date + 30 days>"). It lives in its own switchboard row,
+-- flag.vendor_layout_v2.first_on, seeded off: the first time the master turns on, vendorLayout.setMaster turns this
+-- row on, and its flipped_at is that date. It never moves again (turning the master off and on keeps the first date),
+-- nothing reads it as a gate, and the admin's flip door refuses it by hand. The classic layout's removal is a separate
+-- later cut, never automatic.
+--
 -- PROVENANCE: public.capabilities — db/migrations/0149_capabilities.sql (key PK, kind CHECK 'flag', status 'off').
 -- ═══════════════════════════════════════════════════════════════════════════
 
@@ -19,4 +26,10 @@ insert into public.capabilities (key, kind, status, evidence, flipped_at, flippe
   ('flag.vendor_layout_v2', 'flag', 'off',
    'seed: DESIGN-1 — off until the founder switches the new vendor layout on for everyone on the Switchboard card; per vendor meanwhile by LAYOUT_V2_VENDOR_IDS',
    now(), 'seed')
+on conflict (key) do nothing;
+
+insert into public.capabilities (key, kind, status, evidence, flipped_at, flipped_by) values
+  ('flag.vendor_layout_v2.first_on', 'flag', 'off',
+   'seed: DESIGN-1 — the date flag.vendor_layout_v2 was first turned on (flipped_at, once); read by the admin panel, never a gate',
+   null, 'seed')
 on conflict (key) do nothing;
