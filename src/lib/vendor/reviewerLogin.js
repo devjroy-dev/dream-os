@@ -3,7 +3,7 @@
 //
 // Meta's App Review reviewer cannot receive a WhatsApp code on a real phone. This lets ONE vendor account, whose number the
 // founder sets in REVIEWER_PHONE, sign in with a fixed six-digit code he sets in REVIEWER_OTP, and sends no message at all.
-// It never touches any other phone, and it is NOT DEV_OTP's universal path (src/api/vendor/auth.js :320, untouched here).
+// It never touches any other phone. DEV_OTP's universal path is gone (CE-46 G6-4, F-44.245): this is the ONLY fixed code.
 //
 //   REVIEWER_PHONE unset, or a different phone   → null: today's path (a random code, a WhatsApp send).
 //   REVIEWER_PHONE matches, REVIEWER_OTP unset

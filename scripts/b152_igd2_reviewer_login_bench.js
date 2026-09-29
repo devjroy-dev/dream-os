@@ -135,8 +135,10 @@ async function cells(auth) {
     && reviewerFor(` ${RP} `, { REVIEWER_PHONE: RP, REVIEWER_OTP: CODE }).code === CODE && reviewerFor(RP, { REVIEWER_PHONE: RP, REVIEWER_OTP: '1234567' }).refuse === true,
     '7.1 reviewerFor: null unless the phone matches; the code only when six digits');
   const authSrc = fs.readFileSync(P('src/api/vendor/auth.js'), 'utf8');
-  ok(/const _devOk = !!\(process\.env\.DEV_OTP && cleanOtp === process\.env\.DEV_OTP\);/.test(authSrc) && !/process\.env\.REVIEWER_(OTP|PHONE)/.test(authSrc),
-    '7.2 DEV_OTP\u2019s line is untouched, and auth.js never reads REVIEWER_PHONE or REVIEWER_OTP itself (one home)');
+  // RE-PINNED BY LABEL · CE-46 G6-4 (F-44.245): DEV_OTP's line is REMOVED (the cut's own rung proves no fixed code but the reviewer's);
+  // was "DEV_OTP's line is untouched". The one-home half is unchanged.
+  ok(!/process\.env\.DEV_OTP/.test(authSrc) && !/process\.env\.REVIEWER_(OTP|PHONE)/.test(authSrc),
+    '7.2 DEV_OTP\u2019s line is gone (F-44.245), and auth.js never reads REVIEWER_PHONE or REVIEWER_OTP itself (one home)');
   return R;
 }
 
