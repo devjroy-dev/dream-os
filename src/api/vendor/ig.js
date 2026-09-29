@@ -366,6 +366,10 @@ router.post('/deauthorize', asyncHandler(async (req, res) => {
 // │ against an absent one. If Meta ever disputes the reading, the argument is │
 // │ recorded here rather than reconstructed.                                  │
 // └───────────────────────────────────────────────────────────────────────────┘
+// CE-46 G6-4 · F-44.247: the scope now also reaches her Instagram conversations. The messages couples sent her on Instagram, and
+// their threads, are platform data held only because she connected; they are deleted with the connection, in one transaction
+// (public.ig_deletion_purge). The Instagram identifier on her leads is removed; the lead itself stays hers. The photos rule above
+// is unchanged.
 router.post('/data-deletion', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const parsed = igSigned.parseSignedRequest((req.body || {}).signed_request);
@@ -376,12 +380,15 @@ router.post('/data-deletion', asyncHandler(async (req, res) => {
 
   const found = await igConn.findByIgUserId(supabase, parsed.userId);
   if (found.ok) {
-    const d = await igConn.disconnect(supabase, found.vendorId);
-    if (!d.ok) {
-      console.error('[ig:data-deletion] delete failed for vendor', found.vendorId, d.error);
+    // CE-46 G6-4 · F-44.247: ONE call, ONE transaction (the purge function, migration 0184): her Instagram threads and their
+    // messages deleted, the Instagram identifier on her leads nulled, and the connection row deleted. Any failure rolls every part
+    // back and answers 500, so Meta asks again. The photos stay (F-07.20).
+    const d = await supabase.rpc('ig_deletion_purge', { p_vendor_id: found.vendorId });
+    if (d.error) {
+      console.error('[ig:data-deletion] purge failed for vendor', found.vendorId, d.error.message);
       return res.status(500).json({ ok: false });
     }
-    console.log('[ig:data-deletion] connection deleted for vendor', found.vendorId);
+    console.log('[ig:data-deletion] purged for vendor', found.vendorId, JSON.stringify(d.data));
   } else {
     console.log('[ig:data-deletion] nothing held for ig_user', parsed.userId);
   }
@@ -425,6 +432,10 @@ router.get('/deletion-status', (req, res) => {
 <h1>Your data deletion request</h1>
 <p><strong>Your Instagram connection has been deleted.</strong> The access token
 and the Instagram account identifier we held for you are gone from our systems.</p>
+<p><strong>Your Instagram conversations have been deleted.</strong> The Instagram
+messages we held for your account, and the conversations they belonged to, are gone
+from our systems. Where a couple who wrote to you on Instagram is also in your leads,
+the lead stays in your account, but the Instagram identifier on it has been removed.</p>
 <p class="k">Photos you imported into your portfolio were copied into your own
 Dream Wedding account at the time you selected them, and they remain part of
 your portfolio &mdash; disconnecting Instagram does not take down your profile.

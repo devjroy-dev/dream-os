@@ -63,7 +63,9 @@ async function roomAnswer(row) {
   const door = ig.slice(ig.indexOf("router.delete('/disconnect'"), ig.indexOf('}));', ig.indexOf("router.delete('/disconnect'")));
   ok(/router\.delete\('\/disconnect', requireAuth, resolveVendor\(\), asyncHandler\(/.test(door) && /igDisconnect\.disconnectFully\(\{ supabase: req\.app\.locals\.supabase, vendorId: req\.vendor\.id \}\)/.test(door) && !/igConn\.disconnect/.test(door),
     '1.1 DELETE /ig/disconnect (Portfolio\u2019s door, and the room\u2019s) is hers alone and calls ONLY the one function');
-  ok((ig.match(/igConn\.disconnect\(supabase, found\.vendorId\)/g) || []).length === 2, '1.2 Meta\u2019s deauthorize and data-deletion callbacks still delete the row directly (F-i3: Meta has already cut access there)');
+  // RE-PINNED BY LABEL · CE-46 G6-4 (F-44.247): data-deletion now purges in one transaction (b157); deauthorize still deletes the row.
+  ok((ig.match(/igConn\.disconnect\(supabase, found\.vendorId\)/g) || []).length === 1 && /supabase\.rpc\('ig_deletion_purge', \{ p_vendor_id: found\.vendorId \}\)/.test(ig),
+    '1.2 Meta\u2019s callbacks bypass the one function (F-i3): deauthorize deletes the row, data-deletion purges (F-44.247)');
   ok(/conn\.disconnect\(supabase, vendorId\)/.test(dc) && !/\.delete\(/.test(dc) && !/revoke|permissions/i.test(dc), '1.3 the function deletes only through igConnection.disconnect (the standing law) and calls no revoke (Meta\u2019s pages give none)');
   ok(dc.indexOf('meta.setSubscribed') > -1 && dc.indexOf('meta.setSubscribed') < dc.indexOf('conn.disconnect('), '1.4 Meta first, then the row (F-i3), by the order in the source');
   ok(!/migrations\/018[3-9]/.test(read('scripts/floor-manifest-ce46-g65.txt')), '1.5 no migration (F-i1 (a))');

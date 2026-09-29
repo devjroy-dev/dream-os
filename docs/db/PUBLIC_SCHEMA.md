@@ -46,6 +46,12 @@ table (A-45.8 grants nothing; RLS on since 0171; 0172's service_role grants cove
 is kept, its `business_token` null; `paused_reason` reads `removed:vendor`, then `removed:partner_removed` once Meta's PARTNER_REMOVED
 arrives (shared way). None of it is described below; 0182 is its witness until the snapshot is regenerated.
 
+**AND 0184 (`0184_ig_deletion_purge.sql`, CE-46 G6-4, F-44.247), once the founder applies it:** creates
+no table and alters none. It adds one function, `public.ig_deletion_purge(p_vendor_id uuid) RETURNS jsonb` (EXECUTE for
+service_role only), which Meta's Instagram data-deletion callback calls: in one transaction it deletes that vendor's
+`conversations` with channel 'instagram' and their `messages`, nulls `leads.counterparty_ig_id` on her leads, and deletes her
+`vendor_ig_connections` row. 0184 is its witness.
+
 **AND 0174 (`0174_ig_dm_switch.sql`, CE-45 IGD-1 cut 2a-ii), once the founder applies it:** alters `public.vendor_ig_connections`
 only, creates no table: `messages_granted_at timestamptz` (the messages permission proved on her token), `dm_state text NOT NULL
 DEFAULT 'off'` (CHECK `vendor_ig_connections_dm_state_check`: 'off' or 'on'; "paused" and "waiting" are derived, never stored),
