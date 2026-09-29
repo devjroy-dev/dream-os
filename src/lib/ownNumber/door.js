@@ -18,6 +18,7 @@
 // always see its state, pause included (§7b constraint 3).
 const cap = require('../capabilities');
 const { graphVersion } = require('./meta');
+const { removedView } = require('./remove');
 
 const MASTER = 'flag.own_number';
 const TIERS = ['basic', 'essential', 'signature', 'prestige'];
@@ -55,7 +56,7 @@ function openFor({ masterRow, tierRow, vendorId, env = process.env, status }) {
 }
 
 function numberView(row) {
-  if (!row) return null;
+  if (!row || row.status === 'removed') return null; // CE-46 G6-4: a removed number is not on file; the room reads `removed`
   return { status: row.status, display_number: row.display_number, way: row.connect_way, quality_rating: row.quality_rating || null };
 }
 
@@ -68,7 +69,7 @@ async function answer({ vendor, supabase, env = process.env, capApi = cap }) {
   const open = gate.open && !!launch;
   const reason = gate.open && !launch ? 'META_APP_ID or OWN_NUMBER_CONFIG_ID is not set on this service' : gate.reason;
   const { data, error } = await supabase.from('vendor_wabas')
-    .select('status, display_number, connect_way, quality_rating, business_token')
+    .select('status, display_number, connect_way, quality_rating, paused_reason, business_token')
     .eq('vendor_id', vendor.id).maybeSingle();
   if (error) throw new Error(`vendor_wabas read: ${error.message}`);
   // CE-46 G6-3 cut three, F-a3b (ruled 28 September 2026): an active or suspended number with NO stored business token (connected
@@ -81,6 +82,9 @@ async function answer({ vendor, supabase, env = process.env, capApi = cap }) {
     reason_text: open ? null : 'This opens once we finish connecting the service.',
     launch: open ? launch : null,
     number: tokenless ? null : numberView(data),
+    // CE-46 G6-4 · S6 (F-c): the number she removed, and whether she still has to disconnect it in her app (shared way, until Meta's
+    // PARTNER_REMOVED). null for every row that is not 'removed'. FE reads it beside `number`.
+    removed: removedView(data),
   };
 }
 

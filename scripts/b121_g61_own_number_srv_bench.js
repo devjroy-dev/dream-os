@@ -117,7 +117,8 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
   const idx = read('src/api/vendor/solutions/index.js');
   ok(/router\.use\('\/number', require\('\.\/number'\)\);/.test(idx), '1.2 the doors mount at /api/v2/vendor/solutions/number beside their siblings (FK1)');
   const nr = read('src/api/vendor/solutions/number.js');
-  ok((nr.match(/requireAuth, resolveVendor\(\)/g) || []).length === 2, '1.3 both doors are hers alone: requireAuth then resolveVendor(), mode A');
+  // RE-PINNED BY LABEL · CE-46 G6-4 (b150): the room's third door, POST /remove, is hers alone too. Was 2.
+  ok((nr.match(/requireAuth, resolveVendor\(\)/g) || []).length === 3, '1.3 all three doors (the room, connect, remove) are hers alone: requireAuth then resolveVendor(), mode A');
   const mk = read('src/marketingIndex.js');
   ok(/const own = lane \? null : await ownNumberMap\.lookup\(supabase, \{ phoneNumberId, wabaId: entryId \}\);/.test(mk) && /const route = routeChange\(lane, phoneNumberId, own\);/.test(mk)
     && /else if \(route === 'own'\) \{\s+let kept = false;\s+try \{ await ownNumberEvents\.handle\(supabase, own, change\); kept = true; \}/.test(mk) && !/forwardChange\('own'/.test(mk),

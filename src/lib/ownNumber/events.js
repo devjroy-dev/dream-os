@@ -28,6 +28,12 @@ function nextStatus(row, field, value) {
   const cur = row && row.status;
   const ev = value && typeof value.event === 'string' ? value.event : null;
   if (!cur || !ev) return null;
+  // CE-46 G6-4 · A NUMBER SHE REMOVED stays removed: no account or quality event revives it (only a connect does, F-d). Meta's word
+  // that she disconnected in her app (GONE, PARTNER_REMOVED on the shared way) retires the room's finish line (F-c).
+  if (cur === 'removed') {
+    if (field === 'account_update' && GONE.includes(ev) && row.paused_reason !== 'removed:partner_removed') return { status: 'removed', paused_reason: 'removed:partner_removed' };
+    return null;
+  }
   if (field === 'account_update') {
     if (GONE.includes(ev)) return { status: 'migrated_out', paused_reason: `account:${ev}` };
     if (ev === 'ACCOUNT_RECONNECTED') return { status: 'active', paused_reason: null };

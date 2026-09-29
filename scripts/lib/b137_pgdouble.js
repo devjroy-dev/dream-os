@@ -34,12 +34,15 @@ function makeDb(seed = {}, { unique = { messages: ['message_sid'] }, failReads =
         return { data: made.map((r) => project(r, st.cols)), error: null };
       }
       if (st.op === 'update') { const hit = rows.filter(match); hit.forEach((r) => Object.assign(r, st.payload)); writes.push({ table, op: 'update', patch: st.payload, count: hit.length }); return { data: hit.map((r) => project(r, st.cols)), error: null }; }
+      // CE-46 G6-4 (b150): delete, so a rung can witness a row replaced (F6) against a row kept (F-d). Removes the matched rows in place.
+      if (st.op === 'delete') { const hit = rows.filter(match); for (const r of hit) rows.splice(rows.indexOf(r), 1); writes.push({ table, op: 'delete', count: hit.length }); return { data: hit.map((r) => project(r, st.cols)), error: null }; }
       return { data: null, error: { message: 'unknown op' } };
     };
     const b = {
       select(c) { if (st.op === 'select') st.cols = c || '*'; else { st.ret = true; st.cols = c || '*'; } return b; },
       insert(p) { st.op = 'insert'; st.payload = p; return b; },
       update(p) { st.op = 'update'; st.payload = p; return b; },
+      delete() { st.op = 'delete'; return b; },
       eq(c, v) { st.filters.push(['eq', c, v]); return b; }, is(c, v) { st.filters.push(['is', c, v]); return b; },
       gte(c, v) { st.filters.push(['gte', c, v]); return b; }, contains(c, v) { st.filters.push(['contains', c, v]); return b; },
       in(c, v) { st.filters.push(['in', c, Array.isArray(v) ? v : []]); return b; },

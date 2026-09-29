@@ -78,8 +78,10 @@ async function runConnect(db, { vaultApi, fetchCalls = [] } = {}) {
   // R-40.105: comment-stripped. The column is named only where it is written, nulled, read for presence, or opened.
   const own = fs.readdirSync(P('src/lib/ownNumber')).map((f) => `src/lib/ownNumber/${f}`);
   const namers = own.filter((f) => /business_token/.test(strip(read(f)))).sort();
-  ok(JSON.stringify(namers) === JSON.stringify(['src/lib/ownNumber/connect.js', 'src/lib/ownNumber/door.js', 'src/lib/ownNumber/events.js', 'src/lib/ownNumber/token.js', 'src/lib/ownNumber/turn.js']),
-    '1.2 business_token is named only by connect (writes, presence), door (presence, F-a3b), events (nulls), turn (hands her row to send) and token (the ONE opener)', namers.join(','));
+  // RE-PINNED BY LABEL · CE-46 G6-4 (b150): remove.js joins the namers (hands her row to the opener, then nulls the column). It never
+  // opens the seal itself: b150 §1 holds that it reaches the plaintext only through token.js businessTokenFor.
+  ok(JSON.stringify(namers) === JSON.stringify(['src/lib/ownNumber/connect.js', 'src/lib/ownNumber/door.js', 'src/lib/ownNumber/events.js', 'src/lib/ownNumber/remove.js', 'src/lib/ownNumber/token.js', 'src/lib/ownNumber/turn.js']),
+    '1.2 business_token is named only by connect (writes, presence), door (presence, F-a3b), events (nulls), remove (hands her row to the opener, nulls), turn (hands her row to send) and token (the ONE opener)', namers.join(','));
   const openers = own.filter((f) => /\.open\(/.test(strip(read(f))));
   ok(JSON.stringify(openers) === JSON.stringify(['src/lib/ownNumber/token.js']), '1.3 token.js is the only file that opens the seal', openers.join(','));
   { const dsrc = strip(read('src/lib/ownNumber/door.js')); const ret = (dsrc.match(/return \{\s*open,[\s\S]*?\};/) || [''])[0];

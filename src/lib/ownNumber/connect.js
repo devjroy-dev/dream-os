@@ -71,6 +71,8 @@ async function connect({ vendor, body, supabase, env = process.env, fetchImpl = 
     return refuse('already_connected', TEXT_FAILED);
   }
   const reExchange = !!(cur.data && (cur.data.status === 'active' || cur.data.status === 'suspended') && !hasToken);
+  // CE-46 G6-4 F-d (ruled 28 September 2026): a number she REMOVED is reconnected in place too: her row is updated, never deleted.
+  const reconnect = !!(cur.data && cur.data.status === 'removed');
 
   // 3 · the exchange, first of every Meta call.
   let token;
@@ -111,11 +113,14 @@ async function connect({ vendor, body, supabase, env = process.env, fetchImpl = 
       business_token: vault.seal(token),
     };
     let ins;
-    if (reExchange) {
-      ins = await supabase.from('vendor_wabas').update({ ...row, paused_reason: null, updated_at: now().toISOString() })
+    if (reExchange || reconnect) {
+      const patch = { ...row, paused_reason: null, updated_at: now().toISOString() };
+      if (reconnect) { patch.removed_at = null; patch.sync_started_at = null; }
+      ins = await supabase.from('vendor_wabas').update(patch)
         .eq('id', cur.data.id).select('status, display_number, connect_way, quality_rating');
-      if (ins.error || !ins.data || ins.data.length !== 1) throw new Error(`vendor_wabas re-exchange: ${ins.error ? ins.error.message : 'no row'}`);
-      console.log(`[own-number] ${vendor.id} re-exchanged in place (F-a3): her token kept`);
+      if (ins.error || !ins.data || ins.data.length !== 1) throw new Error(`vendor_wabas ${reconnect ? 'reconnect' : 're-exchange'}: ${ins.error ? ins.error.message : 'no row'}`);
+      console.log(reconnect ? `[own-number] ${vendor.id} reconnected in place (F-d): her removed row updated`
+        : `[own-number] ${vendor.id} re-exchanged in place (F-a3): her token kept`);
     } else {
       if (cur.data) {
         const del = await supabase.from('vendor_wabas').delete().eq('id', cur.data.id).select('id');

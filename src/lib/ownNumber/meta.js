@@ -5,6 +5,11 @@
 //   her number      GET  /<v>/<WABA_ID>/phone_numbers
 //   subscribe       POST /<v>/<WABA_ID>/subscribed_apps
 //   register        POST /<v>/<PNID>/register { messaging_product:'whatsapp', pin }    (MOVED way only)
+//   unsubscribe     DELETE /<v>/<WABA_ID>/subscribed_apps   (CE-46 G6-4: the room's Remove, both ways; Meta's Graph reference
+//                   for the edge lists DELETE returning { success }, read 28 September 2026)
+//   deregister      POST /<v>/<PNID>/deregister   (CE-46 G6-4: the MOVED way only. Meta, "Onboard WhatsApp Business app users",
+//                   Offboarding, read 28 September 2026: it cannot be used for a number on both Cloud API and the app; the
+//                   Deregister reference: the number and its history are not deleted, and it is registered again to use again)
 //   sync            POST /<v>/<PNID>/smb_app_data { messaging_product:'whatsapp', sync_type } (SHARED way,
 //                   within 24 hours, once each: 'smb_app_state_sync' then 'history')
 // Server to server only, as Meta requires. `fetch` is injected so the rung never reaches Meta.
@@ -65,6 +70,16 @@ function smbSync({ phoneNumberId, token, syncType, env, fetchImpl }) {
       body: JSON.stringify({ messaging_product: 'whatsapp', sync_type: syncType }) });
 }
 
+function unsubscribe({ wabaId, token, env, fetchImpl }) {
+  return call(fetchImpl, 'unsubscribe', `${GRAPH}/${graphVersion(env)}/${encodeURIComponent(wabaId)}/subscribed_apps`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+}
+
+function deregister({ phoneNumberId, token, env, fetchImpl }) {
+  return call(fetchImpl, 'deregister', `${GRAPH}/${graphVersion(env)}/${encodeURIComponent(phoneNumberId)}/deregister`,
+    { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+}
+
 /**
  * THE TWO-STEP PIN, DERIVED AND NEVER STORED (read-first F3, ruled). Six digits from
  * HMAC-SHA256(app secret, PNID): the same number re-derives the same PIN for a re-register, and
@@ -76,4 +91,4 @@ function pinFor(phoneNumberId, appSecret) {
   return String(h.readUInt32BE(0) % 1000000).padStart(6, '0');
 }
 
-module.exports = { MetaError, exchangeCode, phoneNumbers, subscribe, register, smbSync, pinFor, graphVersion };
+module.exports = { MetaError, exchangeCode, phoneNumbers, subscribe, unsubscribe, register, deregister, smbSync, pinFor, graphVersion };
