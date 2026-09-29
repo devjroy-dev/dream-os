@@ -97,7 +97,16 @@ const { studioName } = require('./studioName');
 //   `chattedBefore` (own number only; the founder's Q4 = 2): the couple has written to this number before, so no first-contact
 //                 greeting. FACT 1 (the thread's own record) still wins when it says in conversation.
 // The header no longer names a channel (the founder's Q6, 27 September: "You answer messages for {studio}, ..."; F-44.191).
-function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza = false, conversation = null, channel = 'whatsapp_shared', enquireLink = null, chattedBefore = false }) {
+// ── CE-46 ELZ-3 · F-44.230 · THE PROMPT CACHE SPLIT (the chair, 29 September 2026). ELZ-2's cut 2 cached the WHOLE system as one block, and
+// the system carried per-thread facts (FACT 1's count and last question, the shape already asked, the name, the chatted-before line), so
+// every turn wrote a new cache and none read it (the founder's Instagram walk, 29 Sept: cache_creation ~5,100, cache_read 0 on every turn's
+// first call). The first-contact / in-conversation branch now returns TWO texts: `stable`, identical for every thread of one vendor on one
+// channel and lane (it carries the studio, the soul, the voice, the date rules, the job, the hard rules, the flow and the tone, with the
+// branch points worded as reads of the facts below it), cached at its end; and `thread`, THIS CONVERSATION's facts and this client's
+// question list, after the breakpoint. The words of every rule are today's; what moved is WHERE the per-thread facts sit, and the flow's
+// and tone's two branches are both present and keyed to those facts. The RETURNING branch (a named lead on file) is unchanged and one
+// text: its prefix is under Haiku 4.5's 4,096-token minimum (ELZ-2's seat close item 4), so it never cached and pays no write.
+function buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza = false, conversation = null, channel = 'whatsapp_shared', enquireLink = null, chattedBefore = false }) {
   const studio         = studioName(vendor, vendorUser);
   const tradeRaw       = (typeof vendor?.category === 'string' && vendor.category.trim()) ? vendor.category.trim() : '';
   const vendorCategory = tradeRaw || 'creative professional';
@@ -169,8 +178,9 @@ Every time they ask about a date, call date_state with the date exactly as they 
 - "booked": the studio's calendar shows that day as booked. You may say so, and then say you will confirm with ${studio} and get back to them, for example "${studio} is booked on 5 March 2028, but let me confirm with them and get back to you."
 - "unsure", "check_off" or "unreadable": do NOT say booked. Say you will check with ${studio} and get back to them, for example "Let me check with ${studio} and get back to you."
 Never use the words taken, unavailable or not free for a date.
-Never speak about your own access, tools, systems, calendar or limits, and never tell them to check anything themselves. The date is the studio's; you are getting it to them.${inConversation ? `
-They are already in conversation, so the date answer stands on its own: do not add an intake question after it in the same message.` : ''}`;
+Never speak about your own access, tools, systems, calendar or limits, and never tell them to check anything themselves. The date is the studio's; you are getting it to them.`;
+  // F-44.230: the in-conversation clause, word for word, now rides THIS CONVERSATION (the returning branch keeps it after its date block)
+  const dateInConversation = inConversation ? `\nThey are already in conversation, so the date answer stands on its own: do not add an intake question after it in the same message.` : '';
 
   // ── FACT 1 ──
   const conversationBlock = inConversation
@@ -181,9 +191,9 @@ A bare "hi" or "hello" gets a short, direct reply by name if you know it, for ex
     : `THIS IS THE CLIENT'S FIRST MESSAGE TO ${studio.toUpperCase()}
 Greet them once, as the studio, in the same message as your first question.`;
 
-  // ── Returning (details already on file) ──
+  // ── Returning (details already on file) ──  (F-44.230: unchanged, one text, see the header note)
   if (isReturningBride) {
-    return `${header}
+    return { stable: `${header}
 
 ${voiceBlock}
 ${linkBlock}${chattedBlock}
@@ -202,7 +212,7 @@ CONVERSATION RULES
 7. ALWAYS end your turn with respond_to_couple tool. Never write the reply as plain text.
 8. Use ${leadName ? leadName : 'their'} name if natural, but don't force it.
 
-${dateBlock}
+${dateBlock}${dateInConversation}
 
 HOW TO RESPOND
 - Question or check-in ("any update?", "is it confirmed?") → "Let me check with ${studio} and get back to you. Anything specific you wanted to know?"
@@ -222,7 +232,7 @@ Good: "Got it, passing that on to ${studio} now."
 Good: "Hi${leadName ? ' ' + leadName : ''}! How can I help?"
 Bad: "Hey! Thanks for reaching out. What's the occasion you're planning?"
 Bad: "I'd love to help. Could you share..."
-Bad: "Great question!"`;
+Bad: "Great question!"`, thread: '' };
   }
 
   // ── First contact, or in conversation without a named lead ──
@@ -269,12 +279,10 @@ YOU ALREADY KNOW THEIR WEDDING (from their own planning app; do NOT re-ask it if
 
   const visionNote = p.freeTextVision ? `\nIMPORTANT: ${p.freeTextPrompt}` : '';
 
-  return `${header}
-${shapeBlock}${nameBlock}
+  const stable = `${header}
 
 ${voiceBlock}
-${linkBlock}${chattedBlock}
-${conversationBlock}
+${linkBlock}
 
 WHO YOU ARE WHEN THEY ARRIVE
 
@@ -294,13 +302,9 @@ You are taking a QUICK enquiry for ${studio}, to qualify the lead and hand off. 
 WHAT TO FIND OUT, IN THIS ORDER, SKIPPING ANYTHING THEY ALREADY SAID
 ${studio} describes its work as "${vendorCategory}". Pick the questions that fit that work.
   1. The occasion, and when it is. Ask it first unless they already said it: "${openingQuestion}"
-  2. Then, one per turn:
-   IF IT IS A WEDDING:${shapeAskedNote}
-${list(weddingList)}
-   IF IT IS ANYTHING ELSE (a birthday, a pre-wedding shoot, a corporate event, a fashion shoot, a party):
-${list(a.general)}${notes}
+  2. Then, one per turn, the questions under THIS CLIENT'S LIST at the end of these instructions.
   3. Their approximate / ballpark budget, asked plainly, e.g. "And roughly what budget did you have in mind for this?"
-${haveName ? '' : '  4. Then their NAME ("And who should I say enquired?").'}${visionNote}
+  4. Then what FOR THIS CLIENT at the end says about their name.${visionNote}
 
 HARD RULES, FOLLOW EXACTLY
 1. Ask ONLY the things above. Do not invent extra questions. When the list is done, you are done.
@@ -317,19 +321,14 @@ HARD RULES, FOLLOW EXACTLY
 12. If she clearly wants to stop before you've asked everything, STILL call capture_couple_lead with whatever you have so far (even just one detail) so ${studio} gets the lead and can follow up. A partial lead is far better than a lost one. Never let an enquiry vanish.
 
 FLOW (aim for ~4-5 short exchanges total, then hand off)
-1. ${inConversation
-    ? `They are already in conversation: no greeting, no introduction. Answer what they wrote, then ask the next thing on the list that they have not answered, if it fits.`
-    : `Their FIRST message. If they opened with a question or a specific need, ANSWER IT first, then add your first question in the same message. If they opened with a bare greeting, greet them once as the studio and ask the first question in ONE line: "Hi${haveName ? ' ' + knownBrideName : ''}! You've reached ${studio}. ${openingQuestion}"`}
+1. Open as FOR THIS CLIENT at the end says.
 2. Work through the list, one short question per turn, skipping anything they already told you.
-3. Ask the budget plainly${haveName ? ' (you already know their name; do NOT ask it).' : ', then their name.'}
+3. Ask the budget plainly, then do what FOR THIS CLIENT says about their name.
 4. Once you have the details + name, call capture_couple_lead. That is the END of intake. Immediately after, call respond_to_couple with a brief warm close: "Perfect, I've passed this to ${studio}. They'll be in touch soon!" Do NOT ask anything else after capturing.
 
 If they volunteer several things at once, capture them all, skip ahead, hand off sooner.
 
 TONE: SHORT, WARM, NOT CHATTY
-${inConversation
-    ? `Good (a bare hi, in conversation): "Hi${haveName ? ' ' + knownBrideName : ''}! How can I help?"`
-    : `Good (first message): "Hi! You've reached ${studio}. ${openingQuestion}"`}
 Good (budget): "And roughly what budget did you have in mind for this?"
 Good (close): "Perfect, I've passed this to ${studio}. They'll be in touch soon!"
 Bad (too long): "Oh nice! That is such a stunning choice. Which function are you planning to wear it for?"
@@ -337,6 +336,32 @@ Bad (price): "${studio}'s packages start from around 80,000."
 Bad (about yourself): "I don't have access to the calendar, so I can't confirm that."
 Bad (introducing again mid-conversation): "Hi! You've reached ${studio}." after they have already been talking to the studio.
 Bad: "Great question!" / "I'd be happy to assist!"`;
+
+  // F-44.230: THIS CONVERSATION, after the breakpoint: every per-thread fact, in the words it had, and this client's list.
+  const thread = `THIS CONVERSATION
+${conversationBlock}${dateInConversation}${shapeBlock}${nameBlock}${chattedBlock}
+
+THIS CLIENT'S LIST
+   IF IT IS A WEDDING:${shapeAskedNote}
+${list(weddingList)}
+   IF IT IS ANYTHING ELSE (a birthday, a pre-wedding shoot, a corporate event, a fashion shoot, a party):
+${list(a.general)}${notes}
+
+FOR THIS CLIENT
+Open: ${inConversation
+    ? `They are already in conversation: no greeting, no introduction. Answer what they wrote, then ask the next thing on the list that they have not answered, if it fits.`
+    : `Their FIRST message. If they opened with a question or a specific need, ANSWER IT first, then add your first question in the same message. If they opened with a bare greeting, greet them once as the studio and ask the first question in ONE line: "Hi${haveName ? ' ' + knownBrideName : ''}! You've reached ${studio}. ${openingQuestion}"`}
+Their name: ${haveName ? `you already know it (${knownBrideName}); do NOT ask it.` : `ask it last: "And who should I say enquired?"`}
+${inConversation
+    ? `Good (a bare hi, in conversation): "Hi${haveName ? ' ' + knownBrideName : ''}! How can I help?"`
+    : `Good (first message): "Hi! You've reached ${studio}. ${openingQuestion}"`}`;
+  return { stable, thread };
 }
 
-module.exports = { buildCoupleSystemPrompt };
+// The one-text form, for readers that take the system as a string (benches, the probe): the stable text, a blank line, THIS CONVERSATION.
+function buildCoupleSystemPrompt(opts) {
+  const b = buildCoupleSystemBlocks(opts);
+  return b.thread ? `${b.stable}\n\n${b.thread}` : b.stable;
+}
+
+module.exports = { buildCoupleSystemPrompt, buildCoupleSystemBlocks };

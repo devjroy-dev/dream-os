@@ -1,0 +1,13 @@
+# scripts/floor-manifest-ce46-elz3-f230.txt
+# CE-46 · ELZ-3 · F-44.230 (dream-os): the couple turn's prompt cache split. The first-contact / in-conversation system becomes two texts,
+# the per-vendor stable one cached at its end and THIS CONVERSATION after it; the returning branch one text as before. The probe m230
+# (with e-159's fix: PREFIX and FULL counts on the live shapes); rung b142c; b115 and b117a re-pinned by label.
+# BASE: 64acdaf (built on 91babd0; carried once by command to 64acdaf, G6-4 cut B landed; re-derived at the cut). F-19.16: a dirty path outside this list is a STOP. A-45.3: no new folder.
+src/agent/coupleSystemPrompt.js
+src/agent/engine.js
+scripts/m230_cache_split_probe.js
+scripts/b142c_elz3_cache_split_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b117a_elz1_couple_bench.js
+docs/handovers/TDW_CE46_ELZ3_F230_HANDOVER.md
+scripts/floor-manifest-ce46-elz3-f230.txt

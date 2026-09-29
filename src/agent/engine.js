@@ -2,7 +2,7 @@
 // Session 4: adds create_lead, list_leads, update_lead_state tool handlers
 // Session 5.5: adds runCoupleAgenticTurn for couple_thread conversations
 
-const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
+const { buildCoupleSystemBlocks } = require('./coupleSystemPrompt');
 // TDW_08 P5 Phase 4 — THE FACADE JOIN (FORK 3(a), CE-ruled). `MODEL_HAIKU`,
 // `MODEL_SONNET`, `calculateCost` and `COMPLEXITY` were selected here and read
 // NOWHERE in this file except `MODEL_HAIKU` at the couple lane's one model line,
@@ -407,7 +407,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   // CE-46 ELZ-2 cut 1: the channel's two facts for the shell: the studio's WhatsApp link (Instagram only) and chatted_before
   // (own number only). Neither is a sentence; the shell says what each means for what she writes.
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore });
+  // CE-46 ELZ-3 · F-44.230: the system in two texts, the per-vendor stable one and THIS CONVERSATION (coupleSystemPrompt.js's header note)
+  const systemParts = buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore });
 
   const messages = [
     ...history,
@@ -496,7 +497,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // 27 September 2026), and across turns only for the same vendor, branch and facts within the cache's 5 minutes; a branch under
   // the minimum caches nothing and the probe records that as BELOW. The usage line below is the live witness (cache_creation,
   // cache_read), a log line and nothing else.
-  const systemBlocks = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
+  // CE-46 ELZ-3 · F-44.230 (the chair, 29 September 2026): the breakpoint moves to the end of the STABLE text, identical for every thread of
+  // one vendor on one channel and lane, so a thread's second turn (and any thread of that vendor within the cache's minutes) READS it;
+  // THIS CONVERSATION follows as a second block, uncached. The returning branch is one block as before (under the minimum; no write).
+  const systemBlocks = systemParts.thread
+    ? [{ type: 'text', text: systemParts.stable, cache_control: { type: 'ephemeral' } }, { type: 'text', text: systemParts.thread }]
+    : [{ type: 'text', text: systemParts.stable, cache_control: { type: 'ephemeral' } }];
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
