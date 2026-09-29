@@ -61,6 +61,7 @@ router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
 router.use('/notes',    require('./notes'));        // note-to-self scratchpad (owner-direct)
+router.use('/search',   require('./search'));       // DESIGN-1 · the universal search: her own records, by kind (no new table)
 router.use('/context',  require('./context'));
 router.use('/cabinet',  require('../vendor-engine/cabinet'));   // Phase 4 flip -> engine
 router.use('/binders',  require('../vendor-engine/binderWrite')); // Phase 4 flip -> engine
