@@ -23,6 +23,7 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const cap   = require('../../lib/capabilities');
 const sweep = require('../../capabilitiesSweep');
+const vendorLayout = require('../../lib/vendorLayout');   // DESIGN-1: the layout switch's one home
 const { COOKIE_NAME, bearerFrom } = require('../../lib/adminSession');
 
 function whoFlipped(req) {
@@ -43,6 +44,15 @@ router.get('/waba_templates', requireAdmin, asyncHandler(async (req, res) => {
   const r = await sweep.listWabaTemplates();
   if (!r.ok && r.templates.length === 0) return errRes(res, 502, r.evidence);
   return okRes(res, { count: r.templates.length, pages: r.pages, truncated: !!r.truncated, evidence: r.evidence, templates: r.templates });
+}));
+
+// ── DESIGN-1 · THE LAYOUT SWITCH, READ (the founder, 29 Sept 2026) ─────────────────────────────────────────────────
+// What the panel shows: the global default (the switchboard's flag.vendor_layout_v2, flipped on the Switchboard card by the
+// door below) and the vendors the Railway variable LAYOUT_V2_VENDOR_IDS names. Read-only: the flip is the existing door, the
+// list is Railway's. One predicate home: src/lib/vendorLayout.js.
+router.get('/layout', requireAdmin, asyncHandler(async (req, res) => {
+  const ids = String(process.env[vendorLayout.ENV_LIST] || '').split(',').map((x) => x.trim()).filter(Boolean);
+  return okRes(res, { flag: vendorLayout.FLAG, default_on: cap.on(vendorLayout.FLAG), env: vendorLayout.ENV_LIST, vendor_ids: ids });
 }));
 
 router.post('/sweep', requireAdmin, asyncHandler(async (req, res) => {
