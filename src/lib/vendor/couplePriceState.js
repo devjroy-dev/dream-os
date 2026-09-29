@@ -9,10 +9,17 @@
 // Switch off, or rate_min null or 0: 'off' / 'unpriced', and today's refusal stands (the prompt is byte-unchanged when off; see
 // coupleSystemPrompt.js). rate_display does not gate the chat; price_share_enabled does. THE GUARD (priceGuard): with the switch on, a reply
 // naming a rupee figure other than rate_min, a quotable matched total, or a figure the client wrote herself is refused in code.
+// CE-46 ELZ-4 · F-44.250 (the chair's ruling of 30 September 2026, cure (a)): THE GUARD ALSO RUNS WITH THE SWITCH OFF. The walk showed a
+// figure she had said earlier in the thread (S1 and S2 from minutes before) repeated after the switch went off, stopped only by the prompt.
+// Off (or unpriced), the only figures allowed are the client's own; a refused reply is replaced by S0, the founder's words. On: unchanged.
+// P1 (a), FOLDED (the same ruling): singular and plural are one word ("photograph" = "photographs", "film" = "films"), both in her words
+// and in the package's name; a package is still named only when exactly one fits.
 // TOTAL: every function answers, never throws.
 
 const S1 = 'Packages start from Rs {from}. The final price depends on your date and what you need; {studio} will confirm.';
 const S2 = 'The {package} package is Rs {total}. The final price depends on your date and what you need; {studio} will confirm.';
+// F-44.250 · the founder's words for a refused reply with the switch off (the chair's ruling of 30 September 2026)
+const S0 = 'The price depends on your date and what you need, so {studio} will confirm it with you. When is your event?';
 
 // the house form (hard rule 11): Rs and Indian grouping, e.g. Rs 1,50,000
 function inr(n) {
@@ -23,7 +30,9 @@ function inr(n) {
   const last3 = s.slice(-3); const rest = s.slice(0, -3);
   return `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${last3}`;
 }
-const words = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+// F-44.250's ruling on P1 (a): a trailing plural "s" is folded (not "ss"), so "photograph" and "photographs" are one word; applied to both sides
+const fold = (w) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+const words = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean).map(fold);
 const STOP = new Set(['and', 'with', 'the', 'a', 'an', 'of', 'for', 'one', 'every']);
 
 // her price facts, read fresh from the rows (a caller's vendor object may be partial)
@@ -78,28 +87,33 @@ function priceStateFact(r) {
   return `state: ${r && r.state === 'off' ? 'off' : 'unpriced'}\ndo not give any figure; the price is ${'the studio'}'s to confirm.`;
 }
 
-// every rupee figure written in a text, as whole rupees ("Rs 1,50,000", "₹50000", "50,000 rupees", "1.5 lakh")
+// every rupee figure written in a text, as whole rupees ("Rs 1,50,000", "₹50000", "50,000 rupees", "1.5 lakh", and, F-44.250, a bare
+// comma-grouped amount such as "60,000" or "1,50,000", which in a price reply is a rupee figure with its prefix dropped)
 function figuresIn(text) {
   const out = []; const t = String(text || '');
-  const re = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)\s*(lakh|lakhs|lac|l|k|cr|crore)?|([\d,]+(?:\.\d+)?)\s*(lakh|lakhs|lac|k|cr|crore|rupees)\b/gi;
+  const re = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)\s*(lakh|lakhs|lac|l|k|cr|crore)?|([\d,]+(?:\.\d+)?)\s*(lakh|lakhs|lac|k|cr|crore|rupees)\b|\b(\d{1,3}(?:,\d{2,3})+)\b/gi;
   let m;
   while ((m = re.exec(t))) {
-    const num = Number(String(m[1] || m[3]).replace(/,/g, '')); const unit = String(m[2] || m[4] || '').toLowerCase();
+    const num = Number(String(m[1] || m[3] || m[5]).replace(/,/g, '')); const unit = String(m[2] || m[4] || '').toLowerCase();
     if (!Number.isFinite(num)) continue;
     const mult = /^(lakh|lakhs|lac|l)$/.test(unit) ? 100000 : /^(cr|crore)$/.test(unit) ? 10000000 : unit === 'k' ? 1000 : 1;
     out.push(Math.round(num * mult));
   }
   return out;
 }
-// the guard: with the switch on, a reply naming a figure outside rate_min, a quotable matched total or the client's own words is refused.
-// Returns null to let the reply go, or { refused: [figures] } for the caller to replace it.
+// the guard, ON: a reply naming a figure outside rate_min, a quotable matched total or the client's own words is refused.
+// F-44.250 · OFF (or unpriced): a reply naming any figure the client did not write herself is refused.
+// Returns null to let the reply go, or { refused: [figures], mode: 'on' | 'off' } for the caller to replace it (on: S1; off: S0).
 function priceGuard({ facts, reply, allowed, clientText }) {
   try {
-    if (!priceOn(facts)) return null;
-    const ok = new Set([...(Array.isArray(allowed) ? allowed : []), facts.rateMin, ...figuresIn(clientText)].map((x) => Math.round(Number(x))).filter(Number.isFinite));
+    const on = priceOn(facts);
+    const mine = on ? [...(Array.isArray(allowed) ? allowed : []), facts.rateMin] : [];
+    const ok = new Set([...mine, ...figuresIn(clientText)].map((x) => Math.round(Number(x))).filter(Number.isFinite));
     const bad = figuresIn(reply).filter((f) => !ok.has(f));
-    return bad.length ? { refused: bad } : null;
+    return bad.length ? { refused: bad, mode: on ? 'on' : 'off' } : null;
   } catch (_e) { return null; }
 }
+// F-44.250 · the sentence a refused reply becomes with the switch off
+const offSentence = (studio) => S0.replace('{studio}', String(studio || 'The studio'));
 
-module.exports = { priceFacts, priceOn, priceState, priceStateFact, matchPackage, priceGuard, figuresIn, inr, S1, S2 };
+module.exports = { priceFacts, priceOn, priceState, priceStateFact, matchPackage, priceGuard, offSentence, figuresIn, inr, S0, S1, S2 };

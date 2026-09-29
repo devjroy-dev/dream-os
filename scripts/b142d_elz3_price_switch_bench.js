@@ -11,6 +11,10 @@
 //   §3 the turn (REAL runCoupleAgenticTurn, doubles for the model and the store): price_state only when on; the sentence sent; the guard
 //   §4 me.js's four sites and the migration
 //   §5 mutations (--mutate) of production code, each reddening its named cell; files restored by sha256
+// CE-46 ELZ-4 · F-44.250 (the chair's ruling of 30 September 2026, cure (a)): the guard runs with the switch OFF too; off, only the client's
+//   own figures pass and a refused reply becomes S0, the founder's words. 1.10 re-pinned (its mode), 1.12 and 3.7 RE-AIMED by label (they pinned "off: the guard does
+//   not run", the defect); new 1.13 to 1.16 (the plural fold of P1 (a), a fold tie, bare "60,000", S0) and 3.9 to 3.11 (the walk's exact
+//   thread of 30 September, her budget with the switch off, a figure-free reply untouched); M1 and M6 re-anchored; M8 to M11 new.
 // Run: node scripts/b142d_elz3_price_switch_bench.js [--mutate]
 const fs = require('fs');
 const path = require('path');
@@ -34,6 +38,7 @@ const PKGS = [{ name: 'Photographs', total: 80000 }, { name: 'Photographs and fi
 const FACTS = { enabled: true, rateMin: 50000, packages: PKGS };
 const S1 = `Packages start from Rs 50,000. The final price depends on your date and what you need; ${STUDIO} will confirm.`;
 const S2 = (n, t) => `The ${n} package is Rs ${t}. The final price depends on your date and what you need; ${STUDIO} will confirm.`;
+const S0 = `The price depends on your date and what you need, so ${STUDIO} will confirm it with you. When is your event?`; // F-44.250, the founder's words
 
 // ── the turn's doubles ──
 const llmPath = require.resolve(P('src/lib/llm.js')); const realLlm = require(llmPath);
@@ -64,6 +69,7 @@ const VU = { name: 'Dev Roy', phone: '+910000000000' };
 const ON = { id: 'v-dev440', price_share_enabled: true, rate_min: 50000 };
 const OFF = { id: 'v-dev440', price_share_enabled: false, rate_min: 50000 };
 const NORATE = { id: 'v-dev440', price_share_enabled: true, rate_min: null };
+const OFF60 = { id: 'v-dev440', price_share_enabled: false, rate_min: 60000 }; // F-44.250 · DEV440 as the walk left it (W4)
 async function turn({ vendorRow, inbound = 'How much do you charge?', script, history = [] }) {
   SCRIPT = script.slice(); SENT.length = 0;
   const rows = [{ direction: 'inbound', body: inbound, sent_by: 'couple', created_at: new Date().toISOString() }, ...history];
@@ -90,9 +96,15 @@ async function cells() {
   T('1.7 the house rupee form (hard rule 11)', L.inr(50000) === '50,000' && L.inr(150000) === '1,50,000' && L.inr(1500000) === '15,00,000' && L.inr(999) === '999');
   T('1.8 figures read in any form (Rs, ₹, lakh, k, rupees)', JSON.stringify(L.figuresIn('Rs 1,50,000 or ₹50000 or 2 lakh or 80k or 3,00,000 rupees')) === JSON.stringify([150000, 50000, 200000, 80000, 300000]));
   T('1.9 the guard lets S1\'s figure go', L.priceGuard({ facts: FACTS, reply: S1, allowed: [50000] }) === null);
-  T('1.10 the guard refuses an invented figure', JSON.stringify(L.priceGuard({ facts: FACTS, reply: 'It is around Rs 60,000.', allowed: [50000] })) === JSON.stringify({ refused: [60000] }));
+  // RE-PINNED (CE-46 ELZ-4 · F-44.250, labelled): the guard's answer now names its mode; the refused figure is unchanged.
+  T('1.10 the guard refuses an invented figure', JSON.stringify(L.priceGuard({ facts: FACTS, reply: 'It is around Rs 60,000.', allowed: [50000] })) === JSON.stringify({ refused: [60000], mode: 'on' }));
   T('1.11 the guard lets her own budget read back ("3 lakh" -> Rs 3,00,000)', L.priceGuard({ facts: FACTS, reply: 'Noted, your budget of Rs 3,00,000.', allowed: [50000], clientText: 'around 3 lakh' }) === null);
-  T('1.12 switch off: the guard does not run', L.priceGuard({ facts: { ...FACTS, enabled: false }, reply: 'Rs 60,000', allowed: [] }) === null);
+  // RE-AIMED (CE-46 ELZ-4 · F-44.250, labelled): this cell pinned "switch off: the guard does not run", the defect the walk found.
+  T('1.12 switch off: the guard refuses any figure she did not write, and lets hers go (F-44.250)', JSON.stringify(L.priceGuard({ facts: { ...FACTS, enabled: false }, reply: 'Rs 60,000', allowed: [] })) === JSON.stringify({ refused: [60000], mode: 'off' }) && L.priceGuard({ facts: { ...FACTS, enabled: false }, reply: 'Noted, Rs 3,00,000.', allowed: [], clientText: 'around 3 lakh' }) === null);
+  T('1.13 P1 (a) folded: "photograph and films" names "Photographs and film" (the walk\'s 04:04:02 words), S2', ps('How much for photograph and films').sentence === S2('Photographs and film', '1,50,000'));
+  T('1.14 a fold that fits two packages equally ("Film" and "Films") names none: S1', ps('price for films', { ...FACTS, packages: [{ name: 'Film', total: 90000 }, { name: 'Films', total: 95000 }] }).sentence === S1);
+  T('1.15 a bare comma-grouped amount is a figure ("60,000 to 80,000")', JSON.stringify(L.figuresIn('60,000 to 80,000')) === JSON.stringify([60000, 80000]));
+  T('1.16 S0, the founder\'s words for switch off, with her studio', typeof L.offSentence === 'function' && L.offSentence(STUDIO) === S0);
 
   sec('§2 the prompt: OFF byte-identical to F-44.230; ON, the rule in the STABLE text');
   const NOW = fresh('src/agent/coupleSystemPrompt.js').buildCoupleSystemBlocks;
@@ -127,9 +139,26 @@ async function cells() {
   r = await turn({ vendorRow: ON, inbound: 'Our budget is 3 lakh', script: [{ name: 'respond_to_couple', input: { message: 'Got it, a budget of Rs 3,00,000. Who should I say enquired?' } }] });
   T('3.6 switch ON: her own budget read back passes the guard', r.out.reply === 'Got it, a budget of Rs 3,00,000. Who should I say enquired?');
   r = await turn({ vendorRow: OFF, script: [{ name: 'respond_to_couple', input: { message: 'It is roughly Rs 60,000 for a wedding.' } }] });
-  T('3.7 switch OFF: the guard does not run (today\'s behaviour, whatever the reply)', r.out.reply === 'It is roughly Rs 60,000 for a wedding.' && !r.out.toolCalls.some((t) => t.name === 'price_guard'));
+  // RE-AIMED (CE-46 ELZ-4 · F-44.250, labelled): this cell pinned "switch OFF: the guard does not run", the defect the walk found.
+  T('3.7 switch OFF, an invented figure: refused in code and S0 goes instead (F-44.250)', r.out.reply === S0 && r.out.toolCalls.some((t) => t.name === 'price_guard' && t.mode === 'off' && JSON.stringify(t.refused) === '[60000]'));
   r = await turn({ vendorRow: ON, script: [{ name: 'respond_to_couple', input: { message: S1 } }] });
   T('3.8 switch ON: the system the turn sends carries the price rule in block 1 (the stable, cached one)', !!r.sent[0] && /WHEN THEY ASK ABOUT PRICE/.test(r.sent[0].system[0].text) && !!r.sent[0].system[0].cache_control);
+  // F-44.250 · THE WALK'S EXACT THREAD (30 September, DEV440, Sarah): S1 and S2 in her own history, the switch then OFF, and her 04:05:15 reply
+  const WALK = 'Packages start from Rs 60,000 for photography, and Rs 80,000 for photographs and film together. The final price depends on your date and what you need, so Dev Roy Photography will confirm once they have those details.';
+  const S1w = 'Packages start from Rs 60,000. The final price depends on your date and what you need; Dev Roy Photography will confirm.';
+  const S2w = 'The Photographs and film package is Rs 80,000. The final price depends on your date and what you need; Dev Roy Photography will confirm.';
+  const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
+  const walkHistory = [ // newest first, as the store returns rows
+    { direction: 'outbound', body: S2w, sent_by: 'agent', created_at: ago(40) }, { direction: 'inbound', body: 'How much do r photographs and film?', sent_by: 'couple', created_at: ago(45) },
+    { direction: 'outbound', body: S1w, sent_by: 'agent', created_at: ago(70) }, { direction: 'inbound', body: 'How much for photograph and films', sent_by: 'couple', created_at: ago(75) },
+    { direction: 'outbound', body: `${S1w} When are you planning your event?`, sent_by: 'agent', created_at: ago(100) }, { direction: 'inbound', body: 'How much do you charge? Dev Roy photography', sent_by: 'couple', created_at: ago(105) },
+  ];
+  r = await turn({ vendorRow: OFF60, inbound: 'How much do you charge', history: walkHistory, script: [{ name: 'respond_to_couple', input: { message: WALK } }] });
+  T('3.9 the walk\'s thread, switch OFF: her reply naming 60,000 and 80,000 from her own history is refused, S0 goes, no price tool', r.out.reply === S0 && r.out.toolCalls.some((t) => t.name === 'price_guard' && t.mode === 'off' && JSON.stringify(t.refused) === '[60000,80000]') && names(r) === 'capture_couple_lead,date_state,respond_to_couple');
+  r = await turn({ vendorRow: OFF, inbound: 'Our budget is 3 lakh', script: [{ name: 'respond_to_couple', input: { message: 'Got it, a budget of Rs 3,00,000. Who should I say enquired?' } }] });
+  T('3.10 switch OFF: her own budget read back passes the guard', r.out.reply === 'Got it, a budget of Rs 3,00,000. Who should I say enquired?' && !r.out.toolCalls.some((t) => t.name === 'price_guard'));
+  r = await turn({ vendorRow: OFF, script: [{ name: 'respond_to_couple', input: { message: 'Dev Roy Photography will confirm the price. When is your wedding?' } }] });
+  T('3.11 switch OFF: a reply naming no figure goes as it is (today\'s behaviour)', r.out.reply === 'Dev Roy Photography will confirm the price. When is your wedding?' && !r.out.toolCalls.some((t) => t.name === 'price_guard'));
 
   sec('§4 me.js and the migration');
   const me = read('src/api/vendor/me.js');
@@ -141,13 +170,17 @@ async function cells() {
 }
 
 const MUTATIONS = [
-  { n: 'M1 the guard never runs', f: 'src/lib/vendor/couplePriceState.js', from: '    if (!priceOn(facts)) return null;\n    const ok', to: '    return null;\n    const ok', reds: ['1.10', '3.5'] },
+  { n: 'M1 the guard never runs', f: 'src/lib/vendor/couplePriceState.js', from: '    const on = priceOn(facts);\n    const mine', to: '    const on = priceOn(facts); return null;\n    const mine', reds: ['1.10', '1.12', '3.5', '3.7', '3.9'] },
   { n: 'M2 S2 allowed below rate_min', f: 'src/lib/vendor/couplePriceState.js', from: 'if (m && m.total >= from) {', to: 'if (m) {', reds: ['1.4'] },
   { n: 'M3 the price tool offered with the switch off', f: 'src/agent/engine.js', from: '  if (priceOn) {\n    COUPLE_TOOLS.splice(', to: '  if (true) {\n    COUPLE_TOOLS.splice(', reds: ['3.1', '3.2'] },
   { n: 'M4 the price rule in the prompt with the switch off', f: 'src/agent/coupleSystemPrompt.js', from: "  const priceBlock = priceOn ? `", to: "  const priceBlock = true ? `", reds: ['2.1'] },
   { n: 'M5 the client\'s own figures not allowed', f: 'src/lib/vendor/couplePriceState.js', from: ', ...figuresIn(clientText)]', to: ']', reds: ['1.11', '3.6'] },
-  { n: 'M6 the guard replaces with nothing (a new line) instead of S1', f: 'src/agent/engine.js', from: '      finalReply = s1.sentence;', to: "      finalReply = 'The studio will confirm the price.';", reds: ['3.5'] },
+  { n: 'M6 the guard replaces with a line of its own instead of S1 or S0', f: 'src/agent/engine.js', from: '      finalReply = replacement;', to: "      finalReply = 'The studio will confirm the price.';", reds: ['3.5', '3.7', '3.9'] },
   { n: 'M7 the switch left out of BOOLEAN_FIELDS', f: 'src/api/vendor/me.js', from: "'date_check_enabled', 'price_share_enabled', 'peer_discoverable'", to: "'date_check_enabled', 'peer_discoverable'", reds: ['4.2'] },
+  { n: 'M8 F-44.250 undone: the guard only when the switch is on (the walk\'s defect)', f: 'src/lib/vendor/couplePriceState.js', from: '    const on = priceOn(facts);\n', to: '    const on = priceOn(facts); if (!on) return null;\n', reds: ['1.12', '3.7', '3.9'] },
+  { n: 'M9 the plural fold removed (P1 (a) exact again)', f: 'src/lib/vendor/couplePriceState.js', from: "const fold = (w) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);", to: 'const fold = (w) => w;', reds: ['1.13'] },
+  { n: 'M10 the switch-off replacement is S1 (a figure) instead of S0', f: 'src/agent/engine.js', from: ": priceLib.offSentence(studio);", to: ": priceLib.priceState({ facts: { ...priceFacts, enabled: true, rateMin: 60000 }, askedText: '', studio }).sentence;", reds: ['3.7', '3.9'] },
+  { n: 'M11 a bare "60,000" not read as a figure', f: 'src/lib/vendor/couplePriceState.js', from: '|\\b(\\d{1,3}(?:,\\d{2,3})+)\\b/gi;', to: '/gi;', reds: ['1.15'] },
 ];
 
 async function runCells() { pass = 0; fail = 0; failed.length = 0; await cells(); return { pass, fail, failed: failed.slice() }; }

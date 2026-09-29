@@ -860,15 +860,18 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   // CE-46 ELZ-3 · THE PRICE GUARD (the chair's ruling of 29 September 2026): with the switch on and priced, a reply naming a rupee figure
   // other than her starting price, a quotable matched total or a figure the client wrote herself is replaced by S1, the founder's approved
-  // words. Off or unpriced, the guard does not run and the reply is today's.
-  if (priceOn && typeof finalReply === 'string') {
+  // words. CE-46 ELZ-4 · F-44.250 (the chair's ruling of 30 September 2026, cure (a)): the guard runs on EVERY turn. With the switch off (or
+  // no starting price), any figure the client did not write herself is refused and the reply becomes S0, the founder's words; the walk of
+  // 30 September showed her repeating Rs 60,000 and Rs 80,000 from her own earlier replies after the switch went off.
+  if (typeof finalReply === 'string') {
     const clientText = [inboundMessage, ...history.filter((m) => m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : ''))].join('\n');
     const refused = priceLib.priceGuard({ facts: priceFacts, reply: finalReply, allowed: priceAllowed, clientText });
     if (refused) {
-      const s1 = priceLib.priceState({ facts: priceFacts, askedText: '', studio: studioName(vendor, vendorUser) });
-      console.log(`[couple-agent] price guard refused ${JSON.stringify(refused.refused)}; S1 sent instead`);
-      toolCallsAudit.push({ name: 'price_guard', refused: refused.refused, replaced: true });
-      finalReply = s1.sentence;
+      const studio = studioName(vendor, vendorUser);
+      const replacement = refused.mode === 'on' ? priceLib.priceState({ facts: priceFacts, askedText: '', studio }).sentence : priceLib.offSentence(studio);
+      console.log(`[couple-agent] price guard (switch ${refused.mode}) refused ${JSON.stringify(refused.refused)}; ${refused.mode === 'on' ? 'S1' : 'S0'} sent instead`);
+      toolCallsAudit.push({ name: 'price_guard', refused: refused.refused, mode: refused.mode, replaced: true });
+      finalReply = replacement;
     }
   }
 

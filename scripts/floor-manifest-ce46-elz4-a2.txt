@@ -1,0 +1,9 @@
+# scripts/floor-manifest-ce46-elz4-a2.txt
+# CE-46 · ELZ-4 · LAYER A2 (dream-os): F-44.250 cure (a), the price guard with the switch OFF (S0, the founder's words) and the P1 (a) plural
+# fold; b142d 36 cells, 11 mutations; b115 re-pinned (6). BASE: 1ed3847 (layer A). F-19.16: a dirty path outside this list is a STOP.
+src/lib/vendor/couplePriceState.js
+src/agent/engine.js
+scripts/b142d_elz3_price_switch_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+docs/handovers/TDW_CE46_ELZ4_A2_F250_HANDOVER.md
+scripts/floor-manifest-ce46-elz4-a2.txt
