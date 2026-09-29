@@ -187,7 +187,9 @@ async function igMedia({ token, igUserId, env = process.env, fetchImpl, limit = 
   const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,boost_eligibility_info';
   const b = await call(fetchImpl, 'ig_media', `${v(env)}/${encodeURIComponent(igUserId)}/media?fields=${encodeURIComponent(fields)}&limit=${limit}`, token);
   return (b && Array.isArray(b.data) ? b.data : []).filter((m) => m && m.id).map((m) => ({
-    id: String(m.id), caption: m.caption || '', type: m.media_type || null, url: m.media_url || m.thumbnail_url || null,
+    // cut1f: a reel's media_url is the video file, which an <img> cannot draw; its cover picture is thumbnail_url.
+    id: String(m.id), caption: m.caption || '', type: m.media_type || null,
+    url: (m.media_type === 'VIDEO' || m.media_type === 'REELS') ? (m.thumbnail_url || m.media_url || null) : (m.media_url || m.thumbnail_url || null),
     permalink: m.permalink || null, at: m.timestamp || null,
     likes: m.like_count === undefined ? null : Number(m.like_count) || 0, comments: m.comments_count === undefined ? null : Number(m.comments_count) || 0,
     eligible: !!(m.boost_eligibility_info && m.boost_eligibility_info.eligible_to_boost),
