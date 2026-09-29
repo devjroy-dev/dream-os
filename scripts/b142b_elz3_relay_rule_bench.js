@@ -317,9 +317,12 @@ async function main() {
   db = makeDb(ruleWorld());
   r = await turnSeq(db, "tell walk twin we're confirmed", [{ route: 'task', acts: [{ act: 'booking_confirmed', client_as_spoken: 'walk twin' }] }]);
   T('2.4 m181\'s booking_confirmed BY SHAPE ("tell walk twin we\'re confirmed"): the relay is ADDED in front and the booking act KEPT (the door decided on both), the two Walk twins numbered (B8)', canon(meta(db).request && meta(db).request.acts) === canon([{ act: 'relay', client_as_spoken: 'Walk twin' }, { act: 'booking_confirmed', client_as_spoken: 'walk twin' }]) && /^B8/.test(r.keys) && /Walk twin \(5 March 2027\)/.test(r.reply) && /Walk twin \(12 June 2027\)/.test(r.reply));
-  // FINDING, recorded not cured (the chair's): two acts naming ONE ambiguous name each ask B8 (the same question twice) and no pick note is kept
-  // (the note is written only for a turn whose ONE line is B8), so her number is not read. Pre-existing for any such heard pair; (b'') makes it reachable here.
-  T('2.4f [the finding, as observed] the question is asked twice and no pick note is kept', r.keys === 'B8,B8' && noteOf(db) === undefined);
+  // LABELED AMENDMENT · CE-46 ELZ-3 (the price switch's cut): F-44.231, minted by the chair and recorded here as observed ("B8,B8", no note),
+  // is CURED in the door: when every line is B8 over the same clients, ONE is spoken and the pick note keeps every act. 2.4f re-pinned to the
+  // cure, and her "1" then picks the first Walk twin with both acts replayed.
+  T('2.4f F-44.231 CURED: the question asked ONCE, and the pick note keeps both acts (relay, booking_confirmed)', r.keys === 'B8' && !!noteOf(db) && (noteIn(db).acts || []).map((a) => a.act).join() === 'relay,booking_confirmed' && JSON.stringify(noteIn(db).lead_ids) === JSON.stringify(['l-tw1', 'l-tw2']));
+  const pick1 = await turnSeq(db, '1', [MISS]);
+  T('2.4g her "1" is read: BOTH acts replay on the first Walk twin (the relay finds no number, the booking finds no package), never B3', pick1.keys === 'RELAY_NO_NUMBER,B5' && /Walk twin/.test(pick1.reply));
   db = makeDb(ruleWorld());
   r = await turnSeq(db, 'message Priya thanks', [MISS]);
   T('2.5 a first-word tie: B8 names both Priyas in the date order, one call, a lead_first pick noted', r.keys === 'B8' && /1\. Priya Khan/.test(r.reply) && /2\. Priya Das/.test(r.reply) && r.calls.length === 1 && (noteIn(db).pick_kind === 'lead_first') && JSON.stringify(noteIn(db).lead_ids) === JSON.stringify(['l-pk', 'l-pd']));
@@ -387,6 +390,8 @@ async function main() {
     async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'Tell Asha Walk Fifteen the booking is confirmed', [{ route: 'task', acts: [BOOKED] }], { M: req2(WDf) }); return (noteIn(d).acts || []).map((a) => a.act).join(); }, (v) => !/booking_confirmed/.test(v));
   await mut('M11 the record forgets what was heard: 2.1b red', WDf, [["...(ear && ear.rule === 'relay' ? { heard: ear.heard === undefined ? null : ear.heard, rule: 'relay' } : {})", '...({})']], WDdeps,
     async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'tell Sarah hi', [MISS], { M: req2(WDf) }); return meta(d).rule; }, (v) => v !== 'relay');
+  await mut('M12 F-44.231\'s collapse removed (two B8s, no note): 2.4f red', WDf, [["      if (st.lines.every((l) => listed(l) === listed(st.lines[0]))) { st.lines = [st.lines[0]]; st.keys = ['B8']; }", '']], WDdeps,
+    async (req2) => { const d = makeDb(ruleWorld()); return (await turnSeq(d, "tell walk twin we're confirmed", [{ route: 'task', acts: [{ act: 'booking_confirmed', client_as_spoken: 'walk twin' }] }], { M: req2(WDf) })).keys; }, (v) => v !== 'B8');
 
   console.log(`\nb142b_elz3_relay_rule_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
   if (fail) { console.log(`FAILED: ${failed.join(' · ')}`); process.exit(1); }

@@ -243,6 +243,8 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // question. A row written before 0140 backfills to false, but a shape that
       // read `!== false` would answer YES to a null it had never been given.
       date_check_enabled:      vendor.date_check_enabled      === true,
+      // CE-46 ELZ-3 · 0183, the price switch ("Share approximate prices in chat"): a consent flag, so `=== true` like the line above
+      price_share_enabled:     vendor.price_share_enabled     === true,
       // G5.1 s2 · R-40.107. ⚠ `!== false` AND NOT `=== true`, WHICH IS THE
       // OPPOSITE COERCION TO THE LINE DIRECTLY ABOVE, and the difference is the
       // column's default rather than an inconsistency. `date_check_enabled`
@@ -351,6 +353,7 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // one question — and a second route would owe a second copy of
                         // the locked-field checks for nothing. Same door, same guard.
                         'date_check_enabled',
+                        'price_share_enabled', // CE-46 ELZ-3 · 0183: her price switch, the same door and guard as the date switch
                         // ── BLOCK 19 · G5.1 SITTING 2 · R-40.107 — THE PEER
                         //    DIRECTORY SWITCH ──────────────────────────────
                         // It joins HERE for the same reason `date_check_enabled`
@@ -406,7 +409,7 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
 // be. This one defaults FALSE, so a guessed value fails CLOSED — she is listed on
 // the exchange only by her own tap, and `{"exchange_discoverable": "maybe"}` gets
 // a 400 rather than whatever that day's coercion decided.
-const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused', 'date_check_enabled', 'peer_discoverable', 'exchange_discoverable'];
+const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused', 'date_check_enabled', 'price_share_enabled', 'peer_discoverable', 'exchange_discoverable'];
 
 // ── ARC OB · SERVICE-AREA VALIDATION (CE-31 ruling ①) ──────────────────────
 // A 400, never a silent coercion — the BOOLEAN_FIELDS doctrine directly above,
@@ -563,7 +566,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
 
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible, enquiry_routing, enquiry_phone')
+      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, price_share_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible, enquiry_routing, enquiry_phone')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -574,7 +577,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, enquiry_routing, enquiry_phone')
+      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, price_share_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, enquiry_routing, enquiry_phone')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -619,6 +622,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       rate_display:     updated.rate_display     !== false,
       discover_paused:  updated.discover_paused  === true,
       date_check_enabled: updated.date_check_enabled === true,
+      price_share_enabled: updated.price_share_enabled === true, // CE-46 ELZ-3 · 0183: the switch reads its own echo
       // G5.1 s2 · R-40.107. The Settings switch is optimistic and REVERTS by
       // reading the door's own echo (`screen.tsx:381`'s pattern). A key missing
       // from this shape would make every successful write look like a refusal

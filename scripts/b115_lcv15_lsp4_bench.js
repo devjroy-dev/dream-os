@@ -47,7 +47,9 @@ const EN = 'src/agent/engine.js';
 // LABELED AMENDMENT (3) · the founder's words of 29 September 2026 (rows 4 and 5): re-pinned (was 6979dc791efcc00c); cap 920 -> 930.
 // LABELED AMENDMENT (4) · CE-46 ELZ-3 F-44.230 (the chair, 29 September 2026): re-pinned (was 22ea40e74e5fb491): the system built as two
 // texts (buildCoupleSystemBlocks) and sent as two blocks, the breakpoint on the stable one. Cap unchanged (930).
-const PIN = {"runCoupleAgenticTurn":"bafbbd4df2b0e4400f58b6f254976b4644bc4579f5f3bf3fbc8311d197140b39","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
+// LABELED AMENDMENT (5) · CE-46 ELZ-3 · THE PRICE SWITCH (0183; the founder's ruling of 29 September 2026): re-pinned (was bafbbd4df2b0e440):
+// the turn reads her price facts, offers price_state when her switch is on and priced, and guards the reply; cap 930 -> 990.
+const PIN = {"runCoupleAgenticTurn":"539a9aa9d2b83922a191fd43c50211244da6b233ebcc31322ad0eca1b37a15c6","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
 const DELETED = ['src/agent/tools.js', 'src/agent/systemPrompt.js', 'src/agent/classifier.js', 'src/lib/vendor/replyToCouple.js'];
 const ISLAND = ['handleOnboarding', 'executeTool', 'commit_event_proposals', 'WA_MUTATING_TOOLS'];
 
@@ -60,7 +62,7 @@ const ISLAND = ['handleOnboarding', 'executeTool', 'commit_event_proposals', 'WA
   T('1.2 no file under src names handleOnboarding, executeTool, commit_event_proposals or WA_MUTATING_TOOLS outside a comment', live.length === 0);
   T('1.3 CONTROL: the grep finds them where comments still name them (an empty answer is not a broken grep)', hits.length > 0);
   // LABELED · ELZ-1 cut 1: the cap moves from 740 to 770 lines with R-45.26 (the fact read and the fourth tool); one export still.
-  T('1.4 engine.js is the couple lane alone: 930 lines or fewer, one exported name', en.split('\n').length <= 930 && JSON.stringify(Object.keys(require(P(EN)))) === '["runCoupleAgenticTurn"]');
+  T('1.4 engine.js is the couple lane alone: 990 lines or fewer, one exported name', en.split('\n').length <= 990 && JSON.stringify(Object.keys(require(P(EN)))) === '["runCoupleAgenticTurn"]');
 
   sec('2 the couple lane, byte-identical (C-44.7, hashes from cd71986)');
   for (const f of ['runCoupleAgenticTurn', 'relayAttributionPrefix', 'markRelayProvenance', 'mergeSameRole']) T(`2.1 ${f} is byte-identical to its pin (cd71986; the couple turn and the prefix at ELZ-1 cut 1)`, sha(body(en, f)) === PIN[f]);

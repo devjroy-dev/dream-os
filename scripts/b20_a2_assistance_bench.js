@@ -163,7 +163,9 @@ const ADMIN  = 'src/api/admin/assistance.js';
   ok('phone is NOT NULL and constrained to ten digits (R-41.29)', /phone\s+text\s+not null\s+check\s*\(\s*phone\s*~\s*'\^\[0-9\]\{10\}\$'\s*\)/i.test(arBlock));
   ok('every FK names a witnessed parent: couples, vendors, prospects, leads, and the two own tables', ['couples', 'vendors', 'prospects', 'leads', 'assistance_requests', 'assistance_request_items'].every(t => new RegExp(`references\\s+public\\.${t}\\s*\\(id\\)`, 'i').test(migCode)));
   ok('target_kind ↔ target column agreement is a CHECK, not a comment', /constraint assistance_forwards_target_matches check/i.test(migCode));
-  ok('OUT_OF_ORDER register untouched (0148 is above the tip, not a filled hole)', JSON.parse(read('db/migrations/OUT_OF_ORDER.json')).register.length === 0);
+  // RE-AIMED (CE-46 ELZ-4, labelled): this cell pinned the register EMPTY; its subject is that 0148 is not recorded as a filled hole. 0183 (the price
+  // switch, applied after 0184) is a lawful record by the chair's ruling of 30 September 2026, so the cell now asks only that no record names 148.
+  ok('OUT_OF_ORDER register holds no record for 0148 (0148 is above the tip, not a filled hole)', !JSON.parse(read('db/migrations/OUT_OF_ORDER.json')).register.some((r) => Number(r.number) === 148));
   const MIG2 = 'db/migrations/0150_assistance_notify_wamid.sql';
   const mig2 = exists(MIG2) ? read(MIG2).split('\n').filter(l => !l.trim().startsWith('--')).join('\n') : '';
   ok('0150 exists: notify_wamid + notify_status + notify_error_code + notify_error_title + notify_sent_at on assistance_requests', ['notify_wamid', 'notify_status', 'notify_error_code', 'notify_error_title', 'notify_sent_at'].every(c => new RegExp(`add column if not exists ${c}\\s`, 'i').test(mig2)));

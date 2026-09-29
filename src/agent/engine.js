@@ -21,6 +21,7 @@ const { buildEnquiryEnrichment } = require('../lib/vendor/enquiryEnrichment');
 const { studioName }            = require('./studioName');
 const { threadFacts }           = require('./coupleThreadFacts');
 const { dateState, dateStateFact, vendorDateLine } = require('../lib/vendor/coupleDateState');
+const priceLib = require('../lib/vendor/couplePriceState'); // CE-46 ELZ-3 · the price switch (0183)
 
 
 const MAX_ITERATIONS = 5;
@@ -408,7 +409,11 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // CE-46 ELZ-2 cut 1: the channel's two facts for the shell: the studio's WhatsApp link (Instagram only) and chatted_before
   // (own number only). Neither is a sentence; the shell says what each means for what she writes.
   // CE-46 ELZ-3 · F-44.230: the system in two texts, the per-vendor stable one and THIS CONVERSATION (coupleSystemPrompt.js's header note)
-  const systemParts = buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore });
+  // CE-46 ELZ-3 · THE PRICE SWITCH (the founder's ruling of 29 September 2026): her switch and starting price, read fresh; only when both hold
+  // does the prompt carry WHEN THEY ASK ABOUT PRICE and the turn carry the price_state tool (off: every prompt and tool byte is today's).
+  const priceFacts = await priceLib.priceFacts(supabase, vendor && vendor.id);
+  const priceOn = priceLib.priceOn(priceFacts);
+  const systemParts = buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore, priceOn });
 
   const messages = [
     ...history,
@@ -420,6 +425,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   let finalReply  = null;
   let leadCaptured = null;
   const toolCallsAudit = [];
+  const priceAllowed = []; // the figures price_state handed her this turn (the guard's allow-list)
 
   const COUPLE_TOOLS = [
     {
@@ -465,6 +471,14 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
       },
     },
   ];
+  if (priceOn) {
+    COUPLE_TOOLS.splice(COUPLE_TOOLS.length - 1, 0, {
+      // CE-46 ELZ-3 · the price switch: her price as ONE sentence composed in code (couplePriceState.js); a fact, never a number of her own
+      name: 'price_state',
+      description: 'Look up the studio\'s price when the client asks what it costs. Pass their words exactly as they wrote them. Returns one sentence to send as it is, or tells you there is no figure to give.',
+      input_schema: { type: 'object', properties: { asked_text: { type: 'string', description: 'The client\'s own words about price, e.g. "how much for photos and film?"' } }, required: ['asked_text'] },
+    });
+  }
 
   // ── Model: the Haiku ceiling, now RESOLVED rather than typed ──────
   // F-05.32 + E-3: this lane's ceiling is Haiku. The classifier call that stood here
@@ -820,6 +834,13 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         toolCallsAudit.push({ name: 'date_state', input: toolUse.input, result: fact, state: ds && ds.state, dateIso: ds && ds.date });
         toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: fact });
 
+      } else if (toolUse.name === 'price_state' && priceOn) {
+        const ps = priceLib.priceState({ facts: priceFacts, askedText: (toolUse.input && toolUse.input.asked_text) || inboundMessage, studio: studioName(vendor, vendorUser) });
+        priceAllowed.push(...(ps.allowed || []));
+        const fact = priceLib.priceStateFact(ps);
+        toolCallsAudit.push({ name: 'price_state', input: toolUse.input, result: fact, state: ps.state, match: ps.match ? ps.match.name : null });
+        toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: fact });
+
       } else if (toolUse.name === 'respond_to_couple') {
         finalReply = toolUse.input.message;
         toolCallsAudit.push({ name: 'respond_to_couple', input: toolUse.input, result: 'Reply queued.' });
@@ -835,6 +856,20 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     messages.push({ role: 'user', content: toolResults });
 
     if (finalReply !== null) break;
+  }
+
+  // CE-46 ELZ-3 · THE PRICE GUARD (the chair's ruling of 29 September 2026): with the switch on and priced, a reply naming a rupee figure
+  // other than her starting price, a quotable matched total or a figure the client wrote herself is replaced by S1, the founder's approved
+  // words. Off or unpriced, the guard does not run and the reply is today's.
+  if (priceOn && typeof finalReply === 'string') {
+    const clientText = [inboundMessage, ...history.filter((m) => m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : ''))].join('\n');
+    const refused = priceLib.priceGuard({ facts: priceFacts, reply: finalReply, allowed: priceAllowed, clientText });
+    if (refused) {
+      const s1 = priceLib.priceState({ facts: priceFacts, askedText: '', studio: studioName(vendor, vendorUser) });
+      console.log(`[couple-agent] price guard refused ${JSON.stringify(refused.refused)}; S1 sent instead`);
+      toolCallsAudit.push({ name: 'price_guard', refused: refused.refused, replaced: true });
+      finalReply = s1.sentence;
+    }
   }
 
   // Build vendor notification:
