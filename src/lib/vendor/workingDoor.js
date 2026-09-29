@@ -357,6 +357,55 @@ async function namesLiveLead(supabase, vendorId, message) {
     return rows.some((r) => { const k = key(r && r.name); return k.length >= REHEAR_MIN_NAME && said.includes(k); });
   } catch (_e) { return false; }
 }
+// ── CE-46 ELZ-3 cut 2 · F-44.181's CURE: THE DOOR-SIDE RELAY RULE (the chair's ruling of 27 September 2026 on ELZ-3's read-first (iii), shape (a);
+// "send" dropped from the verbs by the chair, c5). ELZ-2's m181 measured the ear hearing a short "tell {client} X" as a relay 40 of 160 times without
+// the thread and 125 of 160 with it; the ear is untouched (W-1). A message OPENING with a relay verb (tell, bata, batao, message) followed by a name
+// that matches her LIVE leads is a relay BY CONSTRUCTION: when the ear hears no relay act, relay(the lead's own name) is added to what it heard
+// (shape (b''), the chair, 29 September; every other act kept), so every branch below (planRelay, B8, B37, B38, the composer on her whole message,
+// R-44.9, R-44.16) runs as it runs today. THE MATCH: the words after the verb,
+// the longest run first (three words down to one), key()-folded and stripped of edge punctuation, EXACTLY equal to a live lead's name (two rows of
+// that same name reach planRelay's own B8); none, then her FIRST word against each lead's first word (never under REHEAR_MIN_NAME characters): one
+// lead, the relay to that lead's full name; two or more, B8 numbered here (R-45.23) with a pick note (pick_kind 'lead_first'); none, NO RULE and the
+// ear hears as today. A bare "tell Sarah" is a relay; the composer's placeholder refusal (e-151) guards an empty body. TOTAL: null on anything hostile.
+const RELAY_RULE_VERB = /^\s*(tell|bata|batao|message)\s+(\S[\s\S]*)$/i;
+const edgeFold = (s) => key(String(s).replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}'’]+$/gu, ''));
+async function relayRuleMatch(supabase, vendorId, message) {
+  try {
+    const m = typeof message === 'string' ? message.match(RELAY_RULE_VERB) : null;
+    if (!m) return null;
+    const words = m[2].trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return null;
+    const { data, error } = await supabase.from('leads').select('id, name, wedding_date').eq('vendor_id', vendorId).is('deleted_at', null);
+    if (error || !Array.isArray(data)) return null;
+    const rows = data.filter((r) => r && typeof r.name === 'string' && r.name.trim());
+    for (let n = Math.min(3, words.length); n >= 1; n -= 1) {
+      const said = edgeFold(words.slice(0, n).join(' '));
+      if (!said) continue;
+      const hits = rows.filter((r) => key(r.name) === said);
+      if (hits.length) return { kind: 'exact', name: hits[0].name.trim() };
+    }
+    const first = edgeFold(words[0]);
+    if (first.length < REHEAR_MIN_NAME) return null;
+    const hits = rows.filter((r) => key(r.name).split(/\s+/)[0] === first).sort(byDateThenId((r) => r.wedding_date));
+    if (hits.length === 1) return { kind: 'first', name: hits[0].name.trim() };
+    if (hits.length > 1) return { kind: 'pick', spoken: first, rows: hits };
+    return null;
+  } catch (_e) { return null; }
+}
+// a lead_first pick (the rule's own B8): the lead re-read by id still carrying the first word
+async function pinnedLeadFirst(supabase, vendorId, id, first) {
+  try {
+    // the id first, so this read's bytes never share pinnedLead's (b132 M2 mutates pinnedLead by its own text)
+    const { data, error } = await supabase.from('leads').select('id, name, state, binder_id').eq('id', id).eq('vendor_id', vendorId).is('deleted_at', null).maybeSingle();
+    if (error || !data || key(data.name).split(/\s+/)[0] !== key(first)) return null;
+    return data;
+  } catch (_e) { return null; }
+}
+async function leadsFirstNamed(supabase, vendorId, first) {
+  const { data, error } = await supabase.from('leads').select('id, name, state, wedding_date, binder_id').eq('vendor_id', vendorId).is('deleted_at', null);
+  if (error || !Array.isArray(data)) return null;
+  return data.filter((l) => l && typeof l.name === 'string' && key(l.name).split(/\s+/)[0] === key(first)).sort(byDateThenId((l) => l.wedding_date));
+}
 // both hearings on one record: request is the SECOND (a second returning nothing keeps the first's, which was none), heard is the FIRST,
 // reheard is true, usage is the sum of both calls' counted fields so the one usage row carries both; a second hearing's error is kept
 // under rehear_error and the first's own error stays where it was.
@@ -484,7 +533,7 @@ function validNote(n) {
     else if (PICK_CLIENT.includes(n.asked)) { if (!allKindsCovered(acts) || !Array.isArray(n.lead_ids) || n.lead_ids.length < 2 || n.lead_ids.length > 20 || !n.lead_ids.every((x) => typeof x === 'string' && x) || typeof n.pick_name !== 'string' || !n.pick_name.trim()) return null; }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, ...(n.asked === 'B24' && Array.isArray(n.package_ids) && n.package_ids.length >= 2 && n.package_ids.length <= 20 && n.package_ids.every((x) => typeof x === 'string' && x) ? { package_ids: n.package_ids.slice() } : {}), ...(PICK_CLIENT.includes(n.asked) ? { lead_ids: n.lead_ids.slice(), pick_name: n.pick_name.trim(), pick_kind: n.pick_kind === 'binder' ? 'binder' : 'lead' } : {}), ...(PICK_INVOICE.includes(n.asked) ? { invoice_ids: n.invoice_ids.slice() } : {}), ...(PICK_CREW.includes(n.asked) ? { pick_ids: n.pick_ids.slice() } : {}), ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(RELAY_ASKS.includes(n.asked) && typeof n.quote_lp === 'string' && n.quote_lp ? { quote_lp: n.quote_lp } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
+    return { asked: n.asked, acts, tries, ...(n.asked === 'B24' && Array.isArray(n.package_ids) && n.package_ids.length >= 2 && n.package_ids.length <= 20 && n.package_ids.every((x) => typeof x === 'string' && x) ? { package_ids: n.package_ids.slice() } : {}), ...(PICK_CLIENT.includes(n.asked) ? { lead_ids: n.lead_ids.slice(), pick_name: n.pick_name.trim(), pick_kind: n.pick_kind === 'binder' ? 'binder' : n.pick_kind === 'lead_first' ? 'lead_first' : 'lead' /* CE-46 ELZ-3 cut 2: the relay rule's first-word pick */ } : {}), ...(PICK_INVOICE.includes(n.asked) ? { invoice_ids: n.invoice_ids.slice() } : {}), ...(PICK_CREW.includes(n.asked) ? { pick_ids: n.pick_ids.slice() } : {}), ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(RELAY_ASKS.includes(n.asked) && typeof n.quote_lp === 'string' && n.quote_lp ? { quote_lp: n.quote_lp } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
   } catch (_e) { return null; }
 }
 
@@ -1753,12 +1802,35 @@ async function preTurn(args, depsIn) {
       return CHAIN(null, 'yes_no_nothing_waiting');
     }
 
+    // CE-46 ELZ-3 cut 2 · THE RELAY RULE (F-44.181's cure), shape (b'') as the chair ruled it on 29 September 2026 ((a) withdrawn: skipping the
+    // hear lost her other acts). Matched here, on a turn answering no note and meeting no live money row; applied AFTER the first hearing below.
+    const relayRule = (!note && !live) ? await relayRuleMatch(supabase, vendor.id, message) : null;
     // 2 · hear, before the reply, bounded
     const seat = L.listener.listenerSeat(route);
     if (typeof seat.provider !== 'string' || !seat.provider || typeof seat.model !== 'string' || !seat.model) return CHAIN(null, 'no_seat');
     const threadId = conversationId || await activeConversation(supabase, agentId);
     st.ear = await L.listener.hear({ supabase, route, message, conversationId: threadId, excludeId: null },
       { ...(deps.llmCreate ? { llmCreate: deps.llmCreate } : {}), timeoutMs: Number.isFinite(deps.hearMs) ? deps.hearMs : HEAR_BEFORE_REPLY_MS });
+    // CE-46 ELZ-3 cut 2 (b''): a relay opening that names a live lead, heard WITHOUT any relay act (nothing, another act, an error or a
+    // timeout), gets relay(that lead) ADDED in front of every act heard; a heard relay of ANY name stays exactly as heard (the one home's B36
+    // offers survive). The request is then not "nothing", so the cold second hearing below does not run: one call. A first-word tie is asked
+    // here, numbered (R-45.23), its pick note carrying every act of the message. The record keeps what the ear heard (heard) and rule: 'relay'.
+    if (relayRule && !(st.ear && st.ear.request && Array.isArray(st.ear.request.acts) && st.ear.request.acts.some((a) => a && a.act === 'relay'))) {
+      const heardReq = st.ear && st.ear.request ? st.ear.request : null;
+      const others = heardReq && Array.isArray(heardReq.acts) ? heardReq.acts.map((a) => ({ ...a })) : [];
+      if (relayRule.kind === 'exact' || relayRule.kind === 'first') {
+        st.ear = { ...(st.ear || {}), request: { route: 'task', acts: [{ act: 'relay', client_as_spoken: relayRule.name }, ...others] }, heard: heardReq, rule: 'relay', error: null };
+      } else if (relayRule.kind === 'pick') {
+        const line = sameName(relayRule.spoken, relayRule.rows, (r) => r.wedding_date);
+        if (line) {
+          const original = saidOf(message);
+          const acts = [{ act: 'relay', client_as_spoken: relayRule.spoken }, ...others];
+          const ear = { ...(st.ear || {}), request: { route: 'task', acts }, heard: heardReq, rule: 'relay', error: null };
+          return { door: true, reply: line, keys: ['B8'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear, why: 'relay_rule_pick',
+            note: { asked: 'B8', acts: acts.map((a) => ({ ...a })), tries: 0, lead_ids: relayRule.rows.map((r) => String(r.id)), pick_name: relayRule.spoken, pick_kind: 'lead_first', ...(original ? { said: original } : {}) } };
+        }
+      }
+    }
     // R-45.3 (CE-45 LCV-12, cut one; the founder, 22 September 2026: "yes to the code 2nd hearing. i feel that can cure a lot of issues."):
     // THE COLD SECOND HEARING. WITNESSED on the P6b walk of 22 September: three of seven "Tell Sarah ..." sentences were heard as NO TASK
     // inside a long thread (16:01:48, 16:02:25, 16:12:58, each {"acts":[],"route":"none"}, each read LEFTOVER), while cold, with no thread,
@@ -1887,7 +1959,8 @@ async function preTurn(args, depsIn) {
         const b = await pinnedBinder(supabase, agentId, id, note.pick_name);
         if (b) { fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) ? { ...a, binder_id: String(b.id) } : { ...a })) }; st.answered = note.asked; st.said = note.said || null; }
       }
-      const lead = id && note.pick_kind !== 'binder' ? await pinnedLead(supabase, vendor.id, id, note.pick_name, bookedOnly) : null;
+      // CE-46 ELZ-3 cut 2: the relay rule's first-word pick is re-read by id still carrying the first word
+      const lead = id && note.pick_kind !== 'binder' ? (note.pick_kind === 'lead_first' ? await pinnedLeadFirst(supabase, vendor.id, id, note.pick_name) : await pinnedLead(supabase, vendor.id, id, note.pick_name, bookedOnly)) : null;
       if (lead) {
         // a lead pick carries the lead's binder to an invoice act naming the same client (F3 within each kind; the binder pin)
         fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) && lead.binder_id ? { ...a, binder_id: String(lead.binder_id) } : { ...a })) }; st.answered = note.asked;
@@ -1895,7 +1968,7 @@ async function preTurn(args, depsIn) {
         st.said = note.said || null; // e-151: the replayed relay is written from her original words (F-44.123)
       } else if (fromNote) { /* a binder pick answered above */ } else if (n || !heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string')) {
         if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
-        const rows = await leadsNamed(supabase, vendor.id, note.pick_name, bookedOnly);
+        const rows = note.pick_kind === 'lead_first' ? await leadsFirstNamed(supabase, vendor.id, note.pick_name) : await leadsNamed(supabase, vendor.id, note.pick_name, bookedOnly);
         const line = rows && rows.length > 1 ? sameName(note.pick_name, rows, (r) => r.wedding_date) : null;
         if (!line) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'pick_gone' };
         return { ...askAgain(line, 'B8', note.tries + 1), note: { asked: 'B8', acts: note.acts, tries: note.tries + 1, lead_ids: rows.map((r) => String(r.id)), pick_name: note.pick_name, pick_kind: note.pick_kind, ...(note.said ? { said: note.said } : {}) } };
@@ -2517,7 +2590,7 @@ async function persistDoorTurn(args, depsIn) {
     const ear = out && out.ear;
     const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null; // F-44.58's mark
     const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null; // F-44.100's mark, its OWN key
-    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}), ...(out.askRecord ? { ask: out.askRecord } : {}) };
+    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(ear && ear.rule === 'relay' ? { heard: ear.heard === undefined ? null : ear.heard, rule: 'relay' } : {}) /* CE-46 ELZ-3 cut 2 */, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}), ...(out.askRecord ? { ask: out.askRecord } : {}) };
     res.assistantId = await memory.saveMessage(conversationId, 'assistant', out.reply, (out.toolCalls && out.toolCalls.length) ? out.toolCalls : undefined, { listener });
     if (res.assistantId) {
       try { await supabase.schema('engine').from('messages').update({ room: 'business' }).eq('id', res.assistantId); } catch (e) { console.warn('[door:room]', e && e.message); }
@@ -2531,4 +2604,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS, QUESTION_ACTS, ASK_FLAGS, questionTurn, askContext };
+module.exports = { relayRuleMatch, RELAY_RULE_VERB, pinnedLeadFirst, leadsFirstNamed, proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS, QUESTION_ACTS, ASK_FLAGS, questionTurn, askContext };

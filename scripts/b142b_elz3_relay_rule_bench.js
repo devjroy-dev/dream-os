@@ -1,15 +1,16 @@
 'use strict';
-// scripts/b103_lcv12_rehear_bench.js · TDW CE-45 · LCV-12 · LC-Victor P7 CUT ONE: R-45.3, THE COLD SECOND HEARING, on b102's harness verbatim (its
-// makeDb, world, doubles and withMutated carried byte for byte; the PGRST116 double, C-44.3). b101's header follows for its conventions:
-//   THE FIRST CUT: a message to a client routed from the door on the
-// WhatsApp lane; phone_as_spoken (F-44.96); B37, B38 spoken and B39 carried; the composer on the listener's seat (R-45.1). Rung b101.
-//
-// EVERY CELL THAT CLAIMS A SENTENCE REPLAYS A RECORDED HEARING VERBATIM AND NAMES ITS RECORD AND ROW (C-44.12): the listening check of
-// 22 September 2026 (LCT, sha256 311fda220b8f…, ten sentences × two seats × two variants), the re-hear of the same day (RHT, sha256
-// 017999e53766…, one sentence × Haiku × twenty) and TDW_CE44_LCV9_PART1_WALK_RECORD.md turn 11. Every driver is the REAL preTurn,
-// standIn and persistDoorTurn on b93's in-memory database with the REAL createLead, the REAL coupleDrafts store and the REAL relay seat's
-// send leg (relayToCouple over a fake transport); only the two models are doubles. THE EXIT CODE IS THE VERDICT.
-// Mutations are of PRODUCTION code, never of test setup; a mutation honestly labelled as not reddening is a control.
+// scripts/b142b_elz3_relay_rule_bench.js · TDW CE-46 · ELZ-3 · CUT 2 · F-44.181's CURE: THE DOOR-SIDE RELAY RULE (rung b142b, the b142 package).
+// The chair's ruling of 27 September 2026 on ELZ-3's read-first (iii), "send" dropped (c5): a message OPENING with tell, bata, batao or
+// message, followed by a name matching her live leads, is a relay by construction: the relay act carries the lead's own
+// name (longest run first, exact fold; then the first word, one lead; two or more, B8 numbered with a pick note; none, the ear as today).
+// SHAPE (b'') (the chair, 29 September 2026; (a), the hear skipped, WITHDRAWN): the ear hears as today; the rule ADDS relay(the lead) only when
+// no relay act was heard, keeping every other act; a heard relay of any name stays as heard. §2 pins it, ruling 1's multi-act turn included.
+// THE HARNESS IS b103's (LCV-12), carried byte for byte up to its first section: its makeDb (C-44.3's PGRST116 double), world, doubles, the REAL
+// preTurn, standIn and persistDoorTurn, the REAL relay seat over a fake transport; only the two models are doubles, and the ear double COUNTS its calls.
+// C-44.12: the recorded misses replayed are LCV-11's seat close §4 (TDW_CE45_LCV11_SEAT_CLOSE_HANDOVER.md), verbatim as b103 carries them:
+// 16:12:58 "Tell Sarah thank you" heard {"acts":[],"route":"none"}, and 16:01:48 "Tell Sarah we are free on 22nd" heard the same. m181's per-call
+// jsonl lived in the founder's /tmp (ELZ-2's M181 handover §3) and is not in the tree: its two classes (none/none; booking_confirmed on
+// "tell walk twin we're confirmed") are replayed BY SHAPE and labelled so. THE EXIT CODE IS THE VERDICT; mutations are of production code.
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'bench-inert';
 
@@ -20,7 +21,7 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const P = (rel) => path.join(ROOT, rel);
-const MAN = 'scripts/floor-manifest-lcv12-r453.txt';
+const MAN = 'scripts/floor-manifest-ce46-elz3-cut2.txt';
 const RECORD = 'docs/handovers/TDW_CE44_LCV9_PART1_WALK_RECORD.md';
 let pass = 0; let fail = 0; const failed = [];
 function T(name, cond) { if (cond) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}`); } }
@@ -192,6 +193,7 @@ async function mut(name, rel, pairs, dependents, fn, expect) {
   T(name, ok);
 }
 
+const LD_SHA = '293c4e577b43d9bb6f6b2b92b69e43bb3950921ed5d1a74322d13fb8e2b882c1';
 async function main() {
   const WD = require(WDP);
   const DL = require(P(DLf));
@@ -240,14 +242,7 @@ async function main() {
   // the ear double that answers a SEQUENCE of requests, one per call, and records every call's messages (so the thread's presence is witnessed)
   const calls = [];
   const earSeq = (...reqs) => async (provider, params) => { calls.push({ provider, model: params.model, user: params.messages && params.messages[0] && params.messages[0].content, tools: (params.tools || []).map((t) => t.name), choice: params.tool_choice && params.tool_choice.name, max_tokens: params.max_tokens, system: params.system }); const rq = reqs[Math.min(calls.length - 1, reqs.length - 1)]; if (rq === 'error') throw new Error('listener timed out after 4000 ms'); return { content: [{ type: 'tool_use', name: 'ear_request', input: rq }], usage: { input_tokens: 1400, output_tokens: 50 } }; };
-  // LABELED AMENDMENT · CE-46 ELZ-3 cut 2 (the chair's ruling of 29 September 2026, shape (b''); K3): a message OPENING with tell, bata, batao or
-  // message and naming a live lead is now answered by the door's relay rule on the FIRST hearing (b142b §2 replays these same records against it),
-  // so the cold second hearing this rung proves is never reached by the recorded sentences. Every sentence this rung sends is RE-AIMED here, in one
-  // place, onto an opening the rule does not take ("Can you tell Sarah thank you"): the records' HEARINGS are replayed verbatim as before; only the
-  // opening words of the sentence move. R (the seat close's sentences) is unchanged and 1.0 still reads it.
-  const REAIM = (s) => (typeof s === 'string' && /^\s*(tell|bata|batao|message)\s/i.test(s) ? `Can you ${s.trim().charAt(0).toLowerCase()}${s.trim().slice(1)}` : s);
-  const turnSeq = async (db, message0, reqs, o = {}) => {
-    const message = REAIM(message0);
+  const turnSeq = async (db, message, reqs, o = {}) => {
     const mod = o.M || WD; calls.length = 0;
     LF._resetLaneFlagCache();
     const out = await quiet(() => mod.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message, lane: o.lane || 'whatsapp' },
@@ -261,90 +256,139 @@ async function main() {
   const longThread = (db) => { for (let i = 0; i < 4; i += 1) { db.tables['engine.messages'].push({ id: `u-${i}`, conversation_id: 'c-1', role: 'user', content: `Who are my new leads? ${i}`, meta: null, created_at: new Date(clock += 1000).toISOString() }); db.tables['engine.messages'].push({ id: `a-${i}`, conversation_id: 'c-1', role: 'assistant', content: B34, meta: { listener: { door: true, request: { acts: [{ act: 'find' }], route: 'search' } } }, created_at: new Date(clock += 1000).toISOString() }); } return db; };
   const threadIn = (c) => /Recent conversation, oldest first:/.test(String(c && c.user || ''));
 
-  sec('1 THE RECORD, REPLAYED: a miss inside the thread, heard on the cold second hearing');
-  T('1.0 the record is in the seat close §4 as this rung replays it', (() => { try { const h = src('docs/handovers/TDW_CE45_LCV11_SEAT_CLOSE_HANDOVER.md'); return Object.keys(R).every((k) => h.includes(k) && h.includes(R[k].said) && h.includes(R[k].heard)); } catch (_e) { return false; } })());
-  let db = longThread(makeDb(sarahWorld()));
-  let r = await turnSeq(db, R['16:01:48'].said, [hj('16:01:48'), hj('16:04:19')]);
-  T('1.1 16:01:48 AS RECORDED (none, in a long thread), 16:04:19 as the second hearing: the frame B37 is asked for Sarah', r.keys === 'B37' && /Sarah/.test(r.reply));
-  T('1.2 exactly two calls; the first carried the thread, the second carried NONE (conversationId null)', r.calls.length === 2 && threadIn(r.calls[0]) && !threadIn(r.calls[1]) && /^New message: /.test(r.calls[1].user));
-  { const c0 = r.calls[0] || {}; const c1 = r.calls[1] || {}; // e-62/e-79: guarded reads, so the base reads FAIL and never crashes
-  T('1.3 the same seat, tool, choice, bound and system on both calls', r.calls.length === 2 && c0.model === c1.model && c0.provider === c1.provider && J(c0.tools) === J(c1.tools) && c0.choice === c1.choice && c0.max_tokens === c1.max_tokens && c0.system === c1.system); }
-  T('1.4 meta.listener records BOTH: request = the second, heard = the first, reheard true', canon(meta(db).request) === canon(hj('16:04:19')) && canon(meta(db).heard) === canon(hj('16:01:48')) && meta(db).reheard === true);
-  T('1.5 ONE message: one user row, one assistant row, and the usage carried is the SUM of both calls (2800 in, 100 out)', db.tables['engine.messages'].filter((m) => m.role === 'user' && m.content === REAIM(R['16:01:48'].said)).length === 1 /* K3: the re-aimed sentence (LABELED AMENDMENT at turnSeq) */ && db.tables['engine.messages'].filter((m) => m.role === 'assistant').length === 5 && ((r.out && r.out.ear && r.out.ear.usage) || {}).input_tokens === 2800 && ((r.out && r.out.ear && r.out.ear.usage) || {}).output_tokens === 100);
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, R['16:02:25'].said, [hj('16:02:25'), hj('16:04:19')]);
-  T('1.6 16:02:25 AS RECORDED, the second hearing 16:04:19: B37', r.keys === 'B37' && r.calls.length === 2);
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, R['16:12:58'].said, [hj('16:12:58'), hj('16:13:30')]);
-  T('1.7 16:12:58 AS RECORDED, the second hearing the pwa lane\'s 16:13:30 shape (relay, Sarah, no date): B37', r.keys === 'B37' && r.calls.length === 2 && meta(db).reheard === true);
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, 'Tell Sarah hi', [NONE, req([relay('Sarah')])]);
-  T('1.7a THE CARD, STEP 4: "Tell Sarah hi" (the fix walk\'s 17:26:09 shape) heard as none in the thread, then relay/Sarah cold: B37, two calls, reheard true', r.keys === 'B37' && r.calls.length === 2 && meta(db).reheard === true);
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, R['16:12:58'].said, [hj('16:12:58'), hj('16:13:30')], { lane: 'pwa' });
-  T('1.8 [FLIPPED at ELZ-1 cut 2b] on the pwa lane the second hearing runs the same and the relay is framed as on WhatsApp (B37; the relay_pwa exit is deleted)', r.keys === 'B37' && r.calls.length === 2 && meta(db).reheard === true && r.out.why !== 'relay_pwa'); /* LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (P6b's second half, R-45.17): this boundary cell flipped as designed */
 
-  sec('2 NEVER A THIRD, AND A SECOND THAT HEARS NOTHING READS LEFTOVER');
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, R['16:12:58'].said, [NONE, NONE, hj('16:13:30')]);
-  T('2.1 a second hearing returning nothing: LEFTOVER, exactly two calls, never a third', r.keys === 'LEFTOVER' && r.calls.length === 2);
-  T('2.2 and the record still shows both: request none, heard none, reheard true', meta(db).reheard === true && canon(meta(db).request) === canon(NONE) && canon(meta(db).heard) === canon(NONE));
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, R['16:12:58'].said, [NONE, 'error', hj('16:13:30')]);
-  T('2.3 a second hearing that errors (its own 4 s bound): the first request stands, LEFTOVER, rehear_error on the record, never a third', r.keys === 'LEFTOVER' && r.calls.length === 2 && meta(db).reheard === true && /timed out/.test(String(meta(db).rehear_error)) && canon(meta(db).request) === canon(NONE));
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, R['16:04:19'].said, [hj('16:04:19'), NONE]);
-  T('2.4 [boundary, green at the base: one hearing is today\'s] heard the FIRST time: ONE call, no rehear mark', r.keys === 'B37' && r.calls.length === 1 && meta(db).reheard === undefined && meta(db).heard === undefined);
+  const rows = (d) => d.tables['public.leads'];
+  const ruleWorld = () => {
+    const w = world();
+    w['public.leads'] = [
+      leadRow({ id: 'l-sarah', name: 'Sarah', phone: PHONE, state: 'booked', wedding_date: '2028-03-05' }),
+      leadRow({ id: 'l-asha', name: 'Asha Walk Fifteen', phone: PHONE2, wedding_date: '2027-03-05' }),
+      leadRow({ id: 'l-tw1', name: 'Walk twin', phone: null, wedding_date: '2027-03-05' }),
+      leadRow({ id: 'l-tw2', name: 'Walk twin', phone: null, wedding_date: '2027-06-12' }),
+      leadRow({ id: 'l-pk', name: 'Priya Khan', phone: '+919625759926', wedding_date: '2027-01-10' }),
+      leadRow({ id: 'l-pd', name: 'Priya Das', phone: PHONE2, wedding_date: '2027-06-01' }),
+      leadRow({ id: 'l-ab', name: 'Ab', phone: null }),
+      leadRow({ id: 'l-gone', name: 'Meena', phone: null, deleted_at: '2026-08-26T10:18:48Z' }),
+    ];
+    return w;
+  };
+  const RM = typeof WD.relayRuleMatch === 'function' ? WD.relayRuleMatch : async () => null; // absent before the cut: its cells FAIL by name
+  const match = async (m, db) => RM(db || makeDb(ruleWorld()), V.id, m);
 
-  sec('3 THE GATE: WHEN THE SECOND HEARING DOES NOT RUN');
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, 'tell me who owes me money', [NONE, hj('16:13:30')]);
-  T('3.1 THE FOUNDER\'S CONTROL: "tell me who owes me money" holds no lead name: one call, LEFTOVER, no rehear', r.keys === 'LEFTOVER' && r.calls.length === 1 && meta(db).reheard === undefined);
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, 'Tell Ab hello', [NONE, hj('16:13:30')]);
-  T('3.2 a live lead named "Ab" (two characters) is never a trigger: one call', r.calls.length === 1 && r.keys === 'LEFTOVER');
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, 'Tell Walk Sixteen Nobody hello', [NONE, req([relay('Walk Sixteen Nobody')])]);
-  T('3.2a THE CARD, STEP 6: "Tell Walk Sixteen Nobody hello", no lead of hers by that name, heard as none: ONE call, LEFTOVER, reheard ABSENT (the gate fires only on HER live leads)', r.calls.length === 1 && r.keys === 'LEFTOVER' && meta(db).reheard === undefined && meta(db).heard === undefined);
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, 'Tell Meena hello', [NONE, hj('16:13:30')]);
-  T('3.3 a DELETED lead\'s name is no trigger: one call', r.calls.length === 1 && r.keys === 'LEFTOVER');
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, 'Tell sarah thanks', [NONE, hj('16:13:30')]);
-  T('3.4 the name is matched under key(): "sarah" in lower case triggers', r.calls.length === 2 && r.keys === 'B37');
-  db = longThread(makeDb(sarahWorld())); r = await turnSeq(db, 'Tell Sarah hello', [req([{ act: 'find' }], 'search'), hj('16:13:30')]);
-  T('3.5 an act heard (find) is not "nothing": one call, no rehear (the ear\'s record decides such a turn as before)', r.calls.length === 1 && meta(db).reheard === undefined);
-  // A NOTE TURN: the door asked B35 last turn; her answer "Sarah" was heard as none (the record's own 16:07:54). The note branch decides; no second hearing.
-  db = makeDb(sarahWorld()); r = await turnSeq(db, 'Send a message to my client asking for the advance', [req([{ act: 'relay' }])]);
-  T('3.6 (setup) B35 asked with a name note', r.keys === 'B35' && noteIn(db).asked === 'B35');
-  r = await turnSeq(db, 'Sarah', [NONE, hj('16:13:30')]);
-  T('3.7 a turn answering a NOTE is never re-heard, even when the ear returned none and her message names a live lead: one call, the note decides (B37)', r.calls.length === 1 && r.keys === 'B37' && meta(db).reheard === undefined);
-  db = makeDb(sarahWorld()); db.tables['public.pending_money_acts'].push({ id: 'pma-1', vendor_id: V.id, act: 'booking_confirmed', request: { lead_id: 'l-sarah', lead_name: 'Sarah', kind: 'booking_confirmed' }, state: 'staged', lane: 'whatsapp', created_at: new Date(NOW - 60e3).toISOString(), expires_at: new Date(NOW + 3600e3).toISOString() });
-  r = await turnSeq(db, 'Yes', [NONE, hj('16:13:30')]);
-  T('3.8 a live money row\'s YES returns before the ear: zero calls, no rehear', r.calls.length === 0 && meta(db).reheard === undefined);
-  db = longThread(makeDb(sarahWorld())); db.tables['public.leads'] = null;
-  r = await turnSeq(db, R['16:12:58'].said, [NONE, hj('16:13:30')]);
-  T('3.9 a FAILED read of her leads is not a name found: one call, LEFTOVER (C-44.4: an empty answer and a broken answer differ)', r.calls.length === 1 && r.keys === 'LEFTOVER');
+  sec('1 THE MATCH (relayRuleMatch, on her live leads)');
+  let x = await match('tell Sarah hi');
+  T('1.1 "tell Sarah hi": exact, Sarah', !!x && x.kind === 'exact' && x.name === 'Sarah');
+  x = await match('Tell Sarah, we are free');
+  T('1.2 an edge comma on the name is folded: exact, Sarah', !!x && x.kind === 'exact' && x.name === 'Sarah');
+  x = await match('bata Asha Walk Fifteen ki advance bhej do');
+  T('1.3 "bata" and a three-word name, the longest run first: exact, Asha Walk Fifteen', !!x && x.kind === 'exact' && x.name === 'Asha Walk Fifteen');
+  x = await match('batao Asha kal aayenge');
+  T('1.4 "batao" and a first word naming ONE lead: that lead\'s full name', !!x && x.kind === 'first' && x.name === 'Asha Walk Fifteen');
+  x = await match('message Priya thanks');
+  T('1.5 "message" and a first word naming TWO leads: a pick, in the date order (F-44.178)', !!x && x.kind === 'pick' && x.spoken === 'priya' && x.rows.map((r) => r.id).join() === 'l-pk,l-pd');
+  x = await match("tell walk twin we're confirmed");
+  T('1.6 two leads of the SAME full name: exact (planRelay\'s own B8 numbers them)', !!x && x.kind === 'exact' && x.name === 'Walk twin');
+  T('1.7 "tell me who owes me money" (his control): no rule', (await match('tell me who owes me money')) === null);
+  T('1.8 "tell her we are free" (a pronoun): no rule, the ear as today', (await match('tell her we are free')) === null);
+  T('1.9 "send Sarah the invoice": no rule ("send" dropped, c5)', (await match('send Sarah the invoice')) === null);
+  T('1.10 the verb not first ("ok tell Sarah hi"): no rule', (await match('ok tell Sarah hi')) === null);
+  x = await match('tell sarah');
+  T('1.11 a bare "tell sarah" is a relay to Sarah (the composer\'s placeholder refusal guards the body)', !!x && x.kind === 'exact' && x.name === 'Sarah');
+  T('1.12 a deleted lead is no match ("tell Meena hi")', (await match('tell Meena hi')) === null);
+  x = await match('tell ab hi');
+  const abWorld = () => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].filter((l) => l.id !== 'l-ab').concat([leadRow({ id: 'l-abk', name: 'Ab Kumar', phone: null })]); return w; };
+  T('1.13 an exact two-letter name matches exactly; the first-word read never goes under three letters', !!x && x.kind === 'exact' && x.name === 'Ab' && (await match('tell ab hi', makeDb(abWorld()))) === null);
+  const broken = { from: () => ({ select: () => ({ eq: () => ({ is: async () => ({ data: null, error: { message: 'down' } }) }) }) }) };
+  T('1.14 a failed read of her leads is no rule (null), never a throw', (await RM(broken, V.id, 'tell Sarah hi')) === null);
 
-  sec('4 TOTALITY AND THE HELPERS');
-  // e-62: on the source BEFORE the cut the helpers do not exist; the cells FAIL by name and every later cell still lists.
-  const has = ['heardNothing', 'namesLiveLead', 'rehear', 'sumUsage'].every((k) => typeof WD[k] === 'function');
-  if (!has) { for (const k of Object.keys(WD)) { /* nothing */ } WD.heardNothing = WD.heardNothing || (() => 'absent'); WD.namesLiveLead = WD.namesLiveLead || (async () => 'absent'); WD.rehear = WD.rehear || (() => ({})); WD.sumUsage = WD.sumUsage || (() => ({})); }
-  T('4.1 heardNothing: none/[] true; task, search, missing request, non-object, acts absent: false', WD.heardNothing({ request: { route: 'none', acts: [] } }) === true && WD.heardNothing({ request: { route: 'task', acts: [] } }) === false && WD.heardNothing({ request: { route: 'none', acts: [{ act: 'find' }] } }) === false && WD.heardNothing(null) === false && WD.heardNothing({ request: null }) === false && WD.heardNothing({ request: { route: 'none' } }) === false && WD.heardNothing(7) === false);
-  T('4.2 namesLiveLead is total: no supabase, no message, a throwing client, a non-string message: false', (await WD.namesLiveLead(null, V.id, 'Tell Sarah')) === false && (await WD.namesLiveLead(makeDb(sarahWorld()), V.id, '')) === false && (await WD.namesLiveLead({ from: () => { throw new Error('x'); } }, V.id, 'Tell Sarah')) === false && (await WD.namesLiveLead(makeDb(sarahWorld()), V.id, { a: 1 })) === false);
-  T('4.3 rehear: a second with a request replaces; a second with none keeps the first; a second with an error keeps the first and records it; hostile seconds keep the first', canon(WD.rehear({ request: NONE, usage: { input_tokens: 1 } }, { request: hj('16:13:30'), usage: { input_tokens: 2 } }).request) === canon(hj('16:13:30')) && canon(WD.rehear({ request: NONE }, { request: NONE }).request) === canon(NONE) && WD.rehear({ request: NONE }, { request: null, error: 'boom' }).rehear_error === 'boom' && WD.rehear({ request: NONE }, null).reheard === true && WD.rehear(null, { request: NONE }) === null && has);
-  T('4.4 sumUsage sums the counted fields and tolerates nulls', WD.sumUsage({ input_tokens: 1400, output_tokens: 50, cache_read_input_tokens: 3 }, { input_tokens: 1400, output_tokens: 50 }).input_tokens === 2800 && WD.sumUsage({ input_tokens: 1 }, null).input_tokens === 1 && WD.sumUsage(null, null) === null);
-  T('4.5 REHEAR_MIN_NAME is 3, exported', WD.REHEAR_MIN_NAME === 3);
-  T('4.6 the pinned image: the rehear call passes conversationId null and reads the second hearing before the note branches', /conversationId: null, excludeId: null \}/.test(src(WDf)) && src(WDf).indexOf('st.ear = rehear(first, second)') < src(WDf).indexOf("if (note && NAME_ASKS.includes(note.asked))"));
-  T('4.7 listenerDoor.recordListening (chain in) records heard/reheard too', /reheard === true \? \{ heard:/.test(src(LDf)));
+  sec("2 THE DOOR (the REAL preTurn), shape (b''): the ear hears as today; the rule ADDS the relay only where none was heard");
+  // C-44.12: LCV-11's seat close §4, verbatim (b103's R, above this rung's harness): the ear heard these as NOTHING inside a long thread
+  const MISS = JSON.parse('{"acts":[],"route":"none"}');
+  let db = longThread(makeDb(ruleWorld()));
+  let r = await turnSeq(db, 'Tell Sarah thank you', [MISS, MISS]);
+  T('2.1 16:12:58 AS RECORDED ("Tell Sarah thank you", heard none in a long thread): B37 for Sarah on ONE call (the rule\'s relay, no cold second hearing)', r.keys === 'B37' && /Sarah/.test(r.reply) && r.calls.length === 1);
+  T('2.1b the record keeps what the ear heard (heard: none) beside the request the door decided on (relay Sarah), rule: relay', (() => { const m = meta(db); return !!m && m.rule === 'relay' && canon(m.heard) === canon(MISS) && JSON.stringify(m.request && m.request.acts) === JSON.stringify([{ act: 'relay', client_as_spoken: 'Sarah' }]); })());
+  db = longThread(makeDb(ruleWorld()));
+  r = await turnSeq(db, 'Tell Sarah we are free on 22nd', [MISS, MISS]);
+  T('2.2 16:01:48 AS RECORDED: B37 for Sarah, one call', r.keys === 'B37' && r.calls.length === 1);
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, 'tell Sarah hi', [MISS]);
+  T('2.3 m181\'s weakest case BY SHAPE ("tell Sarah hi", none/none, no thread): B37, one call', r.keys === 'B37' && r.calls.length === 1);
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, "tell walk twin we're confirmed", [{ route: 'task', acts: [{ act: 'booking_confirmed', client_as_spoken: 'walk twin' }] }]);
+  T('2.4 m181\'s booking_confirmed BY SHAPE ("tell walk twin we\'re confirmed"): the relay is ADDED in front and the booking act KEPT (the door decided on both), the two Walk twins numbered (B8)', canon(meta(db).request && meta(db).request.acts) === canon([{ act: 'relay', client_as_spoken: 'Walk twin' }, { act: 'booking_confirmed', client_as_spoken: 'walk twin' }]) && /^B8/.test(r.keys) && /Walk twin \(5 March 2027\)/.test(r.reply) && /Walk twin \(12 June 2027\)/.test(r.reply));
+  // FINDING, recorded not cured (the chair's): two acts naming ONE ambiguous name each ask B8 (the same question twice) and no pick note is kept
+  // (the note is written only for a turn whose ONE line is B8), so her number is not read. Pre-existing for any such heard pair; (b'') makes it reachable here.
+  T('2.4f [the finding, as observed] the question is asked twice and no pick note is kept', r.keys === 'B8,B8' && noteOf(db) === undefined);
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, 'message Priya thanks', [MISS]);
+  T('2.5 a first-word tie: B8 names both Priyas in the date order, one call, a lead_first pick noted', r.keys === 'B8' && /1\. Priya Khan/.test(r.reply) && /2\. Priya Das/.test(r.reply) && r.calls.length === 1 && (noteIn(db).pick_kind === 'lead_first') && JSON.stringify(noteIn(db).lead_ids) === JSON.stringify(['l-pk', 'l-pd']));
+  r = await turnSeq(db, '2', [MISS]);
+  T('2.6 her "2" picks Priya Das by id: the frame B37 is for Priya Das', r.keys === 'B37' && /Priya Das/.test(r.reply));
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, 'tell me who owes me money', [MISS]);
+  T('2.7 his control ("tell me who owes me money"): no rule; heard as today (one call, no lead named, no rehear)', r.calls.length === 1 && meta(db).rule === undefined);
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, 'send Sarah the invoice', [MISS, MISS]);
+  T('2.8 "send Sarah the invoice": no rule ("send" dropped); the none is re-heard cold as today (R-45.3: two calls)', r.calls.length === 2 && meta(db).rule === undefined);
+  // RULING 1 (the chair's, pinned in b101 5.8): a relay beside a money act asks the FRAME and the money act rides the note. Under (b'') both are kept.
+  const BOOKED = { act: 'booking_confirmed', client_as_spoken: 'Asha Walk Fifteen' };
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, 'Tell Asha Walk Fifteen the booking is confirmed', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'Asha Walk Fifteen' }, BOOKED] }]);
+  const heardBoth = { keys: r.keys, acts: (noteIn(db).acts || []).map((a) => a.act).join() };
+  T('2.9 RULING 1, the ear heard relay + booking_confirmed: untouched (a relay was heard); the frame B37, the booking act rides the note', heardBoth.keys === 'B37' && /booking_confirmed/.test(heardBoth.acts) && meta(db).rule === undefined);
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, 'Tell Asha Walk Fifteen the booking is confirmed', [{ route: 'task', acts: [BOOKED] }]);
+  T('2.9b RULING 1 under (b\'\'): the ear heard ONLY booking_confirmed; the relay is added and the booking act KEPT: the same frame and note as 2.9', r.keys === heardBoth.keys && (noteIn(db).acts || []).map((a) => a.act).join() === heardBoth.acts && meta(db).rule === 'relay');
+  db = makeDb(ruleWorld());
+  r = await turnSeq(db, 'Tell Asha Walk Fiften hello', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'Asha Walk Fiften' }] }]);
+  T('2.10 a heard relay of ANY name stays as heard: the one-letter slip is still offered through the ONE home (B36, b101 4.9\'s bytes)', r.reply === 'Did you mean Asha Walk Fifteen? Reply YES or NO.' && meta(db).rule === undefined);
+  db = makeDb(ruleWorld());
+  { const LFm = require(P('src/lib/laneFlags.js')); LFm._resetLaneFlagCache(); }
+  const outErr = await quiet(() => WD.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message: 'tell Sarah hi', lane: 'whatsapp' },
+    { llmCreate: async () => { throw new Error('listener down'); }, nowMs: NOW, composerCreate: composerOf(BODY), sendWhatsApp: transport, env: ENV }));
+  T('2.11 the ear erroring: the rule still hears the relay (B37 for Sarah)', !!outErr && J(outErr.keys) === 'B37' && /Sarah/.test(String(outErr.reply || '')));
 
-  sec('5 MUTATIONS OF PRODUCTION CODE');
-  const oneMiss = async (rq, message, db) => { const d = db || longThread(makeDb(sarahWorld())); const x = await turnSeq(d, message || R['16:01:48'].said, [hj('16:01:48'), hj('16:04:19')], { M: rq(WDf) }); return { keys: x.keys, n: x.calls.length, m: meta(d) }; };
-  await mut('5.1 MUTATION: the second hearing removed (the gate never true) reddens 1.1: LEFTOVER, one call', WDf, [['if (!note && heardNothing(st.ear) && await namesLiveLead(supabase, vendor.id, message)) {', 'if (false) {']], [], async (rq) => oneMiss(rq), (v) => v.keys === 'LEFTOVER' && v.n === 1);
-  await mut('5.2 MUTATION: the name gate removed reddens 3.1: the control is re-heard', WDf, [['if (!note && heardNothing(st.ear) && await namesLiveLead(supabase, vendor.id, message)) {', 'if (!note && heardNothing(st.ear)) {']], [], async (rq) => { const d = longThread(makeDb(sarahWorld())); const x = await turnSeq(d, 'tell me who owes me money', [NONE, hj('16:13:30')], { M: rq(WDf) }); return x.calls.length; }, (v) => v === 2);
-  await mut('5.3 MUTATION: the note guard removed reddens 3.7: a note answer is re-heard', WDf, [['if (!note && heardNothing(st.ear) && await namesLiveLead(supabase, vendor.id, message)) {', 'if (heardNothing(st.ear) && await namesLiveLead(supabase, vendor.id, message)) {']], [], async (rq) => { const d = makeDb(sarahWorld()); await turnSeq(d, 'Send a message to my client asking for the advance', [req([{ act: 'relay' }])], { M: rq(WDf) }); const x = await turnSeq(d, 'Sarah', [NONE, hj('16:13:30')], { M: rq(WDf) }); return x.calls.length; }, (v) => v === 2);
-  await mut('5.4 MUTATION: the thread NOT stripped on the second call reddens 1.2', WDf, [['conversationId: null, excludeId: null }', 'conversationId: threadId, excludeId: null }']], [], async (rq) => { const d = longThread(makeDb(sarahWorld())); const x = await turnSeq(d, R['16:01:48'].said, [hj('16:01:48'), hj('16:04:19')], { M: rq(WDf) }); return threadIn(x.calls[1]); }, (v) => v === true);
-  await mut('5.5 MUTATION: the record not carrying heard/reheard reddens 1.4', WDf, [['st.ear = rehear(first, second);', 'st.ear = { ...first, request: second && second.request && !second.error ? second.request : first.request };']], [], async (rq) => oneMiss(rq), (v) => v.keys === 'B37' && v.m.reheard === undefined);
-  await mut('5.6 MUTATION: the minimum name length dropped to 1 reddens 3.2', WDf, [['const REHEAR_MIN_NAME = 3;', 'const REHEAR_MIN_NAME = 1;']], [], async (rq) => { const d = longThread(makeDb(sarahWorld())); const x = await turnSeq(d, 'Tell Ab hello', [NONE, hj('16:13:30')], { M: rq(WDf) }); return x.calls.length; }, (v) => v === 2);
-  await mut('5.7 MUTATION: usage not summed reddens 1.5', WDf, [['usage: sumUsage(first.usage, s.usage),', 'usage: s.usage || first.usage,']], [], async (rq) => { const d = longThread(makeDb(sarahWorld())); const x = await turnSeq(d, R['16:01:48'].said, [hj('16:01:48'), hj('16:04:19')], { M: rq(WDf) }); return ((x.out && x.out.ear && x.out.ear.usage) || {}).input_tokens; }, (v) => v === 1400);
-  await mut('5.8 MUTATION: a THIRD hearing added is what 2.1\'s call count catches (three calls)', WDf, [['st.ear = rehear(first, second);', 'st.ear = rehear(first, second); if (heardNothing(st.ear)) st.ear = rehear(st.ear, await L.listener.hear({ supabase, route, message, conversationId: null, excludeId: null }, { ...(deps.llmCreate ? { llmCreate: deps.llmCreate } : {}) }));']], [], async (rq) => { const d = longThread(makeDb(sarahWorld())); const x = await turnSeq(d, R['16:12:58'].said, [NONE, NONE, hj('16:13:30')], { M: rq(WDf) }); return x.calls.length; }, (v) => v === 3);
+  sec('3 m181 --rule: the sixteen sentences by construction');
+  const PH = ['tell {c} hello', 'tell {c} hi', 'tell {c} good morning', 'tell {c} thank you', "tell {c} we're confirmed", 'tell {c} see you soon', 'tell {c} happy diwali', 'tell {c} congratulations'];
+  let n = 0; let relays = 0;
+  for (const c of ['walk twin', 'Sarah']) for (const p of PH) for (let k = 0; k < 10; k += 1) { n += 1; const m = await match(p.replace('{c}', c)); if (m && (m.kind === 'exact' || m.kind === 'first')) relays += 1; }
+  T(`3.1 m181's eight phrasings x two clients x ten: ${relays}/${n} read as a relay (ELZ-2's ear: 40/160 without the thread, 125/160 with)`, n === 160 && relays === 160);
+  const m181 = srcOr('scripts/m181_ear_short_relay_measure.js');
+  T('3.2 m181 carries --rule (bare, no key, no model)', /--rule/.test(m181) && /relayRuleMatch/.test(m181));
 
-  sec('6 THE LAWS');
-  const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : [];
-  T('6.1 W-1 NONE and the manifest names exactly this cut\'s paths', man.every((p) => !/^src\/engine\/|soul|lens|^db\/migrations\//.test(p)) && JSON.stringify(man.slice().sort()) === JSON.stringify([MAN, 'scripts/b103_lcv12_rehear_bench.js', WDf, LDf, 'docs/handovers/TDW_CE45_LCV12_R453_HANDOVER.md'].sort()));
-  // RE-PINNED (CE-45 LCV-12, P7 2a): LINES 52 and EAR_TOOL's hash moved by 2a's measured slots (b104 pins both); what this cell pins for cut one is that cut one's OWN paths hold no byte: doorLines.js not in its manifest, SYSTEM unmoved.
-  T('6.2 no founder byte moved by cut one: doorLines.js is not in its manifest; SYSTEM as at 541f145; LINES 52 and EAR_TOOL as 2a shipped them', !man.includes(DLf) && Object.keys(DL.LINES).length === 83 /* RE-PINNED (CE-45 ELZ-1 cut 2b, labelled): B86 and B87 his (F-44.175's stopgap), LINES 83 */ /* RE-PINNED (CE-45 LCV-15, LSP_2, labelled): 79 to 81, B84 and B85, his (R-45.16, the screenshot save); b112 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4 fix, labelled): 79 since B80 to B83, his; b109 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 4, labelled): 75 since B69 to B74, B78, B79, his (ASK 7: each form its own key); b108 holds them */ /* RE-PINNED (CE-45 LCV-14, P7 cut 3, labelled): 67 since B56 to B62, B67, B68, his (B60 carried, unspoken); b106 holds them */ /* RE-PINNED (CE-45 LCV-13, P7 2b, labelled): LINES 58, B48 to B53 his; EAR_TOOL untouched by 2b */ && sha(LD.SYSTEM) === '90163dbe1889ee33f4b505b3b4e1aecfe1f853a2ee19376ebb894bb6aff75fb2' && sha(JSON.stringify(LD.EAR_TOOL)) === '4a8cfbeb20de523240ec68012c4f383bec56282e515fed50f0df78ae85aecd6d');
-  T('6.3 the money functions are untouched: planMoney, planPayment, planBooking, applyRow, reread as at 541f145', sha(src(WDf).slice(src(WDf).indexOf('async function planMoney'), src(WDf).indexOf('async function planInvoice'))) === '3e0abcc8a6f2fb0431a425a5e26336c80ead283d2f56d2b70cd927821d3ea530' && sha(src(WDf).slice(src(WDf).indexOf('async function applyRow'), src(WDf).indexOf('// The agent\'s current thread'))) === '8987e9f617aacdc6744d5ef590c5a6f44aebf2cc3d4c4f036e482fd6d2d1dfad');
+  sec('4 THE LAWS');
+  T('4.1 W-1: listenerDoor.js is not in this cut (its sha as at 1b8789f)', sha(src(LDf)) === LD_SHA);
+  const man = fs.existsSync(P(MAN)) ? src(MAN).split('\n').map((q) => q.trim()).filter((q) => q && !q.startsWith('#')) : [];
+  T('4.2 the manifest names no soul, lens, engine or migration path', man.length > 0 && man.every((p) => !/soul|lens|^src\/engine\/|^db\/migrations\//.test(p)));
 
-  console.log(`\nb103_lcv12_rehear_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
+  sec('5 MUTATIONS of production code (each must redden its named cell)');
+  const WDdeps = [];
+  const GUARD = "    if (relayRule && !(st.ear && st.ear.request && Array.isArray(st.ear.request.acts) && st.ear.request.acts.some((a) => a && a.act === 'relay'))) {";
+  await mut('M1 the rule never applied: 2.3 red (none re-heard, LEFTOVER)', WDf, [[GUARD, '    if (false) {']], WDdeps,
+    async (req2) => (await turnSeq(makeDb(ruleWorld()), 'tell Sarah hi', [MISS, MISS], { M: req2(WDf) })).keys, (v) => v !== 'B37');
+  await mut('M2 a heard relay overwritten (the guard ignores it): 2.10 red (B36 lost)', WDf, [[GUARD, '    if (relayRule) {']], WDdeps,
+    async (req2) => (await turnSeq(makeDb(ruleWorld()), 'Tell Asha Walk Fiften hello', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'Asha Walk Fiften' }] }], { M: req2(WDf) })).reply, (v) => v !== 'Did you mean Asha Walk Fifteen? Reply YES or NO.');
+  await mut('M3 "send" back in the verbs: 1.9 red', WDf, [['(tell|bata|batao|message)\\s+(\\S', '(tell|bata|batao|message|send)\\s+(\\S']], WDdeps,
+    async (req2) => req2(WDf).relayRuleMatch(makeDb(ruleWorld()), V.id, 'send Sarah the invoice'), (v) => v !== null);
+  await mut('M4 the first-word read removed: 1.4 red', WDf, [['    if (hits.length === 1) return { kind: \'first\', name: hits[0].name.trim() };\n', '']], WDdeps,
+    async (req2) => req2(WDf).relayRuleMatch(makeDb(ruleWorld()), V.id, 'batao Asha kal aayenge'), (v) => !(v && v.kind === 'first'));
+  await mut('M5 the first-word tie not asked: 2.5 red', WDf, [["    if (hits.length > 1) return { kind: 'pick', spoken: first, rows: hits };\n", '']], WDdeps,
+    async (req2) => (await turnSeq(makeDb(ruleWorld()), 'message Priya thanks', [MISS, MISS], { M: req2(WDf) })).keys, (v) => v !== 'B8');
+  await mut('M6 edge punctuation not folded: 1.2 red', WDf, [['const said = edgeFold(words.slice(0, n).join(\' \'));', 'const said = key(words.slice(0, n).join(\' \'));'], ['const first = edgeFold(words[0]);', 'const first = key(words[0]);']], WDdeps,
+    async (req2) => req2(WDf).relayRuleMatch(makeDb(ruleWorld()), V.id, 'Tell Sarah, we are free'), (v) => !(v && v.kind === 'exact' && v.name === 'Sarah'));
+  await mut('M7 the pick not honoured by first word (pinnedLeadFirst reads the full name): 2.6 red', WDf, [["if (error || !data || key(data.name).split(/\\s+/)[0] !== key(first)) return null;", 'if (error || !data || key(data.name) !== key(first)) return null;']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb(ruleWorld()); await turnSeq(d, 'message Priya thanks', [MISS], { M }); return (await turnSeq(d, '2', [MISS], { M })).keys; }, (v) => v !== 'B37');
+  await mut('M8 the min-length guard dropped on the first word: 1.13\'s second half red', WDf, [['if (first.length < REHEAR_MIN_NAME) return null;', '']], WDdeps,
+    async (req2) => req2(WDf).relayRuleMatch(makeDb(abWorld()), V.id, 'tell ab hi'), (v) => v !== null);
+  await mut('M9 validNote drops lead_first back to lead: 2.6 red', WDf, [["n.pick_kind === 'lead_first' ? 'lead_first' : 'lead'", "'lead'"]], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb(ruleWorld()); await turnSeq(d, 'message Priya thanks', [MISS], { M }); return (await turnSeq(d, '2', [MISS], { M })).keys; }, (v) => v !== 'B37');
+  await mut('M10 the other acts dropped when the relay is added (shape (a)\'s loss): 2.9b red', WDf, [["const others = heardReq && Array.isArray(heardReq.acts) ? heardReq.acts.map((a) => ({ ...a })) : [];", 'const others = [];']], WDdeps,
+    async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'Tell Asha Walk Fifteen the booking is confirmed', [{ route: 'task', acts: [BOOKED] }], { M: req2(WDf) }); return (noteIn(d).acts || []).map((a) => a.act).join(); }, (v) => !/booking_confirmed/.test(v));
+  await mut('M11 the record forgets what was heard: 2.1b red', WDf, [["...(ear && ear.rule === 'relay' ? { heard: ear.heard === undefined ? null : ear.heard, rule: 'relay' } : {})", '...({})']], WDdeps,
+    async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'tell Sarah hi', [MISS], { M: req2(WDf) }); return meta(d).rule; }, (v) => v !== 'relay');
+
+  console.log(`\nb142b_elz3_relay_rule_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
   if (fail) { console.log(`FAILED: ${failed.join(' · ')}`); process.exit(1); }
 }
 main().catch((e) => { console.log(`BENCH CRASHED: ${e && e.stack}`); process.exit(1); });

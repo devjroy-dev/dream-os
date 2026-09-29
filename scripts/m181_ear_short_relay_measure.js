@@ -15,6 +15,9 @@
 //               every call is RECORDED as it goes (one JSON line per call, /tmp/m181/<mode>.jsonl); the run STOPS at the first credit,
 //               quota or auth error and when the spend reaches the budget; --resume runs only what did not run.
 //   A-46.1: bare (no --live, no --dry) it calls no model, prints what it would send, exits 0, so the floor reads it green (e-156).
+//   --rule      CE-46 ELZ-3 cut 2 (F-44.181's cure, the chair's measure): the SAME sixteen sentences x N read by the door's relay rule
+//               (workingDoor.relayRuleMatch) over a leads double holding the walk's clients (two Walk twins, 12 June and 5 March 2027; Sarah);
+//               no model, no key, no network; exits 0 only when every sentence reads as a relay (by construction), 1 otherwise.
 //
 // Usage: node scripts/m181_ear_short_relay_measure.js [--history] [--live --budget=1 | --dry] [--n=10] [--resume]
 //        [--provider=anthropic] [--model=claude-haiku-4-5-20251001]
@@ -99,7 +102,30 @@ function dryModel(behaviour = 'relay') {
   };
 }
 
+async function ruleMode() {
+  process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'm181-inert';
+  const { relayRuleMatch } = require(path.join(ROOT, 'src/lib/vendor/workingDoor.js'));
+  const LEADS = [
+    { id: 'm181-tw1', name: 'Walk twin', wedding_date: '2027-03-05' },
+    { id: 'm181-tw2', name: 'Walk twin', wedding_date: '2027-06-12' },
+    { id: 'm181-sarah', name: 'Sarah', wedding_date: '2028-03-05' },
+  ];
+  const db = { from: () => ({ select: () => ({ eq: () => ({ is: async () => ({ data: LEADS.map((l) => ({ ...l })), error: null }) }) }) }) };
+  let n = 0; let relays = 0;
+  for (const c of CLIENTS) {
+    for (const p of PHRASES) {
+      let r = 0;
+      for (let k = 0; k < N; k += 1) { n += 1; const m = await relayRuleMatch(db, 'm181-vendor', p.replace('{c}', c)); if (m && (m.kind === 'exact' || m.kind === 'first')) { relays += 1; r += 1; } }
+      console.log(`  ${JSON.stringify(p.replace('{c}', c)).padEnd(38)} rule relay ${r}/${N}`);
+    }
+  }
+  console.log(`m181 TOTAL (--rule, by construction): read as a relay ${relays}/${n} (${(100 * relays / n).toFixed(1)}%); no model, no spend`);
+  return relays === n ? 0 : 1;
+}
+
 async function main() {
+  if (has('rule')) return ruleMode();
   const modeLabel = `${MODE}${HISTORY ? ' with history' : ' without history'}`;
   const per = PLAN.reduce((a, r) => a + projectedPerCall(r.client, r.msg), 0) / PLAN.length;
   console.log(`m181 (${modeLabel}): ${PHRASES.length} phrasings x ${CLIENTS.length} clients x ${N} = ${PLAN.length} listener calls on ${route.listener_provider}/${route.listener_model}`);

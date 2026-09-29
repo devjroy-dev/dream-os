@@ -1,0 +1,12 @@
+# scripts/floor-manifest-ce46-elz3-cut2.txt
+# CE-46 · ELZ-3 · CUT 2 (dream-os): F-44.181's cure, the door-side relay rule (tell, bata, batao, message + a live lead's name = a relay by
+# construction: shape (b''), the relay ADDED after the first hearing when none was heard, every other act kept; a first-word tie numbered with a
+# lead_first pick note); m181 --rule; rung b142b; K3 re-aimed by label in b103 and b95.
+# BASE: f3aebab (built on 1b8789f, carried by command to f3aebab on the chair's word of 29 September 2026; re-derived at the cut). F-19.16: a dirty path outside this list is a STOP. A-45.3: no new folder.
+src/lib/vendor/workingDoor.js
+scripts/m181_ear_short_relay_measure.js
+scripts/b142b_elz3_relay_rule_bench.js
+scripts/b103_lcv12_rehear_bench.js
+scripts/b95_lcv10_note_bench.js
+docs/handovers/TDW_CE46_ELZ3_CUT2_HANDOVER.md
+scripts/floor-manifest-ce46-elz3-cut2.txt
