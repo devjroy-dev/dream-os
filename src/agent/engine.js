@@ -2,7 +2,7 @@
 // Session 4: adds create_lead, list_leads, update_lead_state tool handlers
 // Session 5.5: adds runCoupleAgenticTurn for couple_thread conversations
 
-const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
+const { buildCoupleSystemBlocks } = require('./coupleSystemPrompt');
 // TDW_08 P5 Phase 4 — THE FACADE JOIN (FORK 3(a), CE-ruled). `MODEL_HAIKU`,
 // `MODEL_SONNET`, `calculateCost` and `COMPLEXITY` were selected here and read
 // NOWHERE in this file except `MODEL_HAIKU` at the couple lane's one model line,
@@ -21,6 +21,7 @@ const { buildEnquiryEnrichment } = require('../lib/vendor/enquiryEnrichment');
 const { studioName }            = require('./studioName');
 const { threadFacts }           = require('./coupleThreadFacts');
 const { dateState, dateStateFact, vendorDateLine } = require('../lib/vendor/coupleDateState');
+const priceLib = require('../lib/vendor/couplePriceState'); // CE-46 ELZ-3 · the price switch (0183)
 
 
 const MAX_ITERATIONS = 5;
@@ -407,7 +408,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   // CE-46 ELZ-2 cut 1: the channel's two facts for the shell: the studio's WhatsApp link (Instagram only) and chatted_before
   // (own number only). Neither is a sentence; the shell says what each means for what she writes.
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore });
+  // CE-46 ELZ-3 · F-44.230: the system in two texts, the per-vendor stable one and THIS CONVERSATION (coupleSystemPrompt.js's header note)
+  // CE-46 ELZ-3 · THE PRICE SWITCH (the founder's ruling of 29 September 2026): her switch and starting price, read fresh; only when both hold
+  // does the prompt carry WHEN THEY ASK ABOUT PRICE and the turn carry the price_state tool (off: every prompt and tool byte is today's).
+  const priceFacts = await priceLib.priceFacts(supabase, vendor && vendor.id);
+  const priceOn = priceLib.priceOn(priceFacts);
+  const systemParts = buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore, priceOn });
 
   const messages = [
     ...history,
@@ -419,6 +425,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   let finalReply  = null;
   let leadCaptured = null;
   const toolCallsAudit = [];
+  const priceAllowed = []; // the figures price_state handed her this turn (the guard's allow-list)
 
   const COUPLE_TOOLS = [
     {
@@ -464,6 +471,14 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
       },
     },
   ];
+  if (priceOn) {
+    COUPLE_TOOLS.splice(COUPLE_TOOLS.length - 1, 0, {
+      // CE-46 ELZ-3 · the price switch: her price as ONE sentence composed in code (couplePriceState.js); a fact, never a number of her own
+      name: 'price_state',
+      description: 'Look up the studio\'s price when the client asks what it costs. Pass their words exactly as they wrote them. Returns one sentence to send as it is, or tells you there is no figure to give.',
+      input_schema: { type: 'object', properties: { asked_text: { type: 'string', description: 'The client\'s own words about price, e.g. "how much for photos and film?"' } }, required: ['asked_text'] },
+    });
+  }
 
   // ── Model: the Haiku ceiling, now RESOLVED rather than typed ──────
   // F-05.32 + E-3: this lane's ceiling is Haiku. The classifier call that stood here
@@ -496,7 +511,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // 27 September 2026), and across turns only for the same vendor, branch and facts within the cache's 5 minutes; a branch under
   // the minimum caches nothing and the probe records that as BELOW. The usage line below is the live witness (cache_creation,
   // cache_read), a log line and nothing else.
-  const systemBlocks = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
+  // CE-46 ELZ-3 · F-44.230 (the chair, 29 September 2026): the breakpoint moves to the end of the STABLE text, identical for every thread of
+  // one vendor on one channel and lane, so a thread's second turn (and any thread of that vendor within the cache's minutes) READS it;
+  // THIS CONVERSATION follows as a second block, uncached. The returning branch is one block as before (under the minimum; no write).
+  const systemBlocks = systemParts.thread
+    ? [{ type: 'text', text: systemParts.stable, cache_control: { type: 'ephemeral' } }, { type: 'text', text: systemParts.thread }]
+    : [{ type: 'text', text: systemParts.stable, cache_control: { type: 'ephemeral' } }];
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -814,6 +834,13 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         toolCallsAudit.push({ name: 'date_state', input: toolUse.input, result: fact, state: ds && ds.state, dateIso: ds && ds.date });
         toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: fact });
 
+      } else if (toolUse.name === 'price_state' && priceOn) {
+        const ps = priceLib.priceState({ facts: priceFacts, askedText: (toolUse.input && toolUse.input.asked_text) || inboundMessage, studio: studioName(vendor, vendorUser) });
+        priceAllowed.push(...(ps.allowed || []));
+        const fact = priceLib.priceStateFact(ps);
+        toolCallsAudit.push({ name: 'price_state', input: toolUse.input, result: fact, state: ps.state, match: ps.match ? ps.match.name : null });
+        toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: fact });
+
       } else if (toolUse.name === 'respond_to_couple') {
         finalReply = toolUse.input.message;
         toolCallsAudit.push({ name: 'respond_to_couple', input: toolUse.input, result: 'Reply queued.' });
@@ -829,6 +856,23 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     messages.push({ role: 'user', content: toolResults });
 
     if (finalReply !== null) break;
+  }
+
+  // CE-46 ELZ-3 · THE PRICE GUARD (the chair's ruling of 29 September 2026): with the switch on and priced, a reply naming a rupee figure
+  // other than her starting price, a quotable matched total or a figure the client wrote herself is replaced by S1, the founder's approved
+  // words. CE-46 ELZ-4 · F-44.250 (the chair's ruling of 30 September 2026, cure (a)): the guard runs on EVERY turn. With the switch off (or
+  // no starting price), any figure the client did not write herself is refused and the reply becomes S0, the founder's words; the walk of
+  // 30 September showed her repeating Rs 60,000 and Rs 80,000 from her own earlier replies after the switch went off.
+  if (typeof finalReply === 'string') {
+    const clientText = [inboundMessage, ...history.filter((m) => m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : ''))].join('\n');
+    const refused = priceLib.priceGuard({ facts: priceFacts, reply: finalReply, allowed: priceAllowed, clientText });
+    if (refused) {
+      const studio = studioName(vendor, vendorUser);
+      const replacement = refused.mode === 'on' ? priceLib.priceState({ facts: priceFacts, askedText: '', studio }).sentence : priceLib.offSentence(studio);
+      console.log(`[couple-agent] price guard (switch ${refused.mode}) refused ${JSON.stringify(refused.refused)}; ${refused.mode === 'on' ? 'S1' : 'S0'} sent instead`);
+      toolCallsAudit.push({ name: 'price_guard', refused: refused.refused, mode: refused.mode, replaced: true });
+      finalReply = replacement;
+    }
   }
 
   // Build vendor notification:

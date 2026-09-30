@@ -292,15 +292,20 @@ async function mutated(rel, from, to, fn) {
   {
     const r = await replay({ at: '2026-09-24 15:00:34+00', inbound: 'Hi', rows: upTo(ALL, '2026-09-24 15:00:30.512624+00') });
     const blocks = r.calls[0] && r.calls[0].params.systemBlocks;
-    T('9.1 the system goes as ONE text block, its text the very string the shell composed', Array.isArray(blocks) && blocks.length === 1 && blocks[0].type === 'text' && blocks[0].text === r.calls[0].params.system);
-    T('9.2 the breakpoint sits on the LAST system block: cache_control ephemeral, nowhere else', blocks && blocks[blocks.length - 1].cache_control && blocks[blocks.length - 1].cache_control.type === 'ephemeral' && !r.calls[0].params.tools.some((t) => t.cache_control));
+    // LABELED AMENDMENT · CE-46 ELZ-3 · F-44.230 (the chair, 29 September 2026): ELZ-2's one block, cached at its end, carried per-thread facts
+    // and so was written every turn and never read (the founder's Instagram walk, 29 Sept). The first-contact / in-conversation system now goes
+    // as TWO blocks: the per-vendor stable text, cached at its end, then THIS CONVERSATION, uncached. 9.1 and 9.2 re-pinned to that; M11
+    // re-aimed at the new breakpoint line. What they prove is unchanged: the text is the shell's own, and the breakpoint sits where it should.
+    const shellParts = require(P('src/agent/coupleSystemPrompt.js')).buildCoupleSystemBlocks;
+    T('9.1 the system goes as TWO text blocks (F-44.230): the shell\'s stable text, then THIS CONVERSATION; together the very string the shell composed', Array.isArray(blocks) && blocks.length === 2 && blocks.every((b) => b.type === 'text') && /^THIS CONVERSATION\n/.test(blocks[1].text) && `${blocks[0].text}\n${blocks[1].text}` === r.calls[0].params.system && typeof shellParts === 'function');
+    T('9.2 the breakpoint sits on the STABLE block only: cache_control ephemeral on block 1, none on THIS CONVERSATION or the tools', blocks && blocks[0].cache_control && blocks[0].cache_control.type === 'ephemeral' && !blocks[1].cache_control && !r.calls[0].params.tools.some((t) => t.cache_control));
     T('9.3 no reorder: the header still opens the block (the soul after it, as before this cut)', typeof blocks[0].text === 'string' && /^You answer messages for Dev Roy Photography, /.test(blocks[0].text));
-    const m11 = await mutated('src/agent/engine.js', "const systemBlocks = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];", "const systemBlocks = [{ type: 'text', text: systemPrompt }];", async () => {
+    const m11 = await mutated('src/agent/engine.js', "? [{ type: 'text', text: systemParts.stable, cache_control: { type: 'ephemeral' } }, { type: 'text', text: systemParts.thread }]", "? [{ type: 'text', text: systemParts.stable }, { type: 'text', text: systemParts.thread }]", async () => {
       const r2 = await replay({ at: '2026-09-24 15:00:34+00', inbound: 'Hi', rows: upTo(ALL, '2026-09-24 15:00:30.512624+00') });
-      const b2 = r2.calls[0].params.systemBlocks; return !!(b2 && b2[b2.length - 1].cache_control);
+      const b2 = r2.calls[0].params.systemBlocks; return !!(b2 && b2[0].cache_control);
     });
     T('9.4 M11 the breakpoint removed reddens 9.2', m11 === false);
-    T('9.5 engine.js restored byte for byte after M11', read('src/agent/engine.js').includes("const systemBlocks = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];"));
+    T('9.5 engine.js restored byte for byte after M11', read('src/agent/engine.js').includes("? [{ type: 'text', text: systemParts.stable, cache_control: { type: 'ephemeral' } }, { type: 'text', text: systemParts.thread }]"));
   }
 
   console.log(`\nb117a_elz1_couple_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);

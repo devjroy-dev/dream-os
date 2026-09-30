@@ -323,9 +323,9 @@ router.post('/verify-otp', async (req, res) => {
     return res.status(400).json({ error: 'OTP purpose mismatch.', reason: 'otp_purpose_mismatch' });
   }
 
-  const _devOk = !!(process.env.DEV_OTP && cleanOtp === process.env.DEV_OTP);
-  if (_devOk) console.log(`[verify-otp] DEV_OTP bypass used phone=${cleanPhone}`);
-  const valid = _devOk || await bcrypt.compare(cleanOtp, otpRow.otp_hash);
+  // CE-46 G6-4 · F-44.245: DEV_OTP's universal code is GONE. A code is valid only when it matches the hash stored for THIS phone
+  // by its own send (a random code sent on WhatsApp, or, on the vendor door only, REVIEWER_OTP for REVIEWER_PHONE: reviewerLogin.js).
+  const valid = await bcrypt.compare(cleanOtp, otpRow.otp_hash);
   if (!valid) {
     return res.status(400).json({ error: 'Incorrect code. Please try again.', reason: 'otp_invalid' });
   }

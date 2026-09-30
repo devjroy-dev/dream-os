@@ -1,0 +1,9 @@
+# scripts/floor-manifest-ce46-ads1-cut1f.txt
+# CE-46 · ADS-2 · cut1f (dream-os): a reel's picture is its cover (thumbnail_url), never its video file (media_url),
+# for the draft's preview, the post chooser's tiles and the Posts card. Rung b144 (83/0; cell 6.14, mutation M13).
+# BASE: 8ec9d94 (main; carried from 91babd0 via e783042: G6-4 first cut and G6-5 landed between, no overlap). No migration.
+# F-14.16: a dirty path outside this list is a STOP. A-45.3: no new folder.
+src/lib/ads/meta.js
+scripts/b144_ads1_panel_bench.js
+docs/handovers/TDW_CE46_ADS1_1_HANDOVER.md
+scripts/floor-manifest-ce46-ads1-cut1f.txt

@@ -1,0 +1,18 @@
+# scripts/floor-manifest-ce46-elz4-price.txt
+# CE-46 · ELZ-4 · LAYER A (dream-os): the price switch (0183, applies AFTER 0184; its OUT_OF_ORDER record) with F-44.231 riding; b142d new;
+# b142b's F-44.231 cells; b115 re-pinned by label; b06_m0 §4.7 and b20_a2 re-aimed by label; e-252's re-pin of b142d to a9f7935.
+# BASE: a9f7935 (ELZ-3's patch 0001, applied clean by git am; no carry). F-19.16: a dirty path outside this list is a STOP. A-45.3: no new folder.
+db/migrations/0183_price_share.sql
+db/migrations/OUT_OF_ORDER.json
+src/lib/vendor/couplePriceState.js
+src/agent/coupleSystemPrompt.js
+src/agent/engine.js
+src/api/vendor/me.js
+src/lib/vendor/workingDoor.js
+scripts/b142d_elz3_price_switch_bench.js
+scripts/b142b_elz3_relay_rule_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b06_m0_bench.js
+scripts/b20_a2_assistance_bench.js
+docs/handovers/TDW_CE46_ELZ4_PRICE_HANDOVER.md
+scripts/floor-manifest-ce46-elz4-price.txt

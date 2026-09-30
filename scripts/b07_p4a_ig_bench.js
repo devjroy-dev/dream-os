@@ -686,9 +686,10 @@ section('§11 · META\'S signed_request — the only thing authenticating two do
   ok('§11.15 /deauthorize verifies the signature BEFORE any delete',
      deauth.indexOf('parseSignedRequest') > 0
        && deauth.indexOf('parseSignedRequest') < deauth.indexOf('disconnect'));
-  ok('§11.16 /data-deletion verifies the signature BEFORE any delete',
-     del.indexOf('parseSignedRequest') > 0
-       && del.indexOf('parseSignedRequest') < del.indexOf('disconnect'));
+  // RE-PINNED BY LABEL · CE-46 G6-4 (F-44.247): the delete is now the one purge call (ig_deletion_purge), not igConn.disconnect.
+  ok('§11.16 /data-deletion verifies the signature BEFORE any delete (the purge)',
+     del.indexOf('parseSignedRequest') > 0 && del.indexOf('ig_deletion_purge') > 0
+       && del.indexOf('parseSignedRequest') < del.indexOf('ig_deletion_purge'));
   ok('§11.17 a refused signature answers 403, never 200 — a 200 tells a prober '
      + 'its guess landed', /status\(parsed\.error === 'not_configured' \? 503 : 403\)/.test(deauth));
   ok('§11.18 /data-deletion returns Meta\'s exact contract: url + confirmation_code',

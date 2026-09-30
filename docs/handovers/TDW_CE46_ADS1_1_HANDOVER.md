@@ -72,3 +72,16 @@ THE RE-WALK after both halves land: the founder's clicks (business_management on
 (the chooser shows THE DREAM WEDDING ADS and Dev Roy; he taps the first), the Page found through its portfolio, a read of
 act_4681657125400464?fields=is_prepay_account,funding_source_details,balance,amount_spent,spend_cap,min_daily_budget in
 the Graph Explorer, one messages ad at Meta's minimum for one day from the prepaid funds, then the recordings.
+
+## CUT1F (29 September 2026) · ADS-2 · base 8ec9d94 (carried from 91babd0 via e783042) · a reel draws its cover
+The founder's screenshot of the live Ads page: the draft's preview drew no picture. The suggested post was a reel, and
+igMedia set url = media_url || thumbnail_url; a reel's media_url is the video file, which an <img> cannot draw. The same
+url feeds the preview, the post chooser's tiles and the Posts card's thumbnail.
+- igMedia (src/lib/ads/meta.js): for media_type VIDEO or REELS, url is thumbnail_url first (media_url only if Meta sends
+  no cover); every other post keeps media_url first.
+- b144: the IG1/media fixture gains a reel (no likes, not the newest, so 6.12 and 6.13 are unmoved); cell 6.14 reads
+  GET /posts and pins the reel's url to its cover; mutation M13 restores the old line and must redden.
+b144 83/0 (6.1 to 6.14; M1 to M13 all red and restored). No migration, no new folder.
+R-46.17 (the founder's rule, 29 September 2026): cut1f gives the vendor no text to copy or forward, so it carries no
+R-46.17 cell. The room's one miss (the Cards caption on /vendor/posts) is a separate small dreamos-pwa cut, queued
+after cut1f lands.

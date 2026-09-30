@@ -1,0 +1,8 @@
+# CE-46 · G6-4 · cut A · F-44.245: DEV_OTP's universal code removed from both verify-otp doors · rung b156 · base: G6-5's dream-os on c252d67
+docs/handovers/TDW_CE46_G66A_HANDOVER.md
+scripts/b152_igd2_reviewer_login_bench.js
+scripts/b156_g66a_no_fixed_code_bench.js
+scripts/floor-manifest-ce46-g66a.txt
+src/api/couple/auth.js
+src/api/vendor/auth.js
+src/lib/vendor/reviewerLogin.js

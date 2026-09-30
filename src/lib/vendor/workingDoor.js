@@ -2384,6 +2384,14 @@ async function preTurn(args, depsIn) {
       if (money.length > 1) { st.lines.push(DL.LINES.B12); st.keys.push('B12'); }
     }
     if (!st.lines.filter(Boolean).length && !st.wrote) return CHAIN(st.ear, 'empty');
+    // CE-46 ELZ-3 · F-44.231 (the chair, minted 29 September 2026): two acts naming ONE ambiguous name (a relay and a booking on "walk twin")
+    // each asked B8, so she read the same numbered question twice and no pick note was kept (the note below is kept only for a turn whose ONE
+    // line is B8), and her number was lost. When EVERY line of the turn is B8 and they list the same clients (the text after the name's
+    // colon, case-folded), ONE is spoken and the pick note below keeps every act of the message.
+    if (!st.wrote && st.keys.length > 1 && st.keys.every((k) => k === 'B8')) {
+      const listed = (l) => String(l || '').slice(String(l || '').indexOf(':') + 1).trim().toLowerCase();
+      if (st.lines.every((l) => listed(l) === listed(st.lines[0]))) { st.lines = [st.lines[0]]; st.keys = ['B8']; }
+    }
     // F-44.112: a turn that ends in exactly ONE date question keeps its note. ONE RE-ASK, THEN B3: a note turn that ends in a
     // date question AGAIN keeps a note once more (tries 1); the next, having written nothing, answers B3 and keeps none. A turn
     // that wrote something is never answered "Nothing was changed": it says what it did and simply keeps no further note.

@@ -106,6 +106,7 @@ function fakeMeta(opts = {}) {
     if (p === 'IG1/media') return J({ data: [
       { id: '17890000000000001', caption: 'Aanya and Rohan', media_type: 'IMAGE', timestamp: new Date(Date.now() - 7 * 864e5).toISOString(), boost_eligibility_info: { eligible_to_boost: true },
         ...(opts.noLikes ? {} : { like_count: 212, comments_count: 18 }) },
+      { id: '17890000000000003', caption: 'A reel', media_type: 'VIDEO', media_url: 'https://x/reel.mp4', thumbnail_url: 'https://x/reel-cover.jpg', timestamp: new Date(Date.now() - 3 * 864e5).toISOString(), boost_eligibility_info: { eligible_to_boost: true } },
       { id: '17890000000000002', caption: 'Newest one', media_type: 'IMAGE', timestamp: new Date(Date.now() - 1 * 864e5).toISOString(), boost_eligibility_info: { eligible_to_boost: true },
         ...(opts.noLikes ? {} : { like_count: 3, comments_count: 0 }) }] });
     if (/\/insights$/.test(p) && p.startsWith('1789')) return opts.noInsights ? J({ error: { code: 10, message: 'Application does not have permission' } }, 400)
@@ -327,6 +328,14 @@ function goodSettings() {
     });
   }
   {
+    const db = fakeDb(); const m = fakeMeta(); adsRouter._setFetch(m.f); armed(db); connected(db);
+    await withServer(db, async (call) => {
+      const posts = await call('GET', '/posts');
+      const reel = (posts.json.posts || []).find((x) => x.id === '17890000000000003');
+      ok(reel && reel.url === 'https://x/reel-cover.jpg', '6.14 cut1f: a reel is drawn from its cover picture (thumbnail_url), never its video file', JSON.stringify(reel));
+    });
+  }
+  {
     const db = fakeDb(); const m = fakeMeta({ noInsights: true }); adsRouter._setFetch(m.f); armed(db); connected(db);
     await withServer(db, async (call) => {
       const st = await call('GET', '/start');
@@ -356,6 +365,7 @@ function goodSettings() {
       ['src/lib/ads/meta.js', "let account = active.length === 1 ? active[0] : active.find((a) => a.id === pick.ad_account_id);", "let account = active[0];", 'M10 the first ad account found, not hers'],
       ['src/api/vendor/ads.js', "const ids = await meta.createPaused({ token: pt,", "const ids = await meta.createPaused({ token: r.token,", 'M11 the objects made with her user token, not the Page token'],
       ['src/api/vendor/ads.js', "if (!source) return errRes(res, 400, 'Choose one of your own posts.', 'ADS_NOT_HER_POST');", "if (!source) source = 'instagram';", 'M12 a post that is not hers reaches a create call'],
+      ['src/lib/ads/meta.js', "(m.media_type === 'VIDEO' || m.media_type === 'REELS') ? (m.thumbnail_url || m.media_url || null) : (m.media_url || m.thumbnail_url || null)", "(m.media_url || m.thumbnail_url || null)", 'M13 a reel drawn from its video file'],
     ];
     for (const [rel, from, to, name] of MUTS) {
       const file = path.join(ROOT, rel); const orig = fs.readFileSync(file, 'utf8'); const h = sha(orig);
