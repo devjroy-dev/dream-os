@@ -221,7 +221,8 @@ app.post('/webhook/meta', async (req, res) => {
       // A vendor's own number is handled HERE and never forwarded (index.js reads inbound as the vendor
       // lane); a PNID-less change on any other WABA is TDW's own and goes to the vendor service, where
       // index.js's template-status and account-update seams finally receive it (F-44.138, widened).
-      const own = lane ? null : await ownNumberMap.lookup(supabase, { phoneNumberId, wabaId: entryId });
+      // CE-46 G6-4 F-44.254: by the PNID, else the WABA named in the change (waba_info.waba_id), else entry.id (wabaMap.js).
+      const own = lane ? null : await ownNumberMap.lookupForChange(supabase, { phoneNumberId, entryId, change });
       const route = routeChange(lane, phoneNumberId, own);
       if (route === 'marketing') {
         await processMarketingChange(subBody);

@@ -228,6 +228,23 @@ const p252 = {
   { const x = await p252.sweepOld(null, 'moved'); ok(x.calls === 0 && x.out.swept === 0, '10.10 a moved row is never swept (it was unsubscribed at Remove)'); }
   ok(/cron\.schedule\('45 3 \* \* \*'[\s\S]{0,200}removedSweep'\)\.sweepRemoved\(\{ supabase \}\)/.test(read('src/cron.js')), '10.11 the sweep runs nightly (03:45 IST) from the vendor service\u2019s cron');
 
+  sec('11  F-44.254: a WABA-level account event reaches her row, through the REAL ingress');
+  const WALK = (event, entryId = '1634281561824806') => ({ object: 'whatsapp_business_account', entry: [{ id: entryId, time: 1, changes: [{ field: 'account_update',
+    value: { event, waba_info: { waba_id: '29298439009743510', owner_business_id: '1634281561824806' }, disconnection_info: { reason: 'ACCOUNT_DISCONNECTED', initiated_by: 'USER' } } }] }] });
+  const row11 = (over = {}) => ({ id: 'w1', vendor_id: VID, waba_id: '29298439009743510', phone_number_id: PNID, status: 'removed', paused_reason: 'removed:vendor', business_token: vault.seal(BIZ), ...over });
+  const ingress = (rows, body) => { const r = require('child_process').spawnSync(process.execPath, [P('scripts/lib/b150_ingress_probe.js'), JSON.stringify({ rows, body })], { encoding: 'utf8', timeout: 60000, env: { ...process.env, INTEGRATION_TOKEN_KEY: process.env.INTEGRATION_TOKEN_KEY } });
+    try { return JSON.parse(String(r.stdout).trim().split('\n').pop()); } catch (_e) { return { error: String(r.stderr).slice(-300) }; } };
+  { const x = ingress([row11()], WALK('PARTNER_REMOVED'));
+    ok(x.status === 200 && x.rows && x.rows[0].paused_reason === 'removed:partner_removed' && x.rows[0].business_token === null, '11.1 the walk\u2019s exact PARTNER_REMOVED (entry.id not her WABA) reaches her REMOVED row: the S6 line retires, the kept token is nulled', JSON.stringify(x.rows || x.error)); }
+  { const x = ingress([row11({ status: 'active', paused_reason: null })], WALK('PARTNER_REMOVED'));
+    ok(x.rows && x.rows[0].status === 'migrated_out' && x.rows[0].business_token === null, '11.2 the same event on an ACTIVE number marks it migrated_out and nulls the token (G6-1\u2019s GONE rule, live at last)', JSON.stringify(x.rows || x.error)); }
+  { const x = ingress([row11({ status: 'active', paused_reason: null })], { object: 'whatsapp_business_account', entry: [{ id: '29298439009743510', time: 1, changes: [{ field: 'phone_number_quality_update', value: { display_phone_number: '918757788550', event: 'FLAGGED', current_limit: 'TIER_1K' } }] }] });
+    ok(x.rows && x.rows[0].status === 'suspended' && x.rows[0].paused_reason === 'quality:FLAGGED', '11.3 a quality event (no PNID, no waba_info) is still found by entry.id when that is her WABA', JSON.stringify(x.rows || x.error)); }
+  { const x = ingress([row11({ status: 'active', paused_reason: null })], WALK('PARTNER_REMOVED'));
+    ok(x.logs && x.logs.some((l) => /entry\.id 1634281561824806 names waba_info\.waba_id 29298439009743510 \(F-44\.254\)/.test(l)), '11.4 the entry.id and the named WABA are logged, so the mismatch is read from live data', JSON.stringify(x.logs)); }
+  { const x = ingress([], WALK('PARTNER_REMOVED'));
+    ok(x.status === 200 && x.logs && x.logs.some((l) => /webhook:meta|forward/.test(l)) && !x.logs.some((l) => /\(F-44\.254\)[\s\S]*removed:partner/.test(l)), '11.5 THE CONTROL: with no own row for that WABA, the event still goes on to the vendor service as before', JSON.stringify(x.logs)); }
+
   sec('9  mutations of production code (each must turn its cell red; restored byte for byte)');
   const mutate = async (rel, pairs, probe) => {
     const src = read(rel); const before = sha(src); let m = src;
@@ -262,6 +279,8 @@ const p252 = {
     async () => (await p252.discard()).discarded)]);
   out.push(['M12 the sweep waits no time', await mutate('src/lib/ownNumber/removedSweep.js', [['const WAIT_MS = 7 * 24 * 60 * 60 * 1000;', 'const WAIT_MS = 0;']],
     async () => (await p252.sweepYoung()).calls === 0)]);
+  out.push(['M13 the map ignores waba_info (F-44.254 undone)', await mutate('src/lib/ownNumber/wabaMap.js', [["  if (named) { const r = await lookup(supabase, { wabaId: named }, now); if (r) return r; }", '']],
+    async () => { const x = ingress([row11()], WALK('PARTNER_REMOVED')); return x.rows && x.rows[0].paused_reason === 'removed:partner_removed'; })]);
   for (const [name, r] of out) ok(r.applied && r.red && r.restored, `9 ${name}: applies, turns its cell red, restored by sha`, JSON.stringify(r));
 
   console.log(`\nb150 · ${pass} pass · ${fail} fail`);

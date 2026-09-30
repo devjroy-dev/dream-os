@@ -31,6 +31,26 @@ async function lookup(supabase, { phoneNumberId, wabaId }, now = Date.now) {
   }
 }
 
+// ── CE-46 G6-4 · F-44.254 (ruled 30 September 2026): WHICH ROW A CHANGE BELONGS TO ─────────────────────────────────────
+// A WABA-level account_update (PARTNER_ADDED, PARTNER_APP_INSTALLED, PARTNER_APP_UNINSTALLED, PARTNER_REMOVED, the ban and
+// restriction events) carries NO phone_number_id and names her WABA in value.waba_info.waba_id. The walk of 30 September showed
+// the envelope's entry.id did not find her row for these, so every such event fell to the vendor service's generic seam and her
+// row never heard it. The order now: the change's phone_number_id; else value.waba_info.waba_id; else entry.id. The first lookup
+// that finds a row wins. When waba_info names a WABA that differs from entry.id, the pair is logged ONCE per process, so the
+// mismatch is read from live data rather than assumed.
+const seenPairs = new Set();
+async function lookupForChange(supabase, { phoneNumberId, entryId, change }, now = Date.now) {
+  if (phoneNumberId) return lookup(supabase, { phoneNumberId }, now);
+  const v = (change && change.value) || {};
+  const named = v.waba_info && v.waba_info.waba_id ? String(v.waba_info.waba_id) : null;
+  if (named && entryId && named !== String(entryId)) {
+    const key = `${entryId}|${named}`;
+    if (!seenPairs.has(key)) { seenPairs.add(key); console.log(`[own-number] ${change && change.field} entry.id ${entryId} names waba_info.waba_id ${named} (F-44.254)`); }
+  }
+  if (named) { const r = await lookup(supabase, { wabaId: named }, now); if (r) return r; }
+  return entryId ? lookup(supabase, { wabaId: entryId }, now) : null;
+}
+
 // ── CE-46 G6-2 2b · F-44.207 (b): IS THIS SENDER ON TDW'S SHARED LINE A CONNECTED OWN NUMBER? ──────────────────────
 // A relay from TDW's line to a lead whose phone is a vendor's own number lands on that number; if the own-number turn
 // answered it, TDW's line would read that number writing in as a client and answer back: a loop between our own lines.
@@ -58,4 +78,5 @@ async function isConnectedOwnNumber(supabase, phone, now = Date.now) {
 }
 function _resetActive() { activeCache = null; }
 
-module.exports = { lookup, _reset, CACHE_MS, activeOwnDigits, isConnectedOwnNumber, _resetActive };
+module.exports = {
+  lookupForChange, lookup, _reset, CACHE_MS, activeOwnDigits, isConnectedOwnNumber, _resetActive };

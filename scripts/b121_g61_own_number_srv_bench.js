@@ -120,7 +120,9 @@ const BODY_MOVED = { ...BODY_SHARED, event: 'FINISH', phone_number_id: '10654035
   // RE-PINNED BY LABEL · CE-46 G6-4 (b150): the room's third door, POST /remove, is hers alone too. Was 2.
   ok((nr.match(/requireAuth, resolveVendor\(\)/g) || []).length === 3, '1.3 all three doors (the room, connect, remove) are hers alone: requireAuth then resolveVendor(), mode A');
   const mk = read('src/marketingIndex.js');
-  ok(/const own = lane \? null : await ownNumberMap\.lookup\(supabase, \{ phoneNumberId, wabaId: entryId \}\);/.test(mk) && /const route = routeChange\(lane, phoneNumberId, own\);/.test(mk)
+  // RE-PINNED BY LABEL · CE-46 G6-4 F-44.254 (b150 §11 drives it): the map is asked by lookupForChange (PNID, else the WABA the
+  // change names in waba_info, else entry.id); was lookup({ phoneNumberId, wabaId: entryId }).
+  ok(/const own = lane \? null : await ownNumberMap\.lookupForChange\(supabase, \{ phoneNumberId, entryId, change \}\);/.test(mk) && /const route = routeChange\(lane, phoneNumberId, own\);/.test(mk)
     && /else if \(route === 'own'\) \{\s+let kept = false;\s+try \{ await ownNumberEvents\.handle\(supabase, own, change\); kept = true; \}/.test(mk) && !/forwardChange\('own'/.test(mk),
     // RE-AIMED BY LABEL, CE-46 G6-2 2b (F6 (a), ruled): own-number traffic is still RECORDED in place first and never goes
     // through forwardChange (so never to /webhook/meta); only after it is kept does forward.js send a couple's message to
