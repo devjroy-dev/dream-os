@@ -3439,7 +3439,10 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // CE-44 LC-Victor P5: the working door. ONE non-empty text_delta, then done; no chip (ruled (a)).
       const doorOut = await doorTurn(req, llmWiring, message, roomAssert);
       if (doorOut && doorOut.door) {
-        send({ type: 'text_delta', text: scrubText(doorOut.reply) });
+        // CE-46 ELZ-3 · F-44.248 (the founder's two messages): a two-message answer streams each with a message_break before the second (the
+        // app's second bubble); an app that does not know the event shows both a blank line apart. One message: exactly as before.
+        const doorParts = Array.isArray(doorOut.replies) && doorOut.replies.length > 1 ? doorOut.replies : [doorOut.reply];
+        doorParts.forEach((part, i) => { if (i) send({ type: 'message_break' }); send({ type: 'text_delta', text: (i ? '\n\n' : '') + scrubText(part) }); });
         const doorDone = { type: 'done', tool_calls: doorOut.toolNames, refresh: !!doorOut.refresh, room: 'business' };
         doorDone.meta = await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier });
         if (doorOut.documents.length) doorDone.documents = doorOut.documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
@@ -3596,6 +3599,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       return res.json({
         ok: true, reply: scrubText(doorOut.reply), tool_calls: doorOut.toolNames, refresh: !!doorOut.refresh, room: 'business', meta: doorMeta,
         documents: doorOut.documents.length ? doorOut.documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
+        replies: Array.isArray(doorOut.replies) && doorOut.replies.length > 1 ? doorOut.replies.map((r) => scrubText(r)) : undefined, // CE-46 ELZ-3 · F-44.248
       });
     }
     const calendarSnapshot = await fetchCalendarSnapshot(req);

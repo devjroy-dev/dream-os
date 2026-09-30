@@ -1,0 +1,9 @@
+# scripts/floor-manifest-ce46-elz4-b.txt
+# CE-46 · ELZ-4 · LAYER B (dream-os): F-44.248, the draft follow-up through the door and the no-number draft as two messages (ELZ-3's patch
+# 0002); b142b 62 cells, 6.7 made total; b99 M6 re-anchored. BASE: 24854d2. F-19.16: a dirty path outside this list is a STOP.
+src/lib/vendor/workingDoor.js
+src/api/vendor-engine/chat.js
+scripts/b142b_elz3_relay_rule_bench.js
+scripts/b99_lcv10_didyoumean_bench.js
+docs/handovers/TDW_CE46_ELZ4_B_F248_HANDOVER.md
+scripts/floor-manifest-ce46-elz4-b.txt

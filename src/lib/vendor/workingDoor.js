@@ -781,7 +781,7 @@ async function planRelay(supabase, vendor, act, L) {
     const client = String(lead.name || '').trim();
     const phone = typeof lead.phone === 'string' && lead.phone.trim() ? lead.phone.trim() : null;
     // a lead with no number: the seat's own ⑧a (relaySeat.js noNumberLine, vetoed 2026-08-11), nothing staged
-    if (!phone) { const line = L.relay.noNumberLine(client); return typeof line === 'string' && line ? { speak: line, key: 'RELAY_NO_NUMBER', skipHarvest: true } : null; }
+    if (!phone) { const line = L.relay.noNumberLine(client); return typeof line === 'string' && line ? { speak: line, key: 'RELAY_NO_NUMBER', skipHarvest: true, noNumber: { leadId: lead.id, client } } : null; }
     if (act && act.act === 'quote_send') {
       // CE-45 ELZ-1 cut 2b (quote_send; P6b's second half, R-45.17): the lead's LIVE package, the newest if several. None: B39 (his V6).
       const { data: lps, error: lpErr } = await supabase.from('lead_packages').select('id, snapshot, total, delivery_on, created_at')
@@ -1567,6 +1567,37 @@ async function lastDoorNote(supabase, agentId) {
     return l && l.door === true ? validNote(l.note) : null;
   } catch (_e) { return null; }
 }
+// ── CE-46 ELZ-3 · F-44.248 (the chair, minted 29 September 2026): the founder's walk, 10:05:22 UTC: after a relay the door could not send
+// (Asha Walk Fifteen, no number), "Just draft the message and give me" was heard as nothing and handed to the question agent, which wrote a
+// draft outside the door's record and named the client from her words ("Your Walk Fifteen booking"). A DRAFT FOLLOW-UP (her message asks for
+// the draft and names no client) right after a door turn that decided a relay is now that relay again, through the door: the client is the
+// previous turn's recorded client read back through the lead's own record, and the words are the previous turn's (the user row that turn
+// answered), never re-parsed from this message. TOTAL: null on anything hostile; the window is the previous assistant turn only.
+// THE NO-NUMBER DRAFT (the founder's yes through the chair, 29 September 2026): her draft request for a client with no number is answered in TWO
+// separate messages: this line, then the composed draft ALONE (no quotes, nothing before or after), so a long press copies exactly the message.
+// {client} from the lead's row. No send question, no phone. RELAY_NO_NUMBER stays for a plain relay with no draft asked.
+const NO_NUMBER_DRAFT_LINE = 'Here is the message for {client}. I don\'t have her number, so copy the next message and send it yourself.';
+const DRAFT_FOLLOWUP = /\b(draft|redraft)\b|\bwrite (it|that|the message|the text|a message)\b|\bgive me the (message|draft|text)\b|\blikh(o|do)?\b/i;
+async function lastDoorRelay(supabase, agentId, withinMs = 30 * 60 * 1000, nowMs = Date.now()) {
+  try {
+    const conv = await activeConversation(supabase, agentId);
+    if (!conv) return null;
+    const { data, error } = await supabase.schema('engine').from('messages').select('id, role, content, meta, created_at')
+      .eq('conversation_id', conv).order('created_at', { ascending: false }).limit(4);
+    if (error || !Array.isArray(data)) return null;
+    const lastA = data.find((r) => r && r.role === 'assistant');
+    const l = lastA && lastA.meta && lastA.meta.listener;
+    if (!l || l.door !== true || !l.request || !Array.isArray(l.request.acts)) return null;
+    const relay = l.request.acts.find((a) => a && a.act === 'relay' && typeof a.client_as_spoken === 'string' && a.client_as_spoken.trim());
+    if (!relay) return null;
+    const at = Date.parse(lastA.created_at);
+    if (!Number.isFinite(at) || nowMs - at > withinMs) return null;
+    const userRow = data.filter((r) => r && r.role === 'user' && Date.parse(r.created_at) <= at).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+    const said = userRow && typeof userRow.content === 'string' ? saidOf(userRow.content) : null;
+    return { client: relay.client_as_spoken.trim(), said };
+  } catch (_e) { return null; }
+}
+
 // The act a fresh note keeps, with the names FROM THE ROWS where the door can resolve them (so what she misspelt or the
 // listener shortened cannot matter on the next turn, F-44.105) and the ids beside them for the record. Read-only. TOTAL.
 async function noteFor(supabase, vendor, asked, act, rest, tries, L) {
@@ -1630,10 +1661,11 @@ async function reread(supabase, vendorId, row, L) {
 function doorAnswer(st, why) {
   const lines = st.lines.filter(Boolean);
   let reply = lines.join('\n\n');
+  if (Array.isArray(st.replies) && st.replies.length > 1) reply = st.replies.join('\n\n'); // CE-46 ELZ-3 · F-44.248: both messages, a blank line apart
   // The glitch byte is read lazily from its one home (b90 14.1 proves it loads cold in both orders); B3 is the
   // last resort only if that home cannot load at all.
   if (!reply) reply = st.fallback || glitchLine() || DL.LINES.B3;
-  return { door: true, reply, keys: st.keys, toolCalls: st.toolCalls, toolNames: st.toolCalls.map((t) => t.name), refresh: st.refresh, documents: st.documents, skipHarvest: st.skipHarvest, ear: st.ear, ...(st.note ? { note: st.note } : {}), ...(st.answered ? { answered: st.answered } : {}), ...(why ? { why } : {}) };
+  return { door: true, reply, ...(Array.isArray(st.replies) && st.replies.length > 1 ? { replies: st.replies.slice() } : {}), keys: st.keys, toolCalls: st.toolCalls, toolNames: st.toolCalls.map((t) => t.name), refresh: st.refresh, documents: st.documents, skipHarvest: st.skipHarvest, ear: st.ear, ...(st.note ? { note: st.note } : {}), ...(st.answered ? { answered: st.answered } : {}), ...(why ? { why } : {}) };
 }
 
 // ── LSP_2 · R-45.16 · THE SCREENSHOT SAVE ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1828,6 +1860,20 @@ async function preTurn(args, depsIn) {
           const ear = { ...(st.ear || {}), request: { route: 'task', acts }, heard: heardReq, rule: 'relay', error: null };
           return { door: true, reply: line, keys: ['B8'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear, why: 'relay_rule_pick',
             note: { asked: 'B8', acts: acts.map((a) => ({ ...a })), tries: 0, lead_ids: relayRule.rows.map((r) => String(r.id)), pick_name: relayRule.spoken, pick_kind: 'lead_first', ...(original ? { said: original } : {}) } };
+        }
+      }
+    }
+    // CE-46 ELZ-3 · F-44.248: a draft follow-up heard as nothing, on no note and no live row, right after a door turn that decided a relay,
+    // is that relay again: the client from the previous record read through the lead's own row, her previous words for the composer.
+    if (!note && !live && !relayRule && heardNothing(st.ear) && DRAFT_FOLLOWUP.test(String(message || ''))) {
+      const prev = await lastDoorRelay(supabase, agentId, undefined, Number.isFinite(deps.nowMs) ? deps.nowMs : Date.now());
+      if (prev) {
+        const found = await L.lifecycle.resolveLead(supabase, vendor.id, prev.client, false);
+        const client = found && found.ok && found.lead && typeof found.lead.name === 'string' && found.lead.name.trim() ? found.lead.name.trim() : null;
+        if (client) {
+          const heardReq = st.ear && st.ear.request ? st.ear.request : null;
+          st.ear = { ...(st.ear || {}), request: { route: 'task', acts: [{ act: 'relay', client_as_spoken: client }] }, heard: heardReq, rule: 'draft_followup', error: null };
+          if (prev.said) st.said = prev.said;
         }
       }
     }
@@ -2128,8 +2174,9 @@ async function preTurn(args, depsIn) {
     // lead onto "The booking is confirmed", 06:32:24 and 08:01:09 on 22 September) and is treated as UNSAID, so B18 or B35 is asked.
     // SCOPED BY THE FOUNDER'S RULING (R-44.41, the reduced standard): it fires only when her message holds TWO OR MORE WORDS, so the
     // rungs' placeholder drivers (a one-word 'x' with any heard client) are untouched; a one-word message cannot carry a job and a name.
-    const saidKey = key(message);
-    if (saidKey.split(/\s+/).filter(Boolean).length >= 2) {
+    // CE-46 ELZ-3 · F-44.248: a draft follow-up's client was said in the message it re-uses (st.said, the previous turn's words): the floor reads both
+    const saidKey = key(st.ear && st.ear.rule === 'draft_followup' && st.said ? `${message} ${st.said}` : message);
+    if (key(message).split(/\s+/).filter(Boolean).length >= 2) {
       heard = { ...heard, acts: heard.acts.map((a) => (a && typeof a === 'object' && spokenText(a.client_as_spoken) && !saidKey.includes(key(a.client_as_spoken)) ? (({ client_as_spoken: _c, ...rest }) => ({ ...rest, [UNSAID]: true }))(a) : a)) }; // F-44.148: the stripped act is MARKED
     }
     { const ask = askName(heard, 0); if (ask) return ask; }
@@ -2334,7 +2381,18 @@ async function preTurn(args, depsIn) {
     // P6b: the relay is composed and STAGED after the writes before it, and the frame is asked. A money act in the same message
     // is NOT staged this turn (one question at a time): it rides the frame's note and is planned afresh after her answer.
     let relayAsked = false;
-    if (relayPlan && relayPlan.speak) { st.lines.push(relayPlan.speak); st.keys.push(relayPlan.key); if (relayPlan.skipHarvest) st.skipHarvest = true; }
+    if (relayPlan && relayPlan.noNumber && st.ear && st.ear.rule === 'draft_followup') {
+      // CE-46 ELZ-3 · F-44.248, the no-number draft: composed as a relay draft is (her previous words, the lead's own name), sent as two messages
+      const composed = await composeChecked(L, null, { route, client: relayPlan.noNumber.client, message: st.said || message /* ordered apart from the relay's call, so b102 M1.12's anchor stays unique */, vendorName: (typeof vendor.business_name === 'string' && vendor.business_name) || (typeof vendor.name === 'string' && vendor.name) || null }, { ...(deps.composerCreate ? { llmCreate: deps.composerCreate } : {}), ...(deps.listener ? { listener: deps.listener } : {}) });
+      if (!composed || !composed.body) { st.lines.push(relayPlan.speak); st.keys.push(relayPlan.key); st.skipHarvest = true; }
+      else {
+        const first = NO_NUMBER_DRAFT_LINE.replace('{client}', relayPlan.noNumber.client);
+        st.lines.push(first); st.keys.push('RELAY_DRAFT_NO_NUMBER'); st.skipHarvest = true;
+        st.replies = [first, composed.body];
+        st.toolCalls.push({ name: HANDS.relay, input: { recipient: relayPlan.noNumber.client, message: composed.body, seat: `${composed.seat.provider}/${composed.seat.model}`, verbatim: composed.verbatim === true }, result: 'drafted_no_number' });
+      }
+    }
+    else if (relayPlan && relayPlan.speak) { st.lines.push(relayPlan.speak); st.keys.push(relayPlan.key); if (relayPlan.skipHarvest) st.skipHarvest = true; }
     else if (relayPlan && relayPlan.relay) {
       // F-44.123: the instruction is the message that ASKED for the relay: carried on the note when her answer ran the job, else this turn's.
       const qFacts = relayPlan.relay.quote ? relayPlan.relay.quote.facts : null;
@@ -2555,15 +2613,19 @@ async function speakOnWhatsApp(args, depsIn) {
     const persist = deps.persistDoorTurn || persistDoorTurn;
     if (!out || !out.door) return done;
     try { await persist({ supabase, agentId, message, out, lane: 'whatsapp' }); done.persisted = true; } catch (e) { console.error('[door:wa persist]', e && e.message); }
-    let sent = null;
-    try { sent = await sendWhatsApp(phone, out.reply, []); done.sent = true; } catch (e) { console.error('[door:wa send]', e && e.message); }
-    try {
-      await supabase.from('messages').insert({
-        conversation_id: convoId, direction: 'outbound', channel: 'whatsapp', body: out.reply, sent_by: 'agent',
-        twilio_sid: sent && sent.sid ? sent.sid : null, tool_calls: out.toolNames || [],
-      });
-      done.logged = true;
-    } catch (e) { console.error('[door:wa outbound row]', e && e.message); }
+    // CE-46 ELZ-3 · F-44.248: a turn with replies (the no-number draft) goes as SEPARATE messages, in order, each with its own outbound row
+    const bodies = Array.isArray(out.replies) && out.replies.length > 1 ? out.replies : [out.reply];
+    for (const body of bodies) {
+      let sent = null;
+      try { sent = await sendWhatsApp(phone, body, []); done.sent = true; } catch (e) { console.error('[door:wa send]', e && e.message); }
+      try {
+        await supabase.from('messages').insert({
+          conversation_id: convoId, direction: 'outbound', channel: 'whatsapp', body, sent_by: 'agent',
+          twilio_sid: sent && sent.sid ? sent.sid : null, tool_calls: out.toolNames || [],
+        });
+        done.logged = true;
+      } catch (e) { console.error('[door:wa outbound row]', e && e.message); }
+    }
     try { await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', convoId); } catch (e) { console.error('[door:wa last_message_at]', e && e.message); }
     for (const d of (Array.isArray(out.documents) ? out.documents : [])) {
       try {
@@ -2598,7 +2660,9 @@ async function persistDoorTurn(args, depsIn) {
     const ear = out && out.ear;
     const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null; // F-44.58's mark
     const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null; // F-44.100's mark, its OWN key
-    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(ear && ear.rule === 'relay' ? { heard: ear.heard === undefined ? null : ear.heard, rule: 'relay' } : {}) /* CE-46 ELZ-3 cut 2 */, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}), ...(out.askRecord ? { ask: out.askRecord } : {}) };
+    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(ear && (ear.rule === 'relay' || ear.rule === 'draft_followup') ? { heard: ear.heard === undefined ? null : ear.heard, rule: ear.rule } : {}) /* CE-46 ELZ-3 cut 2; F-44.248 */, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}), ...(out.askRecord ? { ask: out.askRecord } : {}) };
+    // CE-46 ELZ-3 · F-44.248: a two-message answer is recorded whole (reply holds both, a blank line apart) and its messages kept as replies
+    if (Array.isArray(out.replies) && out.replies.length > 1) listener.replies = out.replies.slice();
     res.assistantId = await memory.saveMessage(conversationId, 'assistant', out.reply, (out.toolCalls && out.toolCalls.length) ? out.toolCalls : undefined, { listener });
     if (res.assistantId) {
       try { await supabase.schema('engine').from('messages').update({ room: 'business' }).eq('id', res.assistantId); } catch (e) { console.warn('[door:room]', e && e.message); }
@@ -2612,4 +2676,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { relayRuleMatch, RELAY_RULE_VERB, pinnedLeadFirst, leadsFirstNamed, proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS, QUESTION_ACTS, ASK_FLAGS, questionTurn, askContext };
+module.exports = { lastDoorRelay, DRAFT_FOLLOWUP, NO_NUMBER_DRAFT_LINE, relayRuleMatch, RELAY_RULE_VERB, pinnedLeadFirst, leadsFirstNamed, proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS, QUESTION_ACTS, ASK_FLAGS, questionTurn, askContext };

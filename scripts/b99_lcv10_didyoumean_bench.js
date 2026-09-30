@@ -381,7 +381,9 @@ async function main() {
     [["      if (moneyPlan.key === 'B4' && !liveAtStart && !fromNote)", "      if (moneyPlan.key === 'B4' && !fromNote)"]], [],
     async (rq) => flow(rq, [['x', req([money('advance_paid', 'Isha Walk Fourten', 'today')])]], () => { const d = seeded(); d.tables['public.pending_money_acts'].push({ id: 'pm-1', vendor_id: V.id, act: 'booking_confirmed', request: { lead_id: 'l-isha', lead_name: 'Isha Walk Fourteen', kind: 'booking_confirmed' }, lane: 'pwa', state: 'staged', outcome: null, created_at: new Date(NOW - 60000).toISOString(), resolved_at: null, expires_at: new Date(NOW + 600000).toISOString() }); return d; }), (x) => x.out[0].keys === 'B36');
   await mut('7.6 M6 the floor removed: 06:32:24 as recorded reads B5 about the wrong lead again (reddens 3.1, 3.2, 4.5)', WDf,
-    [['    if (saidKey.split(/\\s+/).filter(Boolean).length >= 2) {', '    if (false) {']], [],
+    // RE-ANCHORED (CE-46 ELZ-4 · layer B, F-44.248, labelled): the floor's gate now reads `key(message)` (the draft follow-up folds the
+    // previous words into saidKey only); the mutation removes the same gate as before.
+    [['    if (key(message).split(/\\s+/).filter(Boolean).length >= 2) {', '    if (false) {']], [],
     async (rq) => flow(rq, [[BC_SAID, JSON.parse(BC1_JSON)]], () => { const d = seeded(); d.tables['public.leads'].push(leadRow({ id: 'l-vik', name: 'Vikram Walk Twelve', wedding_date: '2027-01-03', wedding_date_precision: 'day' })); return d; }), (x) => x.out[0].keys === 'B5');
   await mut('7.7 M7 the floor fired on a NOTE turn too: her bare date after B26 loses its thread-carried name and the attach never lands (reddens 3.7)', WDf,
     [['    { const ask = askName(heard, 0); if (ask) return ask; }\n    if (!allCovered(heard))', "    { const ask = askName(heard, 0); if (ask) return ask; }\n    if (fromNote) { heard = { ...heard, acts: heard.acts.map((a) => (({ client_as_spoken: _c, ...rest }) => rest)(a)) }; }\n    if (!allCovered(heard))"]], [],

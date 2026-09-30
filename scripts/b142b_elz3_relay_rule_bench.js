@@ -246,7 +246,7 @@ async function main() {
     const mod = o.M || WD; calls.length = 0;
     LF._resetLaneFlagCache();
     const out = await quiet(() => mod.preTurn({ supabase: db, vendor: V, agentId: AG, route: ROUTE, message, lane: o.lane || 'whatsapp' },
-      { llmCreate: earSeq(...reqs), nowMs: NOW, composerCreate: composerOf(BODY), sendWhatsApp: transport, env: ENV, ...(Number.isFinite(o.hearMs) ? { hearMs: o.hearMs } : {}) }));
+      { llmCreate: earSeq(...reqs), nowMs: Number.isFinite(o.nowMs) ? o.nowMs : NOW /* F-44.248's cells set the door's clock beside the store's */, composerCreate: composerOf(BODY), sendWhatsApp: transport, env: ENV, ...(Number.isFinite(o.hearMs) ? { hearMs: o.hearMs } : {}) }));
     const said = out && out.door === true ? out : await quiet(() => mod.standIn({ supabase: db, out }, { nowMs: NOW }));
     await quiet(() => mod.persistDoorTurn({ supabase: db, agentId: AG, message, out: said, lane: o.lane || 'whatsapp' }, { memory: memoryOf(db), meter }));
     return { out, said, reply: said.reply, keys: J(said.keys), calls: calls.slice() };
@@ -352,6 +352,54 @@ async function main() {
     { llmCreate: async () => { throw new Error('listener down'); }, nowMs: NOW, composerCreate: composerOf(BODY), sendWhatsApp: transport, env: ENV }));
   T('2.11 the ear erroring: the rule still hears the relay (B37 for Sarah)', !!outErr && J(outErr.keys) === 'B37' && /Sarah/.test(String(outErr.reply || '')));
 
+  sec('6 F-44.248: a draft follow-up after a door relay is that relay again, through the door (the name from the lead\'s record)');
+  // the store keeps its own clock (b103's makeDb); the door's is set one minute after the store's last row, as a follow-up comes
+  const soonAfter = (d) => Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60 * 1000;
+  const RELAY_ASHA_LOWER = { route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] };
+  const noPhone = () => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; };
+  let d6 = makeDb(noPhone());
+  let r6 = await turnSeq(d6, 'Tell asha walk fifteen booking is confirmed but we need to talk once', [RELAY_ASHA_LOWER]);
+  const first6 = r6.keys;
+  r6 = await turnSeq(d6, 'Just draft the message and give me', [MISS, MISS], { nowMs: soonAfter(d6) });
+  // LABELED AMENDMENT · the founder's yes of 29 September 2026 (the no-number draft, two messages): the follow-up for a client with no number is now
+  // answered with the draft to copy (RELAY_DRAFT_NO_NUMBER), no longer RELAY_NO_NUMBER. 6.1 and 6.2 re-pinned; 6.8 to 6.10 pin the two messages.
+  T('6.1 the founder\'s walk shape (10:05:22): after the no-number relay, "Just draft the message and give me" heard none is the relay again, answered BY THE DOOR with the draft to copy (not the question agent)', first6 === 'RELAY_NO_NUMBER' && r6.keys === 'RELAY_DRAFT_NO_NUMBER' && meta(d6).rule === 'draft_followup' && canon(meta(d6).heard) === canon(MISS));
+  T('6.2 the client is the LEAD\'S RECORD name ("Asha Walk Fifteen"), never her words or the ear\'s casing', canon(meta(d6).request && meta(d6).request.acts) === canon([{ act: 'relay', client_as_spoken: 'Asha Walk Fifteen' }]) && /Asha Walk Fifteen/.test(r6.reply) && !/Your Walk Fifteen/.test(r6.reply));
+  const two = r6.said && r6.said.replies;
+  T('6.8 TWO messages, in order: the founder\'s line naming the lead, then the draft ALONE, byte-equal to the composer\'s body (no quotes, nothing around it)', Array.isArray(two) && two.length === 2 && two[0] === "Here is the message for Asha Walk Fifteen. I don't have her number, so copy the next message and send it yourself." && two[1] === BODY);
+  T('6.9 no send question and no phone in either message', Array.isArray(two) && two.every((m) => !/Reply YES or NO|\+91|\d{10}/.test(m)));
+  const sentWa = []; await quiet(() => WD.speakOnWhatsApp({ supabase: d6, agentId: AG, phone: '+919000000000', convoId: 'ct-1', message: 'Just draft the message and give me', out: r6.said, sendWhatsApp: async (to, text) => { sentWa.push(text); return { sid: `w${sentWa.length}` }; } }, { persistDoorTurn: async () => ({}) }));
+  T('6.10 on WhatsApp they leave as TWO messages, the second exactly the draft (a long press copies it)', sentWa.length === 2 && sentWa[0] === two[0] && sentWa[1] === BODY);
+  T('6.11 the record keeps both (content the two a blank line apart; replies kept on the listener)', /Here is the message for Asha Walk Fifteen\./.test(String(lastDoor(d6).content)) && String(lastDoor(d6).content).endsWith(BODY) && Array.isArray(meta(d6).replies) && meta(d6).replies.length === 2);
+  const cj6 = src('src/api/vendor-engine/chat.js');
+  T('6.12 the app lane: the stream sends each message, a message_break before the second; the JSON route carries replies', /const doorParts = Array\.isArray\(doorOut\.replies\) && doorOut\.replies\.length > 1 \? doorOut\.replies : \[doorOut\.reply\];/.test(cj6) && /if \(i\) send\(\{ type: 'message_break' \}\);/.test(cj6) && /replies: Array\.isArray\(doorOut\.replies\) && doorOut\.replies\.length > 1 \? doorOut\.replies\.map/.test(cj6));
+  T('6.3 one hearing: the draft follow-up is not re-heard cold', r6.calls.length === 1);
+  // her number arrives between the two turns (the no-number line asked for it): the follow-up then frames the draft, from her PREVIOUS words
+  d6 = makeDb(noPhone()); composed.length = 0;
+  await turnSeq(d6, 'Tell asha walk fifteen we are free on 22nd', [RELAY_ASHA_LOWER]);
+  d6.tables['public.leads'].forEach((l) => { if (l.id === 'l-asha') l.phone = PHONE2; });
+  const nBefore = composed.length;
+  r6 = await turnSeq(d6, 'Just draft the message and give me', [MISS, MISS], { nowMs: soonAfter(d6) });
+  T('6.4 once her number is on file, the follow-up frames the relay to Asha Walk Fifteen (B37), composed from her PREVIOUS words, not "Just draft the message"', r6.keys === 'B37' && /Asha Walk Fifteen/.test(r6.reply) && composed.slice(nBefore).some((c) => /we are free on 22nd/.test(String(c.user || ''))) && !composed.slice(nBefore).some((c) => /Just draft the message/.test(String(c.user || ''))));
+  d6 = makeDb(ruleWorld());
+  await turnSeq(d6, 'Tell Sarah we are free on 22nd', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'Sarah' }] }]);
+  r6 = await turnSeq(d6, 'Just draft the message and give me', [MISS, MISS], { nowMs: soonAfter(d6) });
+  T('6.4b a pending frame (B37 note) is answered by the note, never re-read as a follow-up', meta(d6).rule !== 'draft_followup');
+  d6 = makeDb(ruleWorld());
+  r6 = await turnSeq(d6, 'Just draft the message and give me', [MISS, MISS], { nowMs: Date.now() });
+  T('6.5 no relay before it: not taken (the thread\'s previous door turn decided no relay)', meta(d6).rule !== 'draft_followup');
+  d6 = makeDb(noPhone());
+  await turnSeq(d6, 'Tell asha walk fifteen booking is confirmed', [RELAY_ASHA_LOWER]);
+  r6 = await turnSeq(d6, 'ok thanks', [MISS, MISS], { nowMs: soonAfter(d6) });
+  T('6.6 a message that does not ask for a draft is not taken', meta(d6).rule !== 'draft_followup');
+  d6 = makeDb(noPhone());
+  await turnSeq(d6, 'Tell asha walk fifteen booking is confirmed', [RELAY_ASHA_LOWER]);
+  // CE-46 ELZ-4 (labelled): total at a tree without lastDoorRelay, so the both-ways read at the uncured tip reddens this cell instead of crashing
+  const hasLDR = typeof WD.lastDoorRelay === 'function';
+  const late = hasLDR ? await WD.lastDoorRelay(d6, AG, 30 * 60 * 1000, soonAfter(d6) + 30 * 60 * 1000) : 'absent';
+  const soon = hasLDR ? await WD.lastDoorRelay(d6, AG, 30 * 60 * 1000, soonAfter(d6)) : null;
+  T('6.7 the window is the previous assistant turn within 30 minutes: a stale relay is not reached', late === null && !!soon && soon.client === 'asha walk fifteen');
+
   sec('3 m181 --rule: the sixteen sentences by construction');
   const PH = ['tell {c} hello', 'tell {c} hi', 'tell {c} good morning', 'tell {c} thank you', "tell {c} we're confirmed", 'tell {c} see you soon', 'tell {c} happy diwali', 'tell {c} congratulations'];
   let n = 0; let relays = 0;
@@ -388,11 +436,20 @@ async function main() {
     async (req2) => { const M = req2(WDf); const d = makeDb(ruleWorld()); await turnSeq(d, 'message Priya thanks', [MISS], { M }); return (await turnSeq(d, '2', [MISS], { M })).keys; }, (v) => v !== 'B37');
   await mut('M10 the other acts dropped when the relay is added (shape (a)\'s loss): 2.9b red', WDf, [["const others = heardReq && Array.isArray(heardReq.acts) ? heardReq.acts.map((a) => ({ ...a })) : [];", 'const others = [];']], WDdeps,
     async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'Tell Asha Walk Fifteen the booking is confirmed', [{ route: 'task', acts: [BOOKED] }], { M: req2(WDf) }); return (noteIn(d).acts || []).map((a) => a.act).join(); }, (v) => !/booking_confirmed/.test(v));
-  await mut('M11 the record forgets what was heard: 2.1b red', WDf, [["...(ear && ear.rule === 'relay' ? { heard: ear.heard === undefined ? null : ear.heard, rule: 'relay' } : {})", '...({})']], WDdeps,
+  // LABELED AMENDMENT · CE-46 ELZ-3 · F-44.248: the record line now also carries rule 'draft_followup'; M11's anchor follows it
+  await mut('M11 the record forgets what was heard: 2.1b red', WDf, [["...(ear && (ear.rule === 'relay' || ear.rule === 'draft_followup') ? { heard: ear.heard === undefined ? null : ear.heard, rule: ear.rule } : {})", '...({})']], WDdeps,
     async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'tell Sarah hi', [MISS], { M: req2(WDf) }); return meta(d).rule; }, (v) => v !== 'relay');
   await mut('M12 F-44.231\'s collapse removed (two B8s, no note): 2.4f red', WDf, [["      if (st.lines.every((l) => listed(l) === listed(st.lines[0]))) { st.lines = [st.lines[0]]; st.keys = ['B8']; }", '']], WDdeps,
     async (req2) => { const d = makeDb(ruleWorld()); return (await turnSeq(d, "tell walk twin we're confirmed", [{ route: 'task', acts: [{ act: 'booking_confirmed', client_as_spoken: 'walk twin' }] }], { M: req2(WDf) })).keys; }, (v) => v !== 'B8');
 
+  await mut('M13 F-44.248 never takes the follow-up (its regex matches nothing): 6.1 red', WDf, [["heardNothing(st.ear) && DRAFT_FOLLOWUP.test(String(message || ''))", 'heardNothing(st.ear) && false']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb((() => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; })()); await turnSeq(d, 'Tell asha walk fifteen booking is confirmed', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] }], { M }); await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M, nowMs: Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60000 }); return meta(d).rule; }, (v) => v !== 'draft_followup');
+  await mut('M14 the name taken from the record as spoken, not the lead\'s row: 6.2 red', WDf, [["const client = found && found.ok && found.lead && typeof found.lead.name === 'string' && found.lead.name.trim() ? found.lead.name.trim() : null;", 'const client = prev.client;']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb((() => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; })()); await turnSeq(d, 'Tell asha walk fifteen booking is confirmed', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] }], { M }); await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M, nowMs: Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60000 }); return canon(meta(d).request && meta(d).request.acts); }, (v) => v !== canon([{ act: 'relay', client_as_spoken: 'Asha Walk Fifteen' }]));
+  await mut('M15 her previous words not restored: 6.4 red', WDf, [['          if (prev.said) st.said = prev.said;\n', '']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb((() => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; })()); composed.length = 0; await turnSeq(d, 'Tell asha walk fifteen we are free on 22nd', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] }], { M }); d.tables['public.leads'].forEach((l) => { if (l.id === 'l-asha') l.phone = PHONE2; }); const n0 = composed.length; await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M, nowMs: Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60000 }); return composed.slice(n0).some((c) => /we are free on 22nd/.test(String(c.user || ''))); }, (v) => v !== true);
+  await mut('M16 the two messages joined into one: 6.8 red', WDf, [['        st.replies = [first, composed.body];', "        st.replies = [`${first}\\n\\n${composed.body}`];"]], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb((() => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; })()); await turnSeq(d, 'Tell asha walk fifteen booking is confirmed', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] }], { M }); const r = await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M, nowMs: Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60000 }); return (r.said && r.said.replies) || []; }, (v) => !(v.length === 2 && v[1] === BODY));
   console.log(`\nb142b_elz3_relay_rule_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
   if (fail) { console.log(`FAILED: ${failed.join(' · ')}`); process.exit(1); }
 }
