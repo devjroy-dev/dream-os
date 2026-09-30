@@ -9,9 +9,10 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
 // CE-47 WEB-4 cut 3 · ?kind=look (or body.kind 'look') runs the same queue and doors over her LOOK photos
-// (vendor_look_photos), which carry approval_state only: no reviewer, no reason column (0187). Default: portfolio.
+// (vendor_look_photos). WEB-4 cut 4 (0188): a rejection keeps its reason (up to 200 characters) and every review its
+// time, so her room can say why a photo was not approved. Default: portfolio.
 const isLook = (req) => req.query.kind === 'look' || ((req.body || {}).kind === 'look');
-const LOOK_Q_SELECT = 'id, vendor_id, look_id, image_url, caption, approval_state, created_at, vendor:vendors(id, business_name, category, routing_handle, user:users(name))';
+const LOOK_Q_SELECT = 'id, vendor_id, look_id, image_url, caption, approval_state, rejection_reason, reviewed_at, created_at, vendor:vendors(id, business_name, category, routing_handle, user:users(name))';
 
 // GET /queue — supports ?category=photographer&state=pending|approved|rejected|all&vendor_id=
 router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
@@ -47,7 +48,7 @@ router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
 router.post('/:imageId/approve', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   if (isLook(req)) {
-    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'approved', updated_at: new Date().toISOString() }).eq('id', req.params.imageId);
+    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'approved', rejection_reason: null, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', req.params.imageId);
     if (le) return errRes(res, 500, le.message);
     return okRes(res, {});
   }
@@ -62,7 +63,8 @@ router.post('/:imageId/approve', requireAdmin, asyncHandler(async (req, res) => 
 router.post('/:imageId/reject', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   if (isLook(req)) {
-    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'rejected', updated_at: new Date().toISOString() }).eq('id', req.params.imageId);
+    const why = String((req.body || {}).reason || '').trim().slice(0, 200) || null;
+    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'rejected', rejection_reason: why, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', req.params.imageId);
     if (le) return errRes(res, 500, le.message);
     return okRes(res, {});
   }
@@ -80,7 +82,7 @@ router.post('/bulk-approve', requireAdmin, asyncHandler(async (req, res) => {
   const imageIds  = (req.body || {}).image_ids || [];
   if (!imageIds.length) return errRes(res, 400, 'image_ids required.');
   if (isLook(req)) {
-    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'approved', updated_at: new Date().toISOString() }).in('id', imageIds);
+    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'approved', rejection_reason: null, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).in('id', imageIds);
     if (le) return errRes(res, 500, le.message);
     return okRes(res, { approved: imageIds.length, kind: 'look' });
   }

@@ -1,0 +1,13 @@
+# scripts/floor-manifest-ce47-web4-cut4.txt
+# CE-47 · WEB-4 cut 4 · visitors and saved looks; a look photo's reason (0188) · base 995496d · F-19.16: a dirty path outside this list stops the floor.
+# Rung b197 (31 cells). 0188 applied before the push. No new directory. No file deleted.
+db/migrations/0188_look_photo_review.sql
+docs/handovers/TDW_CE47_WEB4_CUT4_HANDOVER.md
+scripts/b197_ce47_web4_cut4_bench.js
+scripts/floor-manifest-ce47-web4-cut4.txt
+scripts/lib/b196_store.js
+scripts/lib/b197r_0188_rehearse.sh
+src/api/admin/photos.js
+src/api/public/siteVisit.js
+src/api/router.js
+src/api/vendor/solutions/siteRoom.js

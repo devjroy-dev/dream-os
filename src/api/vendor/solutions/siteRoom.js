@@ -226,7 +226,7 @@ router.put('/pages', ...auth, asyncHandler(async (req, res) => {
 
 // ── LOOKS ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 const LOOK_COLS = 'id, slug, title, status, published_at, category, year_label, description, included, from_price_text, from_price_rupees, package_id, credits, videos, related_ids, new_mark, seo_title, seo_description, share_photo_id, source, position, deleted_at';
-const PHOTO_COLS = 'id, look_id, image_url, width, height, focal_portrait_x, focal_portrait_y, focal_landscape_x, focal_landscape_y, caption, alt, position, approval_state, deleted_at';
+const PHOTO_COLS = 'id, look_id, image_url, width, height, focal_portrait_x, focal_portrait_y, focal_landscape_x, focal_landscape_y, caption, alt, position, approval_state, rejection_reason, deleted_at';
 
 /** Gap 6: what she reads per photo and per look. */
 function reviewOf(p) { return p.approval_state === 'approved' ? 'approved' : p.approval_state === 'rejected' ? 'not_approved' : 'waiting'; }
@@ -286,7 +286,7 @@ router.get('/looks', ...auth, asyncHandler(async (req, res) => {
     return { id: l.id, slug: l.slug, title: l.title, status: l.status, public_state: publicStateOf(l, ph), category: l.category, year_label: l.year_label,
       description: l.description, included: l.included, from_price: l.from_price_text, package_id: l.package_id, credits: l.credits, videos: l.videos,
       related_ids: l.related_ids, new_mark: l.new_mark, seo_title: l.seo_title, seo_description: l.seo_description, position: l.position,
-      photos: ph.map((p) => ({ id: p.id, url: p.image_url, review: reviewOf(p), caption: p.caption, alt: p.alt, position: p.position,
+      photos: ph.map((p) => ({ id: p.id, url: p.image_url, review: reviewOf(p), reason: reviewOf(p) === 'not_approved' ? (p.rejection_reason || null) : null, caption: p.caption, alt: p.alt, position: p.position,
         focal_portrait: { x: Number(p.focal_portrait_x), y: Number(p.focal_portrait_y) }, focal_landscape: { x: Number(p.focal_landscape_x), y: Number(p.focal_landscape_y) } })) };
   }) });
 }));
@@ -555,6 +555,45 @@ router.delete('/testimonials/:id', ...auth, asyncHandler(async (req, res) => {
   if (!UUID.test(String(req.params.id))) return errRes(res, 404, LINES.notYours);
   const { error } = await sb.from('vendor_testimonials').update({ deleted_at: now() }).eq('id', req.params.id).eq('vendor_id', v.id);
   return error ? errRes(res, 503, LINES.saveFailed) : okRes(res, { deleted: true });
+}));
+
+// ── VISITORS (cut 4, gap 7): GET /visitors?days=7|28 ──────────────────────────────────────────────────────────────
+// Essential: visitors, views, daily, top_look. Signature adds by_source; Prestige adds saved_looks. What her plan does not
+// open arrives as null (WEB-6 draws the plan's line, never a zero). Days are India's calendar days.
+const SOURCES = ['google', 'instagram', 'facebook', 'whatsapp', 'direct', 'other'];
+const istDay = (t) => new Date(t + 330 * 60000).toISOString().slice(0, 10);
+router.get('/visitors', ...auth, asyncHandler(async (req, res) => {
+  if (!gate(req, res)) return;
+  const sb = req.app.locals.supabase; const v = req.vendor; const r = rank(v.tier);
+  const days = String(req.query.days) === '28' ? 28 : 7;
+  const now0 = Date.now(); const to = istDay(now0); const from = istDay(now0 - (days - 1) * 86400000);
+  const rowsV = await rows(sb.from('site_visits_daily').select('day, page, look_id, source, views, uniques').eq('vendor_id', v.id).gte('day', from).lte('day', to));
+  const daily = []; for (let i = days - 1; i >= 0; i -= 1) daily.push({ day: istDay(now0 - i * 86400000), visitors: 0, views: 0 });
+  const byDay = new Map(daily.map((d) => [d.day, d]));
+  const bySource = Object.fromEntries(SOURCES.map((s) => [s, 0])); const byLook = new Map();
+  let visitors = 0; let views = 0;
+  for (const x of rowsV) {
+    const u = Number(x.uniques) || 0; const w = Number(x.views) || 0;
+    visitors += u; views += w;
+    const d = byDay.get(String(x.day).slice(0, 10)); if (d) { d.visitors += u; d.views += w; }
+    if (SOURCES.includes(x.source)) bySource[x.source] += u;
+    if (x.page === 'look' && x.look_id) byLook.set(x.look_id, (byLook.get(x.look_id) || 0) + w);
+  }
+  let top_look = null;
+  if (byLook.size) {
+    const [id, n] = [...byLook.entries()].sort((a, b) => b[1] - a[1])[0];
+    const l = await one(sb.from('vendor_looks').select('slug, title').eq('id', id).eq('vendor_id', v.id).maybeSingle());
+    if (l) top_look = { slug: l.slug, title: l.title, views: n };
+  }
+  let saved_looks = null;
+  if (r >= 3) {
+    const hearts = await rows(sb.from('look_hearts_daily').select('look_id, hearts').eq('vendor_id', v.id).gte('day', from).lte('day', to));
+    const per = new Map(); for (const h of hearts) per.set(h.look_id, (per.get(h.look_id) || 0) + (Number(h.hearts) || 0));
+    const ids = [...per.keys()];
+    const looks = ids.length ? await rows(sb.from('vendor_looks').select('id, slug, title').in('id', ids).eq('vendor_id', v.id)) : [];
+    saved_looks = looks.map((l) => ({ slug: l.slug, title: l.title, hearts: per.get(l.id) })).filter((x) => x.hearts > 0).sort((a, b) => b.hearts - a.hearts).slice(0, 10);
+  }
+  return okRes(res, { visitors: { days, from, to, visitors, views, daily, top_look, by_source: r >= 2 ? bySource : null, saved_looks } });
 }));
 
 module.exports = router;

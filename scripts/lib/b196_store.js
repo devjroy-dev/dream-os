@@ -24,6 +24,9 @@ function makeStore(seed) {
       is(c, v) { st.filters.push((r) => (v === null ? r[c] === null || r[c] === undefined : r[c] === v)); return api; },
       in(c, vs) { const s = new Set(vs); st.filters.push((r) => s.has(r[c])); return api; },
       gt(c, v) { st.filters.push((r) => r[c] !== null && r[c] !== undefined && String(r[c]) > String(v)); return api; },
+      gte(c, v) { st.filters.push((r) => r[c] !== null && r[c] !== undefined && String(r[c]) >= String(v)); return api; },
+      lte(c, v) { st.filters.push((r) => r[c] !== null && r[c] !== undefined && String(r[c]) <= String(v)); return api; },
+      lt(c, v) { st.filters.push((r) => r[c] !== null && r[c] !== undefined && String(r[c]) < String(v)); return api; },   // cut 4
       order(c, o) { st.orders.push([c, !(o && o.ascending === false)]); return api; },
       limit(n) { st.lim = n; return api; },
       maybeSingle() { st.single = 'maybe'; return api; },
