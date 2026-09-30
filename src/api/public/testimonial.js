@@ -34,12 +34,10 @@ const HOUR = 3600 * 1000;
 const PER_TOKEN = 5; const PER_ADDR_POST = 20; const PER_ADDR_GET = 60;
 
 // ── the limiter: counts in memory, keyed by a hash, never by the raw address ──────────────────────────────────────
-const buckets = new Map();
-function hit(key, max, windowMs) {
-  const t = Date.now(); const b = buckets.get(key);
-  if (!b || (windowMs && t - b.start >= windowMs)) { buckets.set(key, { start: t, n: 1 }); return true; }
-  b.n += 1; return b.n <= max;
-}
+// The chair's item a: expiry, a sweep and a size cap (src/lib/site/limiter.js). A token's lifetime count is kept 31 days,
+// one past its link's 30; the single-use UPDATE bounds every token regardless.
+const limiter = require('../../lib/site/limiter').makeLimiter({ cap: 5000 });
+const hit = (key, max, windowMs) => limiter.hit(key, max, windowMs);
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 const addrKey = (req, kind) => `addr:${kind}:${sha(req.ip || '')}`;
 const TOKEN = /^[A-Za-z0-9_-]{20,64}$/;
@@ -123,5 +121,5 @@ router.post('/:token', async (req, res) => {
 module.exports = router;
 module.exports.checkSubmission = checkSubmission;
 module.exports.sha = sha;
-module.exports._buckets = buckets;
+module.exports._limiter = limiter;
 module.exports.LIMITS = { PER_TOKEN, PER_ADDR_POST, PER_ADDR_GET };

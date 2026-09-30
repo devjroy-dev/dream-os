@@ -16,6 +16,12 @@ function makeStore(seed) {
   const meter = { waves: 0, inFlight: 0 };
   const note = (bag, tbl, keys) => { if (!bag[tbl]) bag[tbl] = new Set(); for (const k of keys) bag[tbl].add(k); };
   function table(name) { if (!t[name]) t[name] = []; return t[name]; }
+  // cut 5: `rpc(name, args)` runs a JS stand-in registered in `rpcs[name]` (the SQL itself is rehearsed on Postgres)
+  const rpcs = {};
+  function rpc(name, args) {
+    calls.push({ table: 'rpc:' + name, op: 'rpc' });
+    return new Promise((r) => setTimeout(r, 2)).then(() => (rpcs[name] ? rpcs[name](t, args || {}) : { data: null, error: { message: 'no such function' } }));
+  }
   function from(name) {
     const st = { name, op: 'select', cols: null, filters: [], orders: [], lim: null, payload: null, returning: null, single: null, onConflict: null };
     const api = {
@@ -77,6 +83,6 @@ function makeStore(seed) {
     }
     return api;
   }
-  return { from, tables: t, failOn, failWrite, calls, written, selected, meter };
+  return { from, rpc, rpcs, tables: t, failOn, failWrite, calls, written, selected, meter };
 }
 module.exports = { makeStore };

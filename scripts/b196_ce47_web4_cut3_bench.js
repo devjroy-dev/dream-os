@@ -37,7 +37,10 @@ function seed() {
     vendor_packages: [{ id: 'p-b', vendor_id: 'basic1', name: 'Trial', total: 5000, line_items: [], is_default: false, deleted_at: null },
       { id: 'p-s1', vendor_id: 'sig1', name: 'Bridal', total: 45000, line_items: [], is_default: true, deleted_at: null },
       { id: 'p-s2', vendor_id: 'sig1', name: 'Trial', total: 5000, line_items: [], is_default: false, deleted_at: null }],
-    vendor_sites: [{ vendor_id: 'sig1', look: 'bloom', pages: [], credit_shown: true, style: 'noir', styles_picked: ['noir'],
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 5 (b198): a styles site shows only once PUBLISHED (vendor_sites.published_at), so
+    // the planted sites carry it; ess1's and pre1's rows are planted for the same reason.
+    vendor_sites: [{ vendor_id: 'ess1', published_at: '2026-09-30T00:00:00Z' }, { vendor_id: 'pre1', published_at: '2026-09-30T00:00:00Z' },
+      { vendor_id: 'sig1', published_at: '2026-09-30T00:00:00Z', look: 'bloom', pages: [], credit_shown: true, style: 'noir', styles_picked: ['noir'],
       cover: [{ photo: { url: CL('sig1', 'approved') }, headline: 'The Night Bride' }, { photo: { url: CL('sig1', 'pending') }, headline: 'Not approved' }, { photo: { url: 'https://evil.example/x.jpg' }, headline: 'Not hers' }],
       copy: { intro: 'Hello' }, palette_custom: {} }],
     vendor_testimonials: [
@@ -207,7 +210,8 @@ function seed() {
   const sixth = await S2.call('POST', '/t/' + et, Object.assign({}, body, { video_url: undefined }), null, '10.0.0.4');
   ok(() => sixth.status === 404, '6.15 per token: five POSTs in its life, the sixth reads as the 404 body');
   // per-address limit
-  if (TS && TS._buckets) TS._buckets.clear();
+  // AMENDED BY LABEL, CE-47 WEB-4 (cut 5, b198): the maps became one pruned, capped limiter.
+  if (TS && TS._limiter) TS._limiter._map.clear();
   let last = null; for (let i = 0; i < 21; i += 1) last = await S2.call('POST', '/t/' + 'y'.repeat(30), {}, null, '10.9.9.9');
   ok(() => last.status === 429 && /Too many tries/.test(last.raw), '6.16 per address: the 21st POST in an hour is 429 with the plain line');
   ok(() => !JSON.stringify(store2.tables).includes('10.9.9.9') && !JSON.stringify(store.tables).includes('10.0.0.1'), '6.17 no address is stored anywhere');

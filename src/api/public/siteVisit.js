@@ -22,13 +22,10 @@ const PAGES = Object.freeze(['home', 'look', 'collection', 'journal', 'page']);
 const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|curl|wget|python|headless|lighthouse|pingdom|monitor/i;
 const HOUR = 3600 * 1000; const PER_ADDR = 240;
-const buckets = new Map();
+// The chair's item a: one limiter with expiry, a sweep and a size cap (src/lib/site/limiter.js), not a map kept forever.
+const limiter = require('../../lib/site/limiter').makeLimiter({ cap: 5000 });
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
-function allow(req) {
-  const k = sha(req.ip || ''); const t = Date.now(); const b = buckets.get(k);
-  if (!b || t - b.start >= HOUR) { buckets.set(k, { start: t, n: 1 }); return true; }
-  b.n += 1; return b.n <= PER_ADDR;
-}
+const allow = (req) => limiter.hit(sha(req.ip || ''), PER_ADDR, HOUR);
 
 /** India's calendar day, as YYYY-MM-DD (UTC+5:30). */
 function indiaDay(at) {
@@ -36,8 +33,12 @@ function indiaDay(at) {
   return new Date(t + 330 * 60000).toISOString().slice(0, 10);
 }
 
-/** The referrer class (the brief §6): from utm_source first, then the referrer's host. */
-function sourceOf(ref, utm) {
+/**
+ * The referrer class (the brief §6): from utm_source first, then the referrer's host. `ownHosts` is her own linked, live
+ * domain (and its www.), so a visitor moving between her own pages reads as direct, as on thedreamwedding.in (the
+ * chair's item b). The page sends `ref` on ENTRY only, so this is where she came from, not the page before.
+ */
+function sourceOf(ref, utm, ownHosts) {
   const u = String(utm || '').toLowerCase().trim();
   if (u) {
     if (/^(google|gads|adwords)/.test(u)) return 'google';
@@ -54,6 +55,7 @@ function sourceOf(ref, utm) {
   if (/(^|\.)(facebook\.com|fb\.com|fb\.me)$/.test(host)) return 'facebook';
   if (/(^|\.)(whatsapp\.com|wa\.me)$/.test(host)) return 'whatsapp';
   if (/(^|\.)thedreamwedding\.in$/.test(host)) return 'direct';
+  if (ownHosts && typeof ownHosts.has === 'function' && ownHosts.has(host)) return 'direct';
   return 'other';
 }
 
@@ -103,7 +105,12 @@ router.post('/visit', express.json({ limit: '4kb' }), async (req, res) => {
     const day = indiaDay(); const salt = await saltFor(sb, day);
     const digest = hex(crypto.createHash('sha256').update(`${salt}|${req.ip || ''}|${req.get('user-agent') || ''}|${v.id}`).digest());
     const already = await seen(sb, day, digest, true);
-    const source = sourceOf(b.ref, b.utm_source);
+    let own = null;
+    if (b.ref) {
+      const { data: doms } = await sb.from('vendor_domains').select('domain').eq('vendor_id', v.id).eq('status', 'live').is('deleted_at', null).limit(3);
+      own = new Set((Array.isArray(doms) ? doms : []).flatMap((d) => { const h = String(d.domain || '').toLowerCase().replace(/^www\./, ''); return h ? [h, 'www.' + h] : []; }));
+    }
+    const source = sourceOf(b.ref, b.utm_source, own);
     let q = sb.from('site_visits_daily').select('id, views, uniques').eq('vendor_id', v.id).eq('day', day).eq('page', page).eq('source', source);
     q = lookId ? q.eq('look_id', lookId) : q.is('look_id', null);
     const { data: row } = await q.maybeSingle();
@@ -137,4 +144,4 @@ module.exports = router;
 module.exports.sourceOf = sourceOf;
 module.exports.indiaDay = indiaDay;
 module.exports.BOT = BOT;
-module.exports._buckets = buckets;
+module.exports._limiter = limiter;

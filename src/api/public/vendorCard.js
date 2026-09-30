@@ -239,7 +239,7 @@ const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, sta
 const PACKAGE_SELECT   = 'name, description, line_items, total, is_default, created_at';
 const SITE_SELECT      = 'look, pages, credit_shown';
 // CE-47 WEB-4 cut 3 · her six-style choices (0187), read only for Essential and up. Each list names its columns.
-const SITE_STYLES_SELECT = 'look, pages, credit_shown, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy';
+const SITE_STYLES_SELECT = 'look, pages, credit_shown, published_at, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy';
 const SECTIONS_SELECT  = 'key, page_id, variant, shown, position, eyebrow, heading, body, deleted_at';
 const PAGES_SELECT     = 'slug, title, position, shown, deleted_at';
 const LOOKS_SELECT     = 'id, slug, title, status, published_at, category, year_label, description, included, from_price_text, package_id, credits, videos, related_ids, new_mark, seo_title, seo_description, share_photo_id, position, deleted_at';
@@ -248,6 +248,7 @@ const COLLECTIONS_SELECT = 'id, slug, name, description, cover_photo_id, positio
 const TESTIMONIALS_SELECT = 'author, body, occasion, event_month, place, video_url, video_duration_s, video_title, position, state, request_id, submitted_at, deleted_at';
 const FAQ_SELECT       = 'question, answer, position, deleted_at';
 const siteCardLib      = require('../../lib/site/siteCard');
+const previewLib       = require('../../lib/site/preview');   // CE-47 WEB-4 cut 5 · her draft, to her room's token only
 const DOMAIN_SELECT    = 'domain, status';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
 // `computed_at` is selected and WITHHELD — the page shows a fact, not an audit
@@ -659,7 +660,12 @@ router.get('/:code', async (req, res) => {
       } catch (_srErr) { siteRow = null; }
       // CE-47 WEB-4 cut 3 · Essential and up read their site's own rows; Basic reads none of them. Every read is
       // guarded like the ones above: a failed read gives an empty list, never a 500 on a couple's page.
-      const styles = siteModel.tierOf(v.tier) !== 'basic';
+      let styles = siteModel.tierOf(v.tier) !== 'basic';
+      // CE-47 WEB-4 cut 5 · `?preview=<token>` from her room serves HER DRAFT (and `?style=<id>` a style card) to that
+      // token only; the answer is never cached and never indexed. Without it, the card reads the LIVE rows only, and an
+      // Essential-and-up site shows as today's page until her first Publish (vendor_sites.published_at).
+      const previewOn = styles && previewLib.verify(typeof req.query.preview === 'string' ? req.query.preview : null) === v.id;
+      if (previewOn) { res.set('Cache-Control', 'no-store'); res.set('X-Robots-Tag', 'noindex, nofollow'); }
       const safe = async (q) => { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch (_e) { return []; } };
       let ex = { sections: [], pages: [], looks: [], lookPhotos: [], collections: [], collectionLooks: [], testimonials: [], faq: [] };
       if (styles) {
@@ -667,7 +673,7 @@ router.get('/:code', async (req, res) => {
         // styles row, sections, pages, looks, collections (Signature and up), testimonials, questions. Stage 2, the only
         // true dependencies: the photos of those looks and the members of those collections, together.
         const withCollections = siteModel.tierOf(v.tier) !== 'essential';
-        const [sr2, sections, pages, looks, collections, testimonials, faq] = await Promise.all([
+        let [sr2, sections, pages, looks, collections, testimonials, faq, draft] = await Promise.all([
           (async () => { try { const { data, error } = await supabase.from('vendor_sites').select(SITE_STYLES_SELECT).eq('vendor_id', v.id).maybeSingle(); return !error && data ? data : null; } catch (_e) { return null; } })(),
           safe(supabase.from('vendor_site_sections').select(SECTIONS_SELECT).eq('vendor_id', v.id).is('deleted_at', null)),
           safe(supabase.from('vendor_site_pages').select(PAGES_SELECT).eq('vendor_id', v.id).is('deleted_at', null)),
@@ -675,15 +681,24 @@ router.get('/:code', async (req, res) => {
           withCollections ? safe(supabase.from('vendor_collections').select(COLLECTIONS_SELECT).eq('vendor_id', v.id).is('deleted_at', null)) : Promise.resolve([]),
           safe(supabase.from('vendor_testimonials').select(TESTIMONIALS_SELECT).eq('vendor_id', v.id).eq('state', 'approved').is('deleted_at', null)),
           safe(supabase.from('vendor_site_faq').select(FAQ_SELECT).eq('vendor_id', v.id).is('deleted_at', null)),
+          previewOn ? (async () => { try { const { data, error } = await supabase.from('vendor_site_drafts').select('settings, sections, pages').eq('vendor_id', v.id).maybeSingle(); return !error && data ? data : null; } catch (_e) { return null; } })() : Promise.resolve(null),
         ]);
         if (sr2) siteRow = sr2;
-        const lookIds = looks.map((l) => l.id).filter(Boolean);
-        const colIds = collections.map((c) => c.id).filter(Boolean);
+        if (previewOn) {
+          const o = previewLib.overlay(sr2, sections, pages, draft);
+          siteRow = o.site; sections = o.sections; pages = o.pages;
+          const want = typeof req.query.style === 'string' ? req.query.style : null;
+          if (want && siteModel.stylesOpen(v.tier, siteRow).includes(want)) siteRow = Object.assign({}, siteRow, { style: want });
+        } else if (!(sr2 && sr2.published_at)) {
+          styles = false;   // not yet published: today's page, and no looks read
+        }
+        const lookIds = styles ? looks.map((l) => l.id).filter(Boolean) : [];
+        const colIds = styles ? collections.map((c) => c.id).filter(Boolean) : [];
         const [lookPhotos, collectionLooks] = await Promise.all([
           lookIds.length ? safe(supabase.from('vendor_look_photos').select(LOOK_PHOTOS_SELECT).in('look_id', lookIds).eq('approval_state', 'approved').is('deleted_at', null).order('position', { ascending: true })) : Promise.resolve([]),
           colIds.length ? safe(supabase.from('vendor_collection_looks').select('collection_id, look_id, position').in('collection_id', colIds)) : Promise.resolve([]),
         ]);
-        ex = { sections, pages, looks, lookPhotos, collections, collectionLooks, testimonials, faq };
+        if (styles) ex = { sections, pages, looks, lookPhotos, collections, collectionLooks, testimonials, faq };
       }
       let liveDomain = null;
       try {
@@ -841,3 +856,4 @@ module.exports.siteFor = siteFor;
 module.exports.PACKAGE_SELECT = PACKAGE_SELECT;
 module.exports.SITE_SELECT = SITE_SELECT;
 module.exports.DOMAIN_SELECT = DOMAIN_SELECT;
+module.exports.notFound = notFound;   // CE-47 WEB-4 cut 5 · the site-kind door answers every miss with this one body

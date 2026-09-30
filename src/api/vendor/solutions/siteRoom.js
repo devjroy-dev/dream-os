@@ -67,6 +67,7 @@ const LINES = Object.freeze({
   videoLink: 'Use a YouTube or Instagram link.',
   videoPlan: 'Video testimonials are on Signature and up.',
   phone: 'Enter the number with its country code, like +91 98765 43210.',
+  nothingToPublish: 'There are no changes to publish.',
 });
 
 /** Her tier, from her own row (resolveVendor loads it). Basic has no six-style site. */
@@ -80,7 +81,47 @@ async function one(q) { try { const { data, error } = await q; return !error && 
 
 // ── GET /room ─────────────────────────────────────────────────────────────────────────────────────────────────────
 async function siteRowOf(sb, vid) {
-  return one(sb.from('vendor_sites').select('look, pages, credit_shown, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy').eq('vendor_id', vid).maybeSingle());
+  return one(sb.from('vendor_sites').select('look, pages, credit_shown, published_at, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy').eq('vendor_id', vid).maybeSingle());
+}
+
+// ── CUT 5 · THE DRAFT (the chair's item 1; WEB-6's W6-k) ──────────────────────────────────────────────────────────
+// Settings, her home's sections and (Prestige) pages are written to ONE DRAFT per vendor (vendor_site_drafts, 0189),
+// validated exactly as before. POST /publish applies it to the live rows in one transaction (site_publish_draft);
+// POST /discard drops it. The public card reads the live rows only. Looks, collections, questions, testimonials and
+// prices are not drafted. The change lines below are vendor-facing (R-45.30; in the handover's veto table).
+const previewLib = require('../../../lib/site/preview');
+async function draftOf(sb, vid) {
+  return one(sb.from('vendor_site_drafts').select('settings, sections, pages, updated_at').eq('vendor_id', vid).maybeSingle());
+}
+async function saveDraft(sb, vid, patch) {
+  const { error } = await sb.from('vendor_site_drafts').upsert(Object.assign({ vendor_id: vid, updated_at: new Date().toISOString() }, patch), { onConflict: 'vendor_id' });
+  return !error;
+}
+const SETTING_LINES = Object.freeze({
+  style: 'Style changed', styles_picked: 'Your styles changed', palette_id: 'Colours changed', palette_custom: 'Colours changed',
+  font_pair: 'Fonts changed', motion: 'Movement changed', corners: 'Corners changed', button_style: 'Buttons changed',
+  texture: 'Texture changed', cover_mode: 'Cover changed', cover: 'Cover changed', monogram: 'Monogram changed',
+  site_name: 'Site name changed', copy: 'Words changed', credit_shown: 'Credit changed',
+});
+const SECTION_LABELS = Object.freeze({ cover: 'Cover', looks: 'Looks', collections: 'Collections', band: 'Band', reviews: 'Kind words',
+  pricing: 'Prices', studio: 'Studio', journal: 'Journal', faq: 'Questions', enquire: 'Enquire' });
+const same = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+/** What her draft would change, in plain words: [{ area, line }], one line per thing, no repeats. */
+function changesOf(live, liveSections, livePages, draft) {
+  const out = []; const seen = new Set(); const push = (area, line) => { if (!seen.has(line)) { seen.add(line); out.push({ area, line }); } };
+  const d = draft || {}; const l = live || {};
+  for (const [k, v] of Object.entries(d.settings || {})) if (SETTING_LINES[k] && !same(v, l[k])) push('settings', SETTING_LINES[k]);
+  const byKey = new Map((liveSections || []).filter((x) => !x.page_id).map((x) => [x.key, x]));
+  for (const x of Array.isArray(d.sections) ? d.sections : []) {
+    const was = byKey.get(x.key) || {};
+    const differs = ['variant', 'shown', 'position', 'eyebrow', 'heading', 'body'].some((f) => x[f] !== undefined && !same(x[f], was[f]));
+    if (differs) push('sections', `${SECTION_LABELS[x.key] || 'Your own section'} section changed`);
+  }
+  if (Array.isArray(d.pages)) {
+    const a = (livePages || []).map((p) => [p.slug, p.title, p.shown !== false]); const b = d.pages.map((p) => [p.slug, p.title, p.shown !== false]);
+    if (!same(a, b)) push('pages', 'Pages changed');
+  }
+  return out;
 }
 function offeredFinish(tier) {
   const out = {};
@@ -93,20 +134,43 @@ function offeredFinish(tier) {
 }
 router.get('/room', ...auth, asyncHandler(async (req, res) => {
   const sb = req.app.locals.supabase; const v = req.vendor;
-  const [row, sections, pages, pkgs] = await Promise.all([
+  const [row, sections, pages, pkgs, draft] = await Promise.all([
     siteRowOf(sb, v.id),
     rows(sb.from('vendor_site_sections').select('key, page_id, variant, shown, position, eyebrow, heading, body, deleted_at').eq('vendor_id', v.id).is('deleted_at', null)),
     rows(sb.from('vendor_site_pages').select('id, slug, title, position, shown, deleted_at').eq('vendor_id', v.id).is('deleted_at', null)),
     rows(sb.from('vendor_packages').select('id, name, total, deleted_at').eq('vendor_id', v.id).is('deleted_at', null)),
+    draftOf(sb, v.id),
   ]);
-  const resolved = siteModel.resolveSite({ tier: v.tier, category: v.category, businessName: v.business_name, site: row || {}, sections, pages });
+  // `stored` is HER DRAFT laid over the live rows: what she is editing. The public card still reads the live rows.
+  const o = previewLib.overlay(row || {}, sections, pages, draft);
+  const resolved = siteModel.resolveSite({ tier: v.tier, category: v.category, businessName: v.business_name, site: o.site, sections: o.sections, pages: o.pages });
+  const list = draft ? changesOf(row, sections, pages, draft) : [];
   return okRes(res, { room: {
-    stored: row || {},
+    stored: o.site,
     resolved,                                   // her own room: `can`, styles_open and palette.moved are hers to see
-    styles: REG.STYLE_IDS.map((s) => ({ id: s, label: REG.STYLES[s].label, pairs: REG.STYLES[s].pairs, palettes: REG.palettesOf(s).map((p) => ({ id: p.id, label: p.label })) })),
+    changes: { count: list.length, list, published_at: (row && row.published_at) || null },
+    is_live: Boolean(row && row.published_at),
+    // the card door serves her draft to this token only: GET /api/v2/public/vendor-card/<handle>?preview=<token>[&style=<id>]
+    preview: rank(v.tier) >= 1 ? previewLib.issue(v.id) : null,
+    styles: REG.STYLE_IDS.map((s2) => ({ id: s2, label: REG.STYLES[s2].label, pairs: REG.STYLES[s2].pairs, palettes: REG.palettesOf(s2).map((p) => ({ id: p.id, label: p.label })) })),
     finish: offeredFinish(v.tier),
     to_fix: { packages_below_starting_price: siteCard.packagesBelowStart(pkgs, v.rate_display, v.rate_min) },
   } });
+}));
+
+// ── POST /publish · POST /discard (cut 5) ─────────────────────────────────────────────────────────────────────────
+router.post('/publish', ...auth, asyncHandler(async (req, res) => {
+  if (!gate(req, res)) return;
+  const sb = req.app.locals.supabase; const v = req.vendor;
+  const { data, error } = await sb.rpc('site_publish_draft', { p_vendor: v.id });
+  if (error) return errRes(res, 503, LINES.saveFailed);
+  if (!data) return errRes(res, 400, LINES.nothingToPublish);
+  return okRes(res, { published_at: data, is_live: true });
+}));
+router.post('/discard', ...auth, asyncHandler(async (req, res) => {
+  const sb = req.app.locals.supabase; const v = req.vendor;
+  const { error } = await sb.from('vendor_site_drafts').delete().eq('vendor_id', v.id);
+  return error ? errRes(res, 503, LINES.saveFailed) : okRes(res, { discarded: true });
 }));
 
 // ── PATCH /settings ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -170,11 +234,12 @@ function checkSettings(tier, current, body) {
 router.patch('/settings', ...auth, asyncHandler(async (req, res) => {
   if (!gate(req, res)) return;
   const sb = req.app.locals.supabase; const v = req.vendor;
-  const current = (await siteRowOf(sb, v.id)) || {};
+  const [live, draft] = await Promise.all([siteRowOf(sb, v.id), draftOf(sb, v.id)]);
+  const current = previewLib.overlay(live || {}, [], [], draft).site;
   const r = checkSettings(v.tier, current, req.body);
   if (r.error) return errRes(res, 400, r.error);
-  const { error } = await sb.from('vendor_sites').upsert(Object.assign({ vendor_id: v.id, updated_at: now() }, r.patch), { onConflict: 'vendor_id' });
-  if (error) return errRes(res, 503, LINES.saveFailed);
+  // cut 5: into her draft, not the live row
+  if (!(await saveDraft(sb, v.id, { settings: Object.assign({}, (draft && draft.settings) || {}, r.patch) }))) return errRes(res, 503, LINES.saveFailed);
   const warning = limits.priceWarning([obj(r.patch.copy).intro, obj(r.patch.copy).studio_body, obj(r.patch.copy).pricing_note], v.rate_display);
   return okRes(res, { saved: Object.keys(r.patch), warning });
 }));
@@ -196,15 +261,15 @@ router.put('/sections', ...auth, asyncHandler(async (req, res) => {
     for (const [k, key2] of [['lines', 'band_line'], ['words', 'rolling_word'], ['destinations', 'destination']]) { if (k in body) { const f = limits.list(key2, body[k]); if (!f.ok) return errRes(res, 400, f.error); cleanBody[k] = f.value; } }
     if ('photos' in body) cleanBody.photos = arr(body.photos).map(obj).slice(0, limits.COUNTS.band_photos).map((p) => ({ url: String(p.url || ''), focal_portrait: limits.focal(p.focal_portrait), focal_landscape: limits.focal(p.focal_landscape) }));
     if ('text' in body) { const f = limits.field('studio_body', body.text); if (!f.ok) return errRes(res, 400, f.error); cleanBody.text = f.value; }
+    if ('button' in body) { const f = limits.field('cover_button', body.button); if (!f.ok) return errRes(res, 400, f.error); cleanBody.button = f.value; }   // cut 5: the band's button
     out.push({ vendor_id: v.id, key, variant: /^[a-z0-9-]{1,24}$/.test(String(s.variant || '')) ? s.variant : 'default', shown: s.shown !== false,
       position: Number.isFinite(s.position) ? Math.round(s.position) : i * 10, eyebrow: eb.value, heading: hd.value, body: cleanBody, updated_at: now() });
   }
-  // One row per key on her home: stored choices beyond her plan are kept (R-46.9); the card resolves what shows.
-  for (const row of out) {
-    const existing = await one(sb.from('vendor_site_sections').select('id').eq('vendor_id', v.id).eq('key', row.key).is('page_id', null).is('deleted_at', null).maybeSingle());
-    const { error } = existing ? await sb.from('vendor_site_sections').update(row).eq('id', existing.id).eq('vendor_id', v.id) : await sb.from('vendor_site_sections').insert(row);
-    if (error) return errRes(res, 503, LINES.saveFailed);
-  }
+  // cut 5: into her draft, one entry per key on her home (merged over what the draft already holds); publish writes them
+  const draft = await draftOf(sb, v.id);
+  const byKey = new Map(((draft && Array.isArray(draft.sections)) ? draft.sections : []).map((x) => [x.key, x]));
+  for (const row of out) byKey.set(row.key, { key: row.key, variant: row.variant, shown: row.shown, position: row.position, eyebrow: row.eyebrow, heading: row.heading, body: row.body });
+  if (!(await saveDraft(sb, v.id, { sections: [...byKey.values()] }))) return errRes(res, 503, LINES.saveFailed);
   return okRes(res, { saved: out.length });
 }));
 
@@ -218,9 +283,8 @@ router.put('/pages', ...auth, asyncHandler(async (req, res) => {
     const slug = limits.SLUG.test(String(p.slug || '')) ? p.slug : limits.slugFrom(t.value, clean.map((c) => c.slug));
     clean.push({ vendor_id: v.id, slug, title: t.value, position: i, shown: p.shown !== false, updated_at: now() });
   }
-  const { error: dErr } = await sb.from('vendor_site_pages').update({ deleted_at: now() }).eq('vendor_id', v.id).is('deleted_at', null);
-  if (dErr) return errRes(res, 503, LINES.saveFailed);
-  if (clean.length) { const { error } = await sb.from('vendor_site_pages').insert(clean); if (error) return errRes(res, 503, LINES.saveFailed); }
+  // cut 5: into her draft; publish replaces her pages in one transaction
+  if (!(await saveDraft(sb, v.id, { pages: clean.map((c) => ({ slug: c.slug, title: c.title, shown: c.shown })) }))) return errRes(res, 503, LINES.saveFailed);
   return okRes(res, { pages: clean.map((c) => ({ slug: c.slug, title: c.title })) });
 }));
 
@@ -602,5 +666,7 @@ module.exports.checkLook = checkLook;
 module.exports.publicStateOf = publicStateOf;
 module.exports.reviewOf = reviewOf;
 module.exports.LINES = LINES;
+module.exports.changesOf = changesOf;
+module.exports.SETTING_LINES = SETTING_LINES;
 module.exports.copyTextFor = copyTextFor;
 module.exports.TESTIMONIAL_PAGE = TESTIMONIAL_PAGE;

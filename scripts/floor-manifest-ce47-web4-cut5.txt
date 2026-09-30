@@ -1,0 +1,19 @@
+# scripts/floor-manifest-ce47-web4-cut5.txt
+# CE-47 · WEB-4 cut 5 · limiters, her own domain, the draft and Publish (0189), the preview, the site-kind door, WEB-5's card fields · base a0bfe02 · F-19.16: a dirty path outside this list stops the floor.
+# Rung b198 (40 cells). 0189 applied before the push. b196 amended by label. No new directory. No file deleted.
+db/migrations/0189_site_drafts.sql
+docs/handovers/TDW_CE47_WEB4_CUT5_HANDOVER.md
+scripts/b196_ce47_web4_cut3_bench.js
+scripts/b198_ce47_web4_cut5_bench.js
+scripts/floor-manifest-ce47-web4-cut5.txt
+scripts/lib/b196_store.js
+scripts/lib/b198r_0189_rehearse.sh
+src/api/public/siteKind.js
+src/api/public/siteVisit.js
+src/api/public/testimonial.js
+src/api/public/vendorCard.js
+src/api/router.js
+src/api/vendor/solutions/siteRoom.js
+src/lib/site/limiter.js
+src/lib/site/preview.js
+src/lib/site/siteCard.js

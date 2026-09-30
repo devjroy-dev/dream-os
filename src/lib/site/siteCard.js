@@ -90,6 +90,13 @@ function videoKind(url) {
   return null;
 }
 
+/** A YouTube video's still, from its address (watch, youtu.be, shorts, embed; www. or m.); else null. Cut 5. */
+function posterOf(url) {
+  if (videoKind(url) !== 'youtube') return null;
+  const m = /(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})(?:[?&#/]|$)/.exec(String(url));
+  return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : null;
+}
+
 function videosOf(v) {
   return arr(v).map(obj).map((x) => {
     const url = str(x.url);
@@ -104,7 +111,8 @@ function lookSummary(l, photoMap, rateDisplay, now) {
   return {
     slug: l.slug, title: text('look_title', l.title), category: text('category', l.category), year_label: text('look_year', l.year_label),
     from_price: fromPriceOf(l, rateDisplay), is_new: siteModel.isNew(l, now),
-    cover: photos[0] || null, photo_count: photos.length, has_video: vids.length > 0, video_duration_s: vids[0] ? vids[0].duration_s : null,
+    // second (cut 5, WEB-5's port): the look's second approved photograph, or null
+    cover: photos[0] || null, second: photos[1] || null, photo_count: photos.length, has_video: vids.length > 0, video_duration_s: vids[0] ? vids[0].duration_s : null,
   };
 }
 
@@ -145,9 +153,11 @@ function copyOf(stored, okUrls) {
 function bodyOf(key, body, okUrls) {
   const b = obj(body);
   if (key === 'band') {
+    const photos = arr(b.photos).map(obj).filter((p) => okUrls.has(str(p.url))).slice(0, limits.COUNTS.band_photos)
+      .map((p) => ({ url: p.url, focal_portrait: limits.focal(p.focal_portrait), focal_landscape: limits.focal(p.focal_landscape), alt: text('photo_alt', p.alt) }));
+    // cut 5 (WEB-5's port): the band's one photo and its button, beside the lines, words and destinations it had
     return { lines: list('band_line', b.lines), words: list('rolling_word', b.words), destinations: list('destination', b.destinations),
-      photos: arr(b.photos).map(obj).filter((p) => okUrls.has(str(p.url))).slice(0, limits.COUNTS.band_photos)
-        .map((p) => ({ url: p.url, focal_portrait: limits.focal(p.focal_portrait), focal_landscape: limits.focal(p.focal_landscape), alt: text('photo_alt', p.alt) })) };
+      photos, photo: photos[0] || null, button: text('cover_button', b.button) };
   }
   if (siteModel.CUSTOM_KEY.test(key)) return { text: text('studio_body', b.text) };
   return {};
@@ -188,7 +198,7 @@ function testimonialsOf(tier, rows) {
     .sort((a, b) => (num(a.position) || 0) - (num(b.position) || 0))
     .map((t) => {
       const words = text('client_words', t.body);
-      const v = video && HTTPS.test(str(t.video_url)) ? { url: t.video_url, duration_s: num(t.video_duration_s), title: text('video_title', t.video_title) } : null;
+      const v = video && HTTPS.test(str(t.video_url)) ? { url: t.video_url, duration_s: num(t.video_duration_s), title: text('video_title', t.video_title), poster: posterOf(t.video_url) } : null;
       if (!words && !v) return null;
       const m = /^(\d{4})-(\d{2})/.exec(str(t.event_month));
       return { name: text('client_name', t.author), occasion: text('client_occasion', t.occasion), month: m ? `${m[1]}-${m[2]}` : null,
@@ -303,4 +313,4 @@ function lookPage(input) {
   } catch (_e) { return null; }
 }
 
-module.exports = { videoKind, siteCard, lookPage, packagesBelowStart, elizaFor, testimonialsOf, faqOf, photoOf, sized, SITE_BASE };
+module.exports = { posterOf, videoKind, siteCard, lookPage, packagesBelowStart, elizaFor, testimonialsOf, faqOf, photoOf, sized, SITE_BASE };

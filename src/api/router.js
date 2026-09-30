@@ -31,6 +31,7 @@ router.use('/public/vendor-card', require('./public/vendorCard'));
 // CE-47 WEB-4 cut 3 · the client's own page for kind words (single use; try limits; the token's hash only).
 router.use('/public/testimonial', require('./public/testimonial'));
 // CE-47 WEB-4 cut 4 · visits and hearts on her site (always 204; nobody identified; daily totals only).
+router.use('/public/site-kind', require('./public/siteKind'));   // CE-47 WEB-4 cut 5 · { v }, cacheable, WEB-5's middleware
 router.use('/public/site', require('./public/siteVisit'));
 // F-41.128 — the second unauthenticated per-enquiry read. Mounted BESIDE the vendor
 // card deliberately: both are public, both are read-only, and keeping them adjacent
