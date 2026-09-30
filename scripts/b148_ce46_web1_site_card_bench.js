@@ -26,7 +26,9 @@ ok(JSON.stringify(S.pagesFor('prestige', { pages: [{ key: 'about' }, { key: 'faq
 const row = { pages: [{ key: 'stories' }, { key: 'reviews' }, { key: 'about' }] };
 ok(!S.pagesFor('essential', row).includes('stories') && !S.pagesFor('essential', row).includes('reviews') && S.pagesFor('essential', row)[0] === 'about' && S.pagesFor('prestige', row).includes('stories'), '1.8 a downgrade HIDES the pages above her tier and keeps her row; an upgrade brings them back');
 ok(S.pagesFor('essential', { pages: [{ key: 'home', shown: false }, { key: 'contact', shown: false }] }).includes('home') && S.pagesFor('essential', { pages: [{ key: 'contact', shown: false }] }).includes('contact'), '1.9 Home and Contact cannot be hidden (Contact carries WhatsApp: no page without it)');
-ok(S.creditFor('basic', { credit_shown: false }) === true && S.creditFor('essential', { credit_shown: false }) === true && S.creditFor('signature', { credit_shown: false }) === false && S.creditFor('signature', null) === true && S.creditFor('prestige', null) === false, '1.10 the credit: shown on Basic and Essential, removable on Signature, removed on Prestige');
+// AMENDED BY LABEL, CE-46 WEB-4 cut 2 (W4-b; the WEB-4 brief §1 and design system §7, 30 September 2026): the credit is
+// shown on Basic, Essential and Signature and removable on Prestige ONLY; was "removable on Signature, removed on Prestige".
+ok(S.creditFor('basic', { credit_shown: false }) === true && S.creditFor('essential', { credit_shown: false }) === true && S.creditFor('signature', { credit_shown: false }) === true && S.creditFor('signature', null) === true && S.creditFor('prestige', null) === true && S.creditFor('prestige', { credit_shown: false }) === false, '1.10 the credit: shown on Basic, Essential and Signature; removable on Prestige only (W4-b)');
 ok(S.tierOf('gold') === 'basic' && S.lookFor(undefined, 'makeup', { look: 'atelier' }) === 'bloom', '1.11 an unknown tier reads as Basic: never more than she has');
 
 sec('2  packages as couples see them (F-44.241), driven');
@@ -40,7 +42,7 @@ ok(VC.PACKAGE_SELECT === 'name, description, line_items, total, is_default, crea
 
 sec('3  the tier never on the wire');
 const site = VC.siteFor('prestige', 'makeup', { look: 'atelier', pages: [], credit_shown: true }, 'aarohisen.in');
-ok(JSON.stringify(Object.keys(site).sort()) === JSON.stringify(['credit', 'domain', 'look', 'pages']) && site.domain === 'aarohisen.in' && site.credit === false, '3.1 `site` is exactly look, pages, credit, domain');
+ok(JSON.stringify(Object.keys(site).sort()) === JSON.stringify(['credit', 'domain', 'look', 'pages']) && site.domain === 'aarohisen.in' && site.credit === true, '3.1 `site` is exactly look, pages, credit, domain');   // AMENDED BY LABEL (W4-b): Prestige with credit_shown true now SHOWS the credit
 const c = VC.card({ business_name: 'x', category: 'makeup', handle: 'dev440', packages: on, site });
 function keysDeep(o, acc = []) { if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) { acc.push(k); keysDeep(v, acc); } return acc; }
 ok(!keysDeep(c).includes('tier') && !keysDeep(c).includes('site_tier'), '3.2 no key anywhere in the card, at any depth, is tier');

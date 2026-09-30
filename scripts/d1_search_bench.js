@@ -151,8 +151,10 @@ function doorCells(out) {
 
   console.log('\n§3 the mount');
   ok('3.1 mounted at /api/v2/vendor/search behind her session', /router\.use\('\/search',\s+require\('\.\/search'\)\);/.test(read('src/api/vendor/core.js')) && /router\.get\('\/', requireAuth, resolveVendor\(\)/.test(src));
-  // this cut's one migration is 0185 (the layout flag's seed row); nothing from 0185 on creates a table
-  const mkTable = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f) && f.slice(0, 4) >= '0185' && /create table/i.test(read('db/migrations/' + f)));
+  // this cut's one migration is 0185 (the layout flag's seed row), and it creates no table.
+  // AMENDED BY LABEL, CE-46 WEB-4 cut 2 r5 (C-44.7: a cell pins its own delivery's bytes, never a live listing): the cell
+  // read every migration from 0185 ON, so any later seat's table (WEB-4's 0187) reddened it; it now reads 0185 alone.
+  const mkTable = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f) && f.slice(0, 4) === '0185' && /create table/i.test(read('db/migrations/' + f)));
   ok('3.2 no new table, and the door only reads (no insert, update, upsert, delete or rpc)', mkTable.length === 0 && !/\.(insert|update|upsert|delete|rpc)\(/.test(src), mkTable.join(','));
 
   console.log('\n§4 mutations');

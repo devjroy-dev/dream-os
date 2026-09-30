@@ -1,0 +1,15 @@
+# scripts/floor-manifest-ce46-web4-cut2.txt
+# CE-46 · WEB-4 cut 2 (r7: base 07f0804; the handover's SQL order per CE-47; r5's code unchanged) · the site content model: 0187, the registry, the contrast gate, the limits, siteModel v2 · base 07f0804 (carried from 70b0dd9 via 7913ec0; no overlap by path) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b160 (85 cells, twelve mutations inside). b148 amended by label (W4-b); d1_search 3.2 amended by label (C-44.7). No new directory (src/lib/site/ and scripts/lib/ are tracked). No file deleted.
+db/migrations/0187_site_content_model.sql
+docs/handovers/TDW_CE46_WEB4_CUT2_HANDOVER.md
+scripts/b148_ce46_web1_site_card_bench.js
+scripts/b160_ce46_web4_site_model_bench.js
+scripts/d1_search_bench.js
+scripts/floor-manifest-ce46-web4-cut2.txt
+scripts/lib/b160r_0187_plant.sql
+scripts/lib/b160r_0187_rehearse.sh
+src/lib/site/contrast.js
+src/lib/site/limits.js
+src/lib/site/siteModel.js
+src/lib/site/styles.js
