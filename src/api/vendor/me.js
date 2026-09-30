@@ -27,6 +27,7 @@ const { capacityVerdict }   = require('../../lib/vendor/occupancy');
 const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
 // F-10.92 — the lane flag has to reach the CLIENT, not just the route.
 const { readLaneFlag } = require('../../lib/laneFlags');
+const { layoutFor } = require('../../lib/vendorLayout');   // DESIGN-1: the layout switch's one home
 // CE-39 step 2a · F-19.50/.49 — the one handle home (shape rule, cross-table
 // guard, founder-vetoed strings). R-39.6 — the tier strings are DERIVED from
 // tierFlip's CANON_TIERS, never restated: the pair below is asserted against
@@ -194,6 +195,11 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // screen still reads this ONE boolean.
       couture_eligible:        vendor.couture_eligible === true || COUTURE_TIERS.includes(vendor.tier),
       featured_eligible:       vendor.featured_eligible       === true,
+      // ── DESIGN-1 · THE LAYOUT SWITCH (the founder, 29 Sept 2026) ──────────────
+      // 'v2' | 'classic': which vendor layout the pwa draws for her. One home, src/lib/vendorLayout.js (the switchboard's
+      // flag.vendor_layout_v2 as the global default, her own row's layout_v2 per vendor, CE-46 F3). The pwa reads this and
+      // nothing else. The row is the whole row: resolveVendor() selects '*'.
+      layout:                  layoutFor(vendor),
       // ── ARC OB · THE VERDICT ON THE WIRE (micro item ③) ──────────────────
       // OB-P's layout guard reads THIS and never the marker below it. The two
       // sit adjacent on purpose: a reader who reaches for `onboarding_state`

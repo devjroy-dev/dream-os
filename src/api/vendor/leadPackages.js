@@ -201,7 +201,7 @@ router.post('/:leadId/package', requireAuth, resolveVendor({ paramName: 'leadId'
 //   | 500 { ok:false, error:'promotion_failed', step }
 // One home: src/lib/vendor/promotion.js promoteLead. This door carries no words (F26); the
 // PWA maps A9's codes and reads F29 for anything else.
-const PROMOTE_KEYS = ['kind', 'advance_received_on'];
+const PROMOTE_KEYS = ['kind', 'advance_received_on', 'functions', 'amount', 'advance_amount'];   // DESIGN-1 · STAGE 4: the last three
 
 router.post('/:leadId/promote', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), resolveAgent(), asyncHandler(async (req, res) => {
   const body = req.body || {};
@@ -217,6 +217,29 @@ router.post('/:leadId/promote', requireAuth, resolveVendor({ paramName: 'leadId'
     leadId: req.params.leadId,
     kind: body.kind,
     advanceReceivedOn: body.advance_received_on,
+    // DESIGN-1 · STAGE 4: the function dates and, with no package, the amount (and the advance when it has arrived)
+    functions: body.functions,
+    amount: body.amount,
+    advanceAmount: body.advance_amount,
+  });
+  return res.status(r.status).json(r.body);
+}));
+
+// DESIGN-1 · STAGE 4 · UNDO AND CANCEL BOOKING (src/lib/vendor/unbooking.js, one home). Body: lead_id or binder_id (the
+// client's page knows the binder), remove_events, remove_invoice, event_ids (Undo: exactly what the booking wrote),
+// back_to (Undo: the state before), dry_run (Cancel booking asks first with what would go).
+const UNBOOK_KEYS = ['lead_id', 'binder_id', 'remove_events', 'remove_invoice', 'event_ids', 'back_to', 'dry_run'];
+router.post('/unbook', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const unknown = Object.keys(body).filter((k) => !UNBOOK_KEYS.includes(k));
+  if (unknown.length) return res.status(422).json({ ok: false, error: 'invalid', field: unknown[0] });
+  const r = await require('../../lib/vendor/unbooking').unbookLead(req.app.locals.supabase, {
+    vendor: req.vendor, agentId: req.agentId,
+    leadId: typeof body.lead_id === 'string' ? body.lead_id : null,
+    binderId: typeof body.binder_id === 'string' ? body.binder_id : null,
+    removeEvents: body.remove_events === true, removeInvoice: body.remove_invoice === true,
+    eventIds: body.event_ids == null ? null : body.event_ids, backTo: body.back_to == null ? null : body.back_to,
+    dryRun: body.dry_run === true,
   });
   return res.status(r.status).json(r.body);
 }));

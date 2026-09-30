@@ -231,13 +231,15 @@ const world = (leadOver = {}) => ({ leads: [LEAD(leadOver)], vendor_packages: [{
   sec('§3 · the promote route refuses an unknown key');
   {
     const src = readIf('src/api/vendor/leadPackages.js');
-    ok(/const PROMOTE_KEYS = \['kind', 'advance_received_on'\];/.test(src), '§3.1 the promote route declares its keys');
+    // DESIGN-1 stage 4 (FE-5, re-pinned by label): the one-tap Book adds the function dates and the amount to the keys it declares
+    ok(/const PROMOTE_KEYS = \['kind', 'advance_received_on', 'functions', 'amount', 'advance_amount'\];/.test(src), '§3.1 the promote route declares its keys');
     ok(/const unknown = Object\.keys\(body\)\.filter\(\(k\) => !PROMOTE_KEYS\.includes\(k\)\);/.test(src),
       '§3.2 and filters on them');
     ok(/error: 'invalid', field: unknown\[0\]/.test(src),
       '§3.3 with the refusal its own contract documents — 422 invalid, the field named, no new byte');
-    ok((src.match(/field: unknown\[0\]/g) || []).length === 2,
-      '§3.4 both routes now speak the same refusal for an unknown key');
+    // DESIGN-1 stage 4 (FE-5, re-pinned by label): the unbook route is a third that filters, and it speaks the same refusal
+    ok((src.match(/field: unknown\[0\]/g) || []).length === 3 && (src.match(/const unknown = Object\.keys\(body\)\.filter/g) || []).length === 3,
+      '§3.4 every route that filters speaks the same refusal for an unknown key');
   }
 
   // ══ §4 · F-44.29 ═══════════════════════════════════════════════════════════

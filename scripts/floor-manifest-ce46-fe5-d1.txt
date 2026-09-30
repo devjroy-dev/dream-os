@@ -1,0 +1,18 @@
+# CE-46 · FE-5 · DESIGN-1 landing, the dream-os half (switch one home, search door, master, one-tap Book server half) · base 0d3bbc5
+db/migrations/0185_vendor_layout_flag.sql
+docs/handovers/TDW_CE46_FE5_D1_DREAMOS_HANDOVER.md
+scripts/b0185_layout_switch_bench.js
+scripts/b85_lc2_p5_bench.js
+scripts/d1_booking_bench.js
+scripts/d1_layout_master_bench.js
+scripts/d1_search_bench.js
+scripts/floor-manifest-ce46-fe5-d1.txt
+src/api/admin/capabilities.js
+src/api/vendor/core.js
+src/api/vendor/leadPackages.js
+src/api/vendor/me.js
+src/api/vendor/search.js
+src/lib/vendor/promotion.js
+src/lib/vendor/unbooking.js
+src/lib/vendorLayout.js
+src/lib/vendorSearch.js

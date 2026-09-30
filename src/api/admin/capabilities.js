@@ -23,6 +23,7 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const cap   = require('../../lib/capabilities');
 const sweep = require('../../capabilitiesSweep');
+const vendorLayout = require('../../lib/vendorLayout');   // DESIGN-1: the layout switch's one home
 const { COOKIE_NAME, bearerFrom } = require('../../lib/adminSession');
 
 function whoFlipped(req) {
@@ -45,6 +46,39 @@ router.get('/waba_templates', requireAdmin, asyncHandler(async (req, res) => {
   return okRes(res, { count: r.templates.length, pages: r.pages, truncated: !!r.truncated, evidence: r.evidence, templates: r.templates });
 }));
 
+// ── DESIGN-1 · THE LAYOUT SWITCH, READ (the founder, 29 Sept 2026; CE-46 F3, one home) ───────────────────────────
+// What the panel shows: the master (the switchboard's flag.vendor_layout_v2, flipped by the door below) and the vendors
+// whose row carries layout_v2 (added and removed by the door after it). One predicate home: src/lib/vendorLayout.js.
+router.get('/layout', requireAdmin, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const list = await vendorLayout.listVendors({ supabase });
+  if (!list.ok) return errRes(res, 500, list.reason);
+  const master = await vendorLayout.masterState({ supabase });
+  return okRes(res, { flag: vendorLayout.FLAG, default_on: cap.on(vendorLayout.FLAG), vendors: list.vendors, master });
+}));
+
+// THE PER-VENDOR SWITCH (CE-46 F3): Add or Remove one vendor, instant, no deploy. Answers with the list the panel shows.
+router.post('/layout/vendor', requireAdmin, asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const supabase = req.app.locals.supabase;
+  const r = await vendorLayout.setVendor(body.vendor_id, body.on, { supabase });
+  if (!r.ok) return errRes(res, r.reason === 'no_vendor' ? 404 : r.reason === 'write_failed' ? 500 : 400, r.reason);
+  const list = await vendorLayout.listVendors({ supabase });
+  if (!list.ok) return errRes(res, 500, list.reason);
+  return okRes(res, { vendors: list.vendors });
+}));
+
+// THE MASTER, "New layout for everyone" (the founder and the chair): one tap each way, instant, no deploy. The first
+// turn on records its date once (vendorLayout.setMaster); off returns every vendor but the listed ones to today's layout.
+router.post('/layout/master', requireAdmin, asyncHandler(async (req, res) => {
+  const to = req.body && req.body.to;
+  if (to !== 'on' && to !== 'off') return errRes(res, 400, 'to must be on or off.');
+  const supabase = req.app.locals.supabase;
+  const r = await vendorLayout.setMaster(to, whoFlipped(req), { supabase });
+  if (!r.ok) return errRes(res, r.reason === 'no_row' ? 404 : 409, r.reason);
+  return okRes(res, { master: await vendorLayout.masterState({ supabase }) });
+}));
+
 router.post('/sweep', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const r = await sweep.runSweep({ supabase, mode: 'on-demand' });
@@ -57,7 +91,9 @@ router.post('/:key/flip', requireAdmin, asyncHandler(async (req, res) => {
   const to = req.body && req.body.to;
   if (!cap.isValidKey(key)) return errRes(res, 400, 'key is not a switchboard key.');
   if (to !== 'on' && to !== 'off') return errRes(res, 400, 'to must be on or off.');
-  const r = await cap.flip(key, to, whoFlipped(req), { supabase });
+  // DESIGN-1: the first-on date is recorded once, never by hand; the master flips through its own home so the date is kept
+  if (key === vendorLayout.FIRST_ON) return errRes(res, 409, 'recorded_once');
+  const r = key === vendorLayout.FLAG ? await vendorLayout.setMaster(to, whoFlipped(req), { supabase }) : await cap.flip(key, to, whoFlipped(req), { supabase });
   if (!r.ok) return errRes(res, r.reason === 'no_row' ? 404 : 409, r.reason);
   const row = await cap.get(key, { supabase, fresh: true });
   return okRes(res, { row, before: r.before, after: r.after });

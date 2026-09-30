@@ -74,6 +74,17 @@ function packageScheduleLabel(kind, pct) {
   return 'The remainder, on delivery, before the work is handed over';
 }
 
+// DESIGN-1 · STAGE 4: at most this many function dates in one booking
+const MAX_FUNCTIONS = 12;
+/** "No package, enter an amount": the advance and the balance when the advance has arrived, else the full amount. */
+function noPackageRows(kind, total, advance) {
+  if (kind === 'advance_paid' && advance < total) {
+    const pct = Math.round((advance / total) * 100);
+    return [{ kind: 'deposit', pct, amount: advance, label: 'Advance' }, { kind: 'final', pct: 100 - pct, amount: total - advance, label: 'Balance' }];
+  }
+  return [{ kind: 'deposit', pct: 100, amount: total, label: 'Full amount' }];
+}
+
 // LC-1's vetoed event title (src/lib/vendor/bookingEvent.js bookingEventTitle), one home.
 function eventTitle(client) {
   return require('./bookingEvent').bookingEventTitle(client);
@@ -167,11 +178,19 @@ async function settleBinderFacts(exec, agentId, binder, money) {
 
 async function promoteLead(supabase, params, deps = {}) {
   const { vendor, agentId, leadId, kind, advanceReceivedOn } = params || {};
+  // DESIGN-1 · STAGE 4 (the founder's one-tap Book): the function dates, each its own event; and, with no package, the
+  // amount she enters (and the advance, when it has arrived). All optional: the old callers send none of them.
+  const fnList = params && Array.isArray(params.functions) ? params.functions : null;
+  const noPkgAmount = params && params.amount != null ? params.amount : null;
+  const noPkgAdvance = params && params.advanceAmount != null ? params.advanceAmount : null;
   const ctx = { vendorId: vendor && vendor.id, leadId };
   try {
     if (!vendor || !vendor.id || !agentId || !leadId) return failed('input', 'vendor, agent and lead are required', ctx);
     if (!KINDS.includes(kind)) return invalid('kind');
     if (kind === 'advance_paid' && !isDateKey(advanceReceivedOn)) return invalid('advance_received_on');
+    if (fnList && (fnList.length > MAX_FUNCTIONS || fnList.some((f) => !f || !isDateKey(f.date) || (f.title != null && String(f.title).trim().length > 80)))) return invalid('functions');
+    if (noPkgAmount != null && !(Number.isInteger(noPkgAmount) && noPkgAmount > 0)) return invalid('amount');
+    if (noPkgAdvance != null && !(Number.isInteger(noPkgAdvance) && noPkgAdvance > 0 && noPkgAmount != null && noPkgAdvance <= noPkgAmount)) return invalid('advance_amount');
 
     const d = { ...(deps.engine || {}) };
     const lazy = () => {
@@ -200,13 +219,27 @@ async function promoteLead(supabase, params, deps = {}) {
       .select('id, total, schedule, snapshot, delivery_on')
       .eq('lead_id', leadId).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle();
     if (lpErr) return failed('package', lpErr.message, ctx);
-    if (!lp) return refused('no_package');
-    const total = Number(lp.total);
+    // DESIGN-1 · STAGE 4: "No package, enter an amount". With no package attached and an amount sent, the booking's plan
+    // is the amount: the advance and the balance when the advance has arrived, else the full amount. A package, when one
+    // is attached, always wins (the amount is ignored), and with neither the refusal is the one it always was.
+    const noPkg = !lp && noPkgAmount != null;
+    if (!lp && !noPkg) return refused('no_package');
+    if (noPkg && kind === 'advance_paid' && noPkgAdvance == null) return invalid('advance_amount');
+    const total = noPkg ? noPkgAmount : Number(lp.total);
     if (!Number.isInteger(total) || total <= 0) return refused('no_fee');
-    const rows = Array.isArray(lp.schedule) ? lp.schedule : [];
-    const deposit = rows.find((r) => r && r.kind === 'deposit');
+    const rows = noPkg ? noPackageRows(kind, total, noPkgAdvance) : (Array.isArray(lp.schedule) ? lp.schedule : []);
+    const deposit = rows.find((r) => r && r.kind === 'deposit') || (noPkg ? rows[0] : null);
     if (!rows.length || !deposit || rows.reduce((s, r) => s + Number(r.amount), 0) !== total) return refused('bad_package');
     const received = kind === 'advance_paid' ? Number(deposit.amount) : null;
+
+    // DESIGN-1 · STAGE 4: THE CALENDAR IS ALWAYS FILLED. A booking that would put nothing on the calendar (no function
+    // dates sent, no wedding date, and no event of this lead's already there) is refused before anything is written.
+    if (!(fnList && fnList.length) && !isDateKey(lead.wedding_date)) {
+      const { data: had, error: hadErr } = await supabase.from('events').select('id')
+        .eq('vendor_id', vendor.id).eq('linked_lead_id', leadId).neq('state', 'cancelled').is('deleted_at', null).limit(1);
+      if (hadErr) return failed('events_read', hadErr.message, ctx);
+      if (!had || !had.length) return refused('no_date');
+    }
 
     // ── 2 · the binder (F3, F27(b), choice 4) ───────────────────────────────────────
     lazy();
@@ -284,21 +317,40 @@ async function promoteLead(supabase, params, deps = {}) {
 
     // ── 4 · the event (choice 1: a refusal is returned, not fatal) ──────────────────
     let event;
+    const events = [];
     {
       // F-43.87 (packet 3c, chair-ruled): an event linked to this lead counts as this booking's
       // only when its binder is this booking's binder or it has none. A row linked to the lead
       // but to ANOTHER binder (Verma's reception carried Sarah's lead id, F-43.91) is someone
       // else's event and is never taken as hers.
-      const byLead = await supabase.from('events').select('id, state, linked_binder_id')
+      const byLead = await supabase.from('events').select('id, state, linked_binder_id, event_date')
         .eq('vendor_id', vendor.id).eq('linked_lead_id', leadId).neq('state', 'cancelled').is('deleted_at', null);
-      const byBinder = await supabase.from('events').select('id, state')
+      const byBinder = await supabase.from('events').select('id, state, event_date')
         .eq('vendor_id', vendor.id).eq('linked_binder_id', binderId).neq('state', 'cancelled').is('deleted_at', null);
       if (byLead.error || byBinder.error) {
         event = { error: (byLead.error || byBinder.error).message };
       } else {
         const ours = (byLead.data || []).filter((e) => e.linked_binder_id == null || e.linked_binder_id === binderId);
         const found = [...ours, ...(byBinder.data || [])][0];
-        if (found) event = { id: found.id, existing: true };
+        if (fnList && fnList.length) {
+          // DESIGN-1 · STAGE 4: each function date its own event; a date this booking already has is kept, never doubled.
+          const have = new Map([...ours, ...(byBinder.data || [])].filter((e) => e.event_date).map((e) => [e.event_date, e.id]));
+          const seen = new Set();
+          for (const f of fnList) {
+            if (seen.has(f.date)) continue; seen.add(f.date);
+            if (have.has(f.date)) { events.push({ id: have.get(f.date), date: f.date, existing: true }); continue; }
+            const r = await W.writeEvent(supabase, {
+              vendorId: vendor.id, agentId, surface: 'pwa', source: 'crud',
+              title: f.title && String(f.title).trim() ? String(f.title).trim() : eventTitle(client), event_date: f.date, kind: 'ceremony',
+              linked_binder_id: binderId, linked_lead_id: leadId, state: 'upcoming',
+            });
+            if (r && r.ok) events.push({ id: r.event && r.event.id, date: f.date, created: true });
+            else if (r && r.conflict) events.push({ date: f.date, refused: r.conflict });
+            else events.push({ date: f.date, error: (r && r.error) || 'write refused' });
+          }
+          const first = events.find((e) => e.id);
+          event = first ? { id: first.id, ...(first.created ? { created: true } : { existing: true }) } : { error: 'no function date was written' };
+        } else if (found) event = { id: found.id, existing: true };
         else if (!isDateKey(lead.wedding_date)) event = { skipped: 'no_wedding_date' };
         else {
           const r = await W.writeEvent(supabase, {
@@ -315,28 +367,34 @@ async function promoteLead(supabase, params, deps = {}) {
     }
 
     // ── 5 · the one invoice ─────────────────────────────────────────────────────────
-    const readInvoice = () => supabase.from('invoices')
-      .select('id, invoice_number, amount_total, amount_paid, due_date, state, has_schedule')
-      .eq('lead_package_id', lp.id).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle();
+    const readInvoice = () => (noPkg
+      ? supabase.from('invoices')
+        .select('id, invoice_number, amount_total, amount_paid, due_date, state, has_schedule')
+        .eq('lead_id', leadId).is('lead_package_id', null).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle()
+      : supabase.from('invoices')
+        .select('id, invoice_number, amount_total, amount_paid, due_date, state, has_schedule')
+        .eq('lead_package_id', lp.id).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle());
     let { data: invoice, error: invErr } = await readInvoice();
+    const invoiceExisted = !!invoice;
     if (invErr) return failed('invoice_read', invErr.message, ctx);
     const scheduleRows = rows.map((r) => ({
-      label: packageScheduleLabel(r.kind, r.pct),
+      label: r.label || packageScheduleLabel(r.kind, r.pct),
       pct: Number(r.pct),
       amount_due: Number(r.amount),
       due_date: r.kind === 'deposit' && kind === 'advance_paid' ? advanceReceivedOn : (r.due_on || null),
     }));
     if (!invoice) {
-      const snap = lp.snapshot || {};
+      const snap = (lp && lp.snapshot) || {};
       const made = await W.createInvoice(supabase, vendor.id, {
         client_name: client,
         client_phone: lead.phone || null,
         lead_id: leadId,
         binder_id: binderId,
-        lead_package_id: lp.id,
+        lead_package_id: lp ? lp.id : null,
         description: snap.name || null,
         amount_total: total,
-        amount_advance: Number(deposit.amount),
+        // DESIGN-1 · STAGE 4: a no-package booking in full asks for no advance (null), never the whole amount as one
+        amount_advance: noPkg && rows.length === 1 && kind !== 'advance_paid' ? null : Number(deposit.amount),
         due_date: scheduleRows[0].due_date,
       });
       if (!made.ok) {
@@ -385,6 +443,11 @@ async function promoteLead(supabase, params, deps = {}) {
           adopted,
           opened,
           event,
+          // DESIGN-1 · STAGE 4: what this booking wrote, so a 10-second Undo removes exactly that and nothing older
+          events,
+          invoice_created: !invoiceExisted,
+          previous_state: lead.state,
+          total,
         },
       },
     };
@@ -395,6 +458,8 @@ async function promoteLead(supabase, params, deps = {}) {
 
 module.exports = {
   promoteLead,
+  noPackageRows,
+  MAX_FUNCTIONS,
   packageScheduleLabel,
   phoneKey,
   nameKey,
