@@ -2,7 +2,7 @@
 // TDW · CE-46 · WEB-4 cut 2 · b160 — THE SITE CONTENT MODEL: THE REGISTRY, THE CONTRAST GATE, THE LIMITS, siteModel v2, 0187.
 // §1 the registry · §2 the gate's arithmetic · §3 the curated eighteen through the gate · §4 limits and prices ·
 // §5 resolveSite by tier (Q6, Q7, Q10, Q11, Q13, Q14) · §6 the new-mark on shifted clocks · §7 totality ·
-// §8 0187's text · §9 mutations of production code, in memory. No network, no database; 0187 is rehearsed by
+// §8 0187's text · §9 mutations of production code, in memory · §10 follow-up 1, corners, buttons and textures per style. No network, no database; 0187 is rehearsed by
 // scripts/lib/b160r_0187_rehearse.sh. On a tree without the cut every module is absent and every cell that reads one
 // is RED, never a crash: modules load through `load()`.
 'use strict';
@@ -170,6 +170,26 @@ ok(() => !m11.absent && m11.resolveSite({ tier: 'essential', site: { style: 'her
 
 const m12 = mutate('src/lib/site/styles.js', "['atd', 'deep', 4.5, 'text'], ", '');
 ok(() => { if (m12.absent) return false; const p = m12.PALETTE_BY_ID['heritage.peacock']; const all = { ...p.roles, ...p.extras, atd: '#5a4417' }; return !m12.gatePairsFor('heritage').some(([a]) => a === 'atd') && C.gatePalette(all, {}, m12.gatePairsFor('heritage')).roles.atd === '#5a4417'; }, '9.12 the atd pair removed: a dark accent-text on the maroon band is sent unread (1.10 reddens)');
+
+sec('10  follow-up 1 · corners, buttons and textures per style (WEB-3\'s ids, the chair\'s ruling 2)');
+const FIN = { couture: ['square', 'solid_ink', 'clean'], noir: ['square', 'gold_outline', 'grain'], heritage: ['arch', 'vermilion_framed', 'paper'], aurora: ['rounded', 'glow', 'clean'], gallery: ['square', 'solid_ink', 'clean'], riviera: ['postcard', 'solid', 'sunlight'] };
+const fin = (tier, s) => { try { const x = M.resolveSite({ tier, category: 'makeup', site: s }); return [x.corners, x.buttons, x.texture]; } catch { return []; } };
+ok(() => R.STYLE_IDS.every((st) => JSON.stringify(fin('prestige', { style: st })) === JSON.stringify(FIN[st])), '10.1 each style\'s defaults are WEB-3\'s first ids (corners, main button, texture)');
+ok(() => JSON.stringify(R.FINISH.gallery.buttons) === '["solid_ink","outline","text_link","round_arrow"]' && JSON.stringify(R.FINISH.aurora.corners_proposed) === '["softer","round"]' && JSON.stringify(R.FINISH.riviera.textures) === '["sunlight","clean"]' && JSON.stringify(R.FINISH.noir.corners_proposed) === '[]', '10.2 the ids as WEB-3 listed them, proposed ones apart');
+ok(() => { const re = /^[a-z_]{1,24}$/; return /corners\s+text CHECK \(corners IS NULL OR corners ~ '\^\[a-z_\]\{1,24\}\$'\)/.test(MIG) && Object.values(R.FINISH).every((f) => Object.values(f).every((ids) => ids.every((id) => re.test(id)))); }, '10.3 every id fits 0187\'s CHECK on these columns (^[a-z_]{1,24}$), so no migration moves');
+ok(() => R.FINISH.couture.buttons.every((id) => !/pill|gold|glow|gradient|glass/.test(id)) && fin('prestige', { style: 'couture', button_style: 'glow' })[1] === 'solid_ink', '10.4 ruling 2: Couture offers no pill and no gradient button; another style\'s button falls back');
+ok(() => { const s = { style: 'noir', styles_picked: ['noir', 'aurora'], button_style: 'hairline' }; const snap = JSON.stringify(s); const a = fin('signature', s)[1]; const b = fin('signature', { ...s, style: 'aurora' })[1]; return a === 'hairline' && b === 'glow' && fin('signature', { ...s })[1] === 'hairline' && JSON.stringify(s) === snap; }, '10.5 a choice not valid in her new style falls back to that style\'s default and is KEPT: back in Noir it returns');
+ok(() => fin('prestige', { style: 'couture', corners: 'soft' })[0] === 'square' && fin('prestige', { style: 'riviera', texture: 'paper' })[2] === 'sunlight' && fin('prestige', { style: 'aurora', corners: 'round' })[0] === 'rounded', '10.6 PROPOSED ids stay closed until the chair lifts them after WEB-5\'s collision cell');
+ok(() => fin('essential', { style: 'noir', styles_picked: ['noir'], texture: 'clean' })[2] === 'clean' && fin('essential', { style: 'heritage', styles_picked: ['heritage'], texture: 'clean' })[2] === 'clean' && fin('essential', { style: 'riviera', styles_picked: ['riviera'], texture: 'clean' })[2] === 'clean', '10.7 on every tier she can switch her style\'s own layer off (grain, paper, sunlight to clean)');
+const LIFT = mutate(SM, 'const LIFTED = Object.freeze({});', "const LIFTED = Object.freeze({ riviera: { textures: ['paper'] }, couture: { corners: ['soft'] } });");
+ok(() => !LIFT.absent && LIFT.resolveSite({ tier: 'prestige', site: { style: 'riviera', texture: 'paper' } }).texture === 'paper' && LIFT.resolveSite({ tier: 'essential', site: { style: 'riviera', styles_picked: ['riviera'], texture: 'paper' } }).texture === 'sunlight' && LIFT.resolveSite({ tier: 'essential', site: { style: 'couture', styles_picked: ['couture'], corners: 'soft' } }).corners === 'soft', '10.8 once lifted: a new texture is Prestige only (Essential keeps her style\'s layer), a lifted corner opens on every tier');
+ok(() => fin('prestige', { style: 'aurora', texture: 'paper' })[2] === 'clean' && R.FINISH.aurora.textures.length === 1, '10.9 Aurora has no texture choice: its washes are the style, on every tier');
+ok(() => { const H = [undefined, null, 0, 'x', [], {}, Symbol('s'), Object.create(null), { corners: {}, button_style: [], texture: 1 }]; for (const h of H) { M.finishFor('prestige', 'noir', h); M.finishFor(h, h, h); R.finishIds(h, h, h); } return true; }, '10.10 the finish resolution never throws');
+const m13 = mutate(SM, 'const pick = (kind, want) => { const v = valid(kind); return v.includes(want) ? want : (v[0] || null); };', 'const pick = (kind, want) => want || (valid(kind)[0] || null);');
+ok(() => !m13.absent && m13.resolveSite({ tier: 'prestige', site: { style: 'couture', button_style: 'glow' } }).buttons === 'glow', '9.13 the per-style validity removed: Couture takes Aurora\'s glow button (10.4 reddens)');
+const m14 = mutate(SM, "const allowedTex = rank(tier) >= TIER_RANK.prestige ? textures : textures.filter((t) => t === dflt || t === 'clean');", 'const allowedTex = textures;');
+const m14l = m14.absent ? m14 : freshFrom(SM, read(SM).replace("const allowedTex = rank(tier) >= TIER_RANK.prestige ? textures : textures.filter((t) => t === dflt || t === 'clean');", 'const allowedTex = textures;').replace('const LIFTED = Object.freeze({});', "const LIFTED = Object.freeze({ riviera: { textures: ['paper'] } });"));
+ok(() => !m14.absent && m14l.resolveSite({ tier: 'essential', site: { style: 'riviera', styles_picked: ['riviera'], texture: 'paper' } }).texture === 'paper', '9.14 the Prestige gate on textures removed: Essential takes a lifted paper (10.8 reddens)');
 
 console.log(`\nb160 ${pass} passed, ${fail} failed${fail ? ': ' + failed.join(' | ') : ''}`);
 process.exit(fail ? 1 : 0);

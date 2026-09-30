@@ -61,6 +61,39 @@ const STYLES = Object.freeze({
     pairs: ['gilda_figtree', 'cormorant_figtree', 'cormorant_manrope'],
     gate: [['atx', 'ground', 4.5, 'text'], ['on_accent', 'atx', 4.5, 'fill']] },   // .btn-main, .chip.on
 });
+// ── CE-46 · WEB-4 follow-up 1 · CORNERS, BUTTONS AND TEXTURES PER STYLE (WEB-3's values, relayed by the chair,
+// 30 September 2026). Stored as IDS ONLY; the renderer (WEB-5) maps an id to its values. The first id of each list is the
+// style's default. `proposed` ids are WEB-3's offers, valid only after WEB-5's collision cell passes them (29 widths x 2
+// heights) and the chair lifts them; until then they resolve to the default and her choice is kept. The ids use
+// underscores because 0187's CHECK on these three columns is ^[a-z_]{1,24}$ (WEB-3's "solid-ink" is stored solid_ink).
+// Buttons: the ids are HER choice of main button; the header Enquire and the on-photo button are each style's fixed parts.
+const FINISH = Object.freeze({
+  couture:  { corners: ['square'], corners_proposed: ['soft'],
+              buttons: ['solid_ink', 'outline'],
+              textures: ['clean'], textures_proposed: ['paper'] },
+  noir:     { corners: ['square'], corners_proposed: [],
+              buttons: ['gold_outline', 'gold_solid', 'hairline'],
+              textures: ['grain', 'clean'], textures_proposed: [] },
+  heritage: { corners: ['arch'], corners_proposed: ['window'],
+              buttons: ['vermilion_framed', 'outline'],
+              textures: ['paper', 'clean'], textures_proposed: [] },
+  aurora:   { corners: ['rounded'], corners_proposed: ['softer', 'round'],
+              buttons: ['glow', 'solid', 'glass'],
+              textures: ['clean'], textures_proposed: [] },
+  gallery:  { corners: ['square'], corners_proposed: [],
+              buttons: ['solid_ink', 'outline', 'text_link', 'round_arrow'],
+              textures: ['clean'], textures_proposed: ['paper'] },
+  riviera:  { corners: ['postcard'], corners_proposed: ['square'],
+              buttons: ['solid', 'outline'],
+              textures: ['sunlight', 'clean'], textures_proposed: ['paper'] },
+});
+/** The ids valid in a style for one kind (corners, buttons, textures); proposed ids only once lifted. */
+function finishIds(style, kind, liftProposed) {
+  const f = typeof style === 'string' && Object.prototype.hasOwnProperty.call(FINISH, style) ? FINISH[style] : null;
+  if (!f || typeof kind !== 'string' || !Array.isArray(f[kind])) return [];
+  return liftProposed ? [...f[kind], ...(f[kind + '_proposed'] || [])] : [...f[kind]];
+}
+
 const gatePairsFor = (style) => [...BASE_GATE, ...((STYLES[style] || { gate: [] }).gate)];
 
 // The 18 curated palettes, three per style, the first of each style its default. Roles as design §2 names them:
@@ -160,4 +193,4 @@ const TRADE_ROW = Object.freeze({
 });
 const tradeRowFor = (category) => TRADE_ROW[category] || 'looks';
 
-module.exports = { STYLE_IDS, STYLES, BASE_GATE, gatePairsFor, FONT_PAIRS, PALETTES, PALETTE_BY_ID, palettesOf, TRADE_WORDS, TRADE_ROW, tradeRowFor };
+module.exports = { STYLE_IDS, STYLES, BASE_GATE, gatePairsFor, FINISH, finishIds, FONT_PAIRS, PALETTES, PALETTE_BY_ID, palettesOf, TRADE_WORDS, TRADE_ROW, tradeRowFor };

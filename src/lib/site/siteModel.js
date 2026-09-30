@@ -118,10 +118,28 @@ const VARIANT = /^[a-z0-9-]{1,24}$/;
 const KEYWORD = /^[a-z_]{1,24}$/;
 const MOTIONS = Object.freeze(['calm', 'lively', 'cinematic']);
 const COVER_MODES = Object.freeze(['slideshow', 'still']);   // film is reserved (design §5: later); a stored 'film' reads as still
-// PROVISIONAL until WEB-3 names them (the prototypes carry none of the three): the closed sets the customiser may store.
-const CORNERS = Object.freeze(['square', 'soft', 'round']);
-const BUTTONS = Object.freeze(['solid', 'outline', 'pill']);
-const TEXTURES = Object.freeze(['none']);
+// Corners, buttons and textures: WEB-3's ids per style live in styles.js (FINISH); follow-up 1 resolves them here.
+// PROPOSED ids stay closed until the chair lifts them after WEB-5's collision cell (LIFTED names the lifted ids per style).
+const LIFTED = Object.freeze({});
+
+/**
+ * Her finish, per style (WEB-3's rules, 30 September 2026): an id is valid only in the styles that list it; a choice
+ * not valid in her current style resolves to that style's default and stays stored for when she switches back.
+ * Textures: on every tier she may switch the style's own decorative layer off ('clean'; design §2, "decoration is a
+ * section"); any other texture is Prestige. Aurora's washes are the style, not a texture, and ship on every tier.
+ */
+function finishFor(tier, style, site) {
+  const s = obj(site); const lifted = obj(typeof style === 'string' && Object.prototype.hasOwnProperty.call(LIFTED, style) ? LIFTED[style] : null);
+  const valid = (kind) => [...REG.finishIds(style, kind), ...arr(lifted[kind]).filter((id) => REG.finishIds(style, kind, true).includes(id))];
+  const pick = (kind, want) => { const v = valid(kind); return v.includes(want) ? want : (v[0] || null); };
+  const textures = valid('textures'); const dflt = textures[0] || 'clean';
+  const allowedTex = rank(tier) >= TIER_RANK.prestige ? textures : textures.filter((t) => t === dflt || t === 'clean');
+  return {
+    corners: pick('corners', s.corners),
+    buttons: pick('buttons', s.button_style),
+    texture: allowedTex.includes(s.texture) ? s.texture : dflt,
+  };
+}
 const NEW_DAYS = 30;   // Q14
 
 const str = (v) => (typeof v === 'string' ? v : '');
@@ -279,9 +297,7 @@ function resolveSite(input) {
       v: 'styles', ...base, style, styles_open: stylesOpen(tier, site),
       palette: paletteFor(tier, style, site), font_pair: fontPairFor(style, site),
       motion: MOTIONS.includes(site.motion) ? site.motion : 'lively',
-      corners: CORNERS.includes(site.corners) ? site.corners : 'square',
-      buttons: BUTTONS.includes(site.button_style) ? site.button_style : 'solid',
-      texture: rank(tier) >= TIER_RANK.prestige && TEXTURES.includes(site.texture) ? site.texture : 'none',
+      ...finishFor(tier, style, site),
       cover_mode: COVER_MODES.includes(site.cover_mode) ? site.cover_mode : 'slideshow',
       sections: sectionsFor(tier, i.sections), pages: pagesOf(tier, i.pages), trade: tradeFor(i.category, copy),
     };
@@ -295,5 +311,5 @@ module.exports = {
   defaultSite, LOOKS, TRADE_LOOK, BASE_PAGES, SIGNATURE_PAGES, PRESTIGE_PAGES, tierOf, looksOpen, tradeLook, lookFor, allowedPages, pagesFor, creditFor,
   // WEB-4 (the six-style site)
   resolveSite, stylesOpen, styleFor, paletteFor, fontPairFor, sectionsFor, pagesOf, tradeFor, isNew, capabilitiesFor, monogramFor,
-  SECTION_DEFAULTS, SECTION_KEYS, STYLE_ALLOWANCE, MOTIONS, COVER_MODES, CORNERS, BUTTONS, TEXTURES, NEW_DAYS, CUSTOM_KEY,
+  SECTION_DEFAULTS, SECTION_KEYS, STYLE_ALLOWANCE, MOTIONS, COVER_MODES, NEW_DAYS, CUSTOM_KEY, finishFor, LIFTED,
 };

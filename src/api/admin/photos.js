@@ -8,6 +8,11 @@ const requireAdmin = require('./requireAdmin');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
+// CE-47 WEB-4 cut 3 · ?kind=look (or body.kind 'look') runs the same queue and doors over her LOOK photos
+// (vendor_look_photos), which carry approval_state only: no reviewer, no reason column (0187). Default: portfolio.
+const isLook = (req) => req.query.kind === 'look' || ((req.body || {}).kind === 'look');
+const LOOK_Q_SELECT = 'id, vendor_id, look_id, image_url, caption, approval_state, created_at, vendor:vendors(id, business_name, category, routing_handle, user:users(name))';
+
 // GET /queue — supports ?category=photographer&state=pending|approved|rejected|all&vendor_id=
 router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -17,6 +22,14 @@ router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
   const validStates = ['pending', 'approved', 'rejected', 'all'];
   if (!validStates.includes(state)) return errRes(res, 400, `state must be one of: ${validStates.join(', ')}.`);
 
+  if (isLook(req)) {
+    let lq = supabase.from('vendor_look_photos').select(LOOK_Q_SELECT).is('deleted_at', null).order('created_at', { ascending: true });
+    if (state !== 'all') lq = lq.eq('approval_state', state);
+    if (vendorId) lq = lq.eq('vendor_id', vendorId);
+    const { data: ld, error: lErr } = await lq;
+    if (lErr) return errRes(res, 500, lErr.message);
+    return okRes(res, { photos: ld || [], total: (ld || []).length, kind: 'look' });
+  }
   let q = supabase.from('vendor_portfolio')
     .select('id, vendor_id, image_url, caption, aesthetic_tags, approval_state, created_at, vendor:vendors(id, business_name, category, routing_handle, user:users(name))')
     .order('created_at', { ascending: true });
@@ -33,6 +46,11 @@ router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
 // POST /:imageId/approve
 router.post('/:imageId/approve', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
+  if (isLook(req)) {
+    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'approved', updated_at: new Date().toISOString() }).eq('id', req.params.imageId);
+    if (le) return errRes(res, 500, le.message);
+    return okRes(res, {});
+  }
   const { error } = await supabase.from('vendor_portfolio')
     .update({ approval_state: 'approved', reviewed_by_admin: 'admin', reviewed_at: new Date().toISOString() })
     .eq('id', req.params.imageId);
@@ -43,6 +61,11 @@ router.post('/:imageId/approve', requireAdmin, asyncHandler(async (req, res) => 
 // POST /:imageId/reject
 router.post('/:imageId/reject', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
+  if (isLook(req)) {
+    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'rejected', updated_at: new Date().toISOString() }).eq('id', req.params.imageId);
+    if (le) return errRes(res, 500, le.message);
+    return okRes(res, {});
+  }
   const reason   = (req.body || {}).reason || null;
   const { error } = await supabase.from('vendor_portfolio')
     .update({ approval_state: 'rejected', reviewed_by_admin: 'admin', reviewed_at: new Date().toISOString(), rejection_reason: reason })
@@ -56,6 +79,11 @@ router.post('/bulk-approve', requireAdmin, asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const imageIds  = (req.body || {}).image_ids || [];
   if (!imageIds.length) return errRes(res, 400, 'image_ids required.');
+  if (isLook(req)) {
+    const { error: le } = await supabase.from('vendor_look_photos').update({ approval_state: 'approved', updated_at: new Date().toISOString() }).in('id', imageIds);
+    if (le) return errRes(res, 500, le.message);
+    return okRes(res, { approved: imageIds.length, kind: 'look' });
+  }
   const { error } = await supabase.from('vendor_portfolio')
     .update({ approval_state: 'approved', reviewed_by_admin: 'admin', reviewed_at: new Date().toISOString() })
     .in('id', imageIds);

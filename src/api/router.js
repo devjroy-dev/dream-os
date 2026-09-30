@@ -28,6 +28,8 @@ router.use('/crew',               require('./crew'));          // TDW_04.5 P3 �
 // no session mounted among them would be read as guarded by association. Same
 // reasoning as the crew line above.
 router.use('/public/vendor-card', require('./public/vendorCard'));
+// CE-47 WEB-4 cut 3 · the client's own page for kind words (single use; try limits; the token's hash only).
+router.use('/public/testimonial', require('./public/testimonial'));
 // F-41.128 — the second unauthenticated per-enquiry read. Mounted BESIDE the vendor
 // card deliberately: both are public, both are read-only, and keeping them adjacent
 // means a reader of this file sees the whole public surface in one place rather than

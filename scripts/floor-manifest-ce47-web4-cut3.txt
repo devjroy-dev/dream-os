@@ -1,0 +1,20 @@
+# scripts/floor-manifest-ce47-web4-cut3.txt
+# CE-47 · WEB-4 cut 3 (follow-up 1 folded in) · the public card's site fields, a look's page, her room, the look-photo queue, kind words · r2 · base df5457a · F-19.16: a dirty path outside this list stops the floor.
+# Rung b196 (77 cells). b160 grows by §10 (follow-up 1). b44, b55, b148 amended by label. No migration. No new directory. No file deleted.
+docs/handovers/TDW_CE47_WEB4_CUT3_HANDOVER.md
+scripts/b148_ce46_web1_site_card_bench.js
+scripts/b160_ce46_web4_site_model_bench.js
+scripts/b196_ce47_web4_cut3_bench.js
+scripts/b44_public_vendor_card_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/floor-manifest-ce47-web4-cut3.txt
+scripts/lib/b196_store.js
+src/api/admin/photos.js
+src/api/public/testimonial.js
+src/api/public/vendorCard.js
+src/api/router.js
+src/api/vendor/solutions/site.js
+src/api/vendor/solutions/siteRoom.js
+src/lib/site/siteCard.js
+src/lib/site/siteModel.js
+src/lib/site/styles.js

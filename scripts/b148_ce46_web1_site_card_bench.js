@@ -42,11 +42,19 @@ ok(VC.PACKAGE_SELECT === 'name, description, line_items, total, is_default, crea
 
 sec('3  the tier never on the wire');
 const site = VC.siteFor('prestige', 'makeup', { look: 'atelier', pages: [], credit_shown: true }, 'aarohisen.in');
-ok(JSON.stringify(Object.keys(site).sort()) === JSON.stringify(['credit', 'domain', 'look', 'pages']) && site.domain === 'aarohisen.in' && site.credit === true, '3.1 `site` is exactly look, pages, credit, domain');   // AMENDED BY LABEL (W4-b): Prestige with credit_shown true now SHOWS the credit
+// AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b161; CE-47's ruling 4): Basic's `site` gains only `v: 'classic'`.
+ok(JSON.stringify(Object.keys(site).sort()) === JSON.stringify(['credit', 'domain', 'look', 'pages', 'v']) && site.v === 'classic' && site.domain === 'aarohisen.in' && site.credit === true, '3.1 `site` is exactly look, pages, credit, domain');   // AMENDED BY LABEL (W4-b): Prestige with credit_shown true now SHOWS the credit
 const c = VC.card({ business_name: 'x', category: 'makeup', handle: 'dev440', packages: on, site });
 function keysDeep(o, acc = []) { if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) { acc.push(k); keysDeep(v, acc); } return acc; }
 ok(!keysDeep(c).includes('tier') && !keysDeep(c).includes('site_tier'), '3.2 no key anywhere in the card, at any depth, is tier');
-ok(JSON.stringify(VC.card({ business_name: 'x', category: 'decor', handle: 'y' }).site) === JSON.stringify({ look: 'atelier', pages: ['home', 'portfolio', 'weddings', 'packages', 'about', 'contact'], credit: true, domain: null }) && JSON.stringify(VC.card({ handle: 'y' }).packages) === '[]', '3.3 a card built without them (the demo leg) gets the default site from its trade and no packages');
+// AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b161): the default site names its shape, v 'classic', first.
+ok(JSON.stringify(VC.card({ business_name: 'x', category: 'decor', handle: 'y' }).site) === JSON.stringify({ v: 'classic', look: 'atelier', pages: ['home', 'portfolio', 'weddings', 'packages', 'about', 'contact'], credit: true, domain: null }) && JSON.stringify(VC.card({ handle: 'y' }).packages) === '[]', '3.3 a card built without them (the demo leg) gets the default site from its trade and no packages');
+// AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b196; the chair's point 3): Basic's card gains five fields and they are pinned
+// by VALUE here (b44 pins them by NAME): four empty lists and Eliza's plan words, from the route's own Basic branch.
+{ const SC = require(path.join(ROOT, 'src/lib/site/siteCard.js'));
+  const basic = VC.card({ business_name: 'x', category: 'makeup', handle: 'y', eliza: SC.elizaFor('basic') });
+  ok(JSON.stringify([basic.looks, basic.collections, basic.testimonials, basic.faq, basic.eliza]) === JSON.stringify([[], [], [], [], { live_booking: 'not_in_plan', own_voice: 'not_in_plan' }]),
+    '3.3b Basic gains exactly: looks [], collections [], testimonials [], faq [], eliza { not_in_plan, not_in_plan }'); }
 ok(VC.VENDOR_SELECT.split(', ').includes('tier') && VC.CARD_KEYS.includes('packages') && VC.CARD_KEYS.includes('site') && !VC.CARD_KEYS.includes('tier'), '3.4 tier is read (VENDOR_SELECT) and not a card key');
 
 sec('4  the door\'s three new reads, each guarded');
@@ -55,7 +63,9 @@ ok(/from\('vendor_packages'\)\.select\(PACKAGE_SELECT\)\s*\n\s*\.eq\('vendor_id'
 ok(/from\('vendor_sites'\)\.select\(SITE_SELECT\)\.eq\('vendor_id', v\.id\)\.maybeSingle\(\)/.test(src) && VC.SITE_SELECT === 'look, pages, credit_shown', '4.2 her site row: three columns, hers');
 ok(/from\('vendor_domains'\)\.select\(DOMAIN_SELECT\)\.eq\('vendor_id', v\.id\)\.eq\('status', 'live'\)\.is\('deleted_at', null\)\.limit\(1\)/.test(src), '4.3 her domain: only a LIVE one (the canonical\'s domain field, for cut 5)');
 ok((src.match(/catch \(_(pk|sr|dr)Err\)/g) || []).length === 3, '4.4 each read is in its own try: a missing table (0178 not yet applied) or row gives the default, never a 500 on her page');
-ok(/packages:\s+publicPackages\(pkgRows, v\.rate_display\),/.test(src) && /site:\s+siteFor\(v\.tier, v\.category, siteRow, liveDomain\),/.test(src), '4.5 the live card carries them');
+// AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b161): Basic's packages and site are still today's (publicPackages, siteFor);
+// Essential and up take the styles site from siteCard. The cell reads both branches of the one call site.
+ok(/const classic = publicPackages\(pkgRows, v\.rate_display\);/.test(src) && /if \(!styles\) return \{ packages: classic, site: siteFor\(v\.tier, v\.category, siteRow, liveDomain\)/.test(src) && /siteCardLib\.siteCard\(/.test(src), '4.5 the live card carries them (Basic as today; Essential and up through siteCard)');
 
 sec('5  0179');
 const mig = read('db/migrations/0179_vendor_sites.sql');

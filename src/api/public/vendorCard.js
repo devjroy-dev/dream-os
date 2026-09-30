@@ -219,6 +219,13 @@ const CARD_KEYS = Object.freeze([
   //   read server-side to decide these and NEVER sent (WIRE_FORBIDDEN keeps 'tier');
   //   the card carries capabilities, not the plan's name. b44 and b55 move by label.
   'packages', 'site',
+  // ── CE-47 · WEB-4 cut 3 · FIVE MORE NAMED FIELDS (CE-47's field list, accepted 30 September 2026) ──────────
+  // `looks`, `collections`, `testimonials`, `faq`: ARRAYS, possibly empty, never null (2b.2's law); built field
+  //   by field in src/lib/site/siteCard.js. Basic's are always empty (today's one-page site).
+  // `eliza`: { live_booking, own_voice } as words ('not_in_plan' | 'coming_soon' | 'on'), so the panel never guesses.
+  // `site` now names its shape by `v` ('classic' for Basic, 'styles' for Essential and up). b44, b55 and b148 move
+  // by label in this edit; b58's emitted-object cell holds card() to the same list.
+  'looks', 'collections', 'testimonials', 'faq', 'eliza',
 ]);
 
 /**
@@ -231,6 +238,16 @@ const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, sta
 // WIRE_FORBIDDEN: it is never a key of the card. b44's SELECT_FORBIDDEN is amended by label for it.
 const PACKAGE_SELECT   = 'name, description, line_items, total, is_default, created_at';
 const SITE_SELECT      = 'look, pages, credit_shown';
+// CE-47 WEB-4 cut 3 · her six-style choices (0187), read only for Essential and up. Each list names its columns.
+const SITE_STYLES_SELECT = 'look, pages, credit_shown, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy';
+const SECTIONS_SELECT  = 'key, page_id, variant, shown, position, eyebrow, heading, body, deleted_at';
+const PAGES_SELECT     = 'slug, title, position, shown, deleted_at';
+const LOOKS_SELECT     = 'id, slug, title, status, published_at, category, year_label, description, included, from_price_text, package_id, credits, videos, related_ids, new_mark, seo_title, seo_description, share_photo_id, position, deleted_at';
+const LOOK_PHOTOS_SELECT = 'id, look_id, image_url, width, height, focal_portrait_x, focal_portrait_y, focal_landscape_x, focal_landscape_y, caption, alt, position, approval_state, deleted_at';
+const COLLECTIONS_SELECT = 'id, slug, name, description, cover_photo_id, position, deleted_at';
+const TESTIMONIALS_SELECT = 'author, body, occasion, event_month, place, video_url, video_duration_s, video_title, position, state, request_id, submitted_at, deleted_at';
+const FAQ_SELECT       = 'question, answer, position, deleted_at';
+const siteCardLib      = require('../../lib/site/siteCard');
 const DOMAIN_SELECT    = 'domain, status';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
 // `computed_at` is selected and WITHHELD — the page shows a fact, not an audit
@@ -318,6 +335,7 @@ function publicPackages(rows, rate_display) {
 /** CE-46 WEB-1 cut 4 · what the site draws. The tier decides it here and is never on the wire. */
 function siteFor(tier, category, siteRow, liveDomain) {
   return {
+    v: 'classic',   // CE-47 WEB-4 cut 3 · the shape named (b148 3.1 amended by label); Basic's site is this one
     look: siteModel.lookFor(tier, category, siteRow),
     pages: siteModel.pagesFor(tier, siteRow),
     credit: siteModel.creditFor(tier, siteRow),
@@ -369,7 +387,7 @@ function metaFor({ business_name, category, city, about, seo_title, seo_descript
  *            about: string|null, starting_price: number|null,
  *            photos: Array<{url: string, caption: string|null, hero: boolean, position: number}>}}
  */
-function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings, meta, packages, site }) {
+function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings, meta, packages, site , looks, collections, testimonials, faq, eliza}) {
   return {
     business_name: business_name || null,
     category:      category      || null,
@@ -389,7 +407,7 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     // second-guess it, exactly as it does not second-guess the portfolio's cap.
     seal:          seal || null,
     packages:      Array.isArray(packages) ? packages : [],
-    site:          site || siteModel.defaultSite(category),
+    site:          site || { v: 'classic', ...siteModel.defaultSite(category) },   // CE-47 WEB-4 cut 3: the shape named
     // ── G3.1 · F-40.169 — THE TWO NAMES THIS BUILDER NEVER LEARNED ─────────
     // The G3.1 delivery added both to `CARD_KEYS` and to the real leg's CALL
     // SITE and never here. This function's own header says NOTHING IS SPREAD,
@@ -416,6 +434,13 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     // G3.1 s2 — F-40.169's lesson applied at authoring: destructured AND
     // emitted in the same edit. Coerced to a shape: an absent `meta` becomes
     // the derived one, never `undefined` on the wire.
+    // CE-47 WEB-4 cut 3 · F-40.169's lesson at authoring: destructured AND emitted in this same edit, each coerced to
+    // its shape so absence is an empty list or the plan's words, never a missing key.
+    looks:         Array.isArray(looks) ? looks : [],
+    collections:   Array.isArray(collections) ? collections : [],
+    testimonials:  Array.isArray(testimonials) ? testimonials : [],
+    faq:           Array.isArray(faq) ? faq : [],
+    eliza:         eliza && typeof eliza === 'object' ? { live_booking: eliza.live_booking || 'not_in_plan', own_voice: eliza.own_voice || 'not_in_plan' } : { live_booking: 'not_in_plan', own_voice: 'not_in_plan' },
     meta:          meta && typeof meta === 'object' ? { title: meta.title || null, description: meta.description || null } : metaFor({ business_name, category, city, about }),
   };
 }
@@ -471,6 +496,40 @@ function photo({ image_url, caption, is_hero, position }) {
     position: Number.isFinite(position) ? position : 0,
   };
 }
+
+// ── CE-47 · WEB-4 cut 3 · D · A LOOK'S OWN PAGE ─────────────────────────────────────────────────────────────
+// Same vendor gate as the card (active, not paused), same single 404 body for every miss: an unknown vendor, a
+// Basic vendor (no looks), a draft, a deleted look, a look with no approved photograph. Shaped by siteCard.lookPage;
+// the tier is read and never sent.
+router.get('/:code/look/:slug', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const raw = String(req.params.code || '').trim();
+  const slug = String(req.params.slug || '').trim().toLowerCase();
+  if (!raw || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(slug)) return notFound(res);
+  try {
+    const { data: v, error: vErr } = await supabase.from('vendors').select(VENDOR_SELECT).eq('routing_handle', raw.toUpperCase()).maybeSingle();
+    if (vErr) throw vErr;
+    if (!v || v.status !== 'active' || v.discover_paused === true || siteModel.tierOf(v.tier) === 'basic') return notFound(res);
+    const safe = async (q) => { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch (_e) { return []; } };
+    const looks = await safe(supabase.from('vendor_looks').select(LOOKS_SELECT).eq('vendor_id', v.id).eq('status', 'published').is('deleted_at', null).order('position', { ascending: true }).limit(60));
+    const lookIds = looks.map((l) => l.id).filter(Boolean);
+    const lookPhotos = lookIds.length ? await safe(supabase.from('vendor_look_photos').select(LOOK_PHOTOS_SELECT).in('look_id', lookIds).eq('approval_state', 'approved').is('deleted_at', null).order('position', { ascending: true })) : [];
+    const target = looks.find((l) => l.slug === slug);
+    if (!target) return notFound(res);
+    const creditIds = (Array.isArray(target.credits) ? target.credits : []).map((c) => c && c.vendor_id).filter((x) => typeof x === 'string').slice(0, 8);
+    // CE-47's cure 1 (r2): the credits' vendors and the linked package are independent: read together.
+    const [creditVendors, packageRows] = await Promise.all([
+      creditIds.length ? safe(supabase.from('vendors').select('id, business_name, routing_handle, status, discover_paused').in('id', creditIds)) : Promise.resolve([]),
+      target.package_id ? safe(supabase.from('vendor_packages').select('id, name, deleted_at').eq('vendor_id', v.id).eq('id', target.package_id)) : Promise.resolve([]),
+    ]);
+    const look = siteCardLib.lookPage({ tier: v.tier, slug, looks, lookPhotos, creditVendors, packageRows, rateDisplay: v.rate_display });
+    if (!look) return notFound(res);
+    return res.status(200).json({ ok: true, look });
+  } catch (_e) {
+    // The vendor read failed: the card's own answer (500, "Lookup failed."), never a 404 that would read as "no such look".
+    return res.status(500).json({ ok: false, error: 'Lookup failed.' });
+  }
+});
 
 router.get('/:code', async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -598,6 +657,34 @@ router.get('/:code', async (req, res) => {
         const { data: sr, error: srErr } = await supabase.from('vendor_sites').select(SITE_SELECT).eq('vendor_id', v.id).maybeSingle();
         if (!srErr && sr) siteRow = sr;
       } catch (_srErr) { siteRow = null; }
+      // CE-47 WEB-4 cut 3 · Essential and up read their site's own rows; Basic reads none of them. Every read is
+      // guarded like the ones above: a failed read gives an empty list, never a 500 on a couple's page.
+      const styles = siteModel.tierOf(v.tier) !== 'basic';
+      const safe = async (q) => { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch (_e) { return []; } };
+      let ex = { sections: [], pages: [], looks: [], lookPhotos: [], collections: [], collectionLooks: [], testimonials: [], faq: [] };
+      if (styles) {
+        // CE-47's cure 1 (r2): the independent reads run TOGETHER, in two stages, not nine in a row. Stage 1: her
+        // styles row, sections, pages, looks, collections (Signature and up), testimonials, questions. Stage 2, the only
+        // true dependencies: the photos of those looks and the members of those collections, together.
+        const withCollections = siteModel.tierOf(v.tier) !== 'essential';
+        const [sr2, sections, pages, looks, collections, testimonials, faq] = await Promise.all([
+          (async () => { try { const { data, error } = await supabase.from('vendor_sites').select(SITE_STYLES_SELECT).eq('vendor_id', v.id).maybeSingle(); return !error && data ? data : null; } catch (_e) { return null; } })(),
+          safe(supabase.from('vendor_site_sections').select(SECTIONS_SELECT).eq('vendor_id', v.id).is('deleted_at', null)),
+          safe(supabase.from('vendor_site_pages').select(PAGES_SELECT).eq('vendor_id', v.id).is('deleted_at', null)),
+          safe(supabase.from('vendor_looks').select(LOOKS_SELECT).eq('vendor_id', v.id).eq('status', 'published').is('deleted_at', null).order('position', { ascending: true }).limit(60)),
+          withCollections ? safe(supabase.from('vendor_collections').select(COLLECTIONS_SELECT).eq('vendor_id', v.id).is('deleted_at', null)) : Promise.resolve([]),
+          safe(supabase.from('vendor_testimonials').select(TESTIMONIALS_SELECT).eq('vendor_id', v.id).eq('state', 'approved').is('deleted_at', null)),
+          safe(supabase.from('vendor_site_faq').select(FAQ_SELECT).eq('vendor_id', v.id).is('deleted_at', null)),
+        ]);
+        if (sr2) siteRow = sr2;
+        const lookIds = looks.map((l) => l.id).filter(Boolean);
+        const colIds = collections.map((c) => c.id).filter(Boolean);
+        const [lookPhotos, collectionLooks] = await Promise.all([
+          lookIds.length ? safe(supabase.from('vendor_look_photos').select(LOOK_PHOTOS_SELECT).in('look_id', lookIds).eq('approval_state', 'approved').is('deleted_at', null).order('position', { ascending: true })) : Promise.resolve([]),
+          colIds.length ? safe(supabase.from('vendor_collection_looks').select('collection_id, look_id, position').in('collection_id', colIds)) : Promise.resolve([]),
+        ]);
+        ex = { sections, pages, looks, lookPhotos, collections, collectionLooks, testimonials, faq };
+      }
       let liveDomain = null;
       try {
         const { data: dr, error: drErr } = await supabase.from('vendor_domains').select(DOMAIN_SELECT).eq('vendor_id', v.id).eq('status', 'live').is('deleted_at', null).limit(1);
@@ -635,8 +722,15 @@ router.get('/:code', async (req, res) => {
           starting_price: startingPrice(v.rate_display, v.rate_min),
           photos:         (rows || []).map(photo),
           seal:           sealFor(sealRow),
-          packages:       publicPackages(pkgRows, v.rate_display),
-          site:           siteFor(v.tier, v.category, siteRow, liveDomain),
+          ...(() => {
+            // CE-47 WEB-4 cut 3 · Basic: today's packages and site, byte for byte (plus site.v); Essential and up:
+            // the six-style site and Q4's packages. The tier is read here and never sent.
+            const classic = publicPackages(pkgRows, v.rate_display);
+            if (!styles) return { packages: classic, site: siteFor(v.tier, v.category, siteRow, liveDomain), eliza: siteCardLib.elizaFor(v.tier) };
+            const sc = siteCardLib.siteCard({ tier: v.tier, category: v.category, businessName: v.business_name, handle: v.routing_handle,
+              meta: metaFor(v), rateDisplay: v.rate_display, rateMin: v.rate_min, liveDomain, siteRow, portfolio: rows, packages: classic, ...ex });
+            return { packages: sc.packages, site: sc.site, looks: sc.looks, collections: sc.collections, testimonials: sc.testimonials, faq: sc.faq, eliza: sc.eliza };
+          })(),
         }),
       });
     }

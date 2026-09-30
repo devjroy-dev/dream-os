@@ -251,7 +251,9 @@ const B = '/api/v2/public/vendor-card';
 // site, R-46.7/.9). `site` carries capabilities (look, pages, credit, domain), never the tier.
 const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
                    'enquire_link', 'enquiry_phone', 'handle', 'is_demo', 'meta', 'packages', 'photos',
-                   'seal', 'site', 'starting_price', 'weddings'];   // G3.1 s2: `meta` joins (0147 §4); WEB-1 cut 4: packages, site
+                   'seal', 'site', 'starting_price', 'weddings',
+                   // AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b161): five named fields join (CE-47's accepted list)
+                   'collections', 'eliza', 'faq', 'looks', 'testimonials'].sort();   // G3.1 s2: `meta` joins (0147 §4); WEB-1 cut 4: packages, site
 
 (async () => {
   await new Promise((r) => { server = app.listen(0, '127.0.0.1', r); });
@@ -286,6 +288,20 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_ena
       const leaked = WIRE_FORBIDDEN.filter((k) => k in c);
       chk(leaked.length === 0, '§2.3 no wire-forbidden column reaches the wire',
           leaked.length ? 'LEAKED: ' + leaked.join(', ') : `${WIRE_FORBIDDEN.length} columns checked absent`);
+      // ── AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b196; the chair's point 4): `can` (her room's capability map) and
+      // the tier's other traces are forbidden BY NAME AT EVERY DEPTH of a Signature card built as the route builds it,
+      // and the scan is proved able to see a planted `can` (both ways). The top-level list above stays as it was.
+      const DEEP_FORBIDDEN = ['can', 'tier', 'styles_open', 'moved', 'rate_min', 'rate_max', 'rate_display', 'approval_state'];
+      const deepKeys = (o, acc = []) => { if (o && typeof o === 'object') for (const [k, x] of Object.entries(o)) { acc.push(k); deepKeys(x, acc); } return acc; };
+      const SC = require(P('src/lib/site/siteCard.js'));
+      const sig = SC.siteCard({ tier: 'signature', category: 'makeup', businessName: 'Aarohi', handle: 'DEV440', rateDisplay: true, rateMin: 40000,
+        siteRow: { style: 'noir', styles_picked: ['noir'] }, packages: [{ name: 'Bridal', total: 45000, items: [] }] });
+      const sigCard = door.card({ business_name: 'Aarohi', handle: 'dev440', site: sig.site, packages: sig.packages, looks: sig.looks,
+        collections: sig.collections, testimonials: sig.testimonials, faq: sig.faq, eliza: sig.eliza });
+      const deepLeak = DEEP_FORBIDDEN.filter((k) => deepKeys(sigCard).includes(k));
+      chk(sigCard.site.v === 'styles' && deepLeak.length === 0, '§2.3b `can` and the tier\u2019s traces are on no Signature card at any depth',
+          deepLeak.length ? 'LEAKED: ' + deepLeak.join(', ') : `${DEEP_FORBIDDEN.length} names checked absent at every depth`);
+      chk(deepKeys({ site: { palette: { can: { gradients: true } } } }).includes('can'), '§2.3c control: the same scan sees a planted `can` three levels down');
       chk(c.handle === 'dev440', '§2.4 the handle is lowercased on the wire',
           `stored 'DEV440' \u2192 sent ${JSON.stringify(c.handle)}`);
       chk(c.is_demo === false && c.enquiry_phone === null,

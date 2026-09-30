@@ -48,5 +48,8 @@ router.post('/look', requireAuth, resolveVendor(), asyncHandler(async (req, res)
   return okRes(res, { site: shape(req.vendor, row) });
 }));
 
+// CE-47 WEB-4 cut 3 · her room's doors for the six-style site (siteRoom.js), below the two WEB-1 doors above.
+router.use('/', require('./siteRoom'));
+
 module.exports = router;
 module.exports.shape = shape;
