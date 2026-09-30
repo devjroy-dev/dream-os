@@ -158,7 +158,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const VCm1 = load('src/api/public/vendorCard.js', VCs.replace("previewLib.verify(typeof req.query.preview === 'string' ? req.query.preview : null) === v.id", "previewLib.verify(typeof req.query.preview === 'string' ? req.query.preview : null) !== null"));
   { const X = await server2(st, { '/card': VCm1 }); const r = await X.call('GET', '/card/sig1?preview=' + encodeURIComponent(tokOther)); await X.close();
     ok(() => r.body.card.site.style === 'aurora', '8.1 the token\'s vendor check removed: another vendor\'s token opens her draft (5.2 reddens)'); }
-  const VCm2 = load('src/api/public/vendorCard.js', VCs.replace("        } else if (!(sr2 && sr2.published_at)) {\n          styles = false;", "        } else if (false) {\n          styles = false;"));
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 6 (b199): the gate is now read first as well, so the mutation removes both lines.
+  const VCm2 = load('src/api/public/vendorCard.js', VCs.replace("      if (styles && !previewOn && !(siteRow && siteRow.published_at)) styles = false;\n", '').replace("        } else if (!(sr2 && sr2.published_at)) {\n          styles = false;", "        } else if (false) {\n          styles = false;"));
   { const X = await server2(st, { '/card': VCm2 }); const r = await X.call('GET', '/card/pre1'); await X.close();
     ok(() => r.body.card.site.v === 'styles', '8.2 the published gate removed: an unpublished site goes public (4.3 reddens)'); }
   const KDm = load('src/api/public/siteKind.js', read('src/api/public/siteKind.js').replace("if (s && s.published_at) kind = 'styles';", "kind = 'styles';"));

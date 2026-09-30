@@ -237,7 +237,7 @@ const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, sta
 // CE-46 WEB-1 cut 4 · `tier` joins the SELECT (read to decide the site's pages, look and credit) and stays on
 // WIRE_FORBIDDEN: it is never a key of the card. b44's SELECT_FORBIDDEN is amended by label for it.
 const PACKAGE_SELECT   = 'name, description, line_items, total, is_default, created_at';
-const SITE_SELECT      = 'look, pages, credit_shown';
+const SITE_SELECT      = 'look, pages, credit_shown, published_at';   // published_at: cut 6, the gate read first (b148 4.x by label)
 // CE-47 WEB-4 cut 3 · her six-style choices (0187), read only for Essential and up. Each list names its columns.
 const SITE_STYLES_SELECT = 'look, pages, credit_shown, published_at, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy';
 const SECTIONS_SELECT  = 'key, page_id, variant, shown, position, eyebrow, heading, body, deleted_at';
@@ -666,6 +666,9 @@ router.get('/:code', async (req, res) => {
       // Essential-and-up site shows as today's page until her first Publish (vendor_sites.published_at).
       const previewOn = styles && previewLib.verify(typeof req.query.preview === 'string' ? req.query.preview : null) === v.id;
       if (previewOn) { res.set('Cache-Control', 'no-store'); res.set('X-Robots-Tag', 'noindex, nofollow'); }
+      // CE-47 WEB-4 cut 6 (item b): published_at is decided FIRST, from the row already read above, so an unpublished
+      // paid vendor's card skips every site read (sections, pages, looks, collections, testimonials, questions).
+      if (styles && !previewOn && !(siteRow && siteRow.published_at)) styles = false;
       const safe = async (q) => { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch (_e) { return []; } };
       let ex = { sections: [], pages: [], looks: [], lookPhotos: [], collections: [], collectionLooks: [], testimonials: [], faq: [] };
       if (styles) {

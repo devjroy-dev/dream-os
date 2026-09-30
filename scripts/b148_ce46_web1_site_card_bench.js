@@ -60,7 +60,7 @@ ok(VC.VENDOR_SELECT.split(', ').includes('tier') && VC.CARD_KEYS.includes('packa
 sec('4  the door\'s three new reads, each guarded');
 const src = read('src/api/public/vendorCard.js');
 ok(/from\('vendor_packages'\)\.select\(PACKAGE_SELECT\)\s*\n\s*\.eq\('vendor_id', v\.id\)\.is\('deleted_at', null\)\s*\n\s*\.order\('is_default', \{ ascending: false \}\)\.order\('created_at', \{ ascending: true \}\)/.test(src), '4.1 packages: hers, not deleted, default first then oldest');
-ok(/from\('vendor_sites'\)\.select\(SITE_SELECT\)\.eq\('vendor_id', v\.id\)\.maybeSingle\(\)/.test(src) && VC.SITE_SELECT === 'look, pages, credit_shown', '4.2 her site row: three columns, hers');
+ok(/from\('vendor_sites'\)\.select\(SITE_SELECT\)\.eq\('vendor_id', v\.id\)\.maybeSingle\(\)/.test(src) && VC.SITE_SELECT === 'look, pages, credit_shown, published_at' /* AMENDED BY LABEL, CE-47 WEB-4 cut 6 (b199): the publish gate is read first */, '4.2 her site row: three columns, hers');
 ok(/from\('vendor_domains'\)\.select\(DOMAIN_SELECT\)\.eq\('vendor_id', v\.id\)\.eq\('status', 'live'\)\.is\('deleted_at', null\)\.limit\(1\)/.test(src), '4.3 her domain: only a LIVE one (the canonical\'s domain field, for cut 5)');
 ok((src.match(/catch \(_(pk|sr|dr)Err\)/g) || []).length === 3, '4.4 each read is in its own try: a missing table (0178 not yet applied) or row gives the default, never a 500 on her page');
 // AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b161): Basic's packages and site are still today's (publicPackages, siteFor);
