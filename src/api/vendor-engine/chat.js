@@ -3704,6 +3704,16 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
   }
 });
 
+// CE-46 ELZ-4 · layer C: a stored two-part reply's parts, from meta.listener.replies when it is an array of two or more strings, each scrubbed as
+// the stream scrubs its parts; otherwise nothing (the key is absent). TOTAL: never throws; nothing else of meta is read.
+function historyReplies(m) {
+  try {
+    const r = m && m.meta && m.meta.listener && m.meta.listener.replies;
+    if (!Array.isArray(r) || r.length < 2 || !r.every((x) => typeof x === 'string' && x.trim())) return {};
+    return { replies: r.map((x) => scrubText(x)) };
+  } catch (_e) { return {}; }
+}
+
 // GET /chat/history/:vendorId — display-only scrollback so the PWA chat shows the
 // recent transcript on open instead of a blank screen. NOT agent memory (the
 // engine reads history itself). Reads the agent's most-recent conversation (the
@@ -3724,7 +3734,9 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
       // F-41.103 (the consent gate could never pass for a found prospect) and
       // F-41.104 (the queue could never render "Consent noted"). Both were caught by a
       // walk, not the floor. Named in scope here rather than found later.
-      .select('id, role, content, created_at, room')
+      // CE-46 ELZ-4 · layer C (the chair, from FE-5's read, 30 September 2026): `meta` is selected so a two-part reply (R-46.17, F-44.248) reloads
+      // as its parts. Only meta.listener.replies rides out (below); the rest of meta never leaves this route.
+      .select('id, role, content, created_at, room, meta')
       .eq('conversation_id', convo.id)
       .in('role', ['user', 'assistant'])
       .order('created_at', { ascending: false })
@@ -3740,7 +3752,7 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
       // R-41.142: the room rides out too. Selecting it and then dropping it in the map
       // would be the read-path defect with an extra step — the column would be full and
       // the thread still unmarked.
-      .map((m) => ({ id: m.id, role: m.role === 'user' ? 'user' : 'ai', text: m.content, at: m.created_at, room: m.room ?? null }));
+      .map((m) => ({ id: m.id, role: m.role === 'user' ? 'user' : 'ai', text: m.content, at: m.created_at, room: m.room ?? null, ...historyReplies(m) }));
     return res.json({ ok: true, messages });
   } catch (err) {
     console.error('[vendor-e chat/history]', err.message);
@@ -3824,6 +3836,7 @@ router.post('/glitch-report', requireAuth, resolveVendor(), resolveAgent(), asyn
 });
 
 module.exports = router;
+module.exports.historyReplies = historyReplies; // CE-46 ELZ-4 · layer C: b142b §8 reads it
 // ── TEST SEAMS (TDW_04 B4) — occupancy.js's ratified precedent ────────────
 // The bench drives the REAL builders. conflictLines/mutationLines/advisoryLines are
 // where F-04.55's and F-04.62's cures live; a bench that re-implemented their branch

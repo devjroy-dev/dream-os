@@ -139,8 +139,8 @@ function filledBody({ recipient_name, vendor_name, where_met }) {
 }
 
 /**
- * ① THE SHOW FRAME — relaySeat.js's byte, reused. `Here is the draft: "…" Send
- * this to <name> (<phone>)?`
+ * ① THE SHOW FRAME — relaySeat.js's byte, reused. R-46.17 (29 September 2026): TWO messages, [the body alone, `Send this to <name>
+ * (<phone>)? Reply YES or NO.`].
  */
 function showIntroduction(draft) {
   return showBlock(filledBody(draft), draft.recipient_name, draft.recipient_phone);

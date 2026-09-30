@@ -122,7 +122,9 @@ const LINES = Object.freeze({
   // line ruled on 22 September 2026 (R-44.24 applied to the frame; his word "this"): a question to her ends "Reply YES or NO." {body} is
   // the STORED draft row's own bytes, read back; {phone} is the stored byte verbatim, never formatted (R-5). A row whose name IS the phone
   // (F-06.186) renders through showFrame() below, which drops " ({phone})" and places the phone, as recipientLabel has always rendered it.
-  B37: "Here is the draft:\n\n\"{body}\"\n\nSend this to {client} ({phone})? Reply YES or NO.",
+  // LABELED AMENDMENT · R-46.17 (the founder's standing rule and his yes, 29 September 2026, through the chair): the frame is TWO messages,
+  // the draft body ALONE (no quotes, nothing before or after) and then this question, last so her YES answers it. "Here is the draft:" dropped.
+  B37: "Send this to {client} ({phone})? Reply YES or NO.",
   // a message asked for a name no client of hers carries (his, 22 September 2026, "1 is fine"; B15's shape). No-hits only.
   B38: "Could not send the message. No client called {name}.",
   // a quote asked for a lead with no live package (his, 22 September 2026, "ok"). CARRIED in this cut, spoken when quote_send is covered.
@@ -291,7 +293,7 @@ const LINE_HASHES = Object.freeze({
   B31: '1e5cb75ba7131c768dbd07546b5905b6cfe09021a97efc586c145341978406b2',
   B33: '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44',
   B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
-  B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
+  B37: '0112ea5912ef58538213249c55854da3d31d3d7ef16e80fc5b3aa9610e0e6b98', // R-46.17: re-pinned by label to the question alone (was ad97fcf0…, the one-message frame)
   B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
   B39: '647f8a34d7a0bd592db1940cd31841febd0bd237a6b7439079110808ba910a96',
   B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',
@@ -469,8 +471,9 @@ function showFrame(body, client, phone) {
     const c = slot(client);
     let phoneOnly = c === null;
     if (!phoneOnly) { try { phoneOnly = require('./relaySeat').looksLikeThePhone(c, p); } catch (_e) { phoneOnly = false; } }
-    if (phoneOnly) return LINES.B37.replace(' ({phone})', '').replace('{body}', b).replace('{client}', p);
-    return LINES.B37.replace('{body}', b).replace('{client}', c).replace('{phone}', p);
+    // R-46.17: TWO messages, [the body alone, the question]; every B37 path renders these two
+    if (phoneOnly) return [b, LINES.B37.replace(' ({phone})', '').replace('{client}', p)];
+    return [b, LINES.B37.replace('{client}', c).replace('{phone}', p)];
   } catch (_e) { return null; }
 }
 

@@ -239,7 +239,8 @@ async function main() {
     B36: 'Did you mean {name}? Reply YES or NO.',
     // RE-PINNED (CE-45 LCV-11, P6b first cut): B37 the show frame (August, his; its last line ruled 22 September 2026, R-44.24 applied),
     // B38 (his, "1 is fine") and B39 (his, "ok"; carried, spoken in the second cut), hash-carried.
-    B37: 'Here is the draft:\n\n"{body}"\n\nSend this to {client} ({phone})? Reply YES or NO.',
+    // LABELED AMENDMENT · R-46.17 (the founder's yes, 29 September 2026): B37 is the question alone; the body goes before it as its own message
+    B37: 'Send this to {client} ({phone})? Reply YES or NO.',
     B38: 'Could not send the message. No client called {name}.',
     B39: 'Could not send the quote. {client} has no package yet. Attach a package to {client} first.',
     // P7 cut 2a (CE-45 LCV-12): the calendar's eleven, his, ruled 23 September 2026 (B41 to B45 REUSED from blockHands.js :156 to :167; B75 from calendarSignals.js :134)
@@ -317,7 +318,7 @@ async function main() {
     B31: '1e5cb75ba7131c768dbd07546b5905b6cfe09021a97efc586c145341978406b2',
     B33: '30b99efbf542ea00089afdfba252db15b8f488325188ff8fe9c617524d22aa44',
     B36: '43b514de672ba94fbd24698a7fe9d18389958812a6d7344b0efab074bacd75d2',
-    B37: 'ad97fcf023e467590037f5329db9feb9d578be116a1867c4e98bd17b278ded80',
+    B37: '0112ea5912ef58538213249c55854da3d31d3d7ef16e80fc5b3aa9610e0e6b98', // R-46.17: re-pinned by label (was ad97fcf0…)
     B38: '8fbfa96dca05fc83417a6cd5efe7d7a2f63a888bb4a8c18f4f5a9680ea97025e',
     B39: '647f8a34d7a0bd592db1940cd31841febd0bd237a6b7439079110808ba910a96',
     B40: '1bec09f1e5d35c0c197a9229bba817744e1f995133bce2fcae722c5093e5eee3',

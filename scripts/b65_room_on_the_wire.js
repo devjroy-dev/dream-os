@@ -57,7 +57,9 @@ ok('2.1 the stream\'s done event carries it', /done\.room = \(result && result\.
 ok('2.2 the non-stream JSON reply carries it', /room: \(result && result\.victor_mode\) \?\? null,/.test(door));
 
 section('3. THE READ PATH — F-41.103 and F-41.104 were both this, one door over');
-ok('3.1 the history query SELECTS room', /\.select\('id, role, content, created_at, room'\)/.test(door));
+// RE-AIMED (CE-47 · ELZ-4 · layer C, labelled): the history select now also carries `meta` (the two-part reply's replies, layer C); the
+// subject, room SELECTED, is unchanged, and a select that drops room still reddens.
+ok('3.1 the history query SELECTS room', /\.select\('id, role, content, created_at, room(, meta)?'\)/.test(door));
 ok('3.2 and the map carries it OUT — selecting then dropping it is the same defect with a step',
    /room: m\.room \?\? null/.test(door));
 

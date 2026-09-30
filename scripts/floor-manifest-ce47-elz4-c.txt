@@ -1,0 +1,32 @@
+# scripts/floor-manifest-ce47-elz4-c.txt
+# CE-47 · ELZ-4 · LAYER C (dream-os): R-46.17, text she copies is its own message on every B37 path; B35 for a draft with no relay; the
+# history of a two-part reply (only listener.replies leaves, scrubbed). BASE: 313fe40ac680. F-19.16: a dirty path outside this list is a STOP.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path (this manifest itself: ADDED, its own hash is in the card)
+# 4c520a70c5e9c08e87f2d7e55ec8393d164a885f4a0a63373dd775839edbf59d · ADDED · docs/handovers/TDW_CE47_ELZ4_C_R4617_HANDOVER.md
+# 35d169a5aabc15599bb570841c87442e6449738c0e098ec6fd365924087599c0 · CHANGED · scripts/b06_bride_arrival_bench.js
+# a5282a6f35750fa3ce9394506da0998f97db7a6a7bf7c2fdd5fec6858d869af7 · CHANGED · scripts/b06_relay_hand_bench.js
+# 621f5fc274dd8dafc95c5a0dca019662ebbd2b2e7918ae5e64c61b1d5a695acb · CHANGED · scripts/b101_lcv11_relay_bench.js
+# 19648638061ed0621dfef75ca69e9a1ec8f21113c764b695355e5f8a1d5be09b · CHANGED · scripts/b107_lcv14_kind_client_bench.js
+# 5f28eedb41685058ddb80a529ab74933595684fd2cb49669a3414656621dd166 · CHANGED · scripts/b114_lcv15_lsp3b_bench.js
+# cbad5f210e75414b60b8da99555fe260ad8fb0773fb8d4b412d0049c74b79370 · CHANGED · scripts/b142b_elz3_relay_rule_bench.js
+# 56579fd87fa7d7a17fc7439d4538a4687045ddd83a780f8aa9704efa838558ae · CHANGED · scripts/b65_room_on_the_wire.js
+# bea00cc562bcb104995365d3a1ed17fc422466842a3679891617e8ef7dbfdefc · CHANGED · scripts/b90_lcv_p5_bench.js
+# b1690a9bde28836aabe01481c24dab88ce1cfe905574b35934e6bf0599c5064b · CHANGED · src/api/vendor-engine/chat.js
+# 17aac2c33848b59d459990b968d1c31e8d800d4a78079d5c1d18afb453256249 · CHANGED · src/lib/vendor/doorLines.js
+# c353c7fa8ef94de1e4f920e7d962cc9746136acdcb7fa805d5d061e77657b5f4 · CHANGED · src/lib/vendor/introductions.js
+# 5157e974a07986f4b95a0adcb6d0e4da668ff34d07ea4f4ad2cb564a4393b27a · CHANGED · src/lib/vendor/workingDoor.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-elz4-c.txt
+docs/handovers/TDW_CE47_ELZ4_C_R4617_HANDOVER.md
+scripts/b06_bride_arrival_bench.js
+scripts/b06_relay_hand_bench.js
+scripts/b101_lcv11_relay_bench.js
+scripts/b107_lcv14_kind_client_bench.js
+scripts/b114_lcv15_lsp3b_bench.js
+scripts/b142b_elz3_relay_rule_bench.js
+scripts/b65_room_on_the_wire.js
+scripts/b90_lcv_p5_bench.js
+src/api/vendor-engine/chat.js
+src/lib/vendor/doorLines.js
+src/lib/vendor/introductions.js
+src/lib/vendor/workingDoor.js
+scripts/floor-manifest-ce47-elz4-c.txt

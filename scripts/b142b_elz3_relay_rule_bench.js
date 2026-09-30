@@ -193,6 +193,7 @@ async function mut(name, rel, pairs, dependents, fn, expect) {
   T(name, ok);
 }
 
+const DLf7 = 'src/lib/vendor/doorLines.js';
 const LD_SHA = '293c4e577b43d9bb6f6b2b92b69e43bb3950921ed5d1a74322d13fb8e2b882c1';
 async function main() {
   const WD = require(WDP);
@@ -387,7 +388,9 @@ async function main() {
   T('6.4b a pending frame (B37 note) is answered by the note, never re-read as a follow-up', meta(d6).rule !== 'draft_followup');
   d6 = makeDb(ruleWorld());
   r6 = await turnSeq(d6, 'Just draft the message and give me', [MISS, MISS], { nowMs: Date.now() });
-  T('6.5 no relay before it: not taken (the thread\'s previous door turn decided no relay)', meta(d6).rule !== 'draft_followup');
+  // LABELED AMENDMENT · R-46.17 audit item 2 (the chair's ruling): with no relay before it, the draft follow-up is no longer left to the question
+  // agent: the door asks its own B35 and keeps a note of the relay act and her words
+  T('6.5 no relay before it: the door asks B35 ("Which client? Say the name."), the note carrying the relay act and her words (never the question agent\'s free draft)', r6.keys === 'B35' && r6.reply === 'Which client? Say the name.' && noteIn(d6).asked === 'B35' && (noteIn(d6).acts || []).map((a) => a.act).join() === 'relay' && noteIn(d6).said === 'Just draft the message and give me');
   d6 = makeDb(noPhone());
   await turnSeq(d6, 'Tell asha walk fifteen booking is confirmed', [RELAY_ASHA_LOWER]);
   r6 = await turnSeq(d6, 'ok thanks', [MISS, MISS], { nowMs: soonAfter(d6) });
@@ -399,6 +402,16 @@ async function main() {
   const late = hasLDR ? await WD.lastDoorRelay(d6, AG, 30 * 60 * 1000, soonAfter(d6) + 30 * 60 * 1000) : 'absent';
   const soon = hasLDR ? await WD.lastDoorRelay(d6, AG, 30 * 60 * 1000, soonAfter(d6)) : null;
   T('6.7 the window is the previous assistant turn within 30 minutes: a stale relay is not reached', late === null && !!soon && soon.client === 'asha walk fifteen');
+
+  sec('7 R-46.17: the relay frame B37 is TWO messages, the draft ALONE first (the founder\'s yes, 29 September 2026)');
+  const d7 = makeDb(ruleWorld());
+  const r7 = await turnSeq(d7, 'Tell Sarah we are free on 22nd', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'Sarah' }] }]);
+  const p7 = r7.said && r7.said.replies;
+  T('7.1 the frame is two messages: the draft body alone (byte-equal, no quotes, nothing around it), then "Send this to Sarah (…)? Reply YES or NO."', r7.keys === 'B37' && Array.isArray(p7) && p7.length === 2 && p7[0] === BODY && p7[1] === `Send this to Sarah (${PHONE})? Reply YES or NO.`);
+  const sent7 = []; await quiet(() => WD.speakOnWhatsApp({ supabase: d7, agentId: AG, phone: '+919000000000', convoId: 'ct-1', message: 'x', out: r7.said, sendWhatsApp: async (to, text) => { sent7.push(text); return { sid: `w${sent7.length}` }; } }, { persistDoorTurn: async () => ({}) }));
+  T('7.2 on WhatsApp: two messages, the first exactly the draft, the question last so her YES answers it', sent7.length === 2 && sent7[0] === BODY && /Reply YES or NO\.$/.test(sent7[1]));
+  const y7 = await turnSeq(d7, 'YES', [MISS]);
+  T('7.3 her YES still sends the stored draft (the note, the answer and the row unchanged)', /^Sent to Sarah/.test(String(y7.reply)));
 
   sec('3 m181 --rule: the sixteen sentences by construction');
   const PH = ['tell {c} hello', 'tell {c} hi', 'tell {c} good morning', 'tell {c} thank you', "tell {c} we're confirmed", 'tell {c} see you soon', 'tell {c} happy diwali', 'tell {c} congratulations'];
@@ -416,6 +429,20 @@ async function main() {
   sec('5 MUTATIONS of production code (each must redden its named cell)');
   const WDdeps = [];
   const GUARD = "    if (relayRule && !(st.ear && st.ear.request && Array.isArray(st.ear.request.acts) && st.ear.request.acts.some((a) => a && a.act === 'relay'))) {";
+  // ── §8 CE-46 ELZ-4 · layer C (the chair, from FE-5's read, 30 September 2026): the history of a two-part reply. GET /chat/history selects meta and
+  // each message carries replies (meta.listener.replies, two or more, each scrubbed as the stream scrubs its parts) and NOTHING ELSE of meta.
+  console.log('\n§8 layer C: the history of a two-part reply (chat.js)');
+  const HIST = () => { const t = src('src/api/vendor-engine/chat.js'); const i = t.indexOf('function historyReplies('); if (i < 0) return null;
+    let d = 0; let j = t.indexOf('{', t.indexOf(')', i)); for (; j < t.length; j += 1) { if (t[j] === '{') d += 1; else if (t[j] === '}') { d -= 1; if (!d) break; } }
+    const { scrubText } = require(P('src/lib/vendor/scrub')); return new Function('scrubText', `${t.slice(i, j + 1)}; return historyReplies;`)(scrubText); };
+  const H8 = HIST(); const { scrubText: SCRUB8 } = require(P('src/lib/vendor/scrub'));
+  const TWO = ['Here is the message for Asha Walk Fifteen. I don\'t have her number, so copy the next message and send it yourself.', 'Hi Asha, your booking is confirmed.'];
+  const r81 = H8 ? H8({ meta: { listener: { replies: TWO, door: true, request: { acts: [] } } } }) : null;
+  T('8.1 a row whose listener record keeps two replies returns them, in order, each scrubbed as the stream does', !!r81 && JSON.stringify(r81) === JSON.stringify({ replies: TWO.map((x) => SCRUB8(x)) }));
+  T('8.2 a row without replies (none, one, or not an array) returns no replies key at all', !!H8 && JSON.stringify(H8({ meta: { listener: { door: true } } })) === '{}' && JSON.stringify(H8({ meta: { listener: { replies: ['one'] } } })) === '{}' && JSON.stringify(H8({ meta: null })) === '{}' && JSON.stringify(H8({})) === '{}');
+  const cj8 = src('src/api/vendor-engine/chat.js'); const hr = cj8.slice(cj8.indexOf("router.get('/history/:vendorId'"), cj8.indexOf("router.get('/history/:vendorId'") + 4000);
+  T('8.3 the history route selects meta and spreads ONLY historyReplies(m) into each message (no meta, no listener, no request leaves)', /\.select\('id, role, content, created_at, room, meta'\)/.test(hr) && /room: m\.room \?\? null, \.\.\.historyReplies\(m\) \}\)\)/.test(hr) && !/meta:\s*m\.meta|\.\.\.m\.meta|listener:/.test(hr.slice(hr.indexOf('const messages'), hr.indexOf('return res.json({ ok: true, messages })'))));
+
   await mut('M1 the rule never applied: 2.3 red (none re-heard, LEFTOVER)', WDf, [[GUARD, '    if (false) {']], WDdeps,
     async (req2) => (await turnSeq(makeDb(ruleWorld()), 'tell Sarah hi', [MISS, MISS], { M: req2(WDf) })).keys, (v) => v !== 'B37');
   await mut('M2 a heard relay overwritten (the guard ignores it): 2.10 red (B36 lost)', WDf, [[GUARD, '    if (relayRule) {']], WDdeps,
@@ -448,8 +475,29 @@ async function main() {
     async (req2) => { const M = req2(WDf); const d = makeDb((() => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; })()); await turnSeq(d, 'Tell asha walk fifteen booking is confirmed', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] }], { M }); await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M, nowMs: Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60000 }); return canon(meta(d).request && meta(d).request.acts); }, (v) => v !== canon([{ act: 'relay', client_as_spoken: 'Asha Walk Fifteen' }]));
   await mut('M15 her previous words not restored: 6.4 red', WDf, [['          if (prev.said) st.said = prev.said;\n', '']], WDdeps,
     async (req2) => { const M = req2(WDf); const d = makeDb((() => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; })()); composed.length = 0; await turnSeq(d, 'Tell asha walk fifteen we are free on 22nd', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] }], { M }); d.tables['public.leads'].forEach((l) => { if (l.id === 'l-asha') l.phone = PHONE2; }); const n0 = composed.length; await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M, nowMs: Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60000 }); return composed.slice(n0).some((c) => /we are free on 22nd/.test(String(c.user || ''))); }, (v) => v !== true);
-  await mut('M16 the two messages joined into one: 6.8 red', WDf, [['        st.replies = [first, composed.body];', "        st.replies = [`${first}\\n\\n${composed.body}`];"]], WDdeps,
+  // LABELED AMENDMENT · R-46.17: the two messages are now one split line (st.lines.push([first, body])); M16's anchor follows it
+  await mut('M16 the two messages joined into one: 6.8 red', WDf, [["        st.lines.push([first, composed.body]); st.keys.push('RELAY_DRAFT_NO_NUMBER');", "        st.lines.push(`${first}\\n\\n${composed.body}`); st.keys.push('RELAY_DRAFT_NO_NUMBER');"]], WDdeps,
     async (req2) => { const M = req2(WDf); const d = makeDb((() => { const w = ruleWorld(); w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, phone: null } : l)); return w; })()); await turnSeq(d, 'Tell asha walk fifteen booking is confirmed', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'asha walk fifteen' }] }], { M }); const r = await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M, nowMs: Date.parse(d.tables['engine.messages'].slice(-1)[0].created_at) + 60000 }); return (r.said && r.said.replies) || []; }, (v) => !(v.length === 2 && v[1] === BODY));
+  await mut('M17 the B35 route removed (the question agent drafts again): 6.5 red', WDf, [['      if (!prev) {\n        const original = saidOf(message);', '      if (false) {\n        const original = saidOf(message);']], WDdeps,
+    async (req2) => { const d = makeDb(ruleWorld()); return (await turnSeq(d, 'Just draft the message and give me', [MISS, MISS], { M: req2(WDf), nowMs: Date.now() })).keys; }, (v) => v !== 'B35');
+  await mut('M18 the frame joined into one message: 7.1 red', DLf7, [["    return [b, LINES.B37.replace('{client}', c).replace('{phone}', p)];", "    return `${b}\\n\\n${LINES.B37.replace('{client}', c).replace('{phone}', p)}`;"]], [WDf],
+    async (req2) => { req2(DLf7); const M = req2(WDf); const d = makeDb(ruleWorld()); const r = await turnSeq(d, 'Tell Sarah we are free on 22nd', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'Sarah' }] }], { M }); return (r.said && r.said.replies) || []; }, (v) => !(v.length === 2 && v[0] === BODY));
+  // CE-46 ELZ-4 · layer C's history (§8): chat.js cannot be compiled without the database's keys, so these mutations edit the FILE, re-read the
+  // cell's subject from it, and restore it byte for byte (checked by sha256); a missing anchor or an unrestored file fails the mutation
+  const CJ = 'src/api/vendor-engine/chat.js';
+  const shaF = (t) => require('crypto').createHash('sha256').update(t, 'utf8').digest('hex');
+  const mutFile = (name, from, to, probe) => { const orig = src(CJ); let hit = false;
+    try { if (!orig.includes(from)) throw new Error(`mutation anchor missing in ${CJ}: ${from.slice(0, 60)}`); fs.writeFileSync(P(CJ), orig.replace(from, to)); hit = probe() === true; }
+    catch (e) { console.log(`        (${e.message})`); hit = false; } finally { fs.writeFileSync(P(CJ), orig); }
+    T(name, hit && shaF(src(CJ)) === shaF(orig)); };
+  const want81 = JSON.stringify({ replies: TWO.map((x) => SCRUB8(x)) });
+  mutFile('M19 the history carries no parts (replies never returned): 8.1 red', '    return { replies: r.map((x) => scrubText(x)) };', '    return {};',
+    () => { const h = HIST(); return !h || JSON.stringify(h({ meta: { listener: { replies: TWO } } })) !== want81; });
+  mutFile('M20 the parts leave unscrubbed: 8.1 red', '    return { replies: r.map((x) => scrubText(x)) };', '    return { replies: r.map((x) => `${x} `) };',
+    () => { const h = HIST(); return !h || JSON.stringify(h({ meta: { listener: { replies: TWO } } })) !== want81; });
+  mutFile('M21 the whole meta rides out with the message: 8.3 red', 'room: m.room ?? null, ...historyReplies(m) }));', 'room: m.room ?? null, meta: m.meta, ...historyReplies(m) }));',
+    () => /meta:\s*m\.meta/.test(src(CJ)));
+
   console.log(`\nb142b_elz3_relay_rule_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
   if (fail) { console.log(`FAILED: ${failed.join(' · ')}`); process.exit(1); }
 }

@@ -1027,10 +1027,13 @@ await t('A11.5 F-06.189(α) — THE RULE IS OUTCOME ALONE, never outcome-AND-cos
 // ═══ A12 · F-06.185 / F-06.186 — THE COPY EXECUTION CENSUS — 7 cells ═══════
 H('A12 — F-06.185/.186 · RULED COPY ACTS ARE EXECUTED IN THE TREE (7)');
 
+// LABELED AMENDMENT · R-46.17 (the founder's yes of 29 September 2026, through the chair): showBlock renders TWO messages, [the body alone, the
+// question]; "Here is the draft:" is dropped by his word. A12.1, A12.5 and A12.6 read the frame joined as the door's reply carries it.
+const frameText = (b) => (Array.isArray(b) ? b.join('\n\n') : String(b));
 await t('A12.1 the founder\'s strike is executed on ① showBlock', async () => {
   const b = seat().showBlock('BODY', null, PHONE);
-  assert.ok(!/word for word/i.test(b), 'a founder-struck phrase is still on the vendor\'s screen');
-  assert.ok(/Here is the draft:/.test(b), 'the surviving opener drifted from the founder\'s own strike');
+  assert.ok(!/word for word/i.test(frameText(b)), 'a founder-struck phrase is still on the vendor\'s screen');
+  assert.ok(Array.isArray(b) && b[0] === 'BODY' && !/Here is the draft:/.test(frameText(b)), 'the frame is not the body alone, then its question (R-46.17)');
 });
 
 await t('A12.2 THE EXECUTION CENSUS — no shipped vendor-facing byte carries the struck phrase', async () => {
@@ -1062,13 +1065,13 @@ await t('A12.4 its successor is untouched — retirement is not deletion of the 
 });
 
 await t('A12.5 F-06.186 — a phone in the name column renders the nameless form', async () => {
-  const b = seat().showBlock('BODY', '+918595986978', '+918595986978');
+  const b = frameText(seat().showBlock('BODY', '+918595986978', '+918595986978'));
   assert.ok(!/\(\+918595986978\)/.test(b), 'the bride is still addressed by her number twice');
   assert.ok(b.includes('+918595986978'), 'the recipient vanished entirely');
 });
 
 await t('A12.6 FIXTURE-ABSENT — a REAL name still renders the named form', async () => {
-  const b = seat().showBlock('BODY', 'Priya', PHONE);
+  const b = frameText(seat().showBlock('BODY', 'Priya', PHONE));
   assert.ok(b.includes(`Priya (${PHONE})`), 'the founder-ruled named form was swallowed by the guard');
 });
 

@@ -212,7 +212,8 @@ async function main() {
     return { out, said, reply: said.reply, keys: J(said.keys) };
   };
   const showFrame = (...a) => (typeof DL.showFrame === 'function' ? DL.showFrame(...a) : null); // absent before the cut: every frame cell then FAILS by name
-  const frame = (client, body, phone) => showFrame(body || BODY, client, phone || (client === 'Walk Test' ? PHONE2 : PHONE));
+  // LABELED AMENDMENT · R-46.17: showFrame returns [the body alone, the question]; the door's reply is the two a blank line apart
+  const frame = (client, body, phone) => { const f = showFrame(body || BODY, client, phone || (client === 'Walk Test' ? PHONE2 : PHONE)); return Array.isArray(f) ? f.join('\n\n') : f; };
   const FRAME_ASHA = frame('Asha Walk Fifteen');
   const NONE = req([], 'none');
 

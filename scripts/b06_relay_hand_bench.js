@@ -532,6 +532,11 @@ await t('§1.8 an empty body stages nothing at all', async () => {
 // ── §2 · A2 — THE SHOW + THE E3 CONFIRM ─────────────────────────────────────
 H('§2 A2 — a quoted artefact addressed to the VENDOR, and E3');
 
+// LABELED AMENDMENT · R-46.17 (the founder's standing rule and his yes of 29 September 2026, through the chair): the frame is TWO messages, [the
+// body ALONE, the question]; "Here is the draft:" is dropped by his word and the quotes with it (the draft is its own message, so a long press
+// copies it exactly). shown() reads the two as the door's reply carries them; §2.2 and §2.9 now pin the draft AS ITS OWN MESSAGE, which is the
+// same property (the bytes are an artefact, not speech) in its new form; §7.7's needle moves from the dropped opener to the question.
+const shown = (f) => (Array.isArray(f) ? f.join('\n\n') : String(f));
 await t('§2.1 THE ANTI-08-08 CELL — the exact bytes are IN the shown frame', async () => {
   const s = seat();
   const frame = s.showBlock(BODY, 'Priya', PHONE);
@@ -540,7 +545,7 @@ await t('§2.1 THE ANTI-08-08 CELL — the exact bytes are IN the shown frame', 
 });
 
 await t('§2.2 the frame is a QUOTED artefact — the bytes are delimited', async () => {
-  const frame = seat().showBlock(BODY, 'Priya', PHONE);
+  const parts = seat().showBlock(BODY, 'Priya', PHONE); const frame = shown(parts);
   // LABELLED AMENDMENT (TDW_06 rider 3, F-06.185) · RATIFY-OR-REVERT · COUNT
   // PRESERVED. This asserted the frame DECLARES ITSELF verbatim in words. The
   // founder STRUCK 「 word for word 」 from every vendor-facing byte on
@@ -548,29 +553,29 @@ await t('§2.2 the frame is a QUOTED artefact — the bytes are delimited', asyn
   // was pinning an un-executed ruling in place. The PROPERTY — the bytes are a
   // delimited artefact and not speech — is untouched and now carries the strike's
   // own enforcement beside it, so the phrase cannot return as a courtesy.
-  assert.ok(frame.includes(`"${BODY}"`), 'the bytes are not quoted, so they read as speech');
+  assert.ok(Array.isArray(parts) && parts.length === 2 && parts[0] === BODY, 'the bytes are not their own message (R-46.17)');
   assert.ok(!/word for word/i.test(frame), 'the founder-struck phrase is back on the vendor\'s screen');
-  assert.ok(/Here is the draft:/.test(frame), 'the frame lost its opener entirely');
+  assert.ok(!/Here is the draft:/.test(frame) && !frame.includes(`"${BODY}"`), 'the dropped opener or the quotes came back (R-46.17)');
 });
 
 await t('§2.3 E3 — the confirm NAMES THE RECIPIENT', async () => {
-  assert.ok(/Send this to Priya \(/.test(seat().showBlock(BODY, 'Priya', PHONE)));
+  assert.ok(/Send this to Priya \(/.test(shown(seat().showBlock(BODY, 'Priya', PHONE))));
 });
 
 await t('§2.4 THE FOUNDER\'S RULING — the confirm ALWAYS carries the phone', async () => {
   const s = seat();
-  assert.ok(s.showBlock(BODY, 'Priya', PHONE).includes(PHONE), 'named form dropped the phone');
-  assert.ok(s.showBlock(BODY, null, PHONE).includes(PHONE), 'nameless form dropped the phone');
+  assert.ok(shown(s.showBlock(BODY, 'Priya', PHONE)).includes(PHONE), 'named form dropped the phone');
+  assert.ok(shown(s.showBlock(BODY, null, PHONE)).includes(PHONE), 'nameless form dropped the phone');
 });
 
 await t('§2.5 the phone renders as the STORED BYTE, verbatim — no formatter', async () => {
-  const frame = seat().showBlock(BODY, 'Priya', PHONE);
+  const frame = shown(seat().showBlock(BODY, 'Priya', PHONE));
   assert.ok(frame.includes('+919625759924'), 'the stored byte is not what is displayed');
   assert.ok(!/\+91 \d/.test(frame), 'a spaced render appeared — R-5 retired that shape');
 });
 
 await t('§2.6 the nameless fallback shows the phone alone, never an invented name', async () => {
-  const frame = seat().showBlock(BODY, null, PHONE);
+  const frame = shown(seat().showBlock(BODY, null, PHONE));
   assert.ok(/Send this to \+919625759924\?/.test(frame));
   assert.ok(!/\bnull\b|undefined|the vendor|the client/i.test(frame.split('Send this to')[1]));
 });
@@ -586,13 +591,13 @@ await t('§2.8 MUTATION — dropping the bytes from the frame turns §2.1 RED', 
   // mutation now swaps the body out at that hand-off, which is the same 08-08 death (a frame without the stored bytes) at the seat's own line.
   const m = mutate('src/lib/vendor/relaySeat.js', ".showFrame(body, name, phone);", ".showFrame('Message is ready.', name, phone);", 'a2frame');
   assert.ok(m, 'DECLARED FAIL — mutation anchor absent in relaySeat.js');
-  const frame = fresh(m).showBlock(BODY, 'Priya', PHONE);
+  const frame = shown(fresh(m).showBlock(BODY, 'Priya', PHONE));
   assert.ok(!frame.includes(BODY), 'the mutation did not bite — the anti-08-08 cell proves nothing');
 });
 
 await t('§2.9 the frame is addressed to the VENDOR — no speech aimed past him', async () => {
-  const frame = seat().showBlock(BODY, 'Priya', PHONE);
-  const outside = frame.split(`"${BODY}"`).join(' ');
+  const parts = seat().showBlock(BODY, 'Priya', PHONE);
+  const outside = (Array.isArray(parts) ? parts.slice(1) : [String(parts)]).join(' '); // everything but the draft's own message
   assert.ok(!/\bHi Priya\b/.test(outside), 'bride-addressed speech leaked outside the quoted artefact');
 });
 
@@ -1007,7 +1012,7 @@ await t('§7.7 the eleven vetoed bytes are present and none was silently reworde
   const s = seat();
   const must = [
     // AMENDED (rider 3, F-06.185): the needle carries the founder's executed strike.
-    [s.showBlock(BODY, 'Priya', PHONE), 'Here is the draft:'],
+    [shown(s.showBlock(BODY, 'Priya', PHONE)), 'Reply YES or NO.'], // R-46.17: the opener dropped by his word; the needle is the question
     [s.sentLine('Priya', PHONE), 'Sent to Priya (+919625759924).'],
     // RE-PINNED (CE-45 ELZ-1 e-151, R-45.30 beside it, the chair's ruling (1), labelled): his words unchanged; the em dash before "the moment" set as
     // a full stop, so the needle opens with a capital. Punctuation only, shown on the e-151 card for his eye.

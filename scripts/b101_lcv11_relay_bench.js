@@ -223,7 +223,10 @@ async function main() {
     return { out, said, reply: said.reply, keys: J(said.keys) };
   };
   const showFrame = (...a) => (typeof DL.showFrame === 'function' ? DL.showFrame(...a) : null); // absent before the cut: every frame cell then FAILS by name
-  const frame = (client, body, phone) => showFrame(body || BODY, client, phone || (client === 'Walk Test' ? PHONE2 : PHONE));
+  // LABELED AMENDMENT · R-46.17 (the founder's yes, 29 September 2026, through the chair): B37 is TWO messages, [the body alone, the question];
+  // showFrame returns the two, the door's reply is them a blank line apart (its replies keeps them apart). frame() reads the reply's form.
+  const joined = (p) => (Array.isArray(p) ? p.join('\n\n') : p);
+  const frame = (client, body, phone) => joined(showFrame(body || BODY, client, phone || (client === 'Walk Test' ? PHONE2 : PHONE)));
   const FRAME_ASHA = frame('Asha Walk Fifteen');
   const NONE = req([], 'none');
 
@@ -234,11 +237,11 @@ async function main() {
   T('0.3 [record cell, green at the base too] LCT rows 5 equal the walk record\'s hearing (the record and the live ear agree)', canon(rec(LCT['5/C1/asis'])) === canon(rec(WR11_JSON)));
 
   sec('1 the bytes, his, hash-carried');
-  T('1.1 B37 is the frame with "Reply YES or NO." and its hash literal is the sha256 of its bytes', DL.LINES.B37 === 'Here is the draft:\n\n"{body}"\n\nSend this to {client} ({phone})? Reply YES or NO.' && DL.LINE_HASHES.B37 === sha(DL.LINES.B37));
+  T('1.1 B37 is the frame with "Reply YES or NO." and its hash literal is the sha256 of its bytes', DL.LINES.B37 === 'Send this to {client} ({phone})? Reply YES or NO.' && DL.LINE_HASHES.B37 === sha(DL.LINES.B37)); // R-46.17: the question alone
   T('1.2 B38 and B39 are his bytes and their hashes hold', DL.LINES.B38 === 'Could not send the message. No client called {name}.' && DL.LINES.B39 === 'Could not send the quote. {client} has no package yet. Attach a package to {client} first.' && DL.LINE_HASHES.B38 === sha(DL.LINES.B38) && DL.LINE_HASHES.B39 === sha(DL.LINES.B39));
-  T('1.3 showFrame renders the row: name and stored phone verbatim, the body untouched', FRAME_ASHA === `Here is the draft:\n\n"${BODY}"\n\nSend this to Asha Walk Fifteen (${PHONE})? Reply YES or NO.`);
-  T('1.4 a name that IS the phone (F-06.186) and no name at all render the phone alone, one sentence', showFrame('b', '+918595986978', '+918595986978') === 'Here is the draft:\n\n"b"\n\nSend this to +918595986978? Reply YES or NO.' && showFrame('b', null, '+918595986978') === showFrame('b', '+918595986978', '+918595986978') && showFrame('b', null, '+918595986978') !== null);
-  T('1.5 ONE HOME: relaySeat.showBlock speaks B37 byte for byte, and the August frame is gone from the tree (mismatchBlock ⑨, unreached, keeps its own bytes)', RS.showBlock(BODY, 'Asha Walk Fifteen', PHONE) === FRAME_ASHA && !src(RSf).includes('Here is the draft:\\n\\n"${body}"') && /function showBlock\(body, name, phone\) \{[\s\S]*?return require\('\.\/doorLines'\)\.showFrame\(body, name, phone\);\n\}/.test(src(RSf)));
+  T('1.3 showFrame renders the row: name and stored phone verbatim, the body untouched', FRAME_ASHA === `${BODY}\n\nSend this to Asha Walk Fifteen (${PHONE})? Reply YES or NO.` && JSON.stringify(showFrame(BODY, 'Asha Walk Fifteen', PHONE)) === JSON.stringify([BODY, `Send this to Asha Walk Fifteen (${PHONE})? Reply YES or NO.`])); // R-46.17: the body alone, then the question
+  T('1.4 a name that IS the phone (F-06.186) and no name at all render the phone alone, one sentence', JSON.stringify(showFrame('b', '+918595986978', '+918595986978')) === JSON.stringify(['b', 'Send this to +918595986978? Reply YES or NO.']) && JSON.stringify(showFrame('b', null, '+918595986978')) === JSON.stringify(showFrame('b', '+918595986978', '+918595986978')) && showFrame('b', null, '+918595986978') !== null);
+  T('1.5 ONE HOME: relaySeat.showBlock speaks B37 byte for byte, and the August frame is gone from the tree (mismatchBlock ⑨, unreached, keeps its own bytes)', joined(RS.showBlock(BODY, 'Asha Walk Fifteen', PHONE)) === FRAME_ASHA && !src(RSf).includes('Here is the draft:\\n\\n"${body}"') && /function showBlock\(body, name, phone\) \{[\s\S]*?return require\('\.\/doorLines'\)\.showFrame\(body, name, phone\);\n\}/.test(src(RSf)));
   T('1.6 showFrame is total: no body, no phone, hostile values yield null and never throw', typeof DL.showFrame === 'function' && showFrame('', 'x', PHONE) === null && showFrame('b', 'x', '') === null && showFrame(null, null, null) === null && showFrame({}, [], 7) === null);
   T('1.7 [boundary, FLIPPED at ELZ-1 cut 2b] B39 is SPOKEN by the door and quote_send is covered (the second cut arrived)', src(WDf).includes("'B39'") && WD.COVERED.includes('quote_send')); /* LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (P6b's second half, R-45.17): this boundary cell flipped as designed */
   T('1.8 example 10 switches on: covering relay puts "Send a message to my client asking for the advance" in the leftover pool', DL.leftover(WD.COVERED.filter((a) => a !== 'assign_crew'), () => 0.999).includes('Send a message to my client asking for the advance') && !DL.leftover(WD.COVERED.filter((a) => a !== 'relay' && a !== 'assign_crew'), () => 0.999).includes('Send a message to my client asking for the advance')); // RE-PINNED (CE-45 LCV-14, P7 cut 3, labelled): examples 11 and 12 (assign_crew) now sit AFTER example 10 in the pool, and a draw of 0.999 takes the last two; assign_crew is held out of both sides so the cell still reads example 10's own switch

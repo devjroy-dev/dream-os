@@ -1659,9 +1659,12 @@ async function reread(supabase, vendorId, row, L) {
 }
 
 function doorAnswer(st, why) {
+  // R-46.17 (and F-44.248's two messages): a line may be an ARRAY of separate messages (a draft alone, then its question); the turn's messages
+  // are the lines flattened in order, and replies carries them whenever any line was split
   const lines = st.lines.filter(Boolean);
-  let reply = lines.join('\n\n');
-  if (Array.isArray(st.replies) && st.replies.length > 1) reply = st.replies.join('\n\n'); // CE-46 ELZ-3 · F-44.248: both messages, a blank line apart
+  const parts = lines.flatMap((l) => (Array.isArray(l) ? l.filter(Boolean) : [l]));
+  let reply = parts.join('\n\n');
+  if (lines.some((l) => Array.isArray(l))) st.replies = parts;
   // The glitch byte is read lazily from its one home (b90 14.1 proves it loads cold in both orders); B3 is the
   // last resort only if that home cannot load at all.
   if (!reply) reply = st.fallback || glitchLine() || DL.LINES.B3;
@@ -1818,7 +1821,7 @@ async function preTurn(args, depsIn) {
           if (said === 'no') return declineDraft(open.draft.id, 'draft_declined');
           const name = await draftName(open.draft.couple_phone);
           const line = DL.showFrame(open.draft.body, name, open.draft.couple_phone);
-          if (line) return { door: true, reply: line, keys: ['B37'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, note: { asked: 'B37', acts: [{ act: 'relay', ...(name ? { client_as_spoken: name } : {}) }], tries: 1, draft_id: open.draft.id }, why: 'draft_reshown' };
+          if (line) return { door: true, reply: Array.isArray(line) ? line.join('\n\n') : line, ...(Array.isArray(line) ? { replies: line.slice() } : {}), keys: ['B37'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, note: { asked: 'B37', acts: [{ act: 'relay', ...(name ? { client_as_spoken: name } : {}) }], tries: 1, draft_id: open.draft.id }, why: 'draft_reshown' };
         }
       } catch (e) { try { console.warn('[door:open draft]', e && e.message); } catch (_e) { /* */ } }
     }
@@ -1867,6 +1870,13 @@ async function preTurn(args, depsIn) {
     // is that relay again: the client from the previous record read through the lead's own row, her previous words for the composer.
     if (!note && !live && !relayRule && heardNothing(st.ear) && DRAFT_FOLLOWUP.test(String(message || ''))) {
       const prev = await lastDoorRelay(supabase, agentId, undefined, Number.isFinite(deps.nowMs) ? deps.nowMs : Date.now());
+      // R-46.17 audit, item 2 (the chair's ruling of 29 September 2026): a draft follow-up with NO relay before it is not the question agent's to
+      // draft in its own words: the door asks its own B35 ("Which client? Say the name."), the note carrying her words and the relay act.
+      if (!prev) {
+        const original = saidOf(message);
+        return { door: true, reply: DL.LINES.B35, keys: ['B35'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: { ...(st.ear || {}), rule: 'draft_followup' }, why: 'draft_no_client',
+          note: { asked: 'B35', acts: [{ act: 'relay' }], tries: 0, ...(original ? { said: original } : {}) } };
+      }
       if (prev) {
         const found = await L.lifecycle.resolveLead(supabase, vendor.id, prev.client, false);
         const client = found && found.ok && found.lead && typeof found.lead.name === 'string' && found.lead.name.trim() ? found.lead.name.trim() : null;
@@ -1903,7 +1913,7 @@ async function preTurn(args, depsIn) {
     // date and the plans answer as they answer any unreadable date.
     let fromNote = null;
     // A NAME NOTE (B18 or B35): decided before the date-note branch below.
-    const askAgain = (line, key, tries) => ({ door: true, reply: line, keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries, ...(note.said ? { said: note.said } : {}), ...(note.unsaid === true ? { unsaid: true } : {}) }, answered: key, why: 'note_reasked' });
+    const askAgain = (line, key, tries) => ({ door: true, reply: Array.isArray(line) ? line.join('\n\n') : line, ...(Array.isArray(line) ? { replies: line.slice() } : {}), keys: [key], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, note: { asked: key, acts: note.acts, tries, ...(note.said ? { said: note.said } : {}), ...(note.unsaid === true ? { unsaid: true } : {}) }, answered: key, why: 'note_reasked' });
     if (note && NAME_ASKS.includes(note.asked)) {
       const heardActs = st.ear && st.ear.request && Array.isArray(st.ear.request.acts) ? relayRecipient(st.ear.request).acts : [];
       const kinds = note.acts.map((a) => a.act);
@@ -2387,8 +2397,7 @@ async function preTurn(args, depsIn) {
       if (!composed || !composed.body) { st.lines.push(relayPlan.speak); st.keys.push(relayPlan.key); st.skipHarvest = true; }
       else {
         const first = NO_NUMBER_DRAFT_LINE.replace('{client}', relayPlan.noNumber.client);
-        st.lines.push(first); st.keys.push('RELAY_DRAFT_NO_NUMBER'); st.skipHarvest = true;
-        st.replies = [first, composed.body];
+        st.lines.push([first, composed.body]); st.keys.push('RELAY_DRAFT_NO_NUMBER'); st.skipHarvest = true;
         st.toolCalls.push({ name: HANDS.relay, input: { recipient: relayPlan.noNumber.client, message: composed.body, seat: `${composed.seat.provider}/${composed.seat.model}`, verbatim: composed.verbatim === true }, result: 'drafted_no_number' });
       }
     }
