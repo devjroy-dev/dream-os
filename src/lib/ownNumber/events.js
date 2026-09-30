@@ -63,6 +63,17 @@ async function handle(supabase, own, change, now = () => new Date()) {
   if (kind === 'inbound' && !(Array.isArray(value.messages) && value.messages.length)) {
     return { kept: false }; // delivery statuses for her number: 2a sends nothing, so there are none to keep
   }
+  // CE-46 F-44.252 (ruled 30 September 2026): a REMOVED number is out of TDW. Only its account events are read (so PARTNER_REMOVED
+  // can clear the S6 line); every other change (her clients' messages, echoes, history, contacts) is DISCARDED: never stored, never
+  // forwarded, never answered. Read fresh, not from the map's cached copy (up to 60 s old), so a Remove takes effect at once.
+  if (kind !== 'account_update') {
+    const st = await supabase.from('vendor_wabas').select('status').eq('vendor_id', own.vendor_id).maybeSingle();
+    if (st.error) throw new Error(`vendor_wabas read: ${st.error.message}`);
+    if (st.data && st.data.status === 'removed') {
+      console.log(`[own-number] ${own.vendor_id} ${field} discarded: the number is removed (F-44.252)`);
+      return { kept: false, discarded: true };
+    }
+  }
   const ins = await supabase.from('vendor_wa_events').insert({ vendor_id: own.vendor_id, kind, payload: value }).select('id');
   if (ins.error || !ins.data || ins.data.length !== 1) throw new Error(`vendor_wa_events insert: ${ins.error ? ins.error.message : 'no row'}`);
   if (kind === 'history' && historyDeclined(value)) console.log(`[own-number] ${own.vendor_id} declined history sharing (2593109): recorded, not a failure`);
@@ -81,6 +92,8 @@ async function handle(supabase, own, change, now = () => new Date()) {
     // made or assumed here.
     const patch = { status: next.status, paused_reason: next.paused_reason, updated_at: now().toISOString() };
     if (next.status === 'migrated_out') patch.business_token = null;
+    // CE-46 F-44.252: her disconnect reached TDW on a removed row; the sealed token kept for the 7-day unsubscribe goes now.
+    if (next.status === 'removed' && next.paused_reason === 'removed:partner_removed') patch.business_token = null;
     const up = await supabase.from('vendor_wabas')
       .update(patch)
       .eq('vendor_id', own.vendor_id).select('status');

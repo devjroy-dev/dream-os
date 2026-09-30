@@ -82,8 +82,28 @@ const probes = {
     return { r, calls, w, eventsKept: JSON.stringify(db.tables.vendor_wa_events) === before };
   },
   async moved() { const db = makeDb(seed([wabaRow({ connect_way: 'moved' })])); const { r, calls } = await runRemove(db); return { r, calls, w: db.tables.vendor_wabas }; },
-  async refusedUnsub() { const db = makeDb(seed()); const s0 = snap(db); const { r, calls } = await runRemove(db, { unsubscribe: [400, { error: { code: 100, message: 'Invalid parameter' } }] }); return { r, calls, same: snap(db) === s0 }; },
+  async refusedUnsub() { const db = makeDb(seed([wabaRow({ connect_way: 'moved' })])); /* RE-AIMED BY LABEL · F-44.252: the shared way calls no Meta at Remove */ const s0 = snap(db); const { r, calls } = await runRemove(db, { unsubscribe: [400, { error: { code: 100, message: 'Invalid parameter' } }] }); return { r, calls, same: snap(db) === s0 }; },
   async refusedDereg() { const db = makeDb(seed([wabaRow({ connect_way: 'moved' })])); const s0 = snap(db); const { r } = await runRemove(db, { deregister: [400, { error: { code: 100, message: 'The phone number cannot be deregistered in its current state' } }] }); return { r, same: snap(db) === s0 }; },
+};
+
+// CE-46 F-44.252 probes (§10 and M11, M12).
+const OLD = '2026-09-20T00:00:00.000Z'; const YOUNG = '2026-09-25T00:00:00.000Z'; // NOW is 2026-09-28T18:00Z
+const p252 = {
+  async discard() {
+    const db = makeDb(seed([wabaRow({ status: 'removed', paused_reason: 'removed:vendor' })])); const before = JSON.stringify(db.tables.vendor_wa_events);
+    const x = await runEvent(db, 'messages', { messages: [{ from: '919625759924', id: 'wamid.A', type: 'text', text: { body: 'hi' } }] });
+    return { discarded: !!(x && x.discarded && x.kept === false), eventsSame: JSON.stringify(db.tables.vendor_wa_events) === before };
+  },
+  async sweep(removedAt, answer, way = 'shared') {
+    const db = makeDb(seed([wabaRow({ status: 'removed', paused_reason: 'removed:vendor', removed_at: removedAt, connect_way: way })])); const calls = [];
+    freshAll(); const S = require(P('src/lib/ownNumber/removedSweep.js'));
+    const fetchImpl = async (url, init = {}) => { calls.push({ url, auth: (init.headers || {}).Authorization }); return answer ? { ok: false, status: answer[0], json: async () => answer[1] } : { ok: true, status: 200, json: async () => ({ success: true }) }; };
+    const { v } = await quiet(() => S.sweepRemoved({ supabase: db, env: ENV, fetchImpl, now: NOW }));
+    const door = await runDoor(db);
+    return { out: v, calls: calls.length, auth: calls[0] && calls[0].auth, w: db.tables.vendor_wabas[0], door };
+  },
+  sweepOld(answer, way) { return p252.sweep(OLD, answer, way); },
+  sweepYoung() { return p252.sweep(YOUNG); },
 };
 
 (async () => {
@@ -107,15 +127,16 @@ const probes = {
   const doc = read('docs/db/PUBLIC_SCHEMA.md');
   ok(/0182/.test(doc) && /removed_at/.test(doc), '1.11 PUBLIC_SCHEMA.md\u2019s staleness note names 0182 and its column (e-107\u2019s lesson)');
 
-  sec('2  the shared way: TDW stops listening; her app is hers to disconnect');
+  // RE-PINNED BY LABEL · CE-46 F-44.252 (ruled 30 Sept 2026, (a) amended): the shared way no longer unsubscribes at Remove (that
+  // silenced PARTNER_REMOVED); her sealed token is kept for the 7-day unsubscribe (§10). Was: one DELETE, token nulled.
+  sec('2  the shared way: TDW stops answering and holds the unsubscribe; her app is hers to disconnect');
   { const { r, calls, w, eventsKept } = await probes.shared();
     ok(r && r.ok === true, '2.1 the removal answers ok', JSON.stringify(r));
-    ok(calls.length === 1 && calls[0].step === 'unsubscribe' && calls[0].method === 'DELETE' && calls[0].path === `${WABA}/subscribed_apps` && calls[0].version === 'v25.0', '2.2 one Meta call: DELETE her WABA\u2019s subscribed_apps', JSON.stringify(calls));
-    ok(calls[0].auth === `Bearer ${BIZ}`, '2.3 with HER business token, opened from its seal');
-    ok(!calls.some((c) => c.step === 'deregister'), '2.4 NO deregister on the shared way (Meta refuses it for a number on the app)');
-    ok(w.length === 1 && w[0].id === 'w1' && w[0].status === 'removed' && w[0].business_token === null && w[0].removed_at === '2026-09-28T18:00:00.000Z' && w[0].paused_reason === 'removed:vendor', '2.5 her row kept (same id), marked removed, token nulled, removed_at stamped, paused_reason removed:vendor', JSON.stringify(w));
-    ok(eventsKept, '2.6 her history (vendor_wa_events) untouched');
-    ok(r.removed && r.removed.display_number === NUM && r.removed.way === 'shared' && r.removed.finish_in_app === true, '2.7 the room is told: this number, the shared way, finish in your app (F-c)', JSON.stringify(r && r.removed)); }
+    ok(calls.length === 0, '2.2 NO Meta call at Remove on the shared way: no unsubscribe (F-44.252), no deregister', JSON.stringify(calls));
+    ok(w.length === 1 && w[0].id === 'w1' && w[0].status === 'removed' && w[0].removed_at === '2026-09-28T18:00:00.000Z' && w[0].paused_reason === 'removed:vendor', '2.3 her row kept (same id), marked removed, removed_at stamped, paused_reason removed:vendor', JSON.stringify(w));
+    ok(typeof w[0].business_token === 'string' && vault.open(w[0].business_token).value === BIZ, '2.4 her token is KEPT, still sealed, for the 7-day unsubscribe only');
+    ok(eventsKept, '2.5 her history (vendor_wa_events) untouched');
+    ok(r.removed && r.removed.display_number === NUM && r.removed.way === 'shared' && r.removed.finish_in_app === true, '2.6 the room is told: this number, the shared way, finish in your app (F-c)', JSON.stringify(r && r.removed)); }
 
   sec('3  the moved way: unsubscribe, then deregister');
   { const { r, calls, w } = await probes.moved();
@@ -129,9 +150,9 @@ const probes = {
     ok(r.ok === false && r.reason === 'meta_unsubscribe' && same && calls.length === 1, '4.1 Meta refuses the unsubscribe: refused, her row and sealed token byte-identical, nothing further called', JSON.stringify(r)); }
   { const { r, same } = await probes.refusedDereg();
     ok(r.ok === false && r.reason === 'meta_deregister' && same, '4.2 Meta refuses the deregister (moved): refused, her row byte-identical', JSON.stringify(r)); }
-  { const db = makeDb(seed()); await runRemove(db, { unsubscribe: [400, { error: { code: 100, message: 'x' } }] }); const { r } = await runRemove(db);
+  { const db = makeDb(seed([wabaRow({ connect_way: 'moved' })])); await runRemove(db, { unsubscribe: [400, { error: { code: 100, message: 'x' } }] }); const { r } = await runRemove(db);
     ok(r.ok && db.tables.vendor_wabas[0].status === 'removed', '4.3 the retry after a refusal reaches Meta with the kept token and removes'); }
-  { const db = makeDb(seed()); const { r } = await runRemove(db, { unsubscribe: [400, { error: { code: 190, message: 'Error validating access token' } }] });
+  { const db = makeDb(seed([wabaRow({ connect_way: 'moved' })])); const { r } = await runRemove(db, { unsubscribe: [400, { error: { code: 190, message: 'Error validating access token' } }] });
     ok(r.ok && db.tables.vendor_wabas[0].status === 'removed', '4.4 an invalid token (190) counts as already gone', JSON.stringify(r)); }
   { const db = makeDb(seed([wabaRow({ connect_way: 'moved' })])); const { r } = await runRemove(db, { unsubscribe: [404, { error: { code: 803, message: 'not found' } }], deregister: [400, { error: { code: 100, message: 'Phone number is not registered' } }] });
     ok(r.ok && db.tables.vendor_wabas[0].status === 'removed', '4.5 a 404 on unsubscribe and "not registered" on deregister count as already gone', JSON.stringify(r)); }
@@ -188,6 +209,25 @@ const probes = {
     const set = await M.activeOwnDigits(makeDb(seed([wabaRow({ status: 'removed', business_token: null })])), () => 1);
     ok(set.size === 0, '8.2 a removed number is not among the connected own numbers (the shared line\u2019s loop guard)'); }
 
+  sec('10  F-44.252: the shared way waits for her disconnect; her clients\u2019 words are not kept');
+  { const x = await p252.discard(); ok(x.discarded && x.eventsSame, '10.1 a removed number\u2019s inbound message is DISCARDED: not stored, not kept for forwarding', JSON.stringify(x)); }
+  { const db = makeDb(seed([wabaRow({ status: 'removed', paused_reason: 'removed:vendor' })])); const n = db.tables.vendor_wa_events.length;
+    const a = await runEvent(db, 'smb_message_echoes', { message_echoes: [{ id: 'e' }] }); const b2 = await runEvent(db, 'history', { history: [{ threads: [] }] });
+    ok(a && a.discarded && b2 && b2.discarded && db.tables.vendor_wa_events.length === n, '10.2 echoes and history for a removed number are discarded too'); }
+  { const db = makeDb(seed([wabaRow({ status: 'removed', paused_reason: 'removed:vendor' })]));
+    await runEvent(db, 'account_update', { event: 'PARTNER_REMOVED' }); const w = db.tables.vendor_wabas[0]; const d = await runDoor(db);
+    ok(w.status === 'removed' && w.paused_reason === 'removed:partner_removed' && w.business_token === null && d.removed && d.removed.finish_in_app === false, '10.3 her disconnect (PARTNER_REMOVED) is read: the S6 line retires and the kept token is nulled', JSON.stringify(w)); }
+  { const db = makeDb(seed()); const n = db.tables.vendor_wa_events.length; const x = await runEvent(db, 'messages', { messages: [{ from: '919625759924', id: 'wamid.A', type: 'text', text: { body: 'hi' } }] });
+    ok(x && x.kept === true && db.tables.vendor_wa_events.length === n + 1, '10.4 THE CONTROL: an active number\u2019s message is still recorded'); }
+  ok(/if \(kept\) await ownNumberForward\.forwardOwn\(/.test(read('src/marketingIndex.js')), '10.5 the receiver forwards only what was kept, so a discarded message is never answered');
+  { const x = await p252.sweepOld(); ok(x.out.swept === 1 && x.calls === 1 && x.auth === `Bearer ${BIZ}` && x.w.business_token === null && x.w.paused_reason === 'removed:swept' && x.door.removed.finish_in_app === false,
+    '10.6 7 days without her disconnect: TDW unsubscribes with her kept token, nulls it, and the S6 line retires', JSON.stringify({ out: x.out, calls: x.calls, w: x.w })); }
+  { const x = await p252.sweepYoung(); ok(x.calls === 0 && x.w.paused_reason === 'removed:vendor' && typeof x.w.business_token === 'string', '10.7 before 7 days nothing is swept'); }
+  { const x = await p252.sweepOld([400, { error: { code: 2, message: 'transient' } }]); ok(x.out.refused === 1 && x.w.paused_reason === 'removed:vendor' && typeof x.w.business_token === 'string', '10.8 a Meta refusal leaves the row (and its token) for the next night'); }
+  { const x = await p252.sweepOld([400, { error: { code: 190, message: 'expired' } }]); ok(x.out.swept === 1 && x.w.paused_reason === 'removed:swept', '10.9 an invalid token (190) counts as already gone'); }
+  { const x = await p252.sweepOld(null, 'moved'); ok(x.calls === 0 && x.out.swept === 0, '10.10 a moved row is never swept (it was unsubscribed at Remove)'); }
+  ok(/cron\.schedule\('45 3 \* \* \*'[\s\S]{0,200}removedSweep'\)\.sweepRemoved\(\{ supabase \}\)/.test(read('src/cron.js')), '10.11 the sweep runs nightly (03:45 IST) from the vendor service\u2019s cron');
+
   sec('9  mutations of production code (each must turn its cell red; restored byte for byte)');
   const mutate = async (rel, pairs, probe) => {
     const src = read(rel); const before = sha(src); let m = src;
@@ -201,11 +241,12 @@ const probes = {
     async () => { const x = await probes.refusedUnsub(); return x.r.ok === false && x.same; })]);
   out.push(['M2 every Meta refusal read as already gone', await mutate('src/lib/ownNumber/remove.js', [['  if (!(e instanceof meta.MetaError)) return false;', '  if (e) return true;']],
     async () => { const x = await probes.refusedUnsub(); return x.r.ok === false && x.same; })]);
-  out.push(['M3 deregister on the shared way too', await mutate('src/lib/ownNumber/remove.js', [["if (row.connect_way === 'moved' && !(await step('deregister'", "if (!(await step('deregister'"]],
-    async () => { const x = await probes.shared(); return !x.calls.some((c) => c.step === 'deregister'); })]);
-  out.push(['M4 her token kept on removal', await mutate('src/lib/ownNumber/remove.js', [["status: 'removed', business_token: null, removed_at: at", "status: 'removed', removed_at: at"]],
-    async () => { const x = await probes.shared(); return x.w[0].business_token === null; })]);
-  out.push(['M5 the moved way skips deregister', await mutate('src/lib/ownNumber/remove.js', [["row.connect_way === 'moved' && !(await step('deregister'", "row.connect_way === 'never' && !(await step('deregister'"]],
+  // RE-AIMED BY LABEL · F-44.252: M3 to M5 follow the new shape of remove.js.
+  out.push(['M3 the shared way unsubscribes at Remove again (F-44.252 undone)', await mutate('src/lib/ownNumber/remove.js', [["const shared = row.connect_way !== 'moved';", 'const shared = false;']],
+    async () => { const x = await probes.shared(); return x.calls.length === 0; })]);
+  out.push(['M4 the moved way keeps her token', await mutate('src/lib/ownNumber/remove.js', [["...(shared ? {} : { business_token: null })", '...({})']],
+    async () => { const x = await probes.moved(); return x.w[0].business_token === null; })]);
+  out.push(['M5 the moved way skips deregister', await mutate('src/lib/ownNumber/remove.js', [["    if (!(await step('deregister',", "    if (false && !(await step('deregister',"]],
     async () => { const x = await probes.moved(); return x.calls.map((c) => c.step).join(',') === 'unsubscribe,deregister'; })]);
   out.push(['M6 a removed row revived by ACCOUNT_RECONNECTED', await mutate('src/lib/ownNumber/events.js', [["  if (cur === 'removed') {", "  if (cur === 'removed' && ev !== 'ACCOUNT_RECONNECTED') {"]],
     async () => { const db = makeDb(seed([wabaRow({ status: 'removed', business_token: null, paused_reason: 'removed:vendor' })])); await runEvent(db, 'account_update', { event: 'ACCOUNT_RECONNECTED' }); return db.tables.vendor_wabas[0].status === 'removed'; })]);
@@ -217,6 +258,10 @@ const probes = {
     async () => { const d = await runDoor(makeDb(seed([wabaRow({ status: 'removed', business_token: null, paused_reason: 'removed:partner_removed' })]))); return d.removed && d.removed.finish_in_app === false; })]);
   out.push(['M10 the remove door behind requireAuth only (another vendor\u2019s id reachable)', await mutate('src/api/vendor/solutions/number.js', [["router.post('/remove', requireAuth, resolveVendor(), asyncHandler(", "router.post('/remove', requireAuth, asyncHandler("]],
     async () => { const s = strip(read('src/api/vendor/solutions/number.js')); return /router\.post\('\/remove', requireAuth, resolveVendor\(\), asyncHandler\(/.test(s); })]);
+  out.push(['M11 a removed number\u2019s messages kept again', await mutate('src/lib/ownNumber/events.js', [["    if (st.data && st.data.status === 'removed') {", "    if (false) {"]],
+    async () => (await p252.discard()).discarded)]);
+  out.push(['M12 the sweep waits no time', await mutate('src/lib/ownNumber/removedSweep.js', [['const WAIT_MS = 7 * 24 * 60 * 60 * 1000;', 'const WAIT_MS = 0;']],
+    async () => (await p252.sweepYoung()).calls === 0)]);
   for (const [name, r] of out) ok(r.applied && r.red && r.restored, `9 ${name}: applies, turns its cell red, restored by sha`, JSON.stringify(r));
 
   console.log(`\nb150 · ${pass} pass · ${fail} fail`);

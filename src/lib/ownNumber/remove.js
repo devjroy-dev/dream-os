@@ -10,7 +10,8 @@
 //     API; the number and its history are not deleted; it is registered again to be used again. The MOVED way only.
 //   · The Graph reference for /<WABA_ID>/subscribed_apps lists DELETE, returning { success }.
 //
-// F-a (a), RULED: META FIRST, THEN THE ROW. Unsubscribe (both ways), then deregister (moved). A Meta refusal changes NOTHING: the row
+// F-a (a), RULED: META FIRST, THEN THE ROW. On the MOVED way: unsubscribe, then deregister. On the SHARED way no Meta call at
+// Remove since F-44.252 (below): the unsubscribe waits for her disconnect, or 7 days. A Meta refusal changes NOTHING: the row
 // and her sealed token stay, so she can try again and the retry can still reach Meta. An answer that says the thing is already
 // gone (an invalid token, code 190; a 404; "not subscribed") counts as done and the removal goes on. Only after Meta: one update,
 // status 'removed', business_token null, removed_at, paused_reason 'removed:vendor'. NEVER a delete; vendor_wa_events untouched.
@@ -55,17 +56,26 @@ async function removeNumber({ vendor, supabase, env = process.env, fetchImpl = f
       return false;
     }
   };
-  if (!(await step('unsubscribe', () => meta.unsubscribe({ wabaId: row.waba_id, token, env, fetchImpl })))) return refuse('meta_unsubscribe');
-  if (row.connect_way === 'moved' && !(await step('deregister', () => meta.deregister({ phoneNumberId: row.phone_number_id, token, env, fetchImpl })))) {
-    return refuse('meta_deregister');
+  // CE-46 F-44.252 (ruled 30 September 2026, (a) amended): on the SHARED way TDW does NOT unsubscribe at Remove. Unsubscribing
+  // also silences Meta's account_update, so PARTNER_REMOVED (her disconnect in the WhatsApp Business app) never arrived and the S6
+  // line could not clear itself (walked 30 Sept). While the removed row waits: her clients' messages are DISCARDED unstored and
+  // unanswered (events.js), account events are read, PARTNER_REMOVED clears the line and nulls the token; after 7 days without it
+  // TDW unsubscribes itself (removedSweep.js), which is why her SEALED token is kept until then, for that one call only.
+  // The MOVED way is unchanged: unsubscribe, deregister, token nulled at once.
+  const shared = row.connect_way !== 'moved';
+  if (!shared) {
+    if (!(await step('unsubscribe', () => meta.unsubscribe({ wabaId: row.waba_id, token, env, fetchImpl })))) return refuse('meta_unsubscribe');
+    if (!(await step('deregister', () => meta.deregister({ phoneNumberId: row.phone_number_id, token, env, fetchImpl })))) return refuse('meta_deregister');
+  } else {
+    steps.push('unsubscribe:held (F-44.252)');
   }
 
   const at = now().toISOString();
   const up = await supabase.from('vendor_wabas')
-    .update({ status: 'removed', business_token: null, removed_at: at, paused_reason: 'removed:vendor', updated_at: at })
+    .update({ status: 'removed', ...(shared ? {} : { business_token: null }), removed_at: at, paused_reason: 'removed:vendor', updated_at: at })
     .eq('id', row.id).select('status, display_number, connect_way, paused_reason');
   if (up.error || !up.data || up.data.length !== 1) throw new Error(`vendor_wabas remove: ${up.error ? up.error.message : 'no row'}`);
-  console.log(`[own-number] ${vendor.id} removed (${row.connect_way}): ${steps.join(' · ')}; her token nulled, the row kept`);
+  console.log(`[own-number] ${vendor.id} removed (${row.connect_way}): ${steps.join(' · ')}; ${shared ? 'her token kept sealed for the 7-day unsubscribe' : 'her token nulled'}, the row kept`);
   return { ok: true, removed: removedView(up.data[0]) };
 }
 

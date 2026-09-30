@@ -226,6 +226,18 @@ function startCronJobs({ supabase }) {
   // src/lib/vendor/collabKinds.js `expireCollabPosts`, and gained the event-date
   // close (any open post whose day has passed, every kind). Moved so a bench can
   // drive the production function rather than a copy of this callback.
+  // CE-46 F-44.252: a shared number she removed but never disconnected in her app is unsubscribed by TDW after 7 days.
+  cron.schedule('45 3 * * *', async () => {
+    try {
+      const r = await require('./lib/ownNumber/removedSweep').sweepRemoved({ supabase });
+      if (r.swept || r.refused) console.log(`[cron:own-number] removed-number sweep: ${r.swept} unsubscribed, ${r.refused} left for tomorrow`);
+    } catch (err) {
+      console.error('[cron:own-number] removed-number sweep error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   cron.schedule('15 3 * * *', async () => {
     try {
       const swept = await expireCollabPosts(supabase);
