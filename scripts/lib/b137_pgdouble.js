@@ -16,7 +16,7 @@ function makeDb(seed = {}, { unique = { messages: ['message_sid'] }, failReads =
   const project = (row, cols) => { if (!cols || cols.trim() === '*' || cols.includes('*')) return { ...row }; const o = {}; for (const c of cols.split(',').map((x) => x.trim())) o[c] = row[c] === undefined ? null : row[c]; return o; };
   function q(table) {
     const st = { table, filters: [], cols: '*', lim: null, op: 'select', payload: null, ret: false };
-    const match = (r) => st.filters.every(([k, c, v]) => k === 'eq' ? String(r[c]) === String(v) : k === 'is' ? (r[c] === undefined ? null : r[c]) === v
+    const match = (r) => st.filters.every(([k, c, v]) => k === 'lt' ? (r[c] != null && String(r[c]) < String(v)) : k === 'eq' ? String(r[c]) === String(v) : k === 'is' ? (r[c] === undefined ? null : r[c]) === v
       : k === 'gte' ? String(r[c]) >= String(v) : k === 'contains' ? containsJson(r[c], v)
       : k === 'in' ? v.map(String).includes(String(r[c])) : true); // 'in': CE-46 G6-3 cut three, PostgREST's in.(...)
     const run = () => {
@@ -44,7 +44,7 @@ function makeDb(seed = {}, { unique = { messages: ['message_sid'] }, failReads =
       update(p) { st.op = 'update'; st.payload = p; return b; },
       delete() { st.op = 'delete'; return b; },
       eq(c, v) { st.filters.push(['eq', c, v]); return b; }, is(c, v) { st.filters.push(['is', c, v]); return b; },
-      gte(c, v) { st.filters.push(['gte', c, v]); return b; }, contains(c, v) { st.filters.push(['contains', c, v]); return b; },
+      gte(c, v) { st.filters.push(['gte', c, v]); return b; }, lt(c, v) { st.filters.push(['lt', c, v]); return b; }, /* lt: CE-46 F-44.252 (b150 §10, the 7-day sweep) */ contains(c, v) { st.filters.push(['contains', c, v]); return b; },
       in(c, v) { st.filters.push(['in', c, Array.isArray(v) ? v : []]); return b; },
       order() { return b; }, limit(n) { st.lim = n; return b; },
       maybeSingle() { const r = run(); if (r.error) return Promise.resolve(r); if (r.data.length > 1) return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'multiple rows' } }); return Promise.resolve({ data: r.data[0] || null, error: null }); },

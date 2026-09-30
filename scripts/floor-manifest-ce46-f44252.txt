@@ -1,0 +1,10 @@
+# CE-46 · G6-4 · F-44.252: the shared-way Remove holds the unsubscribe (PARTNER_REMOVED can arrive), discards a removed number's messages, sweeps after 7 days · base 93f054f
+docs/handovers/TDW_CE46_F44252_HANDOVER.md
+scripts/b141_g63_business_token_bench.js
+scripts/b150_g64_remove_number_bench.js
+scripts/floor-manifest-ce46-f44252.txt
+scripts/lib/b137_pgdouble.js
+src/cron.js
+src/lib/ownNumber/events.js
+src/lib/ownNumber/remove.js
+src/lib/ownNumber/removedSweep.js
