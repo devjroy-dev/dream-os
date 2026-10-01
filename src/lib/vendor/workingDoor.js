@@ -1668,6 +1668,8 @@ function doorAnswer(st, why) {
   // The glitch byte is read lazily from its one home (b90 14.1 proves it loads cold in both orders); B3 is the
   // last resort only if that home cannot load at all.
   if (!reply) reply = st.fallback || glitchLine() || DL.LINES.B3;
+  // CE-47 ELZ-4 · C2: a note held aside for a draft request is written back on this turn's row unless this turn asked its own question
+  if (st.heldNote && !st.note) st.note = st.heldNote;
   return { door: true, reply, ...(Array.isArray(st.replies) && st.replies.length > 1 ? { replies: st.replies.slice() } : {}), keys: st.keys, toolCalls: st.toolCalls, toolNames: st.toolCalls.map((t) => t.name), refresh: st.refresh, documents: st.documents, skipHarvest: st.skipHarvest, ear: st.ear, ...(st.note ? { note: st.note } : {}), ...(st.answered ? { answered: st.answered } : {}), ...(why ? { why } : {}) };
 }
 
@@ -1770,7 +1772,11 @@ async function preTurn(args, depsIn) {
       return doorAnswer(st);
     }
     const liveAtStart = !!live; // R-44.40: an offer is never spoken on a turn that began with a money row live, expired by this message or not
-    if (live && said === null) await pma.markExpired(supabase, live); // a stamp, not an act: the row is not live either way
+    // CE-47 ELZ-4 · C2 (F-44.265, the chair's go of 30 September 2026): a DRAFT REQUEST is not an answer to a pending YES/NO, so it does not
+    // expire the live money row; the row is expired below only if the draft route does not take the turn (today's behaviour for everything else).
+    const draftAsk = said === null && DRAFT_FOLLOWUP.test(String(message || ''));
+    const holdLive = !!(live && draftAsk);
+    if (live && said === null && !holdLive) await pma.markExpired(supabase, live); // a stamp, not an act: the row is not live either way
     // F-44.112: THE DOOR'S OWN NOTE, read AFTER the live-row handling (a yes or a no belongs to the money question first) and
     // ABOVE the bare yes-or-no exit, so her "No" to a date question meets the note and reads B3, never LEFTOVER.
     const noteRead = await lastDoorNote(supabase, agentId);
@@ -1780,7 +1786,7 @@ async function preTurn(args, depsIn) {
       const img = await answerProposals({ supabase, vendor, lane, message, note: noteRead, nowMs, L });
       if (img) return img;
     }
-    const note = noteRead && noteRead.asked === 'IMG' ? null : noteRead;
+    let note = noteRead && noteRead.asked === 'IMG' ? null : noteRead; // let: C2 holds it aside for a draft request (below)
     // P6b: the frame's own answers. A NO refuses the stored row and reads the seat's declined byte (fork (i), the seat's own
     // receipt names her); a YES sends the row by its id through the seat's one approved leg. Both are the door's writes.
     const draftName = async (phone) => { try { return await L.coupleDisplayName(supabase, vendor.id, phone); } catch (_e) { return null; } };
@@ -1866,16 +1872,24 @@ async function preTurn(args, depsIn) {
         }
       }
     }
-    // CE-46 ELZ-3 · F-44.248: a draft follow-up heard as nothing, on no note and no live row, right after a door turn that decided a relay,
-    // is that relay again: the client from the previous record read through the lead's own row, her previous words for the composer.
-    if (!note && !live && !relayRule && heardNothing(st.ear) && DRAFT_FOLLOWUP.test(String(message || ''))) {
+    // CE-46 ELZ-3 · F-44.248: a draft follow-up heard as nothing, right after a door turn that decided a relay, is that relay again: the client
+    // from the previous record read through the lead's own row, her previous words for the composer.
+    // CE-47 ELZ-4 · C2 (F-44.265): taken EVEN WITH a note or a live money row pending (the walk of 30 September, 16:54:29 and 16:55:24: the
+    // booking question B2 was live and both draft requests fell to the question agent). The pending item stays in place, unchanged: a note is
+    // held aside for this turn and written back on this turn's row; a live row is not expired; a later YES or NO answers it. One exception, one
+    // question at a time: when this turn asks its OWN YES/NO (B37, a draft for a client with a number), the pending item lapses as any other
+    // message lapses it today.
+    let draftTaken = false;
+    // (a pending B37 is itself the draft and its frame: her draft request is answered by that note, re-shown, as 6.4b holds)
+    if (!relayRule && heardNothing(st.ear) && draftAsk && !(note && RELAY_ASKS.includes(note.asked))) {
       const prev = await lastDoorRelay(supabase, agentId, undefined, Number.isFinite(deps.nowMs) ? deps.nowMs : Date.now());
       // R-46.17 audit, item 2 (the chair's ruling of 29 September 2026): a draft follow-up with NO relay before it is not the question agent's to
       // draft in its own words: the door asks its own B35 ("Which client? Say the name."), the note carrying her words and the relay act.
       if (!prev) {
         const original = saidOf(message);
-        return { door: true, reply: DL.LINES.B35, keys: ['B35'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: { ...(st.ear || {}), rule: 'draft_followup' }, why: 'draft_no_client',
-          note: { asked: 'B35', acts: [{ act: 'relay' }], tries: 0, ...(original ? { said: original } : {}) } };
+        // C2: a pending note is written back unchanged (it keeps its place; B35's own note would displace it); none pending: B35's own note
+        const keep = note ? { note } : { note: { asked: 'B35', acts: [{ act: 'relay' }], tries: 0, ...(original ? { said: original } : {}) } };
+        return { door: true, reply: DL.LINES.B35, keys: ['B35'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: { ...(st.ear || {}), rule: 'draft_followup' }, why: 'draft_no_client', ...keep };
       }
       if (prev) {
         const found = await L.lifecycle.resolveLead(supabase, vendor.id, prev.client, false);
@@ -1884,9 +1898,13 @@ async function preTurn(args, depsIn) {
           const heardReq = st.ear && st.ear.request ? st.ear.request : null;
           st.ear = { ...(st.ear || {}), request: { route: 'task', acts: [{ act: 'relay', client_as_spoken: client }] }, heard: heardReq, rule: 'draft_followup', error: null };
           if (prev.said) st.said = prev.said;
+          draftTaken = true;
+          if (note) { st.heldNote = note; note = null; } // C2: held aside, written back by doorAnswer unless this turn asks its own question
+          if (holdLive) st.heldLive = live;
         }
       }
     }
+    if (holdLive && !draftTaken) await pma.markExpired(supabase, live); // C2: not taken as a draft: the live row lapses as it always has
     // R-45.3 (CE-45 LCV-12, cut one; the founder, 22 September 2026: "yes to the code 2nd hearing. i feel that can cure a lot of issues."):
     // THE COLD SECOND HEARING. WITNESSED on the P6b walk of 22 September: three of seven "Tell Sarah ..." sentences were heard as NO TASK
     // inside a long thread (16:01:48, 16:02:25, 16:12:58, each {"acts":[],"route":"none"}, each read LEFTOVER), while cold, with no thread,
@@ -2505,6 +2523,11 @@ async function preTurn(args, depsIn) {
         const rest = waiting.act && waiting.act.act === 'attach_package' ? silenced : [];
         st.note = await noteFor(supabase, vendor, waiting.key, waiting.act, rest, tries, L);
       }
+    }
+    // CE-47 ELZ-4 · C2: one question at a time: a turn that asks its own YES/NO lapses the item a draft request held aside (as any message would)
+    if ((st.heldLive || st.heldNote) && (st.note || st.keys.some((k) => k === 'B37'))) {
+      if (st.heldLive) { try { await pma.markExpired(supabase, st.heldLive); } catch (_e) { /* a stamp */ } }
+      st.heldNote = null;
     }
     return doorAnswer(st);
   } catch (e) {

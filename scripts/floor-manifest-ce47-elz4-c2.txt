@@ -1,0 +1,12 @@
+# scripts/floor-manifest-ce47-elz4-c2.txt
+# CE-47 · ELZ-4 · C2 (dream-os): F-44.265, a draft request taken with a question pending (the note or live row kept); b142b §9.
+# BASE: 8f2cd0d83716. F-19.16: a dirty path outside this list is a STOP.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path (this manifest: ADDED, its hash in the card)
+# 695e46c76390785c3b718a3ef5beb076e2b78921a67181590a97e48f21e433cb · ADDED · docs/handovers/TDW_CE47_ELZ4_C2_F265_HANDOVER.md
+# ea94f78ca195b17baa939580c738e9f787ff7905b1309db577e75a2453632a23 · CHANGED · scripts/b142b_elz3_relay_rule_bench.js
+# 6e7910914be50cdf6ac55b4bbbeba316cd1d6172143a56c81a907cb4fbadb2b9 · CHANGED · src/lib/vendor/workingDoor.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-elz4-c2.txt
+docs/handovers/TDW_CE47_ELZ4_C2_F265_HANDOVER.md
+scripts/b142b_elz3_relay_rule_bench.js
+scripts/floor-manifest-ce47-elz4-c2.txt
+src/lib/vendor/workingDoor.js
