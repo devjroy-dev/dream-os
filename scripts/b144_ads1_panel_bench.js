@@ -190,7 +190,13 @@ function goodSettings() {
       const r3 = await call('GET', '/'); ok(r3.json.open === true && r3.json.connected === false, '5.3 armed walk vendor, not connected');
       const a = await call('GET', '/authorize'); const st = new URL(a.json.authorize_url).searchParams.get('state');
       ok(a.status === 200 && db.T.vendor_ad_connections.length === 1 && db.T.vendor_ad_connections[0].pending_state_nonce, '5.4 /authorize arms one nonce');
-      const cb = await call('GET', `/callback?code=C&state=${encodeURIComponent(st)}`);
+      const logged = []; const ol = console.log; console.log = (...a) => { logged.push(a.map(String).join(' ')); };
+      let cb; try { cb = await call('GET', `/callback?code=C&state=${encodeURIComponent(st)}`); } finally { console.log = ol; }
+      const line = logged.find((l) => l.startsWith('[ads:callback] connected:')) || '';
+      ok(meta.NEEDED_SCOPES.every((s) => line.includes(s)) && line.includes('page=PAGE1 "The Dream Wedding" via me/accounts') && line.includes('chooser=no'),
+        '5.6b the success line: the scopes granted and how the Page was found (CE-46)', line);
+      ok(line && !/LONG-TOKEN|SHORT-TOKEN|PAGE-TOKEN|FB1|act_4417/.test(line) && !line.includes(VENDOR_A),
+        '5.6c the success line carries no token, no Facebook user id, no ad account, no vendor', line);
       ok(cb.status === 302 && /ads=connected/.test(cb.location), '5.5 /callback spends the state and returns to the room', cb.location);
       ok(db.T.vendor_ad_connections[0].access_token === 'LONG-TOKEN' && db.T.vendor_ad_connections[0].pending_state_nonce === null, '5.6 the long-lived token stored, the nonce cleared');
       const replay = await call('GET', `/callback?code=C&state=${encodeURIComponent(st)}`);
@@ -351,6 +357,8 @@ function goodSettings() {
   }
 
   if (!process.env.B144_CHILD) {
+    ok(meta.connectedLine({ scopes: ['ads_read'], g: { gap: 'choose', choose: { pages: [{ id: 'P1' }, { id: 'P2' }] } }, trace: [{ id: 'P1', via: 'me/accounts' }, { id: 'P2', via: 'client_pages' }] })
+      === '[ads:callback] connected: scopes=ads_read; chooser=pages (2: P1 via me/accounts; P2 via client_pages)', '5.6d the line names a chooser and where each Page came from');
     sec('6  mutations of production code (each must redden a child run; restored by sha)');
     const MUTS = [
       ['src/lib/ads/meta.js', "objective: 'OUTCOME_ENGAGEMENT', status: 'PAUSED'", "objective: 'OUTCOME_ENGAGEMENT', status: 'ACTIVE'", 'M1 the campaign created ACTIVE'],
@@ -366,6 +374,8 @@ function goodSettings() {
       ['src/api/vendor/ads.js', "const ids = await meta.createPaused({ token: pt,", "const ids = await meta.createPaused({ token: r.token,", 'M11 the objects made with her user token, not the Page token'],
       ['src/api/vendor/ads.js', "if (!source) return errRes(res, 400, 'Choose one of your own posts.', 'ADS_NOT_HER_POST');", "if (!source) source = 'instagram';", 'M12 a post that is not hers reaches a create call'],
       ['src/lib/ads/meta.js', "(m.media_type === 'VIDEO' || m.media_type === 'REELS') ? (m.thumbnail_url || m.media_url || null) : (m.media_url || m.thumbnail_url || null)", "(m.media_url || m.thumbnail_url || null)", 'M13 a reel drawn from its video file'],
+      ['src/api/vendor/ads.js', "console.log(meta.connectedLine({ scopes, g: meta.gapsFrom({ scopes, pageList, accounts }), trace }));", "void 0;", 'M14 the success line never printed'],
+      ['src/api/vendor/ads.js', "console.log(meta.connectedLine({ scopes, g: meta.gapsFrom({ scopes, pageList, accounts }), trace }));", "console.log(meta.connectedLine({ scopes, g: meta.gapsFrom({ scopes, pageList, accounts }), trace }), long.token);", 'M15 the token printed with the line'],
     ];
     for (const [rel, from, to, name] of MUTS) {
       const file = path.join(ROOT, rel); const orig = fs.readFileSync(file, 'utf8'); const h = sha(orig);

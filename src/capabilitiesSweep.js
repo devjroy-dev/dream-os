@@ -55,6 +55,7 @@
 
 const cron = require('node-cron');
 const cap  = require('./lib/capabilities');
+const gates = require('./lib/metaGates');   // R-46.15, the one home
 const gOAuth = require('./lib/vendor/googleOAuth');
 const gConn  = require('./lib/vendor/googleConnection');
 
@@ -339,6 +340,68 @@ async function notifyFounder(line, deps = {}) {
   }
 }
 
+// ── R-46.15 · THE META GATES (CE-46 ADS-2 cut 2 item 3) ────────────────────────
+// Each app's GET /{app-id}/permissions, read once per sweep with its app token (src/lib/metaGates.js, the one home).
+// A feature moves only when every permission in its list reads live. The feature gate is written through
+// recordSweep: approved flips it on only with auto_on and walk_ref; a withdrawn sweep-on gate goes back to armed;
+// an armed gate without auto_on keeps armed (the walk vendor keeps the room), and a hand's on/off is never moved.
+async function probeAppPermissions(appKey, { env = process.env, fetch: f = globalThis.fetch } = {}) {
+  const t = gates.appToken(appKey, env);
+  const a = gates.APPS[appKey];
+  if (!t) {
+    const ev = `${a.idEnv} or ${a.secretEnv} is not set in this environment; the sweep cannot ask Meta about ${a.name}`;
+    console.log(`[capabilities] ${ev}`);   // said plainly in the log (CE-47 ruling 2)
+    return { ok: false, evidence: ev };
+  }
+  let res, body;
+  try { res = await f(`${GRAPH_BASE}/${graphVersion(env)}/${t.id}/permissions`, { headers: { Authorization: `Bearer ${t.token}` } }); body = await res.json().catch(() => null); }
+  catch (e) { return { ok: false, evidence: `Graph unreachable for ${a.name}: ${e && e.message}` }; }
+  if (!res.ok || !body || body.error) {
+    const err = (body && body.error) || {};
+    return { ok: false, evidence: `Graph ${res.status} for ${a.name}: (#${err.code || '?'}) ${err.message || 'no message'}` };
+  }
+  return { ok: true, listing: gates.listingFrom(body) };
+}
+
+async function sweepMetaGates({ supabase, env = process.env, fetch: f, keys = null } = {}) {
+  // The ruled line, logged verbatim beside today's notice until gates.LINE_TEMPLATE is approved (CE-47 ruling 1).
+  const notify = async (line) => { console.log(`[capabilities] founder line (rides tdw_capability_armed until ${gates.LINE_TEMPLATE} is approved): ${line}`); return notifyFounder(line, { env }); };
+  const out = [];
+  const probes = {};
+  for (const appKey of Object.keys(gates.APPS)) probes[appKey] = await probeAppPermissions(appKey, { env, fetch: f });
+  const wanted = (k) => !keys || keys.includes(k);
+  const named = (key, r) => { for (const n of r.newWords) console.log(`[capabilities] Meta word "${n.word}" on ${n.permission} (${key}): recorded verbatim, treated as not approved, named to the chair`); };
+  for (const [key, spec] of Object.entries(gates.PERM_ROWS)) {
+    if (!wanted(key)) continue;
+    const row = await cap.get(key, { supabase, fresh: true }); if (!row) continue;
+    const p = probes[spec.app];
+    if (!p.ok) { await cap.touch(key, { evidence: p.evidence }, { supabase }); out.push({ key, ok: false }); continue; }
+    const r = gates.readingFor(p.listing, spec.permissions); named(key, r);
+    const ev = gates.evidenceFor(spec.app, spec.permissions, r);
+    if (row.status === 'armed' || row.status === 'on' || row.status === 'off') { await cap.touch(key, { evidence: ev }, { supabase }); out.push({ key, ok: true, moves: [] }); continue; }
+    out.push({ key, ok: true, moves: [await cap.recordSweep(key, { status: r.status, evidence: ev }, { supabase })] });
+  }
+  for (const f0 of gates.FEATURES) {
+    if (!wanted(f0.gate)) continue;
+    const row = await cap.get(f0.gate, { supabase, fresh: true }); if (!row) continue;
+    const p = probes[f0.app];
+    if (!p.ok) { await cap.touch(f0.gate, { evidence: p.evidence }, { supabase }); out.push({ key: f0.gate, ok: false }); continue; }
+    const r = gates.readingFor(p.listing, f0.permissions); named(f0.gate, r);
+    const ev = gates.evidenceFor(f0.app, f0.permissions, r);
+    const auto = row.auto_on === true && !!row.walk_ref;
+    const sweepOn = row.status === 'on' && row.flipped_by === 'sweep:auto_on';
+    const write = r.status === 'approved'
+      ? (row.status === 'pending' || row.status === 'approved' || (row.status === 'armed' && auto))
+      : (sweepOn || row.status === 'approved');
+    if (!write) { await cap.touch(f0.gate, { evidence: ev }, { supabase }); out.push({ key: f0.gate, ok: true, moves: [] }); continue; }
+    const m = await cap.recordSweep(f0.gate, { status: r.status, evidence: ev }, { supabase });
+    out.push({ key: f0.gate, ok: true, moves: [m] });
+    if (m.auto_flipped) await notify(gates.lineOn(f0));
+    if (m.withdrawn) await notify(gates.lineWithdrawn(f0, r.missing[0]));
+  }
+  return out;
+}
+
 /** Every row, or one. Returns the movements; never throws on a single row's failure. */
 async function runSweep({ supabase, env = process.env, fetch: f, keys = null, mode = 'nightly' } = {}) {
   const started = new Date().toISOString();
@@ -346,6 +409,7 @@ async function runSweep({ supabase, env = process.env, fetch: f, keys = null, mo
   const targets = keys ? rows.filter((r) => keys.includes(r.key)) : rows;
   const results = [];
   for (const row of targets) {
+    if (gates.PERM_ROWS[row.key] || gates.FEATURES.some((x) => x.gate === row.key)) continue;   // read by sweepMetaGates below
     try {
       const reading = await probeOne(row, { env, fetch: f, supabase });
       results.push(await applyReading(row, reading, { supabase, env }));
@@ -354,6 +418,8 @@ async function runSweep({ supabase, env = process.env, fetch: f, keys = null, mo
       console.warn(`[capabilities] sweep ${row.key}: ${e && e.message}`);
     }
   }
+  try { for (const r of await sweepMetaGates({ supabase, env, fetch: f, keys })) results.push(r); }
+  catch (e) { results.push({ key: 'meta_gates', ok: false, error: e && e.message }); console.warn(`[capabilities] meta gates: ${e && e.message}`); }
   const moved = results.filter((r) => r.moves && r.moves.some((m) => m.before !== m.after));
   console.log(`[capabilities] sweep ${mode} · ${targets.length} rows · ${moved.length} moved · started ${started}`);
   return { started, mode, checked: targets.length, moved: moved.length, results };
@@ -396,7 +462,7 @@ function startCapabilitiesSweep({ supabase }) {
 
 module.exports = {
   probeInsights,
-  runSweep, probeTemplate, probeScope, applyReading, applyTemplateStatusEvent, listWabaTemplates,
+  runSweep, sweepMetaGates, probeAppPermissions, probeTemplate, probeScope, applyReading, applyTemplateStatusEvent, listWabaTemplates,
   startCapabilitiesSweep, mapMetaTemplateStatus, scopeUrlFor, notifyFounder,
   TEMPLATE_GUARDS, SWEEP_CRON, IST,
 };

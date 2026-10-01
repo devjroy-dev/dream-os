@@ -939,10 +939,13 @@ section('10b. a new tab carries no JWT, so the door hands it something it can op
   ok('the object is CONTRACT-<name>-<id8>.draft.pdf', /CONTRACT-\$\{slug\}-\$\{String\(contract\.id\)\.slice\(0, 8\)\}\.draft\.pdf/.test(door));
   ok('the human name leads the path', /`\$\{vendorId\}\/CONTRACT-/.test(door));
   // ⚠ AND IT IS STILL UNIQUE. `contracts` has no number column and the generated
-  // title is `<client> — wedding services`, so two contracts for one client would
+  // title is `<client> wedding services`, so two contracts for one client would
   // collide on a title-only path and `upsert: true` would overwrite the other's
   // draft in silence.
   ok('and it stays unique per contract', /slice\(0, 8\)/.test(door));
+  // THE GENERATED TITLE (the founder's rule, CE-46 ADS-2 cut 2, 30 Sept 2026): no long dash.
+  ok('the generated title reads "{name} wedding services", with no long dash', C.generatedTitle('Aanya Kapoor') === 'Aanya Kapoor wedding services');
+  ok('and the draft insert takes its title from that one helper', /\|\|\s*generatedTitle\(client\.name\)/.test(read('src/lib/vendor/contracts.js')));
   ok('the sign door writes .signed.pdf and only that', /\.signed\.pdf/.test(read('src/api/sign.js')));
   ok('the preview door never writes .signed.pdf', !/\.signed\.pdf/.test(doorCode));
   // TEN MINUTES. A preview is a glance, not a link to keep — `getDownloadUrl`'s

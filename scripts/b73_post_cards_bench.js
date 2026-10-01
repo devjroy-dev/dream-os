@@ -130,13 +130,19 @@ const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((
 
   console.log('§2 · THE CAPTION (the vetoed byte, filled; nothing renders bare)');
   const page = { title: 'Wedding', city: null, venue: null };
-  await cell('2.1 DEV440 today (city null): the " — {city}" clause drops with its dash', async () => {
+  await cell('2.1 DEV440 today (city null): the " in {city}" clause drops whole', async () => {
     assert.strictEqual(pc.captionFor({ page, vendor: VENDOR }),
       'Wedding. Photographed by Dev Roy Photography. More on my page: thedreamwedding.in/v/DEV440');
   });
-  await cell('2.2 city present → "{title} — {city}."', async () => {
+  await cell('2.2 city present → "{title} in {city}." (the founder\'s rule, CE-46: no long dash)', async () => {
     assert.strictEqual(pc.captionFor({ page: { ...page, city: 'Udaipur' }, vendor: VENDOR }),
-      'Wedding \u2014 Udaipur. Photographed by Dev Roy Photography. More on my page: thedreamwedding.in/v/DEV440');
+      'Wedding in Udaipur. Photographed by Dev Roy Photography. More on my page: thedreamwedding.in/v/DEV440');
+  });
+  await cell('2.2b no caption carries a long or short dash, with a venue, a city, both or neither', async () => {
+    for (const pg of [page, { ...page, city: 'Delhi' }, { title: 'Priya & Arjun', venue: 'Leela Palace', city: 'Udaipur' }, { title: 'Priya & Arjun', venue: 'Leela Palace', city: null }]) {
+      const c = pc.captionFor({ page: pg, vendor: VENDOR });
+      assert.ok(!/[\u2013\u2014]/.test(c), c);
+    }
   });
   await cell('2.3 venue folds as "{title} at {venue}"; a title that already names it is not doubled', async () => {
     assert.strictEqual(pc.titleLine({ title: 'Priya & Arjun', venue: 'Leela Palace' }), 'Priya & Arjun at Leela Palace');

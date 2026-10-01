@@ -301,7 +301,7 @@ async function composeContract(supabase, vendorId, { clientId, name, phone, even
     // ⚠ THE TITLE IS GENERATED, NOT TYPED. The upload sheet keeps its `Title *`
     // field; a contract she FILLS is named from the client and the instrument, so
     // nobody names one document twice (veto sheet row 10).
-    title:       (title && title.trim()) || `${client.name} \u2014 wedding services`,
+    title:       (title && title.trim()) || generatedTitle(client.name),
     deposit_pct: pct,
     state:       'draft',
   }).select().single();
@@ -532,7 +532,11 @@ async function setSealedPath(supabase, signatureId, { sha256, path, signedAt }) 
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+// THE GENERATED TITLE (the founder's rule, CE-46, 30 Sept 2026): no long dash. "{name} wedding services".
+function generatedTitle(clientName) { return `${String(clientName || '').trim()} wedding services`; }
+
 module.exports = {
+  generatedTitle,
   getUploadUrl, finalizeContract, getDownloadUrl, attachFromUrl, cleanupDraftContracts,
   composeContract, allocateContractNumber, saveContractFill, markDepositReceived, openSigning, setSealedPath,
   findSigningByToken, issueSignCode, verifySignCode,

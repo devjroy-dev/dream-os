@@ -109,6 +109,15 @@ router.get('/callback', asyncHandler(async (req, res) => {
     ]);
     const saved = await conn.saveToken(supabase, v.vendorId, { fbUserId, accessToken: long.token, expiresAt: long.expiresAt, scopes });
     if (!saved.ok) return back(res, { ads: 'error' });
+    // THE SUCCESS LINE (CE-46): read once, purely, with no write; a refusal here never undoes the connect.
+    try {
+      const trace = [];
+      const [pageList, accounts] = await Promise.all([
+        meta.pages({ token: long.token, fetchImpl: _fetch, trace }),
+        meta.adAccounts({ token: long.token, fetchImpl: _fetch }),
+      ]);
+      console.log(meta.connectedLine({ scopes, g: meta.gapsFrom({ scopes, pageList, accounts }), trace }));
+    } catch (_e) { console.log(meta.connectedLine({ scopes, g: null })); }
   } catch (_e) {
     return back(res, { ads: 'error' });
   }

@@ -186,11 +186,15 @@ async function recordSweep(key, { status, evidence }, opts = {}) {
   const nowIso = new Date().toISOString();
   const patch = { evidence: evidence == null ? row.evidence : String(evidence), checked_at: nowIso, updated_at: nowIso };
   let after = row.status;
-  let disarmed = false, auto_flipped = false;
+  let disarmed = false, auto_flipped = false, withdrawn = false;
 
   if (status === 'rejected' || status === 'paused') {
     if (row.status === 'on') { after = 'off'; disarmed = true; patch.flipped_at = nowIso; patch.flipped_by = `sweep:${status}`; }
     else if (row.status !== 'off') after = status;
+  } else if (row.status === 'on' && row.flipped_by === 'sweep:auto_on' && status !== 'approved') {
+    // (w) R-46.15, THE WITHDRAWAL: a switch the SWEEP turned on, whose permission Meta no longer lists live, goes
+    // back to armed. A switch a hand turned on (admin:...) is never touched: rule (a) below.
+    after = 'armed'; withdrawn = true; patch.flipped_at = nowIso; patch.flipped_by = 'sweep:withdrawn';
   } else if (row.status === 'on' || row.status === 'off') {
     // (a) a founder-set state is not undone by a re-read
   } else if (status === 'approved' && row.auto_on === true && row.walk_ref) {
@@ -202,7 +206,7 @@ async function recordSweep(key, { status, evidence }, opts = {}) {
   const { error } = await sb.from(TABLE).update(patch).eq('key', key);
   if (error) throw new Error(`capabilities recordSweep ${key}: ${error.message}`);
   _bust(key); await refresh({ supabase: sb });
-  return { key, before: row.status, after, disarmed, auto_flipped };
+  return { key, before: row.status, after, disarmed, auto_flipped, withdrawn };
 }
 
 /**

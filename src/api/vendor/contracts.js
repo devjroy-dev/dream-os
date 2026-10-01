@@ -294,7 +294,7 @@ router.patch('/:contractId/fill', ...authMw, asyncHandler(async (req, res) => {
 //
 // ⚠ THE SUFFIX IS NOT DECORATION. `contracts` has no number column — nothing like
 // `invoices.invoice_number` exists — and the generated title is
-// `<client> — wedding services`, so two contracts for one client would collide on
+// `<client> wedding services`, so two contracts for one client would collide on
 // a title-only path and `upsert: true` would silently overwrite the other's draft.
 // Eight characters of the id keep them apart. The name leads, the id follows, and
 // the tradeoff is stated rather than hidden: a readable name that is still unique.

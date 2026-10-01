@@ -1,0 +1,23 @@
+# scripts/floor-manifest-ce47-ads2-cut2.txt
+# CE-47 · ADS-2 · cut 2, items 1 and 3, ONE package (dream-os). BASE: 31257f6 (WEB-4 cut 7). Migration 0192.
+# Item 1: no long dash in what TDW writes (the card caption "Wedding in Delhi.", the contract title "{name} wedding
+#   services"), and the success line at connect ("[ads:callback] connected:", no token). Rungs b73, b56, b144.
+# Item 3: R-46.15, the approval sweep. src/lib/metaGates.js (the one home), recordSweep's withdrawal (w), the sweep's
+#   Meta-gates arm, 0192 (seven rows). Rung b149; b61 one labelled amendment (R-46.15 supersedes R-41.39).
+# F-14.16: a dirty path outside this list is a STOP. No new folder. 0192 is applied in Supabase BEFORE the push.
+src/lib/vendor/postCards.js
+src/lib/vendor/contracts.js
+src/api/vendor/contracts.js
+src/lib/ads/meta.js
+src/api/vendor/ads.js
+src/lib/capabilities.js
+src/capabilitiesSweep.js
+src/lib/metaGates.js
+db/migrations/0192_meta_gate_rows.sql
+scripts/b73_post_cards_bench.js
+scripts/b56_contract_bench.js
+scripts/b144_ads1_panel_bench.js
+scripts/b149_ads2_meta_gates_bench.js
+scripts/b61_switchboard_bench.js
+docs/handovers/TDW_CE47_ADS2_CUT2_HANDOVER.md
+scripts/floor-manifest-ce47-ads2-cut2.txt

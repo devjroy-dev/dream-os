@@ -89,9 +89,11 @@ const shapePage = (p) => ({
  * portfolio (the ads walk of 29 September: "data": [] while the token held the Page, read on Meta's own tools), every
  * portfolio's owned_pages and client_pages (needs business_management, cut1e 1). One list, no repeats, me/accounts first.
  */
-async function pages({ token, env = process.env, fetchImpl }) {
+async function pages({ token, env = process.env, fetchImpl, trace = null }) {
   const b = await call(fetchImpl, 'pages', `${v(env)}/me/accounts?fields=${encodeURIComponent(PAGE_FIELDS)}&limit=50`, token);
   const out = (b && Array.isArray(b.data) ? b.data : []).filter((p) => p && p.id).map(shapePage);
+  // trace (the success line, CE-46): where each Page was found. It never changes what is returned.
+  if (trace) for (const p of out) trace.push({ id: String(p.id), via: 'me/accounts' });
   let biz = null;
   try {
     biz = await call(fetchImpl, 'businesses',
@@ -100,7 +102,7 @@ async function pages({ token, env = process.env, fetchImpl }) {
   for (const bz of (biz && Array.isArray(biz.data) ? biz.data : [])) {
     for (const edge of ['owned_pages', 'client_pages']) {
       for (const p of (bz && bz[edge] && Array.isArray(bz[edge].data) ? bz[edge].data : [])) {
-        if (p && p.id && !out.some((o) => o.id === String(p.id))) out.push(shapePage(p));
+        if (p && p.id && !out.some((o) => o.id === String(p.id))) { out.push(shapePage(p)); if (trace) trace.push({ id: String(p.id), via: edge }); }
       }
     }
   }
@@ -157,7 +159,29 @@ function gapsFrom({ scopes = [], pageList = [], accounts = [], pick = {} }) {
   return { gap: null, page, ig, account };
 }
 
-module.exports = { MetaError, exchangeCode, longLived, me, grantedScopes, pages, pageToken, adAccounts, gapsFrom, NEEDED_SCOPES, ACTIVE };
+/**
+ * THE SUCCESS LINE (the chair's yes, CE-46, 30 Sept 2026, after e-242 closed unanswerable). PURE.
+ * The scopes granted and how the Page was found (me/accounts, a portfolio's owned_pages or client_pages; chooser or
+ * not). It carries no token and no id but the Page's own: never her Facebook user id, an ad account, or a vendor.
+ */
+function connectedLine({ scopes = [], g = null, trace = [] }) {
+  const via = (id) => { const t = trace.find((x) => x.id === String(id)); return t ? t.via : 'unknown'; };
+  const parts = [`scopes=${scopes.slice().sort().join(',') || 'none'}`];
+  if (!g) parts.push('pages=unread');
+  else if (g.gap === 'scopes') parts.push(`missing=${(g.missing || []).join(',')}`);
+  else if (g.gap === 'page') parts.push('page=none');
+  else if (g.gap === 'choose') {
+    if (g.choose.pages) parts.push(`chooser=pages (${g.choose.pages.length}: ${g.choose.pages.map((p) => `${p.id} via ${via(p.id)}`).join('; ')})`);
+    if (g.choose.accounts) parts.push(`chooser=accounts (${g.choose.accounts.length})`);
+  } else if (g.page) {
+    parts.push(`page=${g.page.id} "${g.page.name}" via ${via(g.page.id)}`);
+    parts.push(g.gap === 'link' ? 'no Instagram link' : 'chooser=no');
+    if (g.gap === 'ad_account') parts.push('no active ad account');
+  }
+  return `[ads:callback] connected: ${parts.join('; ')}`;
+}
+
+module.exports = { MetaError, exchangeCode, longLived, me, grantedScopes, pages, pageToken, adAccounts, gapsFrom, connectedLine, NEEDED_SCOPES, ACTIVE };
 
 // ── THE BOOST (cut 1: a MESSAGES ad from one of her Instagram posts into her Instagram Direct) ─────────────────────
 // Field names quoted from Meta's "Ads that Click to Instagram" (read 28 September 2026): campaign objective

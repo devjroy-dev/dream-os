@@ -147,12 +147,13 @@ function creditSentence(vendor) {
 
 /**
  * THE CAPTION — the vetoed byte, filled; the role line reads by category (F-42.172):
- *   "{title} — {city}. {Role line} {business_name}. More on my page: thedreamwedding.in/v/{code}"
+ *   "{title} in {city}. {Role line} {business_name}. More on my page: thedreamwedding.in/v/{code}"
+ *   The founder's rule (CE-46, 30 Sept 2026): no long dash in the caption; title and city join with "in".
  * A slot with no true value DROPS with its own punctuation; nothing renders bare.
  */
 function captionFor({ page, vendor }) {
   const city = String(page.city || '').trim();
-  const head = city ? `${titleLine(page)} \u2014 ${city}.` : `${titleLine(page)}.`;
+  const head = city ? `${titleLine(page)} in ${city}.` : `${titleLine(page)}.`;
   const credit = creditSentence(vendor);
   const parts = [head];
   if (credit) parts.push(`${credit}.`);

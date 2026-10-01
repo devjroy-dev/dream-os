@@ -263,10 +263,14 @@ const graphFetch = (statusWord, extra = []) => async (url) => ({
       cap._resetCapabilitiesCache(); await cap.bind(db);
       return off && armed && r.moved === 1 ? true : `off=${off} armed=${armed} moved=${r.moved}`;
     });
-    await cell('a permission row is skipped (withheld, R-41.39) and its status does not move', async () => {
+    // LABELLED AMENDMENT (CE-47 ADS-2 cut 2 item 3, R-46.15 supersedes R-41.39's withholding): a permission row is no longer
+    // skipped; the Meta-gates arm reads it from its app's GET /{app-id}/permissions. With no app id in the env it
+    // cannot ask Meta, so the evidence says so and the status still does not move. The protection kept is the status.
+    await cell('a permission row with no app credentials in the env: its status does not move (R-46.15, was R-41.39)', async () => {
       const before = db.rows.get('perm.instagram_business_basic').status;
       const r = await sweep.runSweep({ supabase: db, env: {}, keys: ['perm.instagram_business_basic'], mode: 'bench' });
-      return r.results[0].skipped === true && db.rows.get('perm.instagram_business_basic').status === before ? true : JSON.stringify(r.results[0]);
+      const row = db.rows.get('perm.instagram_business_basic');
+      return r.results[0].ok === false && row.status === before && /META_APP_ID or META_APP_SECRET is not set/.test(row.evidence || '') ? true : JSON.stringify({ result: r.results[0], status: row.status, evidence: row.evidence });
     });
     await cell('a failed probe touches evidence + checked_at and never the status', async () => {
       const r = await sweep.runSweep({ supabase: db, env: { META_WABA_ID: 'w', META_WABA_TOKEN: 't' }, fetch: async () => { throw new Error('ECONNRESET'); }, keys: ['template.tdw_referral_alert'], mode: 'bench' });
