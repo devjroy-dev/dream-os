@@ -24,6 +24,7 @@ const siteModel = require('./siteModel');
 const limits = require('./limits');
 
 const SITE_BASE = 'https://thedreamwedding.in';
+const STOREFRONT_ROOT = process.env.STOREFRONT_ROOT_DOMAIN || 'thedreamwedding.in';   // as contract.js subdomainFor (R-19.4)
 const arr = (v) => (Array.isArray(v) ? v : []);
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 const str = (v) => (typeof v === 'string' ? v : '');
@@ -254,8 +255,11 @@ function siteCard(input) {
     const okUrls = approvedUrls(i.portfolio, photoMap);
     const looks = live.map((l) => lookSummary(l, photoMap, i.rateDisplay, i.now));
     const cover = coverOf(row.cover, okUrls);
-    const handle = str(i.handle).toLowerCase();
-    const canonical = resolved.can.own_domain && i.liveDomain ? `https://${i.liveDomain}` : `${SITE_BASE}/v/${handle}`;
+    const handle = /^[a-z0-9-]{1,40}$/.test(str(i.handle).toLowerCase()) ? str(i.handle).toLowerCase() : '';
+    // cut 7 (the founder): HER OWN SUBDOMAIN wins, https://<handle>.thedreamwedding.in (every vendor with a handle has one);
+    // her linked live domain only when there is no handle; never /v/<handle>.
+    const sub = handle ? `${handle}.${STOREFRONT_ROOT}` : null;
+    const canonical = sub ? `https://${sub}` : (i.liveDomain ? `https://${i.liveDomain}` : null);
     const meta = obj(i.meta);
     const seoImage = cover[0] ? sized(cover[0].photo.url, 1200) : (looks[0] && looks[0].cover ? sized(looks[0].cover.url, 1200) : null);
     const site = {

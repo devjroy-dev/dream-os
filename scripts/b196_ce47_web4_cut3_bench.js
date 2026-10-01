@@ -97,7 +97,7 @@ function seed() {
   ok(() => ec.testimonials.length === 1 && ec.testimonials[0].video === null && ec.collections.length === 0, '1.8 Essential: written words only (the video is withheld), no collections');
   ok(() => JSON.stringify(sc.packages.map((p) => p.total)) === '[45000,null]', '1.9 Q4 on the styles site: a package below her starting price shows no figure');
   ok(() => JSON.stringify(sc.eliza) === '{"live_booking":"coming_soon","own_voice":"not_in_plan"}' && JSON.stringify(ec.eliza) === '{"live_booking":"not_in_plan","own_voice":"not_in_plan"}', '1.10 eliza as words, by plan (gap 9)');
-  ok(() => sc.site.seo && sc.site.seo.canonical === 'https://thedreamwedding.in/v/sig1' && /w_1200,c_limit/.test(sc.site.seo.image), '1.11 site.seo: canonical and a 1200-wide image (gap 8)');
+  ok(() => sc.site.seo && sc.site.seo.canonical === 'https://sig1.thedreamwedding.in' /* AMENDED BY LABEL, CE-47 WEB-4 cut 7 (b200): her own subdomain (the founder) */ && /w_1200,c_limit/.test(sc.site.seo.image), '1.11 site.seo: canonical and a 1200-wide image (gap 8)');
   ok(() => ['can', 'tier', 'styles_open', 'moved', 'rate_min', 'rate_max', 'rate_display', 'approval_state'].every((k) => !deepKeys(sc).includes(k) && !deepKeys(ec).includes(k) && !deepKeys(basic).includes(k)), '1.12 no `can`, tier or price switch at any depth of any card');
   ok(() => sc.faq.length === 1 && sc.faq[0].question === 'Do you travel?', '1.13 her questions');
   vendorOf(store, 'sig1').rate_display = false;

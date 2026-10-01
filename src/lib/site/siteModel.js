@@ -258,7 +258,8 @@ function tradeFor(category, copy) {
   const base = REG.TRADE_WORDS[REG.tradeRowFor(category)];
   const o = obj(obj(copy).trade_override);
   const pick = (k, f) => { const r = limits.field(k, o[f]); return r.ok && r.value ? r.value : base[f]; };
-  return { items: pick('trade_items', 'items'), item: pick('trade_item', 'item'), request: pick('trade_request', 'request') };
+  // row (cut 7, WEB-5's shape): which kind of row her work shows as: 'looks' | 'work' | 'acts' | 'events'
+  return { items: pick('trade_items', 'items'), item: pick('trade_item', 'item'), request: pick('trade_request', 'request'), row: REG.tradeRowFor(category) };
 }
 
 /** Q14: a published look reads as New for 30 days after it was first published, unless she switched its mark off. */

@@ -189,6 +189,8 @@ function makeDb(tables) {
       const api = {
         select() { wantSelect = true; return api; },
         eq(c, v) { rows = rows.filter((r) => r[c] === v); return api; },
+        // AMENDED BY LABEL, CE-47 WEB-4 cut 7 (b200): coupleWaWindow.js now excludes website messages (.neq('channel', 'website')).
+        neq(c, v) { rows = rows.filter((r) => r[c] !== v); return api; },
         is(c, v) { rows = rows.filter((r) => (v === null ? r[c] == null : r[c] === v)); return api; },
         in(c, vs) { rows = rows.filter((r) => vs.includes(r[c])); return api; },
         like(c, pat) {

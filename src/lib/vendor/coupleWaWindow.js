@@ -121,6 +121,10 @@ async function coupleWindowOpen(supabase, couplePhone) {
       .from('messages')
       .select('created_at')
       .eq('direction', 'inbound')
+      // CE-47 WEB-4 cut 7: a message typed on her WEBSITE is not a WhatsApp message and opens no WhatsApp window. Without
+      // this line a website visitor's thread reads "in_window" and her reply would go free-form to a number that never wrote
+      // to the business; with it the reply takes the approved template (relaySeat: sendContentTemplate, enquiry_reply_couple).
+      .neq('channel', 'website')
       .in('conversation_id', ids)
       .order('created_at', { ascending: false })
       .limit(1)

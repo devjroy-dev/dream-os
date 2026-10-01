@@ -106,7 +106,7 @@ const { studioName } = require('./studioName');
 // question list, after the breakpoint. The words of every rule are today's; what moved is WHERE the per-thread facts sit, and the flow's
 // and tone's two branches are both present and keyed to those facts. The RETURNING branch (a named lead on file) is unchanged and one
 // text: its prefix is under Haiku 4.5's 4,096-token minimum (ELZ-2's seat close item 4), so it never cached and pays no write.
-function buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza = false, conversation = null, channel = 'whatsapp_shared', enquireLink = null, chattedBefore = false, priceOn = false }) {
+function buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza = false, conversation = null, channel = 'whatsapp_shared', enquireLink = null, chattedBefore = false, priceOn = false, website = null }) {
   const studio         = studioName(vendor, vendorUser);
   const tradeRaw       = (typeof vendor?.category === 'string' && vendor.category.trim()) ? vendor.category.trim() : '';
   const vendorCategory = tradeRaw || 'creative professional';
@@ -162,6 +162,16 @@ Your answer, in your own rhythm: "${admissionLine}" Then carry straight on with 
   const linkBlock = link
     ? `\nIF THEY WOULD RATHER TALK ON WHATSAPP
 ${studio} also takes enquiries on WhatsApp at ${link}. If they say they would prefer WhatsApp, or ask for a number, give them that link in your own words and carry on here until they move. Do not offer it unasked.`
+    : '';
+  // CE-47 WEB-4 cut 7 · THE WEBSITE FACT (WEB-7's contract): on the website only, where they wrote from and the studio's
+  // WhatsApp link, which she may OFFER when they would rather talk on WhatsApp (as on Instagram). Per thread, so it sits after
+  // the cache breakpoint. Every other channel: '' (their bytes are unchanged).
+  const onWebsite = channel === 'website' && website && typeof website === 'object';
+  const wPage = onWebsite && typeof website.page === 'string' && website.page.trim() ? website.page.trim() : null;
+  const wLink = onWebsite && typeof website.enquireLink === 'string' && website.enquireLink.trim() ? website.enquireLink.trim() : null;
+  const websiteBlock = onWebsite
+    ? `\nTHIS CLIENT IS WRITING ON ${studio.toUpperCase()}'S WEBSITE
+They wrote from ${wPage ? `the page "${wPage}"` : 'the home page'}. Your replies appear on the website, in the chat they opened.${wLink ? ` ${studio} also takes enquiries on WhatsApp at ${wLink}. If they say they would prefer WhatsApp, or ask for a number, give them that link in your own words and carry on here until they move. Do not offer it unasked.` : ''}`
     : '';
   const chattedBlock = (!inConversation && channel === 'whatsapp_own' && chattedBefore === true)
     ? `\nTHIS CLIENT HAS WRITTEN TO ${studio.toUpperCase()} ON THIS NUMBER BEFORE
@@ -287,7 +297,7 @@ YOU ALREADY KNOW THEIR WEDDING (from their own planning app; do NOT re-ask it if
   const stable = `${header}
 
 ${voiceBlock}
-${linkBlock}
+${linkBlock}${websiteBlock}
 
 WHO YOU ARE WHEN THEY ARRIVE
 
@@ -344,7 +354,7 @@ Bad: "Great question!" / "I'd be happy to assist!"`;
 
   // F-44.230: THIS CONVERSATION, after the breakpoint: every per-thread fact, in the words it had, and this client's list.
   const thread = `THIS CONVERSATION
-${conversationBlock}${dateInConversation}${shapeBlock}${nameBlock}${chattedBlock}
+${conversationBlock}${dateInConversation}${shapeBlock}${nameBlock}${chattedBlock}${websiteBlock}
 
 THIS CLIENT'S LIST
    IF IT IS A WEDDING:${shapeAskedNote}

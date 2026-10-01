@@ -1,0 +1,29 @@
+# scripts/floor-manifest-ce47-web4-cut7.txt
+# CE-47 · WEB-4 cut 7 · the website panel's two doors (0191), the engine's website hunks, the window, canonical, trade.row and WEB-6's asks · r2 · base 0af0869 · F-19.16: a dirty path outside this list stops the floor.
+# Rung b200 (47 cells). 0191 applied before the push. Benches amended by label: b06 x3, b0607, b115, b160, b196. New directory: src/lib/website. No file deleted.
+db/migrations/0191_website_enquiry.sql
+docs/handovers/TDW_CE47_WEB4_CUT7_HANDOVER.md
+scripts/b0607_oow_completion_bench.js
+scripts/b06_bride_arrival_bench.js
+scripts/b06_relay_foundations_bench.js
+scripts/b06_relay_hand_bench.js
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b160_ce46_web4_site_model_bench.js
+scripts/b196_ce47_web4_cut3_bench.js
+scripts/b200_ce47_web4_cut7_bench.js
+scripts/floor-manifest-ce47-web4-cut7.txt
+scripts/lib/b196_store.js
+scripts/lib/b200r_0191_plant.sql
+scripts/lib/b200r_0191_rehearse.sh
+src/agent/coupleSystemPrompt.js
+src/agent/engine.js
+src/agent/noticeHead.js
+src/api/public/siteEnquiry.js
+src/api/router.js
+src/api/vendor/solutions/siteRoom.js
+src/lib/site/siteCard.js
+src/lib/site/siteModel.js
+src/lib/vendor/coupleWaWindow.js
+src/lib/website/countries.js
+src/lib/website/enquiry.js
+src/lib/website/turn.js

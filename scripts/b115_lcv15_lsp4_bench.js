@@ -24,6 +24,10 @@ function body(t, name) {
 }
 function compileAt(rel, text) { const file = P(rel); const m = new Module(file, module); m.filename = file; m.paths = Module._nodeModulePaths(path.dirname(file)); m._compile(text, file); return m.exports; }
 const EN = 'src/agent/engine.js';
+// LABELED AMENDMENT · CE-47 WEB-4 cut 7 (WEB-7's contract, the chair's ruling: the engine hunks are WEB-4's): runCoupleAgenticTurn
+// re-pinned (was 0dc4fae4b323 at 8f2cd0d): the website joins the persona line, the prompt call passes the website fact, the source
+// value names website, and the turn reports `stoodIn`. LINE_WORD, formatPhone and enquiryHead moved verbatim to noticeHead.js (plus
+// LINE_WORD.website), so engine.js keeps ONE export; the cap is unchanged (engine.js is 960 lines at the cut).
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2b (F-44.174: the vendor_self record written once, from the text sent): runCoupleAgenticTurn re-pinned;
 // the cap 800 -> 820 (recordVendorNotice sits outside the pinned body).
 // LABELED AMENDMENT · CE-45 ELZ-1 cut 2a (F-44.165: the two lead reads filter deleted_at and read the newest; the vendor hears
@@ -51,7 +55,7 @@ const EN = 'src/agent/engine.js';
 // the turn reads her price facts, offers price_state when her switch is on and priced, and guards the reply; cap 930 -> 990.
 // LABELED AMENDMENT (6) · CE-46 ELZ-4 · F-44.250 (the chair's ruling of 30 September 2026, cure (a)): re-pinned (was 539a9aa9d2b83922 at
 // 1ed3847): the price guard runs on every turn, S1 with the switch on and S0, the founder's words, with it off; cap 990 unchanged (964 lines).
-const PIN = {"runCoupleAgenticTurn":"0dc4fae4b3232d5e1f188ee32643c8a57b0e2422b37e5e240e08f6b79cae80ac","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
+const PIN = {"runCoupleAgenticTurn":"68e110734ec54c86ae9e555a02b13c8c74e8ff42dabf0851cb17fb326dc85209","relayAttributionPrefix":"2d00b510384e056828c5e873773c3ff56fd21633e8ba36816328b580aa40e6eb","markRelayProvenance":"85a17f5582fd938decfd62701a7e8c9524b24c0c28ae422e81f39d87e8aad0e5","mergeSameRole":"67e5b8d69484f55fc0da7f58b8864656fc1f887749e08bf65cf67097aa768732","planMoney":"2a7a1c76bf2efeabec03301805e5d5d2bdb38b310940284935496dad8b7f7efb","planPayment":"cddb6c299afe946ddfddf89cebb3a815c13db38cbd17c863a2b23a677244483e","planBooking":"086fbb9debf6a62fa52a8306037adef47cc1ece4e2ce2efd7e2c684a27e6a3fa","applyRow":"01f76e676659e01c3f0dd92b560726fcde136a8be4bcf3a12adf120cc7fc1b4b","reread":"e200a0f720c62637ea617ccacb508c9b7a0b58f49e7848323c5eff5a7bcdc8fc"};
 const DELETED = ['src/agent/tools.js', 'src/agent/systemPrompt.js', 'src/agent/classifier.js', 'src/lib/vendor/replyToCouple.js'];
 const ISLAND = ['handleOnboarding', 'executeTool', 'commit_event_proposals', 'WA_MUTATING_TOOLS'];
 

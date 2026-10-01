@@ -27,6 +27,7 @@ function makeStore(seed) {
     const api = {
       select(cols) { if (st.op === 'select') st.cols = cols; else st.returning = cols || '*'; return api; },
       eq(c, v) { st.filters.push((r) => r[c] === v); return api; },
+      neq(c, v) { st.filters.push((r) => r[c] !== v); return api; },   // cut 7
       is(c, v) { st.filters.push((r) => (v === null ? r[c] === null || r[c] === undefined : r[c] === v)); return api; },
       in(c, vs) { const s = new Set(vs); st.filters.push((r) => s.has(r[c])); return api; },
       gt(c, v) { st.filters.push((r) => r[c] !== null && r[c] !== undefined && String(r[c]) > String(v)); return api; },

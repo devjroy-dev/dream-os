@@ -415,7 +415,7 @@ function winSupabase({ convos = [], inbounds = {}, convoErr = false, msgErr = fa
     });
   }
   const apply = (rows, filters) => rows.filter((r) => filters.every((f) =>
-    f.kind === 'eq' ? r[f.col] === f.val : Array.isArray(f.val) && f.val.includes(r[f.col])));
+    f.kind === 'eq' ? r[f.col] === f.val : f.kind === 'neq' ? r[f.col] !== f.val : Array.isArray(f.val) && f.val.includes(r[f.col])));   // neq: CE-47 WEB-4 cut 7, by label
 
   return {
     from(table) {
@@ -426,6 +426,8 @@ function winSupabase({ convos = [], inbounds = {}, convoErr = false, msgErr = fa
       const q = {
         select() { return q; },
         eq(col, val) { filters.push({ kind: 'eq', col, val }); return q; },
+        // AMENDED BY LABEL, CE-47 WEB-4 cut 7 (b200): coupleWaWindow.js now excludes website messages (.neq('channel', 'website')).
+        neq(col, val) { filters.push({ kind: 'neq', col, val }); return q; },
         in(col, val) { filters.push({ kind: 'in', col, val }); return q; },
         order(_col, o) { desc = !!(o && o.ascending === false); return q; },
         is() { return q; }, // cut 2a (F-44.165): a pass-through

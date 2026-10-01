@@ -103,7 +103,7 @@ const SETTING_LINES = Object.freeze({
   texture: 'Texture changed', cover_mode: 'Cover changed', cover: 'Cover changed', monogram: 'Monogram changed',
   site_name: 'Site name changed', copy: 'Words changed', credit_shown: 'Credit changed',
 });
-const SECTION_LABELS = Object.freeze({ cover: 'Cover', looks: 'Looks', collections: 'Collections', band: 'Band', reviews: 'Kind words',
+const SECTION_LABELS = Object.freeze({ cover: 'Cover', looks: 'Looks', collections: 'Collections', band: 'Band', reviews: 'Client reviews',
   pricing: 'Prices', studio: 'Studio', journal: 'Journal', faq: 'Questions', enquire: 'Enquire' });
 const same = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
 /** What her draft would change, in plain words: [{ area, line }], one line per thing, no repeats. */
@@ -152,7 +152,7 @@ router.get('/room', ...auth, asyncHandler(async (req, res) => {
     is_live: Boolean(row && row.published_at),
     // the card door serves her draft to this token only: GET /api/v2/public/vendor-card/<handle>?preview=<token>[&style=<id>]
     preview: rank(v.tier) >= 1 ? previewLib.issue(v.id) : null,
-    styles: REG.STYLE_IDS.map((s2) => ({ id: s2, label: REG.STYLES[s2].label, pairs: REG.STYLES[s2].pairs, palettes: REG.palettesOf(s2).map((p) => ({ id: p.id, label: p.label })) })),
+    styles: REG.STYLE_IDS.map((s2) => ({ id: s2, label: REG.STYLES[s2].label, pairs: REG.STYLES[s2].pairs, palettes: REG.palettesOf(s2).map((p) => ({ id: p.id, label: p.label, swatch: { ground: p.roles.ground, ink: p.roles.ink, accent: p.roles.accent } })) })),   // swatch: cut 7, WEB-6
     finish: offeredFinish(v.tier),
     to_fix: { packages_below_starting_price: siteCard.packagesBelowStart(pkgs, v.rate_display, v.rate_min) },
   } });
@@ -520,6 +520,33 @@ router.put('/collections/:id/looks', ...auth, asyncHandler(async (req, res) => {
   if (dErr) return errRes(res, 503, LINES.saveFailed);
   if (ids.length) { const { error } = await sb.from('vendor_collection_looks').insert(ids.map((look_id, position) => ({ collection_id: col.id, look_id, position }))); if (error) return errRes(res, 503, LINES.saveFailed); }
   return okRes(res, { looks: ids.length });
+}));
+
+// ── cut 7 (WEB-6) · GET /collections, and the credit handle lookup ─────────────────────────────────────────────────
+router.get('/collections', ...auth, asyncHandler(async (req, res) => {
+  const sb = req.app.locals.supabase; const v = req.vendor;
+  const cols = await rows(sb.from('vendor_collections').select('id, slug, name, description, cover_photo_id, position, deleted_at').eq('vendor_id', v.id).is('deleted_at', null).order('position', { ascending: true }));
+  const ids = cols.map((c) => c.id);
+  const members = ids.length ? await rows(sb.from('vendor_collection_looks').select('collection_id, look_id, position').in('collection_id', ids)) : [];
+  return okRes(res, { collections_open: rank(v.tier) >= 2, collections: cols.map((c) => ({ id: c.id, slug: c.slug, name: c.name, description: c.description,
+    cover_photo_id: c.cover_photo_id, position: c.position,
+    look_ids: members.filter((m) => m.collection_id === c.id).sort((a, b) => (a.position || 0) - (b.position || 0)).map((m) => m.look_id) })) });
+}));
+
+/**
+ * GET /credit-lookup?handle=<TDW handle> → { vendor: { id, business_name, handle } } for an ACTIVE, unpaused vendor, else
+ * 404 "That was not found." Her look's credits name another vendor by this id (the card shows the name and link only
+ * while that vendor stays active). Nothing else of the other vendor is returned. Rate-limited per vendor in memory.
+ */
+const lookupLimiter = require('../../../lib/site/limiter').makeLimiter({ cap: 5000 });
+router.get('/credit-lookup', ...auth, asyncHandler(async (req, res) => {
+  const sb = req.app.locals.supabase; const v = req.vendor;
+  if (!lookupLimiter.hit('v:' + v.id, 120, 3600000)) return errRes(res, 429, 'Too many tries. Please try again in an hour.');
+  const h = String(req.query.handle || '').trim().replace(/^@/, '');
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,39}$/.test(h)) return errRes(res, 404, LINES.notYours);
+  const o = await one(sb.from('vendors').select('id, business_name, routing_handle, status, discover_paused').eq('routing_handle', h.toUpperCase()).maybeSingle());
+  if (!o || o.status !== 'active' || o.discover_paused === true) return errRes(res, 404, LINES.notYours);
+  return okRes(res, { vendor: { id: o.id, business_name: o.business_name, handle: String(o.routing_handle).toLowerCase() } });
 }));
 
 // ── PUT /faq ──────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -229,12 +229,17 @@ async function recordVendorNotice(supabase, vendor, vendorUser, text) {
 // readLaneFlag read below stays as it is (F-44.206 cured at the lane, not by an engine byte).
 function resolveCounterparty(counterparty, couplePhone) {
   const c = counterparty && typeof counterparty === 'object' ? counterparty : {};
-  const channel = ['whatsapp_shared', 'whatsapp_own', 'instagram'].includes(c.channel) ? c.channel : 'whatsapp_shared';
+  const channel = ['whatsapp_shared', 'whatsapp_own', 'instagram', 'website'].includes(c.channel) ? c.channel : 'whatsapp_shared';   // website: CE-47 WEB-4 cut 7
   const phone = channel === 'instagram' ? null : ((typeof c.phone === 'string' && c.phone) ? c.phone : (couplePhone || null));
   const igsid = channel === 'instagram' && typeof c.igsid === 'string' && c.igsid.trim() ? c.igsid.trim() : null;
   const enquireLink = channel === 'instagram' && typeof c.enquireLink === 'string' && c.enquireLink.trim() ? c.enquireLink.trim() : null;
   const chattedBefore = channel === 'whatsapp_own' && c.chatted_before === true;
-  return { channel, phone, igsid, enquireLink, chattedBefore };
+  // CE-47 WEB-4 cut 7 · THE WEBSITE FACT (WEB-7's contract): the page or look the visitor wrote from, and the card's enquire_link.
+  // Website only; the phone is the chat token's binding, given by the caller (lib/website/turn.js), never the request's.
+  const w = channel === 'website' && c.website && typeof c.website === 'object' ? c.website : null;
+  const website = w ? { page: typeof w.page === 'string' && w.page.trim() ? w.page.trim().slice(0, 80) : null,
+    enquireLink: typeof w.enquireLink === 'string' && w.enquireLink.trim() ? w.enquireLink.trim() : null } : null;
+  return { channel, phone, igsid, enquireLink, chattedBefore, website };
 }
 // The client's word on the vendor's notice when no name is on file: the last four digits on WhatsApp (his bytes, unchanged); on
 // Instagram there is no number, so the founder's word (IGD-2's V1b, his yes of 27 September).
@@ -257,23 +262,9 @@ function clientWord(leadName, cp) {
 // a vendor's own number composes no first-message notice (named or not); its capture notice is unchanged.
 const OWN_NUMBER_FIRST_ALERT = true;
 const ENQUIRY_GAP_MS = 7 * 24 * 60 * 60 * 1000;
-const LINE_WORD = Object.freeze({ whatsapp_shared: "TDW's WhatsApp", instagram: 'Instagram', whatsapp_own: 'your own number' });
-// The founder's phone form: +91 and the ten digits, 5-5 (+91 96257 59924). Anything that is not an Indian mobile keeps its digits
-// behind a plus, ungrouped.
-function formatPhone(p) {
-  const d = String(p || '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('91')) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
-  if (d.length === 10) return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
-  return d ? `+${d}` : '';
-}
-// Rows 1 to 3 and 5 (no name): "New enquiry on {line} from {phone}" (Instagram: no phone). Row 4 (a name): "New enquiry from {name} on {line}".
-function enquiryHead(name, cp) {
-  const line = LINE_WORD[cp.channel] || LINE_WORD.whatsapp_shared;
-  const n = typeof name === 'string' ? name.trim() : '';
-  if (n) return `New enquiry from ${n} on ${line}`;
-  const ph = cp.channel === 'instagram' ? '' : formatPhone(cp.phone);
-  return ph ? `New enquiry on ${line} from ${ph}` : `New enquiry on ${line}`;
-}
+// CE-47 WEB-4 cut 7: LINE_WORD, formatPhone and enquiryHead live in ./noticeHead.js, unchanged but for LINE_WORD.website, so the
+// website's door files its notice through this same head while engine.js keeps its one export (b05 §1.5, b115 1.4).
+const { LINE_WORD, formatPhone, enquiryHead } = require('./noticeHead');
 // F-44.227 (2): the message in hand opens an enquiry when the thread has no earlier row, or its newest earlier row is more than 7 days
 // old. A failed thread read (lastPriorAt unknown on a thread with rows) opens nothing: no notice rather than a wrong one.
 function opensEnquiry(facts, nowMs = Date.now()) {
@@ -398,7 +389,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // permutations. The flip is one admin_config row and sixty seconds, and it is
   // the founder's hand.
   // CE-46 ELZ-2 cut 1 (the founder's Q2 = 1): on Instagram the persona path runs; the flag is not consulted there.
-  const useEliza = cp.channel === 'instagram' ? true : await readLaneFlag(supabase, 'couple.eliza_enabled');
+  // CE-47 WEB-4 cut 7: the website panel IS Eliza (the founder's brief); its own switch (flag.website_eliza) is read by its caller.
+  const useEliza = (cp.channel === 'instagram' || cp.channel === 'website') ? true : await readLaneFlag(supabase, 'couple.eliza_enabled');
   console.log(`[couple-agent] lane=${useEliza ? 'eliza' : 'legacy'}`);
 
   // CE-45 ELZ-1 cut 1 · FACT 1 (§11 rule 1, F-44.125): the thread's WHOLE record, not the ten-minute window, says whether this
@@ -413,7 +405,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // does the prompt carry WHEN THEY ASK ABOUT PRICE and the turn carry the price_state tool (off: every prompt and tool byte is today's).
   const priceFacts = await priceLib.priceFacts(supabase, vendor && vendor.id);
   const priceOn = priceLib.priceOn(priceFacts);
-  const systemParts = buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore, priceOn });
+  const systemParts = buildCoupleSystemBlocks({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza, conversation: conversationFacts, channel: cp.channel, enquireLink: cp.enquireLink, chattedBefore: cp.chattedBefore, priceOn, website: cp.website });
 
   const messages = [
     ...history,
@@ -423,6 +415,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // ── Agentic loop ────────────────────────────────────────────────
   let iterations  = 0;
   let finalReply  = null;
+  let stoodIn = false;   // CE-47 WEB-4 cut 7: true when the reply is the fixed stand-in, not the model's words
   let leadCaptured = null;
   const toolCallsAudit = [];
   const priceAllowed = []; // the figures price_state handed her this turn (the guard's allow-list)
@@ -538,6 +531,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
       if (!finalReply) {
         const textBlocks = response.content.filter(b => b.type === 'text');
         finalReply = textBlocks.map(b => b.text).join('\n').trim() || 'Thanks, we\'ll be in touch soon!';
+        if (!textBlocks.map(b => b.text).join('\n').trim()) stoodIn = true;   // CE-47 WEB-4 cut 7: the website never shows a stand-in
       }
       break;
     }
@@ -701,7 +695,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             function_count: input.function_count || null,
             wedding_days:   input.wedding_days   || null,
             functions:      input.functions      || null,
-            source:       cp.channel === 'instagram' ? 'instagram' : 'whatsapp',   // CE-46 ELZ-2 cut 1 (the chair with IGD-2)
+            source:       cp.channel === 'instagram' ? 'instagram' : cp.channel === 'website' ? 'website' : 'whatsapp',   // CE-46 ELZ-2 cut 1 (the chair with IGD-2); website: CE-47 WEB-4 cut 7
             notes:        input.notes        || null,
             state:        'new',
           }).select('id').single();
@@ -954,6 +948,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     // name already on file, else null. The door reads it to name the binder;
     // every existing reader of this object is untouched.
     leadName: capturedLeadName || leadName,
+    // CE-47 WEB-4 cut 7 · ADDITIVE: the website shows the model's words or nothing (WEB-7's contract: no reply text is invented).
+    stoodIn: stoodIn || !finalReply,
   };
 }
 
