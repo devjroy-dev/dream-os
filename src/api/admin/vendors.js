@@ -46,7 +46,7 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   const { data, error } = await supabase
     .from('vendors')
     .select(`
-      id, business_name, category, city, tier, status, founding_cohort,
+      id, user_id, business_name, category, city, tier, status, founding_cohort,
       discover_eligible, discover_request_state, created_at,
       users!inner(name, phone)
     `)
@@ -56,6 +56,8 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
 
   const vendors = (data || []).map(v => ({
     id:                    v.id,
+    // CE-47 WEB-4 cut 8 (ADM-1): the account id, so the admin can warn before a delete when one account is both a vendor and a Dreamer
+    user_id:               v.user_id,
     name:                  v.business_name || v.users?.name || 'Unnamed',
     category:              v.category,
     city:                  v.city,

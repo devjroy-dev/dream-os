@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce47-web4-cut8.txt
+# CE-47 · WEB-4 cut 8 · user_id on the admin's vendor and couple lists (ADM-1's delete card) · base c175e59 · F-19.16: a dirty path outside this list stops the floor.
+# Rung b201 (12 cells). No migration. No new directory. No file deleted.
+docs/handovers/TDW_CE47_WEB4_CUT8_HANDOVER.md
+scripts/b201_ce47_web4_cut8_bench.js
+scripts/floor-manifest-ce47-web4-cut8.txt
+src/api/admin/couples.js
+src/api/admin/vendors.js
