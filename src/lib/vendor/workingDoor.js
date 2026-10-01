@@ -401,6 +401,36 @@ async function pinnedLeadFirst(supabase, vendorId, id, first) {
     return data;
   } catch (_e) { return null; }
 }
+// CE-47 ELZ-4 · F-44.268 (the chair's ruling of 1 October 2026; the founder may veto the line on his walk): her words name no lead, but two or
+// more LIVE leads' names BEGIN with them as whole words ("asha walk": Asha Walk Twelve, Asha walk fifteen). Each name shown once (the first
+// lead of a repeated name), at most nine, in the order the leads were made; the pick is answered by number as the relay rule's pick is.
+async function leadsPrefixed(supabase, vendorId, words) {
+  try {
+    const k = key(words);
+    if (!k) return null;
+    const { data, error } = await supabase.from('leads').select('id, name, state, wedding_date, binder_id, created_at').eq('vendor_id', vendorId).is('deleted_at', null);
+    if (error || !Array.isArray(data)) return null;
+    const seen = new Set();
+    return data.filter((r) => { const n = key(r && r.name); return n === k || n.startsWith(`${k} `); })
+      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')) || String(a.id).localeCompare(String(b.id)))
+      .filter((r) => { const n = key(r.name); if (seen.has(n)) return false; seen.add(n); return true; });
+  } catch (_e) { return null; }
+}
+const PREFIX_PICK_MAX = 9;
+function prefixPickLine(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) return null;
+  const shown = rows.slice(0, PREFIX_PICK_MAX).map((r, i) => `${i + 1}. ${String(r.name).trim()}`).join(' ');
+  const more = rows.length - PREFIX_PICK_MAX;
+  return more > 0 ? `Which client did you mean? ${shown} and ${more} more. Say the full name.` : `Which client did you mean? ${shown}. Reply with the number.`;
+}
+async function pinnedLeadPrefix(supabase, vendorId, id, words) {
+  try {
+    const { data, error } = await supabase.from('leads').select('id, name, state, binder_id').eq('id', id).eq('vendor_id', vendorId).is('deleted_at', null).maybeSingle();
+    const k = key(words); const n = data ? key(data.name) : '';
+    if (error || !data || !(n === k || n.startsWith(`${k} `))) return null;
+    return data;
+  } catch (_e) { return null; }
+}
 async function leadsFirstNamed(supabase, vendorId, first) {
   const { data, error } = await supabase.from('leads').select('id, name, state, wedding_date, binder_id').eq('vendor_id', vendorId).is('deleted_at', null);
   if (error || !Array.isArray(data)) return null;
@@ -533,7 +563,7 @@ function validNote(n) {
     else if (PICK_CLIENT.includes(n.asked)) { if (!allKindsCovered(acts) || !Array.isArray(n.lead_ids) || n.lead_ids.length < 2 || n.lead_ids.length > 20 || !n.lead_ids.every((x) => typeof x === 'string' && x) || typeof n.pick_name !== 'string' || !n.pick_name.trim()) return null; }
     else if (!allCovered({ route: 'task', acts })) return null;
     const tries = Number.isInteger(n.tries) && n.tries >= 0 ? n.tries : 0;
-    return { asked: n.asked, acts, tries, ...(n.asked === 'B24' && Array.isArray(n.package_ids) && n.package_ids.length >= 2 && n.package_ids.length <= 20 && n.package_ids.every((x) => typeof x === 'string' && x) ? { package_ids: n.package_ids.slice() } : {}), ...(PICK_CLIENT.includes(n.asked) ? { lead_ids: n.lead_ids.slice(), pick_name: n.pick_name.trim(), pick_kind: n.pick_kind === 'binder' ? 'binder' : n.pick_kind === 'lead_first' ? 'lead_first' : 'lead' /* CE-46 ELZ-3 cut 2: the relay rule's first-word pick */ } : {}), ...(PICK_INVOICE.includes(n.asked) ? { invoice_ids: n.invoice_ids.slice() } : {}), ...(PICK_CREW.includes(n.asked) ? { pick_ids: n.pick_ids.slice() } : {}), ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(RELAY_ASKS.includes(n.asked) && typeof n.quote_lp === 'string' && n.quote_lp ? { quote_lp: n.quote_lp } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
+    return { asked: n.asked, acts, tries, ...(n.asked === 'B24' && Array.isArray(n.package_ids) && n.package_ids.length >= 2 && n.package_ids.length <= 20 && n.package_ids.every((x) => typeof x === 'string' && x) ? { package_ids: n.package_ids.slice() } : {}), ...(PICK_CLIENT.includes(n.asked) ? { lead_ids: n.lead_ids.slice(), pick_name: n.pick_name.trim(), pick_kind: n.pick_kind === 'binder' ? 'binder' : n.pick_kind === 'lead_first' ? 'lead_first' : n.pick_kind === 'lead_prefix' ? 'lead_prefix' /* F-44.268 */ : 'lead' /* CE-46 ELZ-3 cut 2: the relay rule's first-word pick */ } : {}), ...(PICK_INVOICE.includes(n.asked) ? { invoice_ids: n.invoice_ids.slice() } : {}), ...(PICK_CREW.includes(n.asked) ? { pick_ids: n.pick_ids.slice() } : {}), ...(n.unsaid === true ? { unsaid: true } : {}), direction: directionOf(acts[0].act), lead_id: typeof n.lead_id === 'string' ? n.lead_id : null, package_id: typeof n.package_id === 'string' ? n.package_id : null, ...(typeof n.candidate_id === 'string' ? { candidate_id: n.candidate_id } : {}), ...(OFFER_ASKS.includes(n.asked) && Object.prototype.hasOwnProperty.call(OFFER_SLOTS, n.slot) ? { slot: n.slot } : {}), ...(typeof n.draft_id === 'string' ? { draft_id: n.draft_id } : {}), ...(RELAY_ASKS.includes(n.asked) && typeof n.quote_lp === 'string' && n.quote_lp ? { quote_lp: n.quote_lp } : {}), ...(saidOf(n.said) ? { said: saidOf(n.said) } : {}), ...((CAL_ASKS.includes(n.asked) || SHOOT_ASKS.includes(n.asked)) ? calNoteFields(n) : {}) };
   } catch (_e) { return null; }
 }
 
@@ -768,7 +798,12 @@ async function planRelay(supabase, vendor, act, L) {
     if (!name) return null; // a nameless relay is B35's, asked before any plan (askName)
     const found = await L.lifecycle.resolveLead(supabase, vendor.id, name, false);
     if (!found || !found.ok) {
-      if (found && found.reason === 'not_found') return { noLead: true, name };
+      if (found && found.reason === 'not_found') {
+        // F-44.268: two or more live leads whose names begin with her words → "Which client did you mean? ..." and a pick (never "no client")
+        const pre = await leadsPrefixed(supabase, vendor.id, name);
+        if (pre && pre.length >= 2) { const line = prefixPickLine(pre); if (line) return { speak: line, key: 'B8', skipHarvest: true, prefixPick: { ids: pre.slice(0, PREFIX_PICK_MAX).map((r) => String(r.id)), name } }; }
+        return { noLead: true, name };
+      }
       if (found && found.reason === 'ambiguous') {
         const rows = await leadsNamed(supabase, vendor.id, name, false);
         const line = sameName(name, rows, (r) => r.wedding_date);
@@ -1592,7 +1627,9 @@ async function lastDoorRelay(supabase, agentId, withinMs = 30 * 60 * 1000, nowMs
     if (!relay) return null;
     const at = Date.parse(lastA.created_at);
     if (!Number.isFinite(at) || nowMs - at > withinMs) return null;
-    const userRow = data.filter((r) => r && r.role === 'user' && Date.parse(r.created_at) <= at).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+    const users = data.filter((r) => r && r.role === 'user' && Date.parse(r.created_at) <= at).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+    // CE-47 ELZ-4 · F-44.267: a relay decided by a bare YES (a B36 offer taken) carries her words from the sentence that asked it, not "Yes"
+    const userRow = users[0] && typeof users[0].content === 'string' && PMA.decide(users[0].content) !== null && users[1] ? users[1] : users[0];
     const said = userRow && typeof userRow.content === 'string' ? saidOf(userRow.content) : null;
     return { client: relay.client_as_spoken.trim(), said };
   } catch (_e) { return null; }
@@ -1670,6 +1707,8 @@ function doorAnswer(st, why) {
   if (!reply) reply = st.fallback || glitchLine() || DL.LINES.B3;
   // CE-47 ELZ-4 · C2: a note held aside for a draft request is written back on this turn's row unless this turn asked its own question
   if (st.heldNote && !st.note) st.note = st.heldNote;
+  // CE-47 ELZ-4 · F-44.267: the record names the request the door decided on a note turn (what was heard kept beside it)
+  if (st.decided && Array.isArray(st.decided.acts)) st.ear = { ...(st.ear || {}), request: { route: st.decided.route || 'task', acts: st.decided.acts.map((a) => ({ ...a })) }, heard: st.ear && st.ear.request ? st.ear.request : null, rule: (st.ear && st.ear.rule) || 'note_answer' };
   return { door: true, reply, ...(Array.isArray(st.replies) && st.replies.length > 1 ? { replies: st.replies.slice() } : {}), keys: st.keys, toolCalls: st.toolCalls, toolNames: st.toolCalls.map((t) => t.name), refresh: st.refresh, documents: st.documents, skipHarvest: st.skipHarvest, ear: st.ear, ...(st.note ? { note: st.note } : {}), ...(st.answered ? { answered: st.answered } : {}), ...(why ? { why } : {}) };
 }
 
@@ -1740,7 +1779,41 @@ async function noteProposals(args, depsIn) {
   } catch (e) { try { console.warn('[door:noteProposals]', e && e.message); } catch (_e) { /* */ } return { written: false }; }
 }
 
+// CE-47 ELZ-4 · F-44.270 (the founder's yes, through the chair, 1 October 2026): THE SAFETY NET. "start over", "refresh" or "reset", alone in
+// the message (any case), is a COMMAND, never a client name: it clears any pending note (this turn's row carries none) and any live money row
+// (marked expired, as a lapse does) and answers "Started fresh."; nothing else is touched. And when the door sends the same error line twice
+// in a row on one thread, the second carries one more line: "Say 'start over' to clear this." No automatic reset, ever.
+const FRESH_COMMAND = /^\s*(start over|refresh|reset)\s*[.!]*\s*$/i;
+const FRESH_LINE = 'Started fresh.';
+const REPEAT_HINT = "Say 'start over' to clear this.";
+const ERROR_LINE = /^(Could not\b|I don't have a number on file\b)/; // the door's error lines: a "Could not ..." line, or a relay with no number
 async function preTurn(args, depsIn) {
+  try {
+    const { supabase, vendor, agentId, message, lane } = (args && typeof args === 'object') ? args : {};
+    const deps = (depsIn && typeof depsIn === 'object') ? depsIn : {};
+    if (supabase && vendor && typeof vendor.id === 'string' && typeof agentId === 'string' && typeof message === 'string' && ['pwa', 'whatsapp'].includes(lane) && FRESH_COMMAND.test(message)) {
+      const pma = deps.pma || PMA;
+      const nowMs = Number.isFinite(deps.nowMs) ? deps.nowMs : Date.now();
+      const live = await pma.liveRow(supabase, vendor.id, nowMs);
+      if (live) await pma.markExpired(supabase, live);
+      return { door: true, reply: FRESH_LINE, keys: ['FRESH'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: null, why: 'start_over' };
+    }
+  } catch (_e) { /* the command never throws past the door; the turn falls through below */ }
+  const out = await preTurnInner(args, depsIn);
+  try {
+    if (!out || out.door !== true || typeof out.reply !== 'string' || !(ERROR_LINE.test(out.reply) || (Array.isArray(out.keys) && out.keys.includes('GLITCH')))) return out;
+    const { supabase, agentId } = (args && typeof args === 'object') ? args : {};
+    const conv = await activeConversation(supabase, agentId);
+    if (!conv) return out;
+    const { data, error } = await supabase.schema('engine').from('messages').select('role, content, created_at').eq('conversation_id', conv).order('created_at', { ascending: false }).limit(3);
+    if (error || !Array.isArray(data)) return out;
+    const lastA = data.find((r) => r && r.role === 'assistant');
+    const prev = lastA && typeof lastA.content === 'string' ? lastA.content.split('\n\n')[0].trim() : null;
+    if (prev && prev === out.reply.trim()) return { ...out, reply: `${out.reply}\n\n${REPEAT_HINT}` };
+  } catch (_e) { /* a hint, never a failure */ }
+  return out;
+}
+async function preTurnInner(args, depsIn) {
   const st = { wrote: false, rereadRow: null, ctx: null, ear: null, lines: [], keys: [], toolCalls: [], documents: [], refresh: false, skipHarvest: false, fallback: null, note: null, answered: null, dateAsks: [], pkgAsks: [], relayNote: null, said: null };
   try {
     // e-16's lesson: the arguments are taken INSIDE the guard, so a hostile argument cannot throw past it.
@@ -1898,6 +1971,7 @@ async function preTurn(args, depsIn) {
           const heardReq = st.ear && st.ear.request ? st.ear.request : null;
           st.ear = { ...(st.ear || {}), request: { route: 'task', acts: [{ act: 'relay', client_as_spoken: client }] }, heard: heardReq, rule: 'draft_followup', error: null };
           if (prev.said) st.said = prev.said;
+          st.draftClient = client;
           draftTaken = true;
           if (note) { st.heldNote = note; note = null; } // C2: held aside, written back by doorAnswer unless this turn asks its own question
           if (holdLive) st.heldLive = live;
@@ -2034,7 +2108,7 @@ async function preTurn(args, depsIn) {
         if (b) { fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) ? { ...a, binder_id: String(b.id) } : { ...a })) }; st.answered = note.asked; st.said = note.said || null; }
       }
       // CE-46 ELZ-3 cut 2: the relay rule's first-word pick is re-read by id still carrying the first word
-      const lead = id && note.pick_kind !== 'binder' ? (note.pick_kind === 'lead_first' ? await pinnedLeadFirst(supabase, vendor.id, id, note.pick_name) : await pinnedLead(supabase, vendor.id, id, note.pick_name, bookedOnly)) : null;
+      const lead = id && note.pick_kind !== 'binder' ? (note.pick_kind === 'lead_first' ? await pinnedLeadFirst(supabase, vendor.id, id, note.pick_name) : note.pick_kind === 'lead_prefix' ? await pinnedLeadPrefix(supabase, vendor.id, id, note.pick_name) : await pinnedLead(supabase, vendor.id, id, note.pick_name, bookedOnly)) : null;
       if (lead) {
         // a lead pick carries the lead's binder to an invoice act naming the same client (F3 within each kind; the binder pin)
         fromNote = { route: 'task', acts: note.acts.map((a) => (a && a.act === 'invoice' && key(a.client_as_spoken) === key(note.pick_name) && lead.binder_id ? { ...a, binder_id: String(lead.binder_id) } : { ...a })) }; st.answered = note.asked;
@@ -2042,8 +2116,8 @@ async function preTurn(args, depsIn) {
         st.said = note.said || null; // e-151: the replayed relay is written from her original words (F-44.123)
       } else if (fromNote) { /* a binder pick answered above */ } else if (n || !heardActs.some((a) => a && typeof a === 'object' && typeof a.act === 'string')) {
         if (note.tries > 0) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'note_exhausted' };
-        const rows = note.pick_kind === 'lead_first' ? await leadsFirstNamed(supabase, vendor.id, note.pick_name) : await leadsNamed(supabase, vendor.id, note.pick_name, bookedOnly);
-        const line = rows && rows.length > 1 ? sameName(note.pick_name, rows, (r) => r.wedding_date) : null;
+        const rows = note.pick_kind === 'lead_first' ? await leadsFirstNamed(supabase, vendor.id, note.pick_name) : note.pick_kind === 'lead_prefix' ? await leadsPrefixed(supabase, vendor.id, note.pick_name) : await leadsNamed(supabase, vendor.id, note.pick_name, bookedOnly);
+        const line = rows && rows.length > 1 ? (note.pick_kind === 'lead_prefix' ? prefixPickLine(rows) : sameName(note.pick_name, rows, (r) => r.wedding_date)) : null;
         if (!line) return { door: true, reply: DL.LINES.B3, keys: ['B3'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, answered: note.asked, why: 'pick_gone' };
         return { ...askAgain(line, 'B8', note.tries + 1), note: { asked: 'B8', acts: note.acts, tries: note.tries + 1, lead_ids: rows.map((r) => String(r.id)), pick_name: note.pick_name, pick_kind: note.pick_kind, ...(note.said ? { said: note.said } : {}) } };
       }
@@ -2161,6 +2235,10 @@ async function preTurn(args, depsIn) {
       if (own.ok || !movedOn) fromNote = { route: 'task', acts: note.acts.map((a, i) => (i === 0 ? { ...a, date_as_spoken: message.trim() } : { ...a })) };
     }
     let heard = fromNote;
+    // CE-47 ELZ-4 · F-44.267 (the chair's go of 1 October 2026): acts decided FROM A NOTE ANSWER (a B36 YES, a B35 or B18 name, any note's
+    // answer) are written into this turn's listener.request by doorAnswer, so a later turn that reads the record (lastDoorRelay, the draft
+    // follow-up) sees what was decided; the ear's own hearing stays on the record as `heard`. The walk of 1 October, 11:37:57 and 11:38:25.
+    if (fromNote) st.decided = fromNote;
     // THE NAME QUESTION (R-44.39): a request whose every act the door covers, one of them a booking, payment, invoice or attach with NO
     // client, is the door's. It asks B18 first if a lead is nameless too, else B35, and keeps a note carrying every act; nothing runs
     // until the name comes. Read on the request the door decides on, whichever way it came.
@@ -2203,7 +2281,9 @@ async function preTurn(args, depsIn) {
     // SCOPED BY THE FOUNDER'S RULING (R-44.41, the reduced standard): it fires only when her message holds TWO OR MORE WORDS, so the
     // rungs' placeholder drivers (a one-word 'x' with any heard client) are untouched; a one-word message cannot carry a job and a name.
     // CE-46 ELZ-3 · F-44.248: a draft follow-up's client was said in the message it re-uses (st.said, the previous turn's words): the floor reads both
-    const saidKey = key(st.ear && st.ear.rule === 'draft_followup' && st.said ? `${message} ${st.said}` : message);
+    // CE-47 ELZ-4 · F-44.267: the follow-up's client came from the RECORD (read through the lead's own row), so its name counts as spoken here;
+    // a relay decided through a B36 offer was never said in her words ("walk p5" offered as Walk P7) and the floor would strip it
+    const saidKey = key(st.ear && st.ear.rule === 'draft_followup' && (st.said || st.draftClient) ? `${message} ${st.said || ''} ${st.draftClient || ''}` : message);
     if (key(message).split(/\s+/).filter(Boolean).length >= 2) {
       heard = { ...heard, acts: heard.acts.map((a) => (a && typeof a === 'object' && spokenText(a.client_as_spoken) && !saidKey.includes(key(a.client_as_spoken)) ? (({ client_as_spoken: _c, ...rest }) => ({ ...rest, [UNSAID]: true }))(a) : a)) }; // F-44.148: the stripped act is MARKED
     }
@@ -2281,6 +2361,11 @@ async function preTurn(args, depsIn) {
     if (relays.length) {
       relayPlan = await planRelay(supabase, vendor, relays[0], L);
       if (!relayPlan) return CHAIN(st.ear, 'relay_unsayable');
+      if (relayPlan.prefixPick) {
+        const original = saidOf(st.said || message);
+        return { door: true, reply: relayPlan.speak, keys: ['B8'], toolCalls: [], toolNames: [], refresh: false, documents: [], skipHarvest: true, ear: st.ear, why: 'relay_prefix_pick', ...(st.answered ? { answered: st.answered } : {}),
+          note: { asked: 'B8', acts: acts.map((a) => ({ ...a })), tries: 0, lead_ids: relayPlan.prefixPick.ids, pick_name: relayPlan.prefixPick.name, pick_kind: 'lead_prefix', ...(original ? { said: original } : {}) } };
+      }
       if (relayPlan.noLead) {
         const offer = !liveAtStart && !fromNote ? await offerFor(relays[0], 'client', relayPlan.name, await leadsOf(supabase, vendor.id)) : null;
         if (offer) return offer;
@@ -2692,7 +2777,7 @@ async function persistDoorTurn(args, depsIn) {
     const ear = out && out.ear;
     const asked = (Array.isArray(out.keys) ? out.keys : []).find((k) => k === 'B1' || k === 'B2') || null; // F-44.58's mark
     const askedName = (Array.isArray(out.keys) ? out.keys : []).includes('B18') ? 'B18' : null; // F-44.100's mark, its OWN key
-    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(ear && (ear.rule === 'relay' || ear.rule === 'draft_followup') ? { heard: ear.heard === undefined ? null : ear.heard, rule: ear.rule } : {}) /* CE-46 ELZ-3 cut 2; F-44.248 */, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}), ...(out.askRecord ? { ask: out.askRecord } : {}) };
+    const listener = { lane, provider: ear && ear.seat ? ear.seat.provider : null, model: ear && ear.seat ? ear.seat.model : null, request: ear ? ear.request : null, door: true, ...(ear && ear.reheard === true ? { heard: ear.heard === undefined ? null : ear.heard, reheard: true, ...(ear.rehear_error ? { rehear_error: ear.rehear_error } : {}) } : {}), ...(ear && (ear.rule === 'relay' || ear.rule === 'draft_followup' || ear.rule === 'note_answer') ? { heard: ear.heard === undefined ? null : ear.heard, rule: ear.rule } : {}) /* CE-46 ELZ-3 cut 2; F-44.248; CE-47 ELZ-4 F-44.267: note_answer */, ...(asked ? { asked } : {}), ...(askedName ? { asked_name: askedName } : {}), ...(validNote(out.note) ? { note: out.note } : {}), ...(typeof out.answered === 'string' ? { answered: out.answered } : {}), ...(ear && ear.error ? { error: ear.error } : {}), ...(out.askRecord ? { ask: out.askRecord } : {}) };
     // CE-46 ELZ-3 · F-44.248: a two-message answer is recorded whole (reply holds both, a blank line apart) and its messages kept as replies
     if (Array.isArray(out.replies) && out.replies.length > 1) listener.replies = out.replies.slice();
     res.assistantId = await memory.saveMessage(conversationId, 'assistant', out.reply, (out.toolCalls && out.toolCalls.length) ? out.toolCalls : undefined, { listener });
@@ -2708,4 +2793,4 @@ async function persistDoorTurn(args, depsIn) {
   return res;
 }
 
-module.exports = { lastDoorRelay, DRAFT_FOLLOWUP, NO_NUMBER_DRAFT_LINE, relayRuleMatch, RELAY_RULE_VERB, pinnedLeadFirst, leadsFirstNamed, proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS, QUESTION_ACTS, ASK_FLAGS, questionTurn, askContext };
+module.exports = { FRESH_COMMAND, FRESH_LINE, REPEAT_HINT, lastDoorRelay, DRAFT_FOLLOWUP, NO_NUMBER_DRAFT_LINE, relayRuleMatch, RELAY_RULE_VERB, pinnedLeadFirst, leadsFirstNamed, proposalChoice, answerProposals, noteProposals, IMG_ASKS, PROPOSAL_TTL_MS, possessiveFold, withPossessiveFallback, UNSAID, LOOKUP_ACTS, lookupDoor, WEEK_WORDS, kindClient, TEAM_ACTS, MEMBER_ASKS, OFFER_SLOTS, slotField, membersOf, memberWord, shootsOnDay, planAssign, insertMember, fileAssign, planReminder, fileReminder, ALREADY_LINE, MILESTONE_SELECT, CAL_QUESTION_ACTS, CAL_ASKS, SHOOT_ASKS, shootsOf, shootsById, planCal, fileCal, calQuestion, shootsQuestion, calNoteFields, CALENDAR_ACTS, NEEDS_CLIENT, planBlock, planUnblock, planBook, fileBlock, fileUnblock, fileBook, bookedLine, calendarDate, calendarKind, heardNothing, namesLiveLead, rehear, sumUsage, REHEAR_MIN_NAME, saidOf, SAID_MAX, RELAY_ASKS, planRelay, phoneRuns, foldPhone, OFFER_ASKS, nearestName, damerau1, PKG_ASKS, NAME_ASKS, DATE_ASKS, validNote, noteFor, lastDoorNote, withoutEchoedEvents, sameSpokenDay, standIn, standKey, planAttach, fileAttach, eventOnly, EVENT_WORDS, lastWasDoorNameQuestion, planLead, fileLead, phoneShaped, planPayment, planBooking, preTurn, persistDoorTurn, speakOnWhatsApp, doorAnswer, glitchLine, reread, lastWasDoorQuestion, allCovered, planMoney, planInvoice, applyRow, HEAR_BEFORE_REPLY_MS, COVERED, MONEY_ACTS, HANDS, QUESTION_ACTS, ASK_FLAGS, questionTurn, askContext };

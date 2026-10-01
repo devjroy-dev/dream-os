@@ -1,0 +1,13 @@
+# scripts/floor-manifest-ce47-elz4-p3.txt
+# CE-47 · ELZ-4 · PACKAGE 3 (dream-os): F-44.267 + F-44.268 + F-44.270. BASE: 573e5fa1221e. F-19.16: a dirty path outside this list is a STOP.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path (this manifest: ADDED, its hash in the card)
+# 369786c138694ba336de70b41c5f23ac861b59734dd22135223d908c53e9d3ab · ADDED · docs/handovers/TDW_CE47_ELZ4_P3_F267_F268_F270_HANDOVER.md
+# 233ae7fb09ce63813c28ee3cff9160f2288c4de91182fb20e5f8e38db1de3937 · CHANGED · scripts/b142b_elz3_relay_rule_bench.js
+# 719d148d2ff169c1e6c18e9841244a68e7eead242fe13e5d43f94f67232dbbf1 · CHANGED · scripts/b95_lcv10_note_bench.js
+# e730570d75f9ee2bd5459658f1007c18422c85abc74d1b28a131456269ebf429 · CHANGED · src/lib/vendor/workingDoor.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-elz4-p3.txt
+docs/handovers/TDW_CE47_ELZ4_P3_F267_F268_F270_HANDOVER.md
+scripts/b142b_elz3_relay_rule_bench.js
+scripts/b95_lcv10_note_bench.js
+src/lib/vendor/workingDoor.js
+scripts/floor-manifest-ce47-elz4-p3.txt

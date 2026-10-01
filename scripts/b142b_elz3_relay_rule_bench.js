@@ -470,6 +470,68 @@ async function main() {
   const n1 = await turnSeq(d9n, 'Just draft the message and give me', [MISS], { nowMs: soonAfter(d9n) });
   T('9.9 with a NOTE pending, the draft request is taken and the note is written back on this turn\'s row, unchanged', n1.out && n1.out.door === true && JSON.stringify(meta(d9n).note) === JSON.stringify(heldNote));
 
+  // ── §10 CE-47 ELZ-4 · F-44.267 (the chair's go of 1 October 2026): a relay decided THROUGH A NOTE ANSWER is on the record, so the draft
+  // follow-up after it is the door's. The walk of 1 October, 11:37:46 to 11:38:46, its exact words.
+  console.log('\n§10 F-44.267: a relay decided through a note answer, then the draft follow-up (the walk of 1 October)');
+  const withP7 = () => { const w = noPhone(); const asha = w['public.leads'].find((l) => l.id === 'l-asha'); w['public.leads'] = [...w['public.leads'], { ...asha, id: 'l-p7', name: 'Walk P7', phone: null }]; return w; };
+  const REL_P5 = { route: 'task', acts: [{ act: 'relay', client_as_spoken: 'walk p5' }] };
+  let d10 = makeDb(withP7());
+  const w1 = await turnSeq(d10, 'Tell walk p5 booking is confirmed', [REL_P5]);
+  T('10.0 11:37:46: "walk p5" is offered as Walk P7 (B36)', /Did you mean Walk P7\?/.test(w1.reply));
+  const w2 = await turnSeq(d10, 'Yes', [MISS], { nowMs: soonAfter(d10) });
+  T('10.1 11:37:57 YES: the no-number line, and the record names the relay the door decided (Walk P7)', /I don't have a number on file for Walk P7/.test(w2.reply) && Array.isArray((meta(d10).request || {}).acts) && meta(d10).request.acts.some((a) => a.act === 'relay' && /walk p7/i.test(a.client_as_spoken)));
+  const w3 = await turnSeq(d10, 'Just draft the message and send me', [MISS], { nowMs: soonAfter(d10) });
+  T('10.2 11:38:13 "Just draft the message and send me": the door\'s two messages for Walk P7, not B35', Array.isArray(w3.said.replies) && w3.said.replies.length === 2 && /^Here is the message for Walk P7\./.test(w3.said.replies[0]) && w3.reply !== DL.LINES.B35);
+  let d10b = makeDb(withP7());
+  const v1 = await turnSeq(d10b, 'Just draft a message', [MISS]);
+  const v2 = await turnSeq(d10b, 'Walk p7', [MISS], { nowMs: soonAfter(d10b) });
+  T('10.3 a B35 answered by a name ("Walk p7", as 11:38:25): the no-number line, the record names the relay', v1.reply === DL.LINES.B35 && /I don't have a number on file for Walk P7/.test(v2.reply) && Array.isArray((meta(d10b).request || {}).acts) && meta(d10b).request.acts.some((a) => a.act === 'relay'));
+  const v3 = await turnSeq(d10b, 'Just draft the message and give me', [MISS], { nowMs: soonAfter(d10b) });
+  T('10.4 11:38:46 "Just draft the message and give me": the door\'s two messages, not B35 again', Array.isArray(v3.said.replies) && v3.said.replies.length === 2 && /^Here is the message for Walk P7\./.test(v3.said.replies[0]));
+
+  // ── §11 CE-47 ELZ-4 · F-44.268 (the chair's ruling of 1 October 2026): two or more live leads whose names BEGIN with her words → "Which client
+  // did you mean? ..." and a pick, never "No client called ...". The walk of 1 October, 11:36:48, its exact words.
+  console.log('\n§11 F-44.268: her words begin two or more names (the walk of 1 October, 11:36:48)');
+  const withAshas = (extra = []) => { const w = ruleWorld(); const asha = w['public.leads'].find((l) => l.id === 'l-asha');
+    w['public.leads'] = w['public.leads'].map((l) => (l.id === 'l-asha' ? { ...l, created_at: '2026-09-22T15:31:00Z' } : l));
+    w['public.leads'] = [...w['public.leads'], { ...asha, id: 'l-asha12', name: 'Asha Walk Twelve', phone: null, created_at: '2026-09-22T06:30:00Z' }, ...extra.map((n, k) => ({ ...asha, id: `l-x${k}`, name: n, phone: null, created_at: `2026-09-23T00:${String(10 + k).padStart(2, '0')}:00Z` }))]; return w; };
+  const HEARD_1136 = { route: 'task', acts: [{ act: 'booking_confirmed', client_as_spoken: 'asha walk' }, { act: 'relay', client_as_spoken: 'asha walk' }] }; // 11:36:48's request, verbatim
+  let d11 = makeDb(withAshas());
+  const p1 = await turnSeq(d11, 'Tell asha walk her booking is confirmed', [HEARD_1136]);
+  T('11.0 11:36:48: "Which client did you mean? 1. Asha Walk Twelve 2. Asha Walk Fifteen. Reply with the number." (not B38)', p1.reply === 'Which client did you mean? 1. Asha Walk Twelve 2. Asha Walk Fifteen. Reply with the number.');
+  const n11 = meta(d11).note || {};
+  T('11.1 the pick note: B8, pick_kind lead_prefix, the ids in the order shown, every act of her message, her words kept', n11.asked === 'B8' && n11.pick_kind === 'lead_prefix' && JSON.stringify(n11.lead_ids) === JSON.stringify(['l-asha12', 'l-asha']) && n11.acts.length === 2 && /asha walk/i.test(n11.said || ''));
+  const p2 = await turnSeq(d11, '2', [MISS], { nowMs: soonAfter(d11) });
+  T('11.2 "2" picks Asha Walk Fifteen (pinned by id): her draft framed to Asha Walk Fifteen, never Twelve', Array.isArray(p2.said.replies) && p2.said.replies.length === 2 && /Send this to Asha Walk Fifteen/.test(p2.said.replies[1]) && !/Twelve/.test(p2.reply));
+  let d11m = makeDb(withAshas(['Asha Walk A', 'Asha Walk B', 'Asha Walk C', 'Asha Walk D', 'Asha Walk E', 'Asha Walk F', 'Asha Walk G', 'Asha Walk H', 'Asha Walk Twelve']));
+  const p3 = await turnSeq(d11m, 'Tell asha walk her booking is confirmed', [HEARD_1136]);
+  T('11.3 more than nine (ten names, the repeated Twelve counted once): nine shown, then "and N more. Say the full name."; a name never shown twice (Asha Walk Twelve once)', /^Which client did you mean\? 1\. .* 9\. [^.]+ and 1 more\. Say the full name\.$/.test(p3.reply) && (p3.reply.match(/Asha Walk Twelve/g) || []).length === 1);
+  let d11o = makeDb(ruleWorld());
+  const p4 = await turnSeq(d11o, 'Tell asha walk her booking is confirmed', [HEARD_1136]);
+  T('11.4 one live lead begins with her words: today\'s path (no "Which client did you mean")', !/Which client did you mean/.test(p4.reply));
+
+  // ── §12 CE-47 ELZ-4 · F-44.270 (the founder's yes, 1 October 2026): "start over", "refresh", "reset" alone are a command; a repeated error
+  // line carries "Say 'start over' to clear this." The walk of 1 October, 11:39:13: "Refresh" with a B35 pending.
+  console.log('\n§12 F-44.270: the safety net (the walk of 1 October, 11:39:13)');
+  let d12 = makeDb(withP7());
+  const f1 = await turnSeq(d12, 'Just draft a message', [MISS]);
+  const f2 = await turnSeq(d12, 'Refresh', [MISS], { nowMs: soonAfter(d12) });
+  T('12.0 11:39:13 "Refresh" with B35 pending: "Started fresh." (never "No client called Refresh")', f1.reply === DL.LINES.B35 && f2.reply === WD.FRESH_LINE);
+  T('12.1 the pending note is cleared by the command: the row carries no note (not vacuous: the reply must be the command\'s)', f2.reply === WD.FRESH_LINE && !meta(d12).note);
+  let d12b = makeDb(withPkg(noPhone(), 'l-asha'));
+  await turnSeq(d12b, 'Tell asha walk fifteen her booking is confirmed', [BOOK_ASHA]);
+  const live12 = pmaRows(d12b).find((r) => r.state === 'staged');
+  const f3 = await turnSeq(d12b, 'START OVER', [MISS], { nowMs: soonAfter(d12b) });
+  T('12.2 "START OVER" with the booking question live: "Started fresh." and that row marked expired', !!live12 && f3.reply === WD.FRESH_LINE && pmaRows(d12b).find((r) => r.id === live12.id).state === 'expired');
+  T('12.3 "refresh the page" is not the command (words around it)', !!WD.FRESH_COMMAND && !WD.FRESH_COMMAND.test('refresh the page') && WD.FRESH_COMMAND.test('Reset.')); // total at a tree without the command
+  let d12c = makeDb(ruleWorld());
+  const REL_Q = { route: 'task', acts: [{ act: 'relay', client_as_spoken: 'qqzz' }] };
+  const e1 = await turnSeq(d12c, 'Tell qqzz hi', [REL_Q]);
+  const e2 = await turnSeq(d12c, 'Tell qqzz hi', [REL_Q], { nowMs: soonAfter(d12c) });
+  T('12.4 the same error line twice: the second carries "Say \'start over\' to clear this."', /^Could not send the message\. No client called qqzz\.$/.test(e1.reply) && typeof WD.REPEAT_HINT === 'string' && e2.reply === `${e1.reply}\n\n${WD.REPEAT_HINT}`);
+  const e3 = await turnSeq(d12c, 'Tell qqyy hi', [{ route: 'task', acts: [{ act: 'relay', client_as_spoken: 'qqyy' }] }], { nowMs: soonAfter(d12c) });
+  T('12.5 a different error line after it: no hint', /^Could not send the message\. No client called qqyy\.$/.test(e3.reply));
+
   // ── §8 CE-46 ELZ-4 · layer C (the chair, from FE-5's read, 30 September 2026): the history of a two-part reply. GET /chat/history selects meta and
   // each message carries replies (meta.listener.replies, two or more, each scrubbed as the stream scrubs its parts) and NOTHING ELSE of meta.
   console.log('\n§8 layer C: the history of a two-part reply (chat.js)');
@@ -500,12 +562,14 @@ async function main() {
     async (req2) => { const M = req2(WDf); const d = makeDb(ruleWorld()); await turnSeq(d, 'message Priya thanks', [MISS], { M }); return (await turnSeq(d, '2', [MISS], { M })).keys; }, (v) => v !== 'B37');
   await mut('M8 the min-length guard dropped on the first word: 1.13\'s second half red', WDf, [['if (first.length < REHEAR_MIN_NAME) return null;', '']], WDdeps,
     async (req2) => req2(WDf).relayRuleMatch(makeDb(abWorld()), V.id, 'tell ab hi'), (v) => v !== null);
-  await mut('M9 validNote drops lead_first back to lead: 2.6 red', WDf, [["n.pick_kind === 'lead_first' ? 'lead_first' : 'lead'", "'lead'"]], WDdeps,
+  // RE-ANCHORED (CE-47 ELZ-4 · F-44.268, labelled): validNote's pick_kind now also keeps 'lead_prefix'; the mutation drops lead_first as before.
+  await mut('M9 validNote drops lead_first back to lead: 2.6 red', WDf, [["n.pick_kind === 'lead_first' ? 'lead_first' : n.pick_kind", "n.pick_kind"]], WDdeps,
     async (req2) => { const M = req2(WDf); const d = makeDb(ruleWorld()); await turnSeq(d, 'message Priya thanks', [MISS], { M }); return (await turnSeq(d, '2', [MISS], { M })).keys; }, (v) => v !== 'B37');
   await mut('M10 the other acts dropped when the relay is added (shape (a)\'s loss): 2.9b red', WDf, [["const others = heardReq && Array.isArray(heardReq.acts) ? heardReq.acts.map((a) => ({ ...a })) : [];", 'const others = [];']], WDdeps,
     async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'Tell Asha Walk Fifteen the booking is confirmed', [{ route: 'task', acts: [BOOKED] }], { M: req2(WDf) }); return (noteIn(d).acts || []).map((a) => a.act).join(); }, (v) => !/booking_confirmed/.test(v));
   // LABELED AMENDMENT · CE-46 ELZ-3 · F-44.248: the record line now also carries rule 'draft_followup'; M11's anchor follows it
-  await mut('M11 the record forgets what was heard: 2.1b red', WDf, [["...(ear && (ear.rule === 'relay' || ear.rule === 'draft_followup') ? { heard: ear.heard === undefined ? null : ear.heard, rule: ear.rule } : {})", '...({})']], WDdeps,
+  // RE-ANCHORED (CE-47 ELZ-4 · F-44.267, labelled): the record's heard-and-rule clause now also names 'note_answer'; the same mutation.
+  await mut('M11 the record forgets what was heard: 2.1b red', WDf, [["...(ear && (ear.rule === 'relay' || ear.rule === 'draft_followup' || ear.rule === 'note_answer') ? { heard: ear.heard === undefined ? null : ear.heard, rule: ear.rule } : {})", '...({})']], WDdeps,
     async (req2) => { const d = makeDb(ruleWorld()); await turnSeq(d, 'tell Sarah hi', [MISS], { M: req2(WDf) }); return meta(d).rule; }, (v) => v !== 'relay');
   await mut('M12 F-44.231\'s collapse removed (two B8s, no note): 2.4f red', WDf, [["      if (st.lines.every((l) => listed(l) === listed(st.lines[0]))) { st.lines = [st.lines[0]]; st.keys = ['B8']; }", '']], WDdeps,
     async (req2) => { const d = makeDb(ruleWorld()); return (await turnSeq(d, "tell walk twin we're confirmed", [{ route: 'task', acts: [{ act: 'booking_confirmed', client_as_spoken: 'walk twin' }] }], { M: req2(WDf) })).keys; }, (v) => v !== 'B8');
@@ -537,6 +601,26 @@ async function main() {
     async (req2) => { const M = req2(WDf); const d = makeDb(noPhone()); await turnSeq(d, 'Tell asha walk fifteen booking is confirmed', [RELAY_ASHA_LOWER], { M });
       d.tables['engine.messages'].filter((r) => r.role === 'assistant').slice(-1)[0].meta.listener.note = heldNote;
       await turnSeq(d, 'Just draft the message and give me', [MISS], { nowMs: soonAfter(d), M }); return JSON.stringify(meta(d).note || null); }, (v) => v !== JSON.stringify(heldNote));
+
+  // CE-47 ELZ-4 · F-44.267 (§10): each mutation replays 11:37:46 to 11:38:13 on the mutated door
+  const walkP7 = async (M) => { const d = makeDb(withP7()); await turnSeq(d, 'Tell walk p5 booking is confirmed', [REL_P5], { M }); await turnSeq(d, 'Yes', [MISS], { nowMs: soonAfter(d), M });
+    const t = await turnSeq(d, 'Just draft the message and send me', [MISS], { nowMs: soonAfter(d), M }); return Array.isArray(t.said.replies) && t.said.replies.length === 2 && /^Here is the message for Walk P7\./.test(t.said.replies[0]); };
+  await mut('M25 the acts decided from a note answer not written to the record: 10.1, 10.2 red (B35 again)', WDf, [['    if (fromNote) st.decided = fromNote;', '']], WDdeps,
+    async (req2) => walkP7(req2(WDf)), (v) => v === false);
+  await mut('M26 the record\'s client not counted as spoken (the floor strips Walk P7): 10.2 red', WDf, [["(st.said || st.draftClient) ? `${message} ${st.said || ''} ${st.draftClient || ''}` : message", "st.said ? `${message} ${st.said}` : message"]], WDdeps,
+    async (req2) => walkP7(req2(WDf)), (v) => v === false);
+
+  // CE-47 ELZ-4 · F-44.268 (§11)
+  await mut('M27 the prefix pick removed (B38 again): 11.0 red', WDf, [['        if (pre && pre.length >= 2) {', '        if (false) {']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb(withAshas()); const t = await turnSeq(d, 'Tell asha walk her booking is confirmed', [HEARD_1136], { M }); return t.reply; }, (v) => !/Which client did you mean/.test(v));
+  await mut('M28 the pick not pinned to the lead shown (the pinned read refuses it): 11.2 red', WDf, [['    if (error || !data || !(n === k || n.startsWith(`${k} `))) return null;', '    return null;']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb(withAshas()); await turnSeq(d, 'Tell asha walk her booking is confirmed', [HEARD_1136], { M }); const t = await turnSeq(d, '2', [MISS], { nowMs: soonAfter(d), M }); return Array.isArray(t.said.replies) && t.said.replies.length === 2; }, (v) => v === false);
+
+  // CE-47 ELZ-4 · F-44.270 (§12)
+  await mut('M29 the start-over command removed ("Refresh" read as a name again): 12.0 red', WDf, [["const FRESH_COMMAND = /^\\s*(start over|refresh|reset)\\s*[.!]*\\s*$/i;", 'const FRESH_COMMAND = /^$x/;']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb(withP7()); await turnSeq(d, 'Just draft a message', [MISS], { M }); const t = await turnSeq(d, 'Refresh', [MISS], { nowMs: soonAfter(d), M }); return t.reply; }, (v) => v !== 'Started fresh.');
+  await mut('M30 the repeat hint removed: 12.4 red', WDf, [['    if (prev && prev === out.reply.trim()) return', '    if (false) return']], WDdeps,
+    async (req2) => { const M = req2(WDf); const d = makeDb(ruleWorld()); const R = { route: 'task', acts: [{ act: 'relay', client_as_spoken: 'qqzz' }] }; await turnSeq(d, 'Tell qqzz hi', [R], { M }); const t = await turnSeq(d, 'Tell qqzz hi', [R], { nowMs: soonAfter(d), M }); return t.reply; }, (v) => !/start over/.test(v));
 
   // CE-46 ELZ-4 · layer C's history (§8): chat.js cannot be compiled without the database's keys, so these mutations edit the FILE, re-read the
   // cell's subject from it, and restore it byte for byte (checked by sha256); a missing anchor or an unrestored file fails the mutation
