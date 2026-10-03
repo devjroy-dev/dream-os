@@ -158,6 +158,10 @@ async function readyOrRefuse(req, res) {
   return { supabase, gaps, token: t.token };
 }
 const metaDown = (res, e) => okRes(res, { gaps: { gap: e && e.tokenDead ? 'expired' : 'meta_unavailable' } });
+// THE RUPEE LOCK, server half (CE-47's ruling, 1 Oct 2026): every money word in the room is rupees, so an ad is never
+// prepared, created or resumed on an account whose currency is not INR. Refused here, before any call to Meta.
+const NOT_INR = 'TDW runs ads on rupee accounts for now.';
+const notInr = (currency) => !!currency && currency !== 'INR';
 
 // Her posts, both kinds (G4): Instagram posts and reels with their insights, then her Facebook Page's latest posts read
 // with the Page token. The suggestion is drawn from Instagram only (saves and reach, then likes, then newest). A Page
@@ -238,6 +242,7 @@ function checkAgainstAccount(v, facts) {
 
 router.post('/prepare', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const r = await readyOrRefuse(req, res); if (!r) return;
+  if (notInr(r.gaps.account && r.gaps.account.currency)) return errRes(res, 400, NOT_INR, 'ADS_NOT_INR');
   const v = target.validate((req.body || {}).settings);
   if (!v.ok) return okRes(res, { errors: v.errors });
   try {
@@ -250,6 +255,7 @@ router.post('/prepare', requireAuth, resolveVendor(), asyncHandler(async (req, r
 
 router.post('/run', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const r = await readyOrRefuse(req, res); if (!r) return;
+  if (notInr(r.gaps.account && r.gaps.account.currency)) return errRes(res, 400, NOT_INR, 'ADS_NOT_INR');
   const body = req.body || {};
   const v = target.validate(body.settings);
   if (!v.ok || body.confirm !== v.confirm) return errRes(res, 400, 'Something changed. Look at the settings again and tap Run.', 'ADS_CONFIRM');
@@ -317,6 +323,7 @@ router.post('/manage', requireAuth, resolveVendor(), asyncHandler(async (req, re
   if (!one) return errRes(res, 404, 'No such ad.', 'ADS_NONE');
   if (!ACTIONS.includes(b.action) || b.confirm !== changeEcho(one.id, b.action, b.values)) return errRes(res, 400, 'Something changed. Look again and confirm.', 'ADS_CONFIRM');
   if (b.action === 'duplicate') return okRes(res, { draft: one.settings });   // a NEW draft: /prepare and /run as ever
+  if (b.action === 'resume' && notInr(one.currency)) return errRes(res, 400, NOT_INR, 'ADS_NOT_INR');
   // The echo proves the screen and the request agree; it does not make a value lawful. Re-check here, as /run does.
   const vv = b.values || {};
   if (b.action === 'budget' && (!Number.isInteger(vv.minor) || vv.minor <= 0 || !['daily', 'lifetime'].includes(vv.kind))) return errRes(res, 400, 'Choose an amount.', 'ADS_VALUE');

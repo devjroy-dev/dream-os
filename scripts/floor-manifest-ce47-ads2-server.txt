@@ -1,0 +1,10 @@
+# scripts/floor-manifest-ce47-ads2-server.txt
+# CE-47 · ADS-2 · the server cut (dream-os). BASE: 6e43161. No migration, no new folder; two added files.
+# The funds (Meta's "Available balance (₹200.00 INR)" read into funds: { amount, currency } | null on the chooser's wire)
+# and the rupee lock, server half (/prepare, /run and a resume refused for a non-INR account, before any call to Meta).
+# Rung b144 (8.1 to 8.6; M17 to M19). F-14.16: a dirty path outside this list is a STOP.
+src/lib/ads/meta.js
+src/api/vendor/ads.js
+scripts/b144_ads1_panel_bench.js
+docs/handovers/TDW_CE47_ADS2_SERVER_HANDOVER.md
+scripts/floor-manifest-ce47-ads2-server.txt

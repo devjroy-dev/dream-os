@@ -84,7 +84,7 @@ function fakeDb() {
 function fakeMeta(opts = {}) {
   const calls = [];
   const timeline = opts.timeline || null;
-  const acct = { currency: 'INR', min_daily_budget: 10000, account_status: 1, name: 'Swati Roy Makeup' };
+  const acct = { currency: opts.usd ? 'USD' : 'INR', min_daily_budget: 10000, account_status: 1, name: 'Swati Roy Makeup' };
   async function f(url, init) {
     const u = new URL(url); const p = u.pathname.replace(/^\/v[0-9.]+\//, '');
     const form = init && init.body ? Object.fromEntries(new URLSearchParams(init.body)) : null;
@@ -98,8 +98,8 @@ function fakeMeta(opts = {}) {
     const PAGE = { id: 'PAGE1', name: 'The Dream Wedding', instagram_business_account: { id: 'IG1', username: 'thedreamwedding_in' } };
     if (p === 'me/accounts') return J({ data: opts.portfolioOnly ? [] : [PAGE] });
     if (p === 'me/businesses') return J({ data: opts.portfolioOnly ? [{ id: 'B1', name: 'thedreamwedding', owned_pages: { data: [PAGE] } }] : [] });
-    if (p === 'me/adaccounts') return J({ data: [{ id: 'act_4417', name: 'Swati Roy Makeup', account_status: 1, currency: 'INR' }]
-      .concat(opts.twoAccounts ? [{ id: 'act_9999', name: 'Dev Roy', account_status: 1, currency: 'INR' }] : []) });
+    if (p === 'me/adaccounts') return J({ data: [{ id: 'act_4417', name: 'Swati Roy Makeup', account_status: 1, currency: opts.usd ? 'USD' : 'INR', funding_source_details: { id: '1', display_string: 'Available balance (\u20b9200.00 INR)', type: 20 } }]
+      .concat(opts.twoAccounts ? [{ id: 'act_9999', name: 'Dev Roy', account_status: 1, currency: 'INR', funding_source_details: { id: '2', display_string: 'Visa *4417', type: 1 } }] : []) });
     if (p === 'PAGE1' && u.searchParams.get('fields') === 'access_token') return J({ id: 'PAGE1', access_token: 'PAGE-TOKEN' });
     if (p === 'PAGE1/posts') return J({ data: [{ id: '1008033895736362_555', message: 'Meher and Kabir. Jaipur', full_picture: 'https://x/fb.jpg', created_time: new Date().toISOString() }] });
     if (p === 'act_4417' && init.method === 'GET') return J(acct);
@@ -356,6 +356,45 @@ function goodSettings() {
     });
   }
 
+    // ── CE-47 ADS-2 · THE FUNDS and THE RUPEE LOCK (server half) ──
+    ok(JSON.stringify(meta.fundsFrom({ display_string: 'Available balance (\u20b9200.00 INR)' })) === '{"amount":200,"currency":"INR"}'
+      && JSON.stringify(meta.fundsFrom({ display_string: 'Available balance (\u20b91,200.50 INR)' })) === '{"amount":1200.5,"currency":"INR"}'
+      && JSON.stringify(meta.fundsFrom({ display_string: 'Available balance ($12.50 USD)' })) === '{"amount":12.5,"currency":"USD"}',
+      '8.1 funds read from Meta\'s own line: Rs 200, Rs 1,200.50, $12.50 with its code');
+    ok(meta.fundsFrom({ display_string: 'Visa *4417' }) === null && meta.fundsFrom(null) === null && meta.fundsFrom({}) === null,
+      '8.2 a card, or no line, is null: no funds line');
+    {
+      const db = fakeDb(); const m = fakeMeta({ twoAccounts: true }); adsRouter._setFetch(m.f); armed(db); connected(db);
+      await withServer(db, async (call) => {
+        const st = await call('GET', '/');
+        const acc = (st.json.gaps && st.json.gaps.choose && st.json.gaps.choose.accounts) || [];
+        ok(acc.length === 2 && JSON.stringify(acc[0].funds) === '{"amount":200,"currency":"INR"}' && acc[1].funds === null,
+          '8.3 the chooser\'s wire carries funds: { amount, currency } for the prepaid account, null for the card', JSON.stringify(acc));
+      });
+    }
+    {
+      const db = fakeDb(); const m = fakeMeta({ usd: true }); adsRouter._setFetch(m.f); armed(db); connected(db);
+      await withServer(db, async (call) => {
+        const b0 = m.calls.length;
+        const pr = await call('POST', '/prepare', { settings: goodSettings() });
+        const run = await call('POST', '/run', { settings: goodSettings(), confirm: 'x' });
+        const after = m.calls.slice(b0).filter((c) => c.method === 'POST' || c.p === 'act_4417');
+        ok(pr.status === 400 && pr.json.code === 'ADS_NOT_INR' && run.status === 400 && run.json.code === 'ADS_NOT_INR' && run.json.error === 'TDW runs ads on rupee accounts for now.' && after.length === 0,
+          '8.4 a dollar account: /prepare and /run refused with the plain line, before any call to Meta', JSON.stringify({ pr: pr.json, run: run.json, after: after.map((c) => c.p) }));
+        db.T.vendor_ads.push({ id: 'aaaaaaaa-0000-4000-8000-0000000000d1', vendor_id: VENDOR_A, ad_account_id: 'act_4417', status: 'paused', currency: 'USD', campaign_id: 'c-usd', adset_id: 's-usd', ad_id: 'a-usd', settings: goodSettings(), total_minor: 10000, created_at: new Date().toISOString() });
+        const rp = await call('POST', '/manage/prepare', { id: 'aaaaaaaa-0000-4000-8000-0000000000d1', action: 'resume' }); const b1 = m.calls.length;
+        const rs = await call('POST', '/manage', { id: 'aaaaaaaa-0000-4000-8000-0000000000d1', action: 'resume', values: rp.json.values, confirm: rp.json.confirm });
+        const rC = m.calls.slice(b1).filter((c) => c.method === 'POST');
+        ok(rs.status === 400 && rs.json.code === 'ADS_NOT_INR' && rC.length === 0, '8.5 a paused ad on a dollar account cannot be resumed; nothing reaches Meta', JSON.stringify({ rs: rs.json, posts: rC.length }));
+      });
+    }
+    {
+      const db = fakeDb(); const m = fakeMeta(); adsRouter._setFetch(m.f); armed(db); connected(db);
+      await withServer(db, async (call) => {
+        const pr = await call('POST', '/prepare', { settings: goodSettings() });
+        ok(pr.status === 200 && !pr.json.code && pr.json.confirm, '8.6 a rupee account still prepares (the lock is only for non-INR)', JSON.stringify(pr.json).slice(0, 200));
+      });
+    }
   if (!process.env.B144_CHILD) {
     ok(meta.connectedLine({ scopes: ['ads_read'], g: { gap: 'choose', choose: { pages: [{ id: 'P1' }, { id: 'P2' }] } }, trace: [{ id: 'P1', via: 'me/accounts' }, { id: 'P2', via: 'client_pages' }] })
       === '[ads:callback] connected: scopes=ads_read; chooser=pages (2: P1 via me/accounts; P2 via client_pages)', '5.6d the line names a chooser and where each Page came from');
@@ -376,6 +415,9 @@ function goodSettings() {
       ['src/lib/ads/meta.js', "(m.media_type === 'VIDEO' || m.media_type === 'REELS') ? (m.thumbnail_url || m.media_url || null) : (m.media_url || m.thumbnail_url || null)", "(m.media_url || m.thumbnail_url || null)", 'M13 a reel drawn from its video file'],
       ['src/api/vendor/ads.js', "console.log(meta.connectedLine({ scopes, g: meta.gapsFrom({ scopes, pageList, accounts }), trace }));", "void 0;", 'M14 the success line never printed'],
       ['src/api/vendor/ads.js', "console.log(meta.connectedLine({ scopes, g: meta.gapsFrom({ scopes, pageList, accounts }), trace }));", "console.log(meta.connectedLine({ scopes, g: meta.gapsFrom({ scopes, pageList, accounts }), trace }), long.token);", 'M15 the token printed with the line'],
+      ['src/api/vendor/ads.js', "  if (notInr(r.gaps.account && r.gaps.account.currency)) return errRes(res, 400, NOT_INR, 'ADS_NOT_INR');\n  const body = req.body || {};", "  const body = req.body || {};", 'M17 the run lock removed'],
+      ['src/lib/ads/meta.js', "  if (!m) return null;\n  const amount", "  if (!m) return { amount: 0, currency: 'INR' };\n  const amount", 'M18 a card read as funds'],
+      ['src/api/vendor/ads.js', "  if (b.action === 'resume' && notInr(one.currency)) return errRes(res, 400, NOT_INR, 'ADS_NOT_INR');\n", "", 'M19 the resume lock removed'],
     ];
     for (const [rel, from, to, name] of MUTS) {
       const file = path.join(ROOT, rel); const orig = fs.readFileSync(file, 'utf8'); const h = sha(orig);

@@ -116,11 +116,22 @@ async function pageToken({ token, pageId, env = process.env, fetchImpl }) {
   return b.access_token;
 }
 
+// THE FUNDS (CE-47, ADS-2): Meta's own funding line, "Available balance (₹200.00 INR)" on a prepaid account, read into
+// { amount, currency } in rupees and the account's code. Anything else (a card, no line) is null: no funds line.
+const FUNDS_RE = /^Available balance \((?:[^\d\s]*)\s*([\d,]+(?:\.\d+)?)\s+([A-Z]{3})\)$/;
+function fundsFrom(fsd) {
+  const s = fsd && typeof fsd.display_string === 'string' ? fsd.display_string.trim() : '';
+  const m = s.match(FUNDS_RE);
+  if (!m) return null;
+  const amount = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(amount) ? { amount, currency: m[2] } : null;
+}
+
 async function adAccounts({ token, env = process.env, fetchImpl }) {
-  const b = await call(fetchImpl, 'adaccounts', `${v(env)}/me/adaccounts?fields=id,name,account_status,currency&limit=50`, token);
+  const b = await call(fetchImpl, 'adaccounts', `${v(env)}/me/adaccounts?fields=id,name,account_status,currency,funding_source_details&limit=50`, token);
   return (b && Array.isArray(b.data) ? b.data : [])
     .filter((a) => a && /^act_[0-9]+$/.test(String(a.id)))
-    .map((a) => ({ id: String(a.id), name: typeof a.name === 'string' ? a.name : '', status: Number(a.account_status), currency: a.currency || null }));
+    .map((a) => ({ id: String(a.id), name: typeof a.name === 'string' ? a.name : '', status: Number(a.account_status), currency: a.currency || null, funds: fundsFrom(a.funding_source_details) }));
 }
 
 // Meta's account_status: 1 is ACTIVE. Any other value is an account she cannot run an ad on today.
@@ -151,7 +162,7 @@ function gapsFrom({ scopes = [], pageList = [], accounts = [], pick = {} }) {
   let account = active.length === 1 ? active[0] : active.find((a) => a.id === pick.ad_account_id);
   const choose = {};
   if (!linked) choose.pages = linkedAll.map((p) => ({ id: p.id, name: p.name, ig: p.ig }));
-  if (!account && active.length > 1) choose.accounts = active.map((a) => ({ id: a.id, name: a.name, currency: a.currency }));
+  if (!account && active.length > 1) choose.accounts = active.map((a) => ({ id: a.id, name: a.name, currency: a.currency, funds: a.funds || null }));
   if (choose.pages || choose.accounts) return { gap: 'choose', choose };
   const page = { id: linked.id, name: linked.name };
   const ig = { id: linked.ig.id, username: linked.ig.username };
@@ -181,7 +192,7 @@ function connectedLine({ scopes = [], g = null, trace = [] }) {
   return `[ads:callback] connected: ${parts.join('; ')}`;
 }
 
-module.exports = { MetaError, exchangeCode, longLived, me, grantedScopes, pages, pageToken, adAccounts, gapsFrom, connectedLine, NEEDED_SCOPES, ACTIVE };
+module.exports = { MetaError, exchangeCode, longLived, me, grantedScopes, pages, pageToken, adAccounts, gapsFrom, connectedLine, fundsFrom, NEEDED_SCOPES, ACTIVE };
 
 // ── THE BOOST (cut 1: a MESSAGES ad from one of her Instagram posts into her Instagram Direct) ─────────────────────
 // Field names quoted from Meta's "Ads that Click to Instagram" (read 28 September 2026): campaign objective
