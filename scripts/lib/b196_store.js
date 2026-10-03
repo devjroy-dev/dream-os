@@ -25,7 +25,7 @@ function makeStore(seed) {
   function from(name) {
     const st = { name, op: 'select', cols: null, filters: [], orders: [], lim: null, payload: null, returning: null, single: null, onConflict: null };
     const api = {
-      select(cols) { if (st.op === 'select') st.cols = cols; else st.returning = cols || '*'; return api; },
+      select(cols, opts) { if (st.op === 'select') { st.cols = cols; st.countOpt = opts && opts.count ? opts : null; } else st.returning = cols || '*'; return api; },   // opts: cut 9 (count, head)
       eq(c, v) { st.filters.push((r) => r[c] === v); return api; },
       neq(c, v) { st.filters.push((r) => r[c] !== v); return api; },   // cut 7
       is(c, v) { st.filters.push((r) => (v === null ? r[c] === null || r[c] === undefined : r[c] === v)); return api; },
@@ -78,6 +78,7 @@ function makeStore(seed) {
       } else if (st.op === 'delete') {
         const keep = rows.filter((r) => !match(r)); out = []; t[name] = keep;
       }
+      if (st.op === 'select' && st.countOpt) return { data: st.countOpt.head ? null : out, count: out.length, error: null };   // cut 9
       if (st.single === 'maybe') return { data: out[0] || null, error: out.length > 1 ? { message: 'many' } : null };
       if (st.single === 'one') return out.length === 1 ? { data: out[0], error: null } : { data: null, error: { message: 'not one row' } };
       return { data: out, error: null };

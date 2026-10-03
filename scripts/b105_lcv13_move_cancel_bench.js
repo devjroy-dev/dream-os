@@ -483,6 +483,10 @@ async function main() {
   let same = !!baseDay; let saw = false;
   if (baseDay) for (const date of ['2027-01-08', '2027-01-09', '2027-05-05']) {
     const a = await drive(loadRouter(baseDay), makeDb(dayWorld()), date); const b = await drive(loadRouter(src('src/api/vendor/day.js')), makeDb(dayWorld()), date);
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 9 r2 (b203; FE-8's gap 3, the chair's ruling): the day door gains `enquiries` and
+    // `enquiries_capped` (Check a date's wedding-day enquiries). Every key it had stays byte-identical: the two new keys are
+    // taken off the AFTER payload, and only when they are exactly the two, before the comparison.
+    if (b && b.body && Array.isArray(b.body.enquiries) && typeof b.body.enquiries_capped === 'boolean') { delete b.body.enquiries; delete b.body.enquiries_capped; } else if (b && b.body && b.body.ok) same = false;
     if (canon(a) !== canon(b)) same = false; if (date === '2027-01-08' && b.body.events && b.body.events.length === 2 && b.body.blocks.length === 1) saw = true;
   }
   T('4.1 the day sheet\'s payload is BYTE-IDENTICAL before and after on the same rows (three days; a block, a timed recce, a cancelled and a deleted row present)', same && saw);

@@ -668,7 +668,8 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       // the top band is a floor with no ceiling.
       budget_min:   postedBudgetMin,
       raw_message: `${brideNameFinal || 'A couple'} enquired via the Discover feed on The Dream Wedding.`,
-      notes:       'Discover enquiry — she found you on the feed.',
+      // CE-47 WEB-4 cut 9: the stored line for NEW rows (no dash, no 'she'); rows written before keep their old line.
+      notes:       'Discover enquiry: found you on the feed.',
       // ── F-16.30 · R-37.32 / R-37.34 / R-37.37 — HER WORD, UNCOALESCED ─────
       // THE RETURNING BRIDE'S ANSWERS STOP BEING DISCARDED. Until this line,
       // a phone the vendor already knew made `createLead` return the existing

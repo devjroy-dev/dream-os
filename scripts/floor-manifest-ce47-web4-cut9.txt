@@ -1,0 +1,12 @@
+# scripts/floor-manifest-ce47-web4-cut9.txt
+# CE-47 · WEB-4 cut 9 r2 · Today's slim summary, Check a date's enquiries, the stored Discover line · base bb60f31 · F-19.16: a dirty path outside this list stops the floor.
+# Rung b203 (22 cells). b105 amended by label. No migration. No new directory. No file deleted.
+docs/handovers/TDW_CE47_WEB4_CUT9_HANDOVER.md
+scripts/b105_lcv13_move_cancel_bench.js
+scripts/b203_ce47_web4_cut9_bench.js
+scripts/floor-manifest-ce47-web4-cut9.txt
+scripts/lib/b196_store.js
+src/api/couple/enquire.js
+src/api/vendor/core.js
+src/api/vendor/day.js
+src/api/vendor/todaySummary.js

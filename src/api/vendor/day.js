@@ -173,6 +173,16 @@ router.get('/:vendorId/:date', requireAuth, resolveVendor({ paramName: 'vendorId
     followups = [];
   }
 
+  // ── CE-47 WEB-4 cut 9 r2 (FE-8's gap 3, as the chair ruled): Check a date also lists her OPEN enquiries whose wedding is
+  // this day ('new', 'contacted', 'quoted'; not deleted), [{ lead_id, name }], 20 at most with `enquiries_capped`. A
+  // decoration leg: a failed read gives [] and false, never a 500 on the day.
+  let enquiries = []; let enquiries_capped = false;
+  try {
+    const { data: eq, error: eqErr } = await supabase.from('leads').select('id, name').eq('vendor_id', vendor.id)
+      .in('state', ['new', 'contacted', 'quoted']).is('deleted_at', null).eq('wedding_date', date).order('created_at', { ascending: false }).limit(21);
+    if (!eqErr && Array.isArray(eq)) { enquiries = eq.slice(0, 20).map((l) => ({ lead_id: l.id, name: l.name || null })); enquiries_capped = eq.length > 20; }
+  } catch (_eqE) { /* [] and false */ }
+
   return res.json({
     ok: true,
     date,
@@ -196,6 +206,8 @@ router.get('/:vendorId/:date', requireAuth, resolveVendor({ paramName: 'vendorId
     hot,
     milestones,
     followups,
+    enquiries,
+    enquiries_capped,
   });
 }));
 
