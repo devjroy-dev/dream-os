@@ -175,10 +175,14 @@ async function mintVendor(req, res) {
   // (2) Birth, only when there is something to be born. When a users row exists
   // but a vendors row does not, the RPC still runs — that is the case it is FOR —
   // but it is handed the STORED name, never the typed one.
+  // F-44.271 (CE-47 WEB-4 cut 11, the chair's ruling d): no vendor is born without a name. The 'Vendor' placeholder is
+  // gone: a new vendor needs the typed name, or the name the person's users row already holds.
+  const storedName = existingUser && existingUser.name && String(existingUser.name).trim();
+  if (!existingVendor && !storedName && !cleanName) return errRes(res, 400, 'name is required.');
   if (!existingVendor) {
     const { error: rpcError } = await supabase.rpc('invite_vendor', {
       p_phone: cleanPhone,
-      p_name:  (existingUser && existingUser.name) || cleanName || 'Vendor',
+      p_name:  storedName || cleanName,
     });
     if (rpcError) return errRes(res, 400, rpcError.message);
   }

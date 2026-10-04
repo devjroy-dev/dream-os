@@ -432,7 +432,9 @@ section('§3  F-10.47 — THE MINT THAT SAID "created" FOR A ROW IT DID NOT CREA
   // A virgin BARE-DIGIT mint must store the normalised form, not the digits.
   {
     const sbNew2 = makeSupabase(baseFixtures());
-    await call(F_VENDORS, 'post', '/create', { supabase: sbNew2, body: { phone: '9999911111' } });
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271 ruling d): the admin mint now requires a name for a new vendor
+    // (no 'Vendor' placeholder), so this virgin mint carries one; the cell still proves the E.164 form reaches the RPC.
+    await call(F_VENDORS, 'post', '/create', { supabase: sbNew2, body: { phone: '9999911111', business_name: 'Studio Bare' } });
     const rpc = sbNew2.__rpcs.find(r => r.name === 'invite_vendor');
     ok('a virgin bare-digit mint hands the RPC the E.164 form',
        !!(rpc && rpc.params.p_phone === '+919999911111'), rpc && rpc.params.p_phone);
@@ -1087,7 +1089,8 @@ section('§7  MUTATION — every cure cell proven able to REDDEN');
       'const cleanPhone = toE164(String(phone).trim());',
       'const cleanPhone = String(phone).trim();');
     const sb = makeSupabase(baseFixtures());
-    const r  = await call(F_VENDORS, 'post', '/create', { supabase: sb, body: { phone: '9888294440' } });
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205): the mutated mint reads the number as VIRGIN, and a virgin vendor needs a name now.
+    const r  = await call(F_VENDORS, 'post', '/create', { supabase: sb, body: { phone: '9888294440', business_name: 'Studio Bare' } });
     ok('M11 removing toE164 ⇒ a bare-digit mint reads a stored +91 number as VIRGIN again',
        applied && r.body && r.body.outcome === 'created', `applied=${applied}`);
     restoreAll();

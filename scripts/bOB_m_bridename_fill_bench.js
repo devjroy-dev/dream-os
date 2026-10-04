@@ -175,11 +175,13 @@ await ta('§1.3 path (a) name is WHITESPACE ONLY ⇒ treated as absence, filled'
     'a one-space name blocked the fill; the door and brideComplete now disagree about what a name is');
 });
 
-await ta('§1.4 path (a) NO name presented ⇒ zero writes, null returned (login is not a write)', async () => {
+await ta('§1.4 path (a) NO name on an account with NO role row ⇒ a NEW account, refused (name_required), zero writes', async () => {
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling a): a user with no row in this role is a NEW account; without a name
+  // anywhere it is refused before any write (was: zero writes, null returned).
   const p = plane([{ id: USER_LINKED, auth_user_id: AUTH_LINKED, phone: PHONE_REBIND, name: null }]);
-  const r = await provisionRole(p, { authUserId: AUTH_LINKED, phone: PHONE_REBIND, name: null, role: 'couple' });
-  assert.strictEqual(userWrites(p).length, 0, 'a plain login issued a users write');
-  assert.strictEqual(r.name, null);
+  let err = null; try { await provisionRole(p, { authUserId: AUTH_LINKED, phone: PHONE_REBIND, name: null, role: 'couple' }); } catch (e) { err = e; }
+  assert.ok(err && err.reason === 'name_required', 'a nameless new account was not refused');
+  assert.strictEqual(userWrites(p).length, 0, 'a refused provision issued a users write');
 });
 
 await ta('§1.5 path (b) re-bind, name NULL ⇒ auth bound AND name filled', async () => {
@@ -240,12 +242,12 @@ await ta('§1.7 path (c) fresh row WITH a name ⇒ inserted and returned (unchan
   assert.strictEqual(r.name, 'Meera');
 });
 
-await ta('§1.8 path (c) fresh row with NO name ⇒ no name key, null returned', async () => {
+await ta('§1.8 path (c) fresh row with NO name ⇒ refused (name_required), no users row inserted', async () => {
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling a): no account is created without a name (was: inserted with no name key).
   const p = plane([]);
-  const r = await provisionRole(p, { authUserId: AUTH_FRESH, phone: PHONE_REBIND, name: null, role: 'couple' });
-  const ins = p._state.inserts.find((i) => i.table === 'users');
-  assert.ok(!('name' in ins.payload), 'an absent name was written as a key');
-  assert.strictEqual(r.name, null);
+  let err = null; try { await provisionRole(p, { authUserId: AUTH_FRESH, phone: PHONE_REBIND, name: null, role: 'couple' }); } catch (e) { err = e; }
+  assert.ok(err && err.reason === 'name_required', 'a nameless fresh account was not refused');
+  assert.ok(!p._state.inserts.some((i) => i.table === 'users'), 'a nameless users row was inserted');
 });
 
 await ta('§1.9 the VENDOR caller shape gets the same fill [R-35.13 blast radius, proven not assumed]', async () => {
@@ -378,8 +380,9 @@ await ta('§3.3 THE MUTATION: narrow path (a) back to select(\'id\') ⇒ §1.2 R
 
 await ta('§3.4 THE MUTATION: remove `name: r.name` from couple /provision ⇒ §2.1 RED', async () => {
   const red = await withMutation('src/api/couple/auth.js',
-    'pin_set: r.pin_set, name: r.name });',
-    'pin_set: r.pin_set });',
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205): the couple /provision answer now ends `name: r.name,` and carries needs_name.
+    'pin_set: r.pin_set, name: r.name,',
+    'pin_set: r.pin_set,',
     () => reddens('2.1', () => {
       const s = read('src/api/couple/auth.js');
       const line = s.split('\n').find((l) => l.includes('couple_id: r.role_id'));

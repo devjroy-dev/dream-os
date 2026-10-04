@@ -69,6 +69,10 @@
 // written. The tension is closed, not carried.
 const { textPresent } = require('./onboardingPredicate');
 
+class NameRequiredError extends Error {
+  constructor() { super('name_required'); this.name = 'NameRequiredError'; this.reason = 'name_required'; }
+}
+
 async function provisionRole(supabase, { authUserId, phone, name, role }) {
   if (!authUserId) throw new Error('authUserId required');
   // Supabase returns phone digits-only (e.g. "918757788550"); the rest of the
@@ -163,6 +167,17 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
   // The `name !== currentName` term keeps the promotion from issuing a write
   // that changes nothing — the common case, where the same person typed the
   // same name at both doors, must not move `updated_at`.
+  // ── F-44.271 (CE-47 WEB-4 cut 11, the chair's ruling a): NO NEW ACCOUNT WITHOUT A NAME. A new account is a person with
+  // no users row yet, or a users row with no row in this role. If neither the request nor the users row carries a name,
+  // nothing is written and NameRequiredError is thrown (the door answers 400 name_required). A RETURNING account (a role
+  // row exists) is never refused: the door answers needs_name instead (ruling b).
+  let roleExists = false;
+  if (usersId) {
+    const { data: rr } = await supabase.from(roleTable).select('id').eq('user_id', usersId).maybeSingle();
+    roleExists = Boolean(rr);
+  }
+  if (!roleExists && !textPresent(name) && !textPresent(currentName)) throw new NameRequiredError();
+
   const nameWins = textPresent(name) && (
     !textPresent(currentName) ||
     (promoteUnverified && name !== currentName)
@@ -196,7 +211,9 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
     .from(roleTable).select('id, pin_hash').eq('user_id', usersId).maybeSingle();
   if (!roleRow) {
     const { data: createdRole, error: rErr } = await supabase
-      .from(roleTable).insert({ user_id: usersId, onboarding_state: 'new' })
+      // F-44.271 (cut 11): send-otp no longer makes the vendor row, so this is where a new vendor's row is made: it keeps the
+      // status send-otp gave it ('pending'; vendors.status defaults to 'active', which a new sign-up must not be).
+      .from(roleTable).insert(role === 'couple' ? { user_id: usersId, onboarding_state: 'new' } : { user_id: usersId, onboarding_state: 'new', status: 'pending' })
       .select('id, pin_hash').single();
     if (rErr) throw new Error(`${roleTable} provision failed: ${rErr.message}`);
     roleRow = createdRole;
@@ -215,4 +232,4 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
   };
 }
 
-module.exports = { provisionRole };
+module.exports = { provisionRole, NameRequiredError };

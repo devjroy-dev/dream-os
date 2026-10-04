@@ -168,12 +168,16 @@ function request(app, method, url, headers) {
 
   // ── D' · F-19.51 (born pending) ─────────────────────────────────────────────
   // MUTATION → RED: drop `status: 'pending'` from either insert in src/api/vendor/auth.js.
-  await cell('D\' · both vendors inserts at the OTP door write status pending — no row is born active (F-19.51)', () => {
+  await cell('D\' · no vendors row is born at the OTP door; provision births it pending — no row is born active (F-19.51)', () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271 ruling c): the OTP door no longer inserts a vendors row; the
+    // vendor row is born at provision (src/lib/provisionRole.js), and THERE it must still be born pending. So: no vendors
+    // insert remains at the OTP door, and provisionRole's vendor insert carries status 'pending'.
     const src = stripComments(fs.readFileSync(path.join(ROOT, 'src/api/vendor/auth.js'), 'utf8'));
     const inserts = src.match(/from\('vendors'\)\s*\.insert\(\{[^}]*\}\)/g) || [];
-    if (inserts.length !== 2) return `expected the two vendors inserts, found ${inserts.length}`;
-    const bad = inserts.filter(s => !/status:\s*'pending'/.test(s));
-    return bad.length ? `an insert births a row without status pending: ${bad[0]}` : null;
+    if (inserts.length !== 0) return `the OTP door still inserts a vendors row: ${inserts[0]}`;
+    const prov = stripComments(fs.readFileSync(path.join(ROOT, 'src/lib/provisionRole.js'), 'utf8'));
+    if (!/\{ user_id: usersId, onboarding_state: 'new', status: 'pending' \}/.test(prov)) return 'provisionRole births a vendors row without status pending';
+    return null;
   });
 
   // ── E · F-38.p12 ────────────────────────────────────────────────────────────

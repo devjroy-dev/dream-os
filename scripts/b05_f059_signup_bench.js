@@ -280,31 +280,38 @@ const { ensureAuthIdentity, phoneDigits } = require(path.join(ROOT, 'src/lib/ens
     const supabase = memSupabase(db, idc);
     const router = freshRoute(routeFile);
 
-    // 1) /send-otp — fresh phone: self-mint users + role row; Meta OTP; capture code
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's rulings a and c): send-otp makes NO rows; verify-otp
+    // proves the code and mints the session on the phone's auth identity with NO users row (new_account); provision makes the
+    // ONE users row, bound to that identity, with the name, and its role row. Still one identity, one users row, no fork.
+    // 1) /send-otp  fresh phone: no users row, no role row; Meta OTP; capture code
     CAP.meta = null; CAP.twilio = null;
     const send = await callHandler(handlerFor(router, '/send-otp'), { phone }, supabase);
     assert.ok(send.payload && send.payload.ok, `${kind} send-otp did not return ok: ${JSON.stringify(send.payload)}`);
     assert.ok(CAP.meta, `${kind} send-otp did not ride Meta`);
     assert.strictEqual(CAP.twilio, null, `${kind} send-otp wrongly hit Twilio`);
-    const U = db.users.find((u) => u.phone === phone);
-    assert.ok(U && U.auth_user_id == null, `${kind} users row should exist with NO auth identity yet`);
-    assert.strictEqual(db[roleTable].length, 1, `${kind} role row not created`);
+    assert.ok(!(db.users || []).some((u) => u.phone === phone), `${kind} send-otp minted a users row (F-44.271: it must not)`);
+    assert.strictEqual((db[roleTable] || []).length, 0, `${kind} send-otp minted a role row (F-44.271: it must not)`);
     const code = codeFromMeta();
     assert.ok(/^\d{6}$/.test(code), `${kind} no 6-digit code captured`);
 
-    // 2) /verify-otp — proves OTP, ensureAuthIdentity CREATES the identity, mintSession mints
+    // 2) /verify-otp  proves OTP; a NEW account: the identity is created for the phone and a session minted, no users row
     const verify = await callHandler(handlerFor(router, '/verify-otp'), { phone, otp: code, purpose: 'login' }, supabase);
     assert.ok(verify.payload && verify.payload.ok, `${kind} verify-otp failed: ${JSON.stringify(verify.payload)}`);
     assert.ok(verify.payload.access_token && verify.payload.refresh_token, `${kind} no session minted`);
-    assert.strictEqual(verify.payload.user_id, U.id, `${kind} verify-otp user_id mismatch`);
-    const A = db.users.find((u) => u.id === U.id).auth_user_id;
-    assert.ok(A && /^auth_/.test(A), `${kind} auth identity not linked onto users after verify`);
+    assert.strictEqual(verify.payload.new_account, true, `${kind} verify-otp did not say new_account`);
+    assert.strictEqual(verify.payload.user_id, null, `${kind} verify-otp named a users row that should not exist yet`);
     assert.strictEqual(CAP.store.minted, 1, `${kind} expected exactly ONE identity created`);
-    // no OTP value or identity secret in any verify-path log line
+    const A = CAP.store.users[0] && CAP.store.users[0].id;
+    assert.ok(A && /^auth_/.test(A), `${kind} no identity created for the phone`);
     assert.ok(!verify.logs.some((l) => l.includes(code)), `${kind} OTP value leaked to a log line`);
     assert.ok(!verify.logs.some((l) => l.includes(A)), `${kind} identity id leaked to a log line`);
 
-    // 3) /provision — on the newly minted session (req.auth = the created identity)
+    // 2b) /provision WITHOUT a name on the new session: refused, nothing written (ruling a)
+    const bare = await callHandler(handlerFor(router, '/provision'), { phone }, supabase, { auth: { user_id: A, phone } });
+    assert.ok(bare.payload && bare.payload.ok === false && bare.payload.reason === 'name_required', `${kind} a nameless new account was not refused: ${JSON.stringify(bare.payload)}`);
+    assert.ok(!(db.users || []).some((u) => u.phone === phone), `${kind} a refused provision wrote a users row`);
+
+    // 3) /provision  with the name, on the newly minted session (req.auth = the created identity)
     const prov = await callHandler(
       handlerFor(router, '/provision'),
       isVendor ? { phone, name: 'Vera', category: 'photographer' } : { phone, name: 'Meera' },
@@ -312,8 +319,11 @@ const { ensureAuthIdentity, phoneDigits } = require(path.join(ROOT, 'src/lib/ens
       { auth: { user_id: A, phone } },
     );
     assert.ok(prov.payload && prov.payload.ok, `${kind} provision failed: ${JSON.stringify(prov.payload)}`);
+    const U = db.users.find((u) => u.phone === phone);
+    assert.ok(U && U.name === (isVendor ? 'Vera' : 'Meera'), `${kind} the account was not made with its name`);
     assert.strictEqual(prov.payload.user_id, U.id, `${kind} provision resolved a DIVERGENT users row`);
     assert.ok(prov.payload[provRoleId], `${kind} provision returned no ${provRoleId}`);
+    assert.strictEqual(prov.payload.needs_name, false, `${kind} a named account says needs_name`);
 
     // 4) end-state invariants: one users row for this phone, one identity, and
     //    public.users.auth_user_id resolves to THAT one identity (no fork)
@@ -322,8 +332,8 @@ const { ensureAuthIdentity, phoneDigits } = require(path.join(ROOT, 'src/lib/ens
     assert.strictEqual(db.users.find((u) => u.id === U.id).auth_user_id, A, `${kind} auth_user_id does not resolve to the created identity`);
   }
 
-  await t('B1 §9 synthesis COUPLE: send-otp -> verify-otp[create+mint] -> provision, one identity', () => synthesis('couple'));
-  await t('B2 §9 synthesis VENDOR: send-otp -> verify-otp[create+mint] -> provision, one identity', () => synthesis('vendor'));
+  await t('B1 §9 synthesis COUPLE: send-otp (no rows) -> verify-otp[create+mint, new_account] -> provision (name required), one identity', () => synthesis('couple'));
+  await t('B2 §9 synthesis VENDOR: send-otp (no rows) -> verify-otp[create+mint, new_account] -> provision (name required), one identity', () => synthesis('vendor'));
 
   // ═══ C. helper hygiene ════════════════════════════════════════════════════════════
   await t('C1 phoneDigits normalizes E.164 and Supabase digits-only to the same form', async () => {

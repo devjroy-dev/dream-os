@@ -78,7 +78,10 @@ const VENDOR = 'src/api/vendor/auth.js'; const COUPLE_AUTH = 'src/api/couple/aut
 const load = (rel, src) => loadAt(rel, src == null ? fs.readFileSync(P(rel), 'utf8') : src);
 // A correct code reaches the account lookup (no users row here: 500 "Account not found after OTP verification"); a wrong one is 400
 // otp_invalid before it. So "signed in" reads as passing the code check.
-const passed = (x) => x.r.status === 500 && /not found after OTP verification/.test(x.r.body.error);
+// AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271 ruling c): send-otp no longer makes rows, so a correct code on a
+// number with no account now goes on to the NEW-ACCOUNT session (an auth identity for the phone); with no auth service in
+// this harness that answers 500 "Could not create session", or 200 new_account where one answers. Either is past the code check.
+const passed = (x) => (x.r.status === 500 && /not found after OTP verification|Could not create session/.test(x.r.body.error)) || (x.r.status === 200 && x.r.body && x.r.body.new_account === true);
 const refused = (x) => x.r.status === 400 && x.r.body.reason === 'otp_invalid';
 const ALL = { DEV_OTP: DEVCODE, REVIEWER_PHONE: RP, REVIEWER_OTP: RCODE };
 

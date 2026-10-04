@@ -28,7 +28,7 @@ const bcrypt  = require('bcryptjs');
 const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
 const { sendOtpCode } = require('../../lib/otpSend');
-const { ensureAuthIdentity, AuthIdentityBoundElsewhereError } = require('../../lib/ensureAuthIdentity');
+const { ensureAuthIdentity, AuthIdentityBoundElsewhereError, identityForPhone } = require('../../lib/ensureAuthIdentity');
 const { textPresent } = require('../../lib/onboardingPredicate');
 
 // Dedicated service-role client for the GoTrue session exchange (mintSession), kept
@@ -89,6 +89,11 @@ async function mintSession(supabase, userId) {
 
   // Pin a stable internal email on the EXISTING auth row (required by generateLink;
   // admin update dispatches no email, creates no new user).
+  return mintSessionForAuth(authId);
+}
+
+// F-44.271 (cut 11): the session for an auth identity, with or without a users row yet (a new sign-up).
+async function mintSessionForAuth(authId) {
   const internalEmail = `couple-${authId}@internal.dreamai.app`;
   const { error: updateErr } = await authClient.auth.admin.updateUserById(authId, {
     email:         internalEmail,
@@ -174,35 +179,10 @@ router.post('/send-otp', async (req, res) => {
         reason: 'wrong_role',
       });
     }
-    if (!thisRow) {
-      const { error: roleErr } = await supabase.from('couples')
-        .insert({ user_id: userRow.id, onboarding_state: 'new' });
-      if (roleErr) {
-        console.error('[couple:send-otp] couples insert error:', roleErr.message);
-        return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-      }
-    }
-  } else {
-    // Fresh phone — create users + role row.
-    // F-05.89: `name` joins the insert. The shape is `coupleIdentity.js`'s
-    // donor byte (`{ phone, name: name || null }`) — a nullable column written
-    // explicitly rather than omitted, so the row's namelessness is a recorded
-    // fact rather than an absent key.
-    const { data: newUser, error: userErr } = await supabase
-      .from('users').insert({ phone: cleanPhone, name: cleanName }).select('id').single();
-    if (userErr) {
-      console.error('[couple:send-otp] users insert error:', userErr.message);
-      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-    }
-    userRow = newUser;
-    const { error: roleErr } = await supabase.from('couples')
-      .insert({ user_id: userRow.id, onboarding_state: 'new' });
-    if (roleErr) {
-      await supabase.from('users').delete().eq('id', userRow.id);
-      console.error('[couple:send-otp] couples insert error:', roleErr.message);
-      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-    }
+    // F-44.271 (CE-47 WEB-4 cut 11, ruling c): send-otp no longer makes the role row or a users row. The account is
+    // made at provision, where a name must be given. (The wrong-role refusal above stands.)
   }
+  void cleanName;   // a name sent here is no longer written here; provision carries it
 
   const otp     = generateOtp();
   const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
@@ -334,12 +314,32 @@ router.post('/verify-otp', async (req, res) => {
 
   const { data: userRow } = await supabase
     .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
-  if (!userRow) return res.status(500).json({ error: 'Account not found after OTP verification.' });
 
-  const { data: coupleRow } = await supabase
+  const { data: coupleRow } = userRow ? await supabase
     .from('couples').select('id, pin_hash, pin_failed_attempts, pin_locked_until, users!inner(name)')
-    .eq('user_id', userRow.id).maybeSingle();
-  if (!coupleRow) return res.status(500).json({ error: 'Couple record not found after OTP verification.' });
+    .eq('user_id', userRow.id).maybeSingle() : { data: null };
+
+  // ── F-44.271 (CE-47 WEB-4 cut 11, ruling c): A NEW ACCOUNT. send-otp no longer makes rows, so a first sign-in finds no
+  // users row (or no couples row). The code is verified: mint the session on the phone's auth identity and answer with
+  // new_account; the account is made at provision, which requires a name. A reset needs an account.
+  if (!userRow || !coupleRow) {
+    if (purpose === 'reset') return res.status(404).json({ error: 'No account for this number. Please sign up first.', reason: 'account_not_found' });
+    let newTokens;
+    try {
+      const authId = userRow ? (await ensureAuthIdentity({ supabase, authClient, userId: userRow.id, phone: cleanPhone })).authUserId
+        : await identityForPhone({ authClient, phone: cleanPhone });
+      newTokens = await mintSessionForAuth(authId);
+    } catch (err) {
+      if (err instanceof AuthIdentityBoundElsewhereError) {
+        return res.status(409).json({ error: 'This number needs to be reconnected before you can sign in. Please contact support.', reason: 'identity_bound_elsewhere' });
+      }
+      console.error('[couple:verify-otp] new-account session error:', err.message);
+      return res.status(500).json({ error: 'Could not create session. Please try again.' });
+    }
+    console.log(`[couple:verify-otp] ok phone=${cleanPhone} purpose=${purpose} new_account=true`);
+    return res.json({ ok: true, user_id: userRow ? userRow.id : null, couple_id: null, pin_set: false, name: null, new_account: true,
+      access_token: newTokens.access_token, refresh_token: newTokens.refresh_token });
+  }
 
   if (purpose === 'reset' && (coupleRow.pin_failed_attempts > 0 || coupleRow.pin_locked_until)) {
     await supabase.from('couples')
@@ -535,8 +535,11 @@ router.post('/provision', requireAuth, async (req, res) => {
     // is pre-write, this one is fresh. The vendor twin deliberately does NOT
     // gain this key [R-35.13]: it has no reader, and a field nobody reads is a
     // shape nobody can rely on.
-    return res.json({ ok: true, user_id: r.user_id, couple_id: r.role_id, pin_set: r.pin_set, name: r.name });
+    return res.json({ ok: true, user_id: r.user_id, couple_id: r.role_id, pin_set: r.pin_set, name: r.name,
+      needs_name: !(r.name && String(r.name).trim()) });   // F-44.271 (cut 11, ruling b)
   } catch (e) {
+    // F-44.271 (cut 11, ruling a): a NEW account without a name is refused, nothing written
+    if (e && e.reason === 'name_required') return res.status(400).json({ ok: false, reason: 'name_required', field: 'name', error: 'Please add your name.' });
     console.error('[couple:provision]', e.message);
     return res.status(500).json({ ok: false, error: 'Provisioning failed.' });
   }

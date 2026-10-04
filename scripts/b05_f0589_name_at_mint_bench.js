@@ -187,59 +187,59 @@ const unverifiedRow = (name) => ({
   // ══ §1 · THE DOOR READS THE NAME ═══════════════════════════════════════════
   console.log('§1 — the door reads the name off the request');
 
-  await t('1.1', 'couple door: fresh phone + name → users insert CARRIES the name', async () => {
+  await t('1.1', 'couple door: fresh phone + name: 200, and NO users row and NO role row minted (F-44.271)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const { status, writes } = await callDoor('couple', { phone: FRESH_PHONE, name: 'Priya' });
     assert.strictEqual(status, 200, `expected 200, got ${status}`);
-    const ins = userInserts(writes);
-    assert.strictEqual(ins.length, 1, `expected 1 users insert, got ${ins.length}`);
-    assert.strictEqual(ins[0].payload.name, 'Priya',
-      `the typed name was discarded at the door — payload was ${JSON.stringify(ins[0].payload)}`);
+    assert.strictEqual(userInserts(writes).length, 0, 'send-otp minted a users row');
+    assert.strictEqual(writes.filter(w => w.op === 'insert' && w.table === 'couples').length, 0, 'send-otp minted a couples row');
   });
 
-  await t('1.2', 'vendor door: fresh phone + name → users insert CARRIES the name [R-37.16]', async () => {
+  await t('1.2', 'vendor door: fresh phone + name: 200, and NO users row and NO role row minted (F-44.271)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const { status, writes } = await callDoor('vendor', { phone: FRESH_PHONE, name: 'Rahul' });
     assert.strictEqual(status, 200, `expected 200, got ${status}`);
-    const ins = userInserts(writes);
-    assert.strictEqual(ins.length, 1, `expected 1 users insert, got ${ins.length}`);
-    assert.strictEqual(ins[0].payload.name, 'Rahul',
-      `the vendor lane still discards — payload was ${JSON.stringify(ins[0].payload)}`);
+    assert.strictEqual(userInserts(writes).length, 0, 'send-otp minted a users row');
+    assert.strictEqual(writes.filter(w => w.op === 'insert' && w.table === 'vendors').length, 0, 'send-otp minted a vendors row');
   });
 
-  await t('1.3', 'the phone is still the phone — the name did not disturb it', async () => {
+  await t('1.3', 'the code is still issued for the phone (the OTP session is written)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const { writes } = await callDoor('couple', { phone: FRESH_PHONE, name: 'Priya' });
-    assert.strictEqual(userInserts(writes)[0].payload.phone, FRESH_PHONE);
+    assert.ok(writes.some(w => w.table === 'otp_sessions'), 'no OTP session was written');
   });
 
-  await t('1.4', 'the role row is still minted beside the user', async () => {
+  await t('1.4', 'the role row is no longer minted beside a user at send-otp (provision makes it)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const { writes } = await callDoor('couple', { phone: FRESH_PHONE, name: 'Priya' });
-    const role = writes.filter(w => w.op === 'insert' && w.table === 'couples');
-    assert.strictEqual(role.length, 1, 'the couples row stopped being written');
-    assert.strictEqual(role[0].payload.onboarding_state, 'new');
+    assert.strictEqual(writes.filter(w => w.op === 'insert' && w.table === 'couples').length, 0, 'the couples row is still minted at send-otp');
   });
 
-  // ══ §2 · THE DISEASE, REPRODUCED AS ITS CURE ═══════════════════════════════
-  // The abandon: SEND CODE is tapped, the OTP is never entered, nothing after
-  // the door ever runs. What is on the row is what the door put there.
-  console.log('\n§2 — the abandon: the row the founder finds tomorrow morning');
+  console.log('\n2  the abandon: the row the founder finds tomorrow morning');
 
-  await t('2.1', 'couple abandon → the minted row HOLDS the name (F-05.89 green)', async () => {
+  await t('2.1', 'couple abandon: NO row is left (nameless or named)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const { store } = await callDoor('couple', { phone: FRESH_PHONE, name: 'Priya' });
-    const row = store.users.find(u => u.phone === FRESH_PHONE);
-    assert.ok(row, 'no users row was minted at all');
-    assert.strictEqual(row.name, 'Priya',
-      'the abandoned row is nameless — this is F-05.89 itself, uncured');
+    assert.ok(!store.users.some(u => u.phone === FRESH_PHONE), 'an abandoned send left a users row');
   });
 
-  await t('2.2', 'vendor abandon → the minted row HOLDS the name', async () => {
+  await t('2.2', 'vendor abandon: NO row is left', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const { store } = await callDoor('vendor', { phone: FRESH_PHONE, name: 'Rahul' });
-    assert.strictEqual(store.users.find(u => u.phone === FRESH_PHONE).name, 'Rahul');
+    assert.ok(!store.users.some(u => u.phone === FRESH_PHONE), 'an abandoned vendor send left a users row');
   });
 
-  await t('2.3', 'the minted row is never-verified by construction (auth_user_id unset)', async () => {
-    const { store } = await callDoor('couple', { phone: FRESH_PHONE, name: 'Priya' });
-    const row = store.users.find(u => u.phone === FRESH_PHONE);
-    assert.ok(!row.auth_user_id,
-      'the door minted a verified-looking row — R-37.14s marker would be destroyed');
+  await t('2.3', 'nothing minted, so no never-verified row exists to protect', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
+    const { store } = await callDoor('couple', { phone: FRESH_PHONE });
+    assert.ok(!store.users.some(u => u.phone === FRESH_PHONE), 'a row was minted');
   });
 
   // ══ §3 · NEVER OVER AN EXISTING ROW — the R-37.1 half ══════════════════════
@@ -281,42 +281,53 @@ const unverifiedRow = (name) => ({
   // ══ §4 · HYGIENE — one predicate, one cap [R-37.19] ════════════════════════
   console.log('\n§4 — the door and the form agree about what a name is');
 
-  await t('4.1', 'whitespace-only name → NULL, not a blank string', async () => {
-    const { writes } = await callDoor('couple', { phone: FRESH_PHONE, name: '   ' });
-    assert.strictEqual(userInserts(writes)[0].payload.name, null,
-      'a name of one space was admitted — the door disagrees with brideComplete');
+  await t('4.1', 'whitespace-only name: 200 and no users row written (the name is provision\'s now)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
+    const { status, writes } = await callDoor('couple', { phone: FRESH_PHONE, name: '   ' });
+    assert.strictEqual(status, 200);
+    assert.strictEqual(userInserts(writes).length, 0);
   });
 
-  await t('4.2', 'absent name → NULL, and the door still succeeds (200)', async () => {
+  await t('4.2', 'absent name, and the door still succeeds (200): 200 and no users row written (the name is provision\'s now)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const { status, writes } = await callDoor('couple', { phone: FRESH_PHONE });
-    assert.strictEqual(status, 200, 'the door started refusing a nameless caller');
-    assert.strictEqual(userInserts(writes)[0].payload.name, null);
+    assert.strictEqual(status, 200);
+    assert.strictEqual(userInserts(writes).length, 0);
   });
 
-  await t('4.3', 'non-string name (a number) → NULL, never coerced', async () => {
-    const { writes } = await callDoor('couple', { phone: FRESH_PHONE, name: 12345 });
-    assert.strictEqual(userInserts(writes)[0].payload.name, null,
-      'a non-string reached the column — textPresent was bypassed');
+  await t('4.3', 'non-string name (a number): 200 and no users row written (the name is provision\'s now)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
+    const { status, writes } = await callDoor('couple', { phone: FRESH_PHONE, name: 12345 });
+    assert.strictEqual(status, 200);
+    assert.strictEqual(userInserts(writes).length, 0);
   });
 
-  await t('4.4', 'surrounding whitespace is trimmed', async () => {
-    const { writes } = await callDoor('couple', { phone: FRESH_PHONE, name: '  Priya  ' });
-    assert.strictEqual(userInserts(writes)[0].payload.name, 'Priya');
+  await t('4.4', 'surrounding whitespace: 200 and no users row written (the name is provision\'s now)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
+    const { status, writes } = await callDoor('couple', { phone: FRESH_PHONE, name: '  Priya  ' });
+    assert.strictEqual(status, 200);
+    assert.strictEqual(userInserts(writes).length, 0);
   });
 
-  await t('4.5', 'the cap is 80, matching couple/onboarding.js', async () => {
-    const long = 'A'.repeat(200);
-    const { writes } = await callDoor('couple', { phone: FRESH_PHONE, name: long });
-    assert.strictEqual(userInserts(writes)[0].payload.name.length, 80,
-      'the door admits a longer name than the form that writes the same column');
+  await t('4.5', 'a 200-character name: 200 and no users row written (the name is provision\'s now)', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
+    const { status, writes } = await callDoor('couple', { phone: FRESH_PHONE, name: 'A'.repeat(200) });
+    assert.strictEqual(status, 200);
+    assert.strictEqual(userInserts(writes).length, 0);
   });
 
-  await t('4.6', 'the vendor door coerces identically — one cure, not two', async () => {
-    const long = 'B'.repeat(200);
+  await t('4.6', 'the vendor door: the same, whatever the name', async () => {
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271, the chair's ruling c): send-otp no longer mints a users row or a role
+    // row, so the abandon this rung was built for now leaves NOTHING behind, nameless or named; the name is required at provision.
     const a = await callDoor('vendor', { phone: FRESH_PHONE, name: '  ' });
-    const b = await callDoor('vendor', { phone: FRESH_PHONE, name: long });
-    assert.strictEqual(userInserts(a.writes)[0].payload.name, null);
-    assert.strictEqual(userInserts(b.writes)[0].payload.name.length, 80);
+    const b = await callDoor('vendor', { phone: FRESH_PHONE, name: 'B'.repeat(200) });
+    assert.strictEqual(a.status, 200); assert.strictEqual(b.status, 200);
+    assert.strictEqual(userInserts(a.writes).length + userInserts(b.writes).length, 0);
   });
 
   await t('4.7', 'the predicate is the ONE HOME, imported not copied [R-37.19]', async () => {

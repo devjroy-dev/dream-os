@@ -94,7 +94,9 @@ async function cells(auth) {
   ok(x.r.status === 200 && x.r.body.ok === true && SENDS.length === 0, '2.1 the reviewer phone: answered ok and NO message sent');
   ok(sess && sess.purpose === 'login' && bcrypt.compareSync(CODE, sess.otp_hash), '2.2 its session holds the fixed code\u2019s hash (purpose login)');
   ok(x.logs.some((l) => l.includes('[reviewer] session opened for the reviewer account (send-otp; no message sent)')), '2.3 the use is logged');
-  ok(db.T.users.length === 1 && db.T.vendors.length === 1, '2.4 the account is minted as any new phone is');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205; F-44.271 ruling c): send-otp makes NO account for any new phone now (the
+  // account is made at provision, with a name), and the reviewer's phone is treated as any new phone is.
+  ok((db.T.users || []).length === 0 && (db.T.vendors || []).length === 0, '2.4 the account is minted as any new phone is: not at send-otp (F-44.271)');
 
   // 3 · refused when the code is unset or malformed
   for (const [label, env] of [['unset', { REVIEWER_PHONE: RP }], ['malformed', { REVIEWER_PHONE: RP, REVIEWER_OTP: '12ab' }]]) {
@@ -114,7 +116,9 @@ async function cells(auth) {
   //     account lookup's 500 and a wrong code is refused 400 before it)
   db = makeDb({ otp_sessions: [{ phone: RP, otp_hash: bcrypt.hashSync(CODE, 4), purpose: 'login', expires_at: new Date(Date.now() + 60000).toISOString() }] });
   x = await capture(withEnv({ REVIEWER_PHONE: RP, REVIEWER_OTP: CODE }, () => drive(auth, '/verify-otp', { phone: RP, otp: CODE, purpose: 'login' }, db)));
-  ok(x.r.status === 500 && /Account not found after OTP verification/.test(x.r.body.error) && x.logs.some((l) => l.includes('[reviewer] verify-otp for the reviewer account purpose=login')),
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 11 (b205): past the code check a number with no account goes to the new-account session
+  // (no auth service here: 500 "Could not create session"), not the old "Account not found".
+  ok(x.r.status === 500 && /Could not create session|Account not found after OTP verification/.test(x.r.body.error) && x.logs.some((l) => l.includes('[reviewer] verify-otp for the reviewer account purpose=login')),
     '5.1 verify-otp accepts the fixed code for the reviewer phone, and logs');
   db = makeDb({ otp_sessions: [{ phone: RP, otp_hash: bcrypt.hashSync(CODE, 4), purpose: 'login', expires_at: new Date(Date.now() + 60000).toISOString() }] });
   x = await capture(withEnv({ REVIEWER_PHONE: RP, REVIEWER_OTP: CODE }, () => drive(auth, '/verify-otp', { phone: RP, otp: '000000', purpose: 'login' }, db)));

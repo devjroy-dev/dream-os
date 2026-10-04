@@ -143,7 +143,21 @@ async function ensureAuthIdentity({ supabase, authClient, userId, phone }) {
   return { authUserId, created: !healed, healed };
 }
 
+/**
+ * F-44.271 (CE-47 WEB-4 cut 11): the auth identity for a phone that has NO users row yet (a new sign-up, whose account is
+ * made at provision, where a name is required). Creates the identity, or heals onto the existing one for that phone.
+ * Binds nothing: provisionRole binds the identity to the users row it creates (auth_user_id).
+ */
+async function identityForPhone({ authClient, phone }) {
+  if (!authClient) throw new Error('identityForPhone: authClient required');
+  const { data: created, error: createErr } = await authClient.auth.admin.createUser({ phone, phone_confirm: true });
+  if (!createErr && created && created.user && created.user.id) return created.user.id;
+  const existing = await findAuthUserByPhone(authClient, phone);
+  if (!existing) throw new Error(`identity create failed, no existing identity to heal: ${createErr ? createErr.message : 'no id'}`);
+  return existing.id;
+}
+
 module.exports = {
-  ensureAuthIdentity, findAuthUserByPhone, phoneDigits,
+  ensureAuthIdentity, findAuthUserByPhone, phoneDigits, identityForPhone,
   AuthIdentityBoundElsewhereError,
 };
