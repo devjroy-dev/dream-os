@@ -14,13 +14,13 @@ const APPS = Object.freeze({
 
 const FEATURES = Object.freeze([
   Object.freeze({ gate: 'flag.ads', feature: 'Instagram ads', app: 'tdw_ads',
-    permissions: Object.freeze(['ads_management', 'ads_read', 'pages_read_engagement', 'pages_show_list', 'pages_manage_ads', 'instagram_basic', 'instagram_manage_insights']),
+    permissions: Object.freeze(['ads_management', 'ads_read', 'pages_read_engagement', 'pages_show_list', 'pages_manage_ads', 'instagram_basic']),   // six: instagram_manage_insights not filed (CE-47, 4 Oct)
     plural: true, onLine: 'Instagram ads are now live for every vendor.' }),
   Object.freeze({ gate: 'perm.instagram_business_manage_messages', feature: 'Instagram messages', app: 'app_live',
     permissions: Object.freeze(['instagram_business_basic', 'instagram_business_manage_messages']),
     plural: true, onLine: 'Instagram messages are now live for every vendor.' }),
   Object.freeze({ gate: 'flag.ig_photo_import', feature: 'The Instagram photo import', app: 'app_live',
-    permissions: Object.freeze(['instagram_business_basic', 'instagram_business_manage_messages']),
+    permissions: Object.freeze(['instagram_business_basic']),   // the import needs basic alone (CE-47, 4 Oct)
     onLine: 'The Instagram photo import is now live for every vendor.' }),
 ]);
 

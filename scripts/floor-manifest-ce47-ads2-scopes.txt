@@ -1,0 +1,11 @@
+# scripts/floor-manifest-ce47-ads2-scopes.txt
+# CE-47 · ADS-2 · the scopes cut (dream-os), ahead of the founder's Step 8 (instagram_manage_insights out of the login
+# configuration). BASE: 01197ac. No migration, no new folder; two added files.
+# NEEDED_SCOPES six (instagram_manage_insights dropped); flag.ads's list six; flag.ig_photo_import on instagram_business_basic
+# alone. Rungs b144 (3.1 labelled, 8.7, M20) and b149 (1.1, 1.3, 2.3, 3.4, 6.3, M7, M8). F-14.16: dirt outside is a STOP.
+src/lib/ads/meta.js
+src/lib/metaGates.js
+scripts/b144_ads1_panel_bench.js
+scripts/b149_ads2_meta_gates_bench.js
+docs/handovers/TDW_CE47_ADS2_SCOPES_HANDOVER.md
+scripts/floor-manifest-ce47-ads2-scopes.txt

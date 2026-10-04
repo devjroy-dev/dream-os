@@ -137,7 +137,9 @@ async function adAccounts({ token, env = process.env, fetchImpl }) {
 // Meta's account_status: 1 is ACTIVE. Any other value is an account she cannot run an ad on today.
 const ACTIVE = 1;
 // The configuration's seven (1863002924861430, the founder's clicks of 28 September): business_management is not among them.
-const NEEDED_SCOPES = Object.freeze(['ads_management', 'ads_read', 'instagram_basic', 'instagram_manage_insights', 'pages_manage_ads', 'pages_read_engagement', 'pages_show_list']);
+// CE-47 (4 Oct 2026): instagram_manage_insights is no longer asked for (removed from the login configuration and the
+// filing); the post suggestion without insights takes the likes basis, then the newest, as built.
+const NEEDED_SCOPES = Object.freeze(['ads_management', 'ads_read', 'instagram_basic', 'pages_manage_ads', 'pages_read_engagement', 'pages_show_list']);
 
 /**
  * Which gap is missing first. PURE. Order is the founder's: Page, then the Instagram link, then the ad account.

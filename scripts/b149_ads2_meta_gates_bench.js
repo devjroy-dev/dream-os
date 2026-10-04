@@ -23,7 +23,7 @@ function register(rows) {
   }; return api; };
   return { rows: t, from: () => q() };
 }
-const ADS7 = ['ads_management', 'ads_read', 'pages_read_engagement', 'pages_show_list', 'pages_manage_ads', 'instagram_basic', 'instagram_manage_insights'];
+const ADS7 = ['ads_management', 'ads_read', 'pages_read_engagement', 'pages_show_list', 'pages_manage_ads', 'instagram_basic'];   // six now (CE-47, 4 Oct); the name kept
 const ENV = { ADS_APP_ID: 'ADSAPP', ADS_APP_SECRET: 'SECRET-ADS', META_APP_ID: 'LIVEAPP', META_APP_SECRET: 'SECRET-LIVE', META_GRAPH_VERSION: 'v26.0' };
 function graph(lists, seen) {   // lists: { ADSAPP: {perm: word}, LIVEAPP: {...} } ; an app mapped to 'ERR' answers an error
   return async (url, opts) => {
@@ -50,10 +50,10 @@ const ARMED_AUTO = { key: 'flag.ads', kind: 'flag', status: 'armed', auto_on: tr
 async function cells() {
   sec('1  flag.ads (TDW ADS, seven permissions)');
   let s = await sweep([ARMED_AUTO], { ADSAPP: live(ADS7), LIVEAPP: {} });
-  ok(s.row('flag.ads').status === 'on' && s.row('flag.ads').flipped_by === 'sweep:auto_on', '1.1 all seven live, armed with auto_on and walk_ref: it turns on, by sweep:auto_on', JSON.stringify(s.row('flag.ads')));
+  ok(s.row('flag.ads').status === 'on' && s.row('flag.ads').flipped_by === 'sweep:auto_on', '1.1 all six live, armed with auto_on and walk_ref: it turns on, by sweep:auto_on', JSON.stringify(s.row('flag.ads')));
   ok(s.logs.some((l) => l.endsWith('founder line (rides tdw_capability_armed until tdw_capability_line is approved): Instagram ads are now live for every vendor.')), '1.2 the founder line, verbatim, logged beside today\'s notice', s.logs.join(' | '));
-  s = await sweep([ARMED_AUTO], { ADSAPP: live(ADS7.slice(0, 6)), LIVEAPP: {} });
-  ok(s.row('flag.ads').status === 'armed' && /not live: instagram_manage_insights/.test(s.row('flag.ads').evidence || ''), '1.3 six of seven: it stays armed, the evidence names the one not live', JSON.stringify(s.row('flag.ads')));
+  s = await sweep([ARMED_AUTO], { ADSAPP: live(ADS7.slice(0, 5)), LIVEAPP: {} });
+  ok(s.row('flag.ads').status === 'armed' && /not live: instagram_basic/.test(s.row('flag.ads').evidence || ''), '1.3 five of six: it stays armed, the evidence names the one not live', JSON.stringify(s.row('flag.ads')));
   s = await sweep([{ key: 'flag.ads', kind: 'flag', status: 'armed' }], { ADSAPP: live(ADS7), LIVEAPP: {} });
   ok(s.row('flag.ads').status === 'armed', '1.4 all live but no auto_on: it stays armed (the walk vendor keeps the room)', s.row('flag.ads').status);
   s = await sweep([{ key: 'flag.ads', kind: 'flag', status: 'on', flipped_by: 'admin:5ab0c1d2' }], { ADSAPP: {}, LIVEAPP: {} });
@@ -63,8 +63,8 @@ async function cells() {
   s = await sweep([{ key: 'flag.ads', kind: 'flag', status: 'on', flipped_by: 'sweep:auto_on', auto_on: true, walk_ref: 'seal:test' }], { ADSAPP: live(ADS7.filter((p) => p !== 'ads_read')), LIVEAPP: {} });
   ok(s.row('flag.ads').status === 'armed' && s.row('flag.ads').flipped_by === 'sweep:withdrawn', '2.1 on by the sweep, ads_read no longer live: back to armed, flipped_by sweep:withdrawn', JSON.stringify(s.row('flag.ads')));
   ok(s.logs.some((l) => l.endsWith(': Meta has withdrawn ads_read. Instagram ads are back to Coming soon for vendors.')), '2.2 the withdrawn line, plural for ads (CE-47 ruling 3)', s.logs.join(' | '));
-  s = await sweep([{ key: 'flag.ig_photo_import', kind: 'flag', status: 'on', flipped_by: 'sweep:auto_on', auto_on: true, walk_ref: 'w' }], { ADSAPP: {}, LIVEAPP: live(['instagram_business_basic']) });
-  ok(s.logs.some((l) => l.endsWith(': Meta has withdrawn instagram_business_manage_messages. The Instagram photo import is back to Coming soon for vendors.')), '2.3 the photo import\'s withdrawn line stays singular', s.logs.join(' | '));
+  s = await sweep([{ key: 'flag.ig_photo_import', kind: 'flag', status: 'on', flipped_by: 'sweep:auto_on', auto_on: true, walk_ref: 'w' }], { ADSAPP: {}, LIVEAPP: {} });
+  ok(s.logs.some((l) => l.endsWith(': Meta has withdrawn instagram_business_basic. The Instagram photo import is back to Coming soon for vendors.')), '2.3 the photo import\'s withdrawn line stays singular', s.logs.join(' | '));
 
   sec('3  the Instagram messages gate (App-LIVE)');
   const IGM = 'perm.instagram_business_manage_messages';
@@ -75,6 +75,9 @@ async function cells() {
   s = await sweep([{ key: IGM, kind: 'permission', status: 'pending' }], { ADSAPP: {}, LIVEAPP: live(['whatsapp_business_management', 'whatsapp_business_messaging', 'public_profile']) });
   ok(s.row(IGM).status === 'pending', '3.3 the founder\'s real App-LIVE read (30 Sept): messages stay pending', s.row(IGM).status);
 
+  s = await sweep([{ key: 'flag.ig_photo_import', kind: 'flag', status: 'pending', auto_on: true, walk_ref: 'w' }], { ADSAPP: {}, LIVEAPP: live(['instagram_business_basic']) });
+  ok(s.row('flag.ig_photo_import').status === 'on' && s.logs.some((l) => l.endsWith(': The Instagram photo import is now live for every vendor.')),
+    '3.4 the photo import turns on with instagram_business_basic alone (CE-47, 4 Oct)', JSON.stringify(s.row('flag.ig_photo_import')));
   sec('4  the mapping (ruled on the founder\'s reads)');
   s = await sweep([ARMED_AUTO], { ADSAPP: { ...live(ADS7), ads_read: 'in_review' }, LIVEAPP: {} });
   ok(s.row('flag.ads').status === 'armed', '4.1 any word but "live" is not approved', s.row('flag.ads').status);
@@ -103,7 +106,7 @@ async function cells() {
   const g = require(path.join(ROOT, 'src/lib/metaGates.js'));
   const need = [...Object.keys(g.PERM_ROWS), ...g.FEATURES.map((f) => f.gate)];
   ok(need.every((k) => seeded.has(k)), '6.2 every key the sweep reads has a row in the ladder', need.filter((k) => !seeded.has(k)).join(','));
-  ok(JSON.stringify(g.FEATURES.find((f) => f.gate === 'flag.ads').permissions) === JSON.stringify(ADS7), '6.3 flag.ads needs exactly the seven ruled permissions', '');
+  ok(JSON.stringify(g.FEATURES.find((f) => f.gate === 'flag.ads').permissions) === JSON.stringify(ADS7), '6.3 flag.ads needs exactly the six ruled permissions (instagram_manage_insights not filed)', '');
 }
 
 const MUTS = [
@@ -113,6 +116,8 @@ const MUTS = [
   ['src/lib/metaGates.js', "${f.plural ? 'are' : 'is'}", "is", 'M4 the plural lost', '2.2'],
   ['src/capabilitiesSweep.js', "console.log(`[capabilities] ${ev}`);", "void ev;", 'M5 an unset app id not said in the log', '5.1'],
   ['src/capabilitiesSweep.js', "console.log(`[capabilities] founder line (rides tdw_capability_armed until ${gates.LINE_TEMPLATE} is approved): ${line}`);", "void line;", 'M6 the founder line not logged', '1.2'],
+  ['src/lib/metaGates.js', "permissions: Object.freeze(['instagram_business_basic']),", "permissions: Object.freeze(['instagram_business_basic', 'instagram_business_manage_messages']),", 'M7 the photo import waits on messages again', '3.4'],
+  ['src/lib/metaGates.js', "'pages_manage_ads', 'instagram_basic']),", "'pages_manage_ads', 'instagram_basic', 'instagram_manage_insights']),", 'M8 flag.ads asks for insights again', '1.1'],
 ];
 const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 (async () => {

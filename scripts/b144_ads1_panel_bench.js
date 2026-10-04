@@ -162,7 +162,9 @@ function goodSettings() {
 
   sec('3  the three gaps, the founder\'s order');
   const all = meta.NEEDED_SCOPES;
-  ok(all.length === 7 && !all.includes('business_management'), '3.1 the seven scopes, business_management not among them');
+  // LABELLED AMENDMENT (CE-47, 4 Oct 2026): instagram_manage_insights is no longer asked for, so the scopes are six. The
+  // protection kept: business_management is not among them; insights is now pinned out too.
+  ok(all.length === 6 && !all.includes('business_management') && !all.includes('instagram_manage_insights'), '3.1 the six scopes, neither business_management nor instagram_manage_insights among them');
   ok(meta.gapsFrom({ scopes: all.slice(1) }).gap === 'scopes', '3.2 a declined permission first');
   ok(meta.gapsFrom({ scopes: all }).gap === 'page', '3.3 then no Page');
   ok(meta.gapsFrom({ scopes: all, pageList: [{ id: '1', name: 'P', ig: null }] }).gap === 'link', '3.4 then no Instagram link');
@@ -395,6 +397,10 @@ function goodSettings() {
         ok(pr.status === 200 && !pr.json.code && pr.json.confirm, '8.6 a rupee account still prepares (the lock is only for non-INR)', JSON.stringify(pr.json).slice(0, 200));
       });
     }
+    // ── CE-47 · instagram_manage_insights no longer asked for (4 Oct 2026) ──
+    { const six = ['ads_management', 'ads_read', 'instagram_basic', 'pages_manage_ads', 'pages_read_engagement', 'pages_show_list'];
+      ok(meta.NEEDED_SCOPES.length === 6 && !meta.NEEDED_SCOPES.includes('instagram_manage_insights') && meta.gapsFrom({ scopes: six }).gap !== 'scopes',
+        '8.7 a connect granting the six (no insights) passes the permissions step', JSON.stringify({ needed: meta.NEEDED_SCOPES, gap: meta.gapsFrom({ scopes: six }).gap })); }
   if (!process.env.B144_CHILD) {
     ok(meta.connectedLine({ scopes: ['ads_read'], g: { gap: 'choose', choose: { pages: [{ id: 'P1' }, { id: 'P2' }] } }, trace: [{ id: 'P1', via: 'me/accounts' }, { id: 'P2', via: 'client_pages' }] })
       === '[ads:callback] connected: scopes=ads_read; chooser=pages (2: P1 via me/accounts; P2 via client_pages)', '5.6d the line names a chooser and where each Page came from');
@@ -418,6 +424,7 @@ function goodSettings() {
       ['src/api/vendor/ads.js', "  if (notInr(r.gaps.account && r.gaps.account.currency)) return errRes(res, 400, NOT_INR, 'ADS_NOT_INR');\n  const body = req.body || {};", "  const body = req.body || {};", 'M17 the run lock removed'],
       ['src/lib/ads/meta.js', "  if (!m) return null;\n  const amount", "  if (!m) return { amount: 0, currency: 'INR' };\n  const amount", 'M18 a card read as funds'],
       ['src/api/vendor/ads.js', "  if (b.action === 'resume' && notInr(one.currency)) return errRes(res, 400, NOT_INR, 'ADS_NOT_INR');\n", "", 'M19 the resume lock removed'],
+      ['src/lib/ads/meta.js', "const NEEDED_SCOPES = Object.freeze(['ads_management', 'ads_read', 'instagram_basic', 'pages_manage_ads',", "const NEEDED_SCOPES = Object.freeze(['ads_management', 'ads_read', 'instagram_basic', 'instagram_manage_insights', 'pages_manage_ads',", 'M20 insights required again'],
     ];
     for (const [rel, from, to, name] of MUTS) {
       const file = path.join(ROOT, rel); const orig = fs.readFileSync(file, 'utf8'); const h = sha(orig);
