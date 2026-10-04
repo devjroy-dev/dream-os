@@ -1,0 +1,13 @@
+# scripts/floor-manifest-ce47-web4-cut12.txt
+# CE-47 · WEB-4 cut 12 · F-44.272 option A, 0193 the files made to match live (a no-op live) · base a7620ce · F-19.16: a dirty path outside this list stops the floor.
+# Rung b207 (14 cells) + b207r (Postgres 16). Migration 0193 goes in BEFORE the push. No new directory. No file deleted.
+db/migrations/0193_live_links_declared.sql
+docs/handovers/TDW_CE47_WEB4_CUT12_HANDOVER.md
+scripts/b207_ce47_web4_cut12_bench.js
+scripts/floor-manifest-ce47-web4-cut12.txt
+scripts/lib/b207r_0193_files_extras.sql
+scripts/lib/b207r_0193_live_links.sql
+scripts/lib/b207r_0193_live_shape.sql
+scripts/lib/b207r_0193_rehearse.sh
+scripts/lib/b207r_0193_rows.sql
+src/lib/prospectExit.js

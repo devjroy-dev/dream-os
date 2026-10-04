@@ -23,9 +23,10 @@
 //   db/migrations/0001_initial_schema.sql:66
 //     messages.conversation_id … references conversations(id) ON DELETE CASCADE
 // So one `delete from prospects` destroys the conversation AND every message on
-// it. `notes` (0002:32) and `pending_actions` (0002:46) both key on a NOT NULL
-// vendor_id and cannot hang off a prospect thread, so the radius is exactly
-// those two tables — checked, not presumed.
+// it. `notes` (0002:32) keys on a NOT NULL vendor_id and cannot hang off a
+// prospect thread, so the radius is exactly those two tables — checked, not
+// presumed. (CE-47 WEB-4 cut 12, F-44.272: `pending_actions`, once named here
+// beside `notes`, does not exist in the live database; 0193 drops it from the files.)
 //
 // WITH R-30.10's THIRD MEMBER RULED, THE CASCADE IS UNREACHABLE THROUGH THIS API
 // BY CONSTRUCTION: no row carrying a conversation can reach the delete.
