@@ -141,7 +141,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const k = async (c) => S.call('GET', '/kind/' + c);
   const kb = await k('basic1'); const ks = await k('sig1'); const kp = await k('pre1'); const kz = await k('paused1'); const ku = await k('nobody'); const cardMiss = await S.call('GET', '/card/nobody');
   ok(() => kb.body && kb.body.v === 'classic' && ks.body.v === 'styles' && kp.body.v === 'classic', '6.1 { v }: Basic classic; published Signature styles; unpublished Prestige classic');
-  ok(() => /public, max-age=60, s-maxage=60/.test(ks.headers['cache-control'] || '') && JSON.stringify(Object.keys(ks.body)) === '["v"]', '6.2 a short shared cache; the answer carries only `v`');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 14 (b208): the answer gains `ok: true` beside `v`, because the app's
+  // lib/site/kind.ts takes 'styles' only when j.ok && j.v === 'styles'. Still nothing else.
+  ok(() => /public, max-age=60, s-maxage=60/.test(ks.headers['cache-control'] || '') && JSON.stringify(Object.keys(ks.body)) === '["ok","v"]' && ks.body.ok === true, '6.2 a short shared cache; the answer carries only `ok` and `v`');
   ok(() => kz.status === 404 && ku.status === 404 && kz.raw === ku.raw && ku.raw === cardMiss.raw, '6.3 every miss (paused, unknown) is the card\'s one 404 body');
 
   sec('7  the card fields for WEB-5\'s port (the chair\'s item 4)');

@@ -359,6 +359,9 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // one question — and a second route would owe a second copy of
                         // the locked-field checks for nothing. Same door, same guard.
                         'date_check_enabled',
+                        // CE-47 WEB-4 cut 14: what Google shows (0147's two columns). Read at the GET since G3.1 s2,
+                        // never writable until now, so the website room's SEO Save was refused with "No editable fields".
+                        'seo_title', 'seo_description',
                         'price_share_enabled', // CE-46 ELZ-3 · 0183: her price switch, the same door and guard as the date switch
                         // ── BLOCK 19 · G5.1 SITTING 2 · R-40.107 — THE PEER
                         //    DIRECTORY SWITCH ──────────────────────────────
@@ -529,6 +532,17 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   const update = {};
   for (const key of ALLOWED_FIELDS) {
     if (body[key] !== undefined) update[key] = body[key];
+  }
+
+  // CE-47 WEB-4 cut 14 · THE SEO PAIR: trimmed; empty is null (the card door then says it for her: 0147's defaults);
+  // over the cap the room counts (title 70, description 200; 0147's CHECKs) is a 400 with a plain line, never cut short.
+  for (const [key, cap, label] of [['seo_title', 70, 'Your Google title'], ['seo_description', 200, 'Your Google description']]) {
+    if (update[key] === undefined) continue;
+    if (update[key] === null) continue;
+    if (typeof update[key] !== 'string') return errRes(res, 400, `${label} must be text.`);
+    const t = update[key].trim();
+    if (Array.from(t).length > cap) return errRes(res, 400, `${label} can be up to ${cap} characters.`);
+    update[key] = t === '' ? null : t;
   }
 
   // If only name was provided, skip vendors update but still return success

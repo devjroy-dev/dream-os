@@ -1,0 +1,9 @@
+# scripts/floor-manifest-ce47-web4-cut14.txt
+# CE-47 · WEB-4 cut 14 · the site-kind door answers ok:true; the SEO pair writable at PATCH /vendor/me · base 49cc9f7 · F-19.16: a dirty path outside this list stops the floor.
+# Rung b208 (14 cells). b198 6.2 amended by label. No migration. No new directory. No file deleted.
+docs/handovers/TDW_CE47_WEB4_CUT14_HANDOVER.md
+scripts/b198_ce47_web4_cut5_bench.js
+scripts/b208_ce47_web4_cut14_bench.js
+scripts/floor-manifest-ce47-web4-cut14.txt
+src/api/public/siteKind.js
+src/api/vendor/me.js

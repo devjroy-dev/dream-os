@@ -27,7 +27,9 @@ router.get('/:code', async (req, res) => {
       if (s && s.published_at) kind = 'styles';
     }
     res.set('Cache-Control', 'public, max-age=60, s-maxage=60');
-    return res.status(200).json({ v: kind });
+    // CE-47 WEB-4 cut 14: `ok: true` beside v. The app's lib/site/kind.ts takes 'styles' only when j.ok && j.v === 'styles';
+    // without ok every vendor fell to the classic page, even after Publish.
+    return res.status(200).json({ ok: true, v: kind });
   } catch (_e) {
     return res.status(500).json({ ok: false, error: 'Lookup failed.' });
   }
