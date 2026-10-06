@@ -60,7 +60,7 @@ const gOAuth = require('./lib/vendor/googleOAuth');
 const gConn  = require('./lib/vendor/googleConnection');
 
 const IST = 'Asia/Kolkata';
-const SWEEP_CRON = '50 3 * * *';        // 03:50 IST nightly — its own minute
+const SWEEP_CRON = '7 * * * *';         // HOURLY at :07 IST, its own minute (CE-47, 4 Oct 2026: live within the hour of approval)
 const GRAPH_BASE = 'https://graph.facebook.com';
 const TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
 
@@ -363,7 +363,8 @@ async function probeAppPermissions(appKey, { env = process.env, fetch: f = globa
   return { ok: true, listing: gates.listingFrom(body) };
 }
 
-async function sweepMetaGates({ supabase, env = process.env, fetch: f, keys = null } = {}) {
+async function sweepMetaGates({ supabase, env = process.env, fetch: f, keys = null, probe: liveProbe = null } = {}) {
+  const runProbe = liveProbe || ((key) => require('./lib/featureGate').probe(key, { supabase, env, fetch: f }));
   // The ruled line, logged verbatim beside today's notice until gates.LINE_TEMPLATE is approved (CE-47 ruling 1).
   const notify = async (line) => { console.log(`[capabilities] founder line (rides tdw_capability_armed until ${gates.LINE_TEMPLATE} is approved): ${line}`); return notifyFounder(line, { env }); };
   const out = [];
@@ -394,6 +395,12 @@ async function sweepMetaGates({ supabase, env = process.env, fetch: f, keys = nu
       ? (row.status === 'pending' || row.status === 'approved' || (row.status === 'armed' && auto))
       : (sweepOn || row.status === 'approved');
     if (!write) { await cap.touch(f0.gate, { evidence: ev }, { supabase }); out.push({ key: f0.gate, ok: true, moves: [] }); continue; }
+    // CE-47 (4 Oct 2026): Meta's listing reading "live" is the trigger, AND a live probe with the test account's real
+    // token must pass before the row is written approved (a tester's token works before approval, so never alone).
+    if (r.status === 'approved' && row.status !== 'on') {
+      const pr = await runProbe(f0.gate);
+      if (!pr || !pr.ok) { await cap.touch(f0.gate, { evidence: `${ev}; Meta lists it live, but ${(pr && pr.evidence) || 'the live probe gave no answer'}` }, { supabase }); out.push({ key: f0.gate, ok: true, moves: [], probe: pr }); continue; }
+    }
     const m = await cap.recordSweep(f0.gate, { status: r.status, evidence: ev }, { supabase });
     out.push({ key: f0.gate, ok: true, moves: [m] });
     if (m.auto_flipped) await notify(gates.lineOn(f0));

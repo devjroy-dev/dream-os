@@ -84,6 +84,7 @@ router.use('/ig',          require('./ig'));
 // CE-46 ADS-1 cut 1 · the Ads section of Posts & ads. LOAD-BEARING like '/ig': with ads.js's '/callback' it makes
 // '/api/v2/vendor/ads/callback', the exact path oauth.ADS_CALLBACK_PATH names and the TDW ADS app's redirect holds.
 router.use('/ads',         require('./ads'));
+router.use('/features',    require('./features'));   // CE-47 ADS-2: her Meta feature switches
 router.use('/collab',      require('./collab'));
 router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
 router.use('/referrals',   require('./referrals')); // Block 19 G5.1 — the overflow exchange's READ doors (the forward is on /leads)

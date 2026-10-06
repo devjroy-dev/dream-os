@@ -34,7 +34,11 @@ function _setFetch(f) { _fetch = f || ((...a) => fetch(...a)); }
 
 async function gate(req) {
   const row = await cap.get(door.MASTER, { supabase: req.app.locals.supabase });
-  return door.openFor({ row, vendorId: req.vendor.id });
+  const d = door.openFor({ row, vendorId: req.vendor.id });
+  if (!d.open || !row || row.status !== 'on') return d;
+  // CE-47 ADS-2: once ads are on, her own choice decides (no stored choice means on; a connected vendor stays on).
+  const g = await require('../../lib/featureGate').openFor({ supabase: req.app.locals.supabase, vendorId: req.vendor.id, key: door.MASTER, row });
+  return g.open ? d : { open: false, reason: g.reason, choseOff: true };
 }
 
 /** The three-gap read against Meta, stored so the room can speak Meta's names. Refusals travel as a code. */

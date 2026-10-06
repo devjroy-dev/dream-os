@@ -35,6 +35,7 @@ function graph(lists, seen) {   // lists: { ADSAPP: {perm: word}, LIVEAPP: {...}
   };
 }
 const live = (ps) => Object.fromEntries(ps.map((p) => [p, 'live']));
+const PROBE = { ok: true, calls: [] };
 async function sweep(rows, lists, env = ENV) {
   delete require.cache[require.resolve(path.join(ROOT, 'src/lib/capabilities.js'))];
   delete require.cache[require.resolve(path.join(ROOT, 'src/lib/metaGates.js'))];
@@ -42,7 +43,9 @@ async function sweep(rows, lists, env = ENV) {
   const sw = require(path.join(ROOT, 'src/capabilitiesSweep.js'));
   const reg = register(rows); const logs = []; const seen = [];
   const ol = console.log; console.log = (...a) => logs.push(a.map(String).join(' '));
-  let out; try { out = await sw.sweepMetaGates({ supabase: reg, env, fetch: graph(lists, seen) }); } finally { console.log = ol; }
+  // LABELLED AMENDMENT (CE-47 ADS-2, 4 Oct 2026): the sweep now needs a live probe to pass before a feature goes on;
+  // these cells inject it (PROBE.ok, passing unless a cell says otherwise) and count its calls.
+  let out; try { out = await sw.sweepMetaGates({ supabase: reg, env, fetch: graph(lists, seen), probe: async (k) => { PROBE.calls.push(k); return { ok: PROBE.ok, evidence: PROBE.ok ? 'live probe passed: test' : 'live probe failed: GET me/conversations 400 (#10) not allowed' }; } }); } finally { console.log = ol; }
   return { reg, row: (k) => reg.rows.get(k), logs, out, seen };
 }
 const ARMED_AUTO = { key: 'flag.ads', kind: 'flag', status: 'armed', auto_on: true, walk_ref: 'seal:test' };
@@ -78,6 +81,21 @@ async function cells() {
   s = await sweep([{ key: 'flag.ig_photo_import', kind: 'flag', status: 'pending', auto_on: true, walk_ref: 'w' }], { ADSAPP: {}, LIVEAPP: live(['instagram_business_basic']) });
   ok(s.row('flag.ig_photo_import').status === 'on' && s.logs.some((l) => l.endsWith(': The Instagram photo import is now live for every vendor.')),
     '3.4 the photo import turns on with instagram_business_basic alone (CE-47, 4 Oct)', JSON.stringify(s.row('flag.ig_photo_import')));
+  sec('7  THE TRIGGER: Meta\'s approval AND the live probe (CE-47, 4 Oct 2026)');
+  const PEND = { key: 'perm.instagram_business_manage_messages', kind: 'permission', status: 'pending', auto_on: true, walk_ref: 'ruled' };
+  PROBE.ok = true; PROBE.calls = [];
+  s = await sweep([{ ...PEND }], { ADSAPP: {}, LIVEAPP: live(['instagram_business_basic', 'instagram_business_manage_messages']) });
+  ok(s.row('perm.instagram_business_manage_messages').status === 'on' && PROBE.calls.includes('perm.instagram_business_manage_messages'), '7.1 approved (listed live) and the probe passes: on', JSON.stringify(s.row('perm.instagram_business_manage_messages')));
+  PROBE.ok = true; PROBE.calls = [];
+  s = await sweep([{ ...PEND }], { ADSAPP: {}, LIVEAPP: live(['instagram_business_basic']) });
+  ok(s.row('perm.instagram_business_manage_messages').status === 'pending', '7.2 the probe would pass (a tester\'s token) but the permission is ABSENT from the listing: stays pending', JSON.stringify(s.row('perm.instagram_business_manage_messages')));
+  PROBE.ok = true; PROBE.calls = [];
+  s = await sweep([{ ...PEND }], { ADSAPP: {}, LIVEAPP: { ...live(['instagram_business_basic']), instagram_business_manage_messages: 'in_review' } });
+  ok(s.row('perm.instagram_business_manage_messages').status === 'pending', '7.3 present but not "live" (in_review): stays pending', JSON.stringify(s.row('perm.instagram_business_manage_messages')));
+  PROBE.ok = false; PROBE.calls = [];
+  s = await sweep([{ ...PEND }], { ADSAPP: {}, LIVEAPP: live(['instagram_business_basic', 'instagram_business_manage_messages']) });
+  ok(s.row('perm.instagram_business_manage_messages').status !== 'on' && /the live probe failed|live probe failed/.test(s.row('perm.instagram_business_manage_messages').evidence || ''), '7.4 approved but the probe fails: stays off, its evidence naming the failure', JSON.stringify(s.row('perm.instagram_business_manage_messages')));
+  PROBE.ok = true; PROBE.calls = [];
   sec('4  the mapping (ruled on the founder\'s reads)');
   s = await sweep([ARMED_AUTO], { ADSAPP: { ...live(ADS7), ads_read: 'in_review' }, LIVEAPP: {} });
   ok(s.row('flag.ads').status === 'armed', '4.1 any word but "live" is not approved', s.row('flag.ads').status);
@@ -118,6 +136,7 @@ const MUTS = [
   ['src/capabilitiesSweep.js', "console.log(`[capabilities] founder line (rides tdw_capability_armed until ${gates.LINE_TEMPLATE} is approved): ${line}`);", "void line;", 'M6 the founder line not logged', '1.2'],
   ['src/lib/metaGates.js', "permissions: Object.freeze(['instagram_business_basic']),", "permissions: Object.freeze(['instagram_business_basic', 'instagram_business_manage_messages']),", 'M7 the photo import waits on messages again', '3.4'],
   ['src/lib/metaGates.js', "'pages_manage_ads', 'instagram_basic']),", "'pages_manage_ads', 'instagram_basic', 'instagram_manage_insights']),", 'M8 flag.ads asks for insights again', '1.1'],
+  ['src/capabilitiesSweep.js', "    if (r.status === 'approved' && row.status !== 'on') {\n      const pr = await runProbe(f0.gate);", "    if (false) {\n      const pr = await runProbe(f0.gate);", 'M9 approval alone turns a feature on (no probe)', '7.4'],
 ];
 const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 (async () => {

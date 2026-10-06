@@ -185,7 +185,8 @@ const dm = (over = {}) => ({ object: 'instagram', entry: [{ id: 'ACC1', time: 1,
     'M1 the echo flip removed puts the couple in the account slot (2.2 would redden)');
   M = mut("return allow.includes(String(vendorId));", 'return allow.length > 0;');
   ok(M && M.laneOpen('V1', { IG_DM_WALK_VENDOR_IDS: 'V2' }) === true, 'M2 an allowlist that opens for anyone once set is caught (4.1 would redden)');
-  M = mut("if (!laneOpen(who.vendorId, env)) return { ok: false, why: 'lane_closed' };", '');
+  // LABELLED AMENDMENT (CE-47 ADS-2, 4 Oct 2026): the lane check now goes through featureGate.openFor; the same cut, anchored there.
+  M = mut("  if (!lane.open) return { ok: false, why: 'lane_closed' };\n", '');
   if (M) { const S2 = fakeStore(); const rr = await M.recordInbound(S2, one[0], {}); ok(rr.ok === true, 'M3 the lane gate removed records on a closed lane (5.2 would redden)'); } else ok(false, 'M3 anchor');
   M = mut("for (const name of ['IG_APP_SECRET'])", "for (const name of ['IG_APP_SECRET', 'META_APP_SECRET'])");
   ok(M && M.verifyIgSignature(raw, hdr('meta-secret'), env).ok, 'M4 restoring the META_APP_SECRET fallback accepts the other secret\u2019s body (3.1 would redden; RE-PINNED BY LABEL, cut 2c)');

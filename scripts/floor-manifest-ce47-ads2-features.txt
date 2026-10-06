@@ -1,0 +1,18 @@
+# scripts/floor-manifest-ce47-ads2-features.txt
+# CE-47 · ADS-2 · EVERY META FEATURE PER-VENDOR, LIVE BY ITSELF ON APPROVAL (server half). BASE: eb6b51c. Migration 0214.
+# 0214 (vendor_feature_choices; auto_on on flag.ads, Instagram messages, the photo import); src/lib/featureGate.js (openFor,
+# choices, live probes); the door /api/v2/vendor/features; the sweep HOURLY and a FEATURES row on only when Meta lists it
+# "live" for the app AND the live probe passes; the IG inbound lane and the ads gate through featureGate.
+# Rungs b255 (new), b149 (section 7, M9; helper amended by label), b119 (M3 anchor amended by label). F-14.16 holds.
+db/migrations/0214_vendor_feature_choices.sql
+src/lib/featureGate.js
+src/api/vendor/features.js
+src/api/vendor/core.js
+src/api/vendor/ads.js
+src/lib/instagram/igInbound.js
+src/capabilitiesSweep.js
+scripts/b255_ce47_feature_gate_bench.js
+scripts/b149_ads2_meta_gates_bench.js
+scripts/b119_igd1_ig_door_bench.js
+docs/handovers/TDW_CE47_ADS2_FEATURES_HANDOVER.md
+scripts/floor-manifest-ce47-ads2-features.txt

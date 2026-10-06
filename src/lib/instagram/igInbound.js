@@ -82,7 +82,9 @@ async function findOrMakeThread(supabase, vendorId, igsid) {
 async function recordInbound(supabase, msg, env) {
   const who = await igConnection.findByIgAccountId(supabase, msg.accountId);   // cut 2c: the webhook addresses the professional account (F-44.194)
   if (!who || !who.ok) return { ok: false, why: 'unknown_account' };
-  if (!laneOpen(who.vendorId, env)) return { ok: false, why: 'lane_closed' };
+  // CE-47 ADS-2: past approval her own choice decides (featureGate); before it, the walk list, as laneOpen had it.
+  const lane = await require('../featureGate').openFor({ supabase, vendorId: who.vendorId, key: GATE, env, row: { status: cap.on(GATE) ? 'on' : 'pending' } });
+  if (!lane.open) return { ok: false, why: 'lane_closed' };
   const t = await findOrMakeThread(supabase, who.vendorId, msg.igsid);
   if (!t.ok) return { ok: false, why: t.why };
   const row = webhookCore.inboundRow({
