@@ -1,0 +1,11 @@
+# scripts/floor-manifest-ce47-web4-cut13.txt
+# CE-47 · WEB-4 cut 13 · the stored phones, option 1: 0194 the demo numbers with their code; the demo writers store it; prospects unchanged · base eb6b51c · F-19.16: a dirty path outside this list stops the floor.
+# Rung b209 (15 cells) + b209r (Postgres 16). Migration 0194 goes in BEFORE the push. No new directory. No file deleted.
+db/migrations/0194_demo_phones_with_code.sql
+docs/handovers/TDW_CE47_WEB4_CUT13_HANDOVER.md
+scripts/b209_ce47_web4_cut13_bench.js
+scripts/floor-manifest-ce47-web4-cut13.txt
+scripts/lib/b209r_0194_rehearse.sh
+src/api/admin/demoAdmin.js
+src/api/demo/vendor.js
+src/lib/phone.js

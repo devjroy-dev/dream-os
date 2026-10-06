@@ -106,6 +106,8 @@ const { DEMO_INVITE_BATCH_MAX, readDemoInviteBatchMax } = require('../../lib/dem
 // F-07.47: the estate has ONE. A second normalization here would let the gate
 // miss a collision the prospect lane can see.
 const { normalizeTo } = require('../../lib/metaCloud');
+// CE-47 WEB-4 cut 13: a demo's WhatsApp number is stored with its code (+91) from now on; other shapes as typed.
+const { withIndianCode } = require('../../lib/phone');
 
 // ── F-08.44 · THE TYPED-MONEY DOOR ───────────────────────────────────────────
 // `rate_display` and `about` are free text with no gate anywhere, and both are
@@ -310,7 +312,7 @@ router.post('/vendors', requireAdminPassword, async (req, res) => {
       // demoLifecycle.buildInsertPatch supplies ALL FOUR presence fields
       // (active, discover_eligible, discover_eligible_at, state:'built') so this
       // route never authors presence itself.
-      .insert(demoLifecycle.buildInsertPatch({ ig_handle: ig_handle.toLowerCase().trim(), display_name: display_name.trim(), category, city, whatsapp_phone: whatsapp_phone || null, about: about || null, rate_display: rate_display || null, photos, created_by: 'admin' }))
+      .insert(demoLifecycle.buildInsertPatch({ ig_handle: ig_handle.toLowerCase().trim(), display_name: display_name.trim(), category, city, whatsapp_phone: (whatsapp_phone && withIndianCode(whatsapp_phone)) || null, about: about || null, rate_display: rate_display || null, photos, created_by: 'admin' }))
       .select().single();
     if (error) throw error;
     return res.json({ ok: true, vendor: data, demo_url: `https://demo.thedreamwedding.in/vendor/${data.ig_handle}` });
@@ -465,7 +467,7 @@ router.post('/bulk', requireAdminPassword, async (req, res) => {
         // single create does. This route never authors presence itself.
         .insert(demoLifecycle.buildInsertPatch({
           ig_handle, display_name, category, city,
-          whatsapp_phone: rawPhone || null,
+          whatsapp_phone: rawPhone ? withIndianCode(rawPhone) : null,   // CE-47 WEB-4 cut 13: stored with its code
           about: r.about ? String(r.about).trim() : null,
           rate_display: r.rate_display ? String(r.rate_display).trim() : null,
           photos, created_by: 'admin_bulk',

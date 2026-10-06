@@ -23,6 +23,7 @@ const { maskDemoLeads, maskedLeadLines, maskedLeadSummary, MASKED_SELECT } = req
 const { shapeDemoRow } = require('../../lib/discover/shapeDemoRow');
 
 const express   = require('express');
+const { withIndianCode } = require('../../lib/phone');
 const router    = express.Router();
 
 const DEMO_SYSTEM_PROMPT = `You are DreamAi, the AI business assistant for The Dream Wedding (TDW) — India's premium wedding vendor platform.
@@ -375,7 +376,7 @@ router.post('/:handle/claim', async (req, res) => {
     await supabase.from('demo_claim_requests').insert({
       ig_handle:   handle,
       vendor_name: vendor_name || handle,
-      phone:       phone,
+      phone:       withIndianCode(phone),   // CE-47 WEB-4 cut 13: stored with its code (+91); other shapes as typed
       claimed_at:  new Date().toISOString(),
     }).throwOnError();
 

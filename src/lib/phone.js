@@ -30,4 +30,15 @@ function toE164(raw) {
   return raw;
 }
 
-module.exports = { toE164 };
+// CE-47 WEB-4 cut 13 (the stored phones): the code added ONLY to the two Indian shapes the clean-up (0194) fixes, the
+// same predicates exactly: ten digits starting 6 to 9 -> +91 and the ten; 91 then ten digits starting 6 to 9 -> + and
+// the twelve. Every other shape is returned as typed (trimmed), never guessed at: toE164 would turn an 11-digit
+// "0"-prefixed number into "+0...", which is why the demo writers use this instead.
+function withIndianCode(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (/^[6-9][0-9]{9}$/.test(s)) return `+91${s}`;
+  if (/^91[6-9][0-9]{9}$/.test(s)) return `+${s}`;
+  return s;
+}
+
+module.exports = { toE164, withIndianCode };
