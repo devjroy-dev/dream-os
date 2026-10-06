@@ -52,10 +52,13 @@ function photoOf(row) {
 }
 
 /** Group approved look photos by look, in their own order. */
+/** CE-47 WEB-4 cut 17: on HER OWN SITE a look photograph shows when approved, or when it is her own Instagram photograph
+ * still pending (rejected never shows). Discover and the admin queue are untouched: they keep the approval gate. */
+function showsOnHerSite(r) { return r.approval_state === 'approved' || (r.approval_state === 'pending' && r.source === 'instagram') || r.approval_state === undefined; }
 function photosByLook(photoRows) {
   const m = new Map();
   for (const p of arr(photoRows)) {
-    const r = obj(p); if (!r.look_id || r.deleted_at || (r.approval_state && r.approval_state !== 'approved')) continue;
+    const r = obj(p); if (!r.look_id || r.deleted_at || !showsOnHerSite(r)) continue;
     const ph = photoOf(r); if (!ph) continue;
     if (!m.has(r.look_id)) m.set(r.look_id, []);
     m.get(r.look_id).push({ pos: num(r.position) || 0, ph });
@@ -251,7 +254,7 @@ function siteCard(input) {
     const live = liveLooks(i.looks, photoMap);
     const liveById = new Map(live.map((l) => [l.id, l]));
     const photoById = new Map();
-    for (const p of arr(i.lookPhotos).map(obj)) { if (p.id && p.approval_state === 'approved' && !p.deleted_at) { const ph = photoOf(p); if (ph) photoById.set(p.id, ph); } }
+    for (const p of arr(i.lookPhotos).map(obj)) { if (p.id && showsOnHerSite(p) && p.approval_state !== undefined && !p.deleted_at) { const ph = photoOf(p); if (ph) photoById.set(p.id, ph); } }
     const okUrls = approvedUrls(i.portfolio, photoMap);
     const looks = live.map((l) => lookSummary(l, photoMap, i.rateDisplay, i.now));
     const cover = coverOf(row.cover, okUrls);

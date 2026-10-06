@@ -461,17 +461,17 @@ router.post('/looks/:id/photos', ...auth, asyncHandler(async (req, res) => {
   const look = await lookOf(sb, v.id, req.params.id); if (!look) return errRes(res, 404, LINES.notYours);
   const have = await rows(sb.from('vendor_look_photos').select('id').eq('look_id', look.id).eq('vendor_id', v.id).is('deleted_at', null));
   if (have.length >= limits.COUNTS.photos_per_look) return errRes(res, 400, LINES.photoCap);
-  let image_url = null; let approval_state = 'pending';
+  let image_url = null; let approval_state = 'pending'; let source = 'upload';   // cut 17: a look photo carries its portfolio photo's source
   if (b.portfolio_id !== undefined) {
     if (!UUID.test(String(b.portfolio_id))) return errRes(res, 404, LINES.notYours);
-    const pf = await one(sb.from('vendor_portfolio').select('id, image_url, approval_state').eq('id', b.portfolio_id).eq('vendor_id', v.id).maybeSingle());
+    const pf = await one(sb.from('vendor_portfolio').select('id, image_url, approval_state, source').eq('id', b.portfolio_id).eq('vendor_id', v.id).maybeSingle());
     if (!pf || !/^https:\/\//.test(String(pf.image_url || ''))) return errRes(res, 404, LINES.notYours);
-    image_url = pf.image_url; approval_state = pf.approval_state === 'approved' ? 'approved' : 'pending';
+    image_url = pf.image_url; approval_state = pf.approval_state === 'approved' ? 'approved' : 'pending'; source = pf.source === 'instagram' ? 'instagram' : 'upload';
   } else {
     const url = String(b.image_url || '');
     // The ruling's second match: the EXACT stored address of one of her own portfolio photos carries its state.
-    const same = /^https:\/\//.test(url) ? await one(sb.from('vendor_portfolio').select('id, image_url, approval_state').eq('vendor_id', v.id).eq('image_url', url).maybeSingle()) : null;
-    if (same) { image_url = same.image_url; approval_state = same.approval_state === 'approved' ? 'approved' : 'pending'; }
+    const same = /^https:\/\//.test(url) ? await one(sb.from('vendor_portfolio').select('id, image_url, approval_state, source').eq('vendor_id', v.id).eq('image_url', url).maybeSingle()) : null;
+    if (same) { image_url = same.image_url; approval_state = same.approval_state === 'approved' ? 'approved' : 'pending'; source = same.source === 'instagram' ? 'instagram' : 'upload'; }
     else {
       // a fresh upload: only into her own look folder, and it joins the admin queue
       if (!CLOUD.test(url) || !url.includes(`/vendor_looks/${v.id}/`)) return errRes(res, 400, LINES.photoAddress);
@@ -485,7 +485,7 @@ router.post('/looks/:id/photos', ...auth, asyncHandler(async (req, res) => {
   const created = await one(sb.from('vendor_look_photos').insert({ look_id: look.id, vendor_id: v.id, image_url,
     width: Number.isInteger(w) && w > 0 ? w : null, height: Number.isInteger(h) && h > 0 ? h : null,
     focal_portrait_x: fp.x, focal_portrait_y: fp.y, focal_landscape_x: fl.x, focal_landscape_y: fl.y,
-    caption: cap.value, alt: alt.value, position: have.length, approval_state }).select('id, approval_state').single());
+    caption: cap.value, alt: alt.value, position: have.length, approval_state, source }).select('id, approval_state').single());
   if (!created) return errRes(res, 503, LINES.saveFailed);
   return okRes(res, { photo: { id: created.id, review: reviewOf(created) } });
 }));

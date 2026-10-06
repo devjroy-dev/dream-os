@@ -285,7 +285,8 @@ const CAPABILITY_AT = Object.freeze({
   palettes: 1, font_pairs: 1, custom_palette: 2, gradients: 3, collections: 2, journal: 2,
   custom_sections: 2, custom_pages: 3, full_order: 3, credit_removable: 3,
   written_testimonials: 1, video_testimonials: 2, live_booking: 2, own_voice: 3,
-  visitor_counts: 1, visitor_sources: 2, visitor_saves: 3, own_domain: 2, built_from_instagram: 1,
+  // cut 17 (the chair, 6 Oct): the two-minute start builds Basic's site from her Instagram too, so the flag opens at Basic
+  visitor_counts: 1, visitor_sources: 2, visitor_saves: 3, own_domain: 2, built_from_instagram: 0,
 });
 function capabilitiesFor(tier) {
   const r = rank(tier); const t = tierOf(tier);

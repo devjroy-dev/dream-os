@@ -20,6 +20,7 @@ const LINES = Object.freeze({
   phoneIN: 'Please add a 10-digit mobile number.',
   phone: 'Please add your mobile number.',
   occasion: 'Please choose the occasion.',
+  package: 'Choose a package from the list.',   // cut 17
   date: 'Please choose a date from today on.',
   consent: 'Please send again to agree to the line above Send.',
   tooMany: 'Too many tries. Please try again in an hour.',
@@ -117,11 +118,14 @@ function checkEnquiry(body, nowMs) {
   const pg = b.page && typeof b.page === 'object' ? b.page : {};
   const kind = ['home', 'look', 'collection', 'journal', 'other'].includes(pg.kind) ? pg.kind : 'other';
   const title = trimmed(pg.title, 80);
-  return { ok: { name, phone: ph.phone, occasion, date, consentVersion: cv, page: { kind, title: kind === 'home' ? null : title } } };
+  // cut 17: the package she asked about (optional, 1 to 80 characters), into the thread's first line
+  let pkg = null;
+  if (b.package !== undefined && b.package !== null && b.package !== '') { pkg = trimmed(b.package, 80); if (!pkg) return { field: 'package', error: LINES.package }; }
+  return { ok: { name, phone: ph.phone, occasion, date, consentVersion: cv, page: { kind, title: kind === 'home' ? null : title }, package: pkg } };
 }
 
 /** The thread's first inbound row, word for word (the contract's line c). */
-function firstLine(f) { return `Website enquiry: ${f.occasion}, ${f.date ? dateWords(f.date) : 'no date'}, from ${f.page.title || 'the home page'}.`; }
+function firstLine(f) { return `Website enquiry: ${f.occasion}, ${f.date ? dateWords(f.date) : 'no date'}, from ${f.page.title || 'the home page'}${f.package ? `, about ${f.package}` : ''}.`; }
 /** The vendor's notice (the contract's line d), through the engine's notice head. */
 function noticeLine(engine, f) {
   const head = engine.enquiryHead(f.name, { channel: 'website', phone: f.phone });

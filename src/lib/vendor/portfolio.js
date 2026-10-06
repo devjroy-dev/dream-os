@@ -158,6 +158,9 @@ async function currentOrder(supabase, vendorId) {
 async function registerImage(supabase, vendorId, body) {
   const { image_url, caption, aesthetic_tags, is_hero, in_carousel, approval_state } = body;
   if (!image_url) return { ok: false, error: 'image_url is required.' };
+  // CE-47 WEB-4 cut 17 (0195): where the photograph came from. 'upload' unless the Instagram import says 'instagram'.
+  const source = body.source === undefined || body.source === null ? 'upload' : body.source;
+  if (!['upload', 'instagram'].includes(source)) return { ok: false, error: 'source must be upload or instagram.' };
 
   // Cap site 1 — the vendor register door.
   const room = await canAcceptMore(supabase, vendorId, 1);
@@ -184,6 +187,7 @@ async function registerImage(supabase, vendorId, body) {
     // in-review if it came from the phone. Equalizing the two needs its own
     // future ruling; nothing here may quietly close the gap.
     approval_state: approval_state === 'approved' ? 'approved' : 'pending',
+    source,
     position,
   }).select().single();
 

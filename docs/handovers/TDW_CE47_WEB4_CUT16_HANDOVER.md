@@ -28,8 +28,8 @@ push). The founder's decision, the chair's rulings 1 to 5.
   untouched), 196, 200, 208, 209 (train 2), 205 (OFF-A1b's record, verbatim), 195. 197 and 201 are not in train 3.
 
 ## Proven
-b261 32/0. Amended by label: b146 (the vendor on Signature), b160 5.1 / 5.22 / 7.4, b196 3.3 and 1.16 (the meter zeroed
-before each measured card: the cure of a flaky cell, accepted), b198 4.8, b208 1.2. Differential at d1aeab1, 101 benches:
+b261 32/0. Amended by label: b146 (the vendor on Signature), b160 5.1 / 5.22 / 7.4, b196 3.3 and 1.16 (corrected by cut 17: r2
+replaced the zeroed meter with a CAUSAL stage meter, deterministic under load; 1.19 its control), b198 4.8, b208 1.2. Differential at d1aeab1, 101 benches:
 exits identical but two. b196 is 1/0, its flaky cell on the clean tip. b15 is red on this base ALONE, expected: the
 formatter aborts on 0205's record until OFF-A1b r2 brings 0205's file, ahead of this cut; the chair proves b15 green on
 the combined tree.

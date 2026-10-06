@@ -1,0 +1,16 @@
+# scripts/floor-manifest-ce47-web4-cut17.txt
+# CE-47 · WEB-4 cut 17 · the two-minute start's server half; record 0197 · base bf1fc4d (server train 4, after CLB-2a) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b263 (16 cells). b261 amended by label. No migration. b15 red on this base alone (0197's file arrives with CLB-2a). No new directory. No file deleted.
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_WEB4_CUT16_HANDOVER.md
+docs/handovers/TDW_CE47_WEB4_CUT17_HANDOVER.md
+scripts/b261_ce47_web4_cut16_bench.js
+scripts/b263_ce47_web4_cut17_bench.js
+scripts/floor-manifest-ce47-web4-cut17.txt
+src/api/public/vendorCard.js
+src/api/vendor/solutions/siteRoom.js
+src/lib/site/siteCard.js
+src/lib/site/siteModel.js
+src/lib/vendor/igImport.js
+src/lib/vendor/portfolio.js
+src/lib/website/enquiry.js

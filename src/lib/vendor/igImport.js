@@ -259,6 +259,7 @@ async function importSelected(supabase, vendorId, sourceUrls) {
     const reg = await registerImage(supabase, vendorId, {
       image_url: m.image_url,
       approval_state: 'approved',
+      source: 'instagram',   // CE-47 WEB-4 cut 17 (0195): her own Instagram photograph
     });
     if (!reg.ok) { failed.push({ source: src, error: reg.error }); continue; }
     imported.push(reg.image);
