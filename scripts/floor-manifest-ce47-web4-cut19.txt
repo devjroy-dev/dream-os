@@ -1,0 +1,10 @@
+# scripts/floor-manifest-ce47-web4-cut19.txt
+# CE-47 · WEB-4 cut 19 · the first-build door · base bf1fc4d (the server train after 4) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b264 (24 cells). Migration 0220 goes in BEFORE the push. No new directory. No file deleted.
+db/migrations/0220_vendor_first_builds.sql
+docs/handovers/TDW_CE47_WEB4_CUT19_HANDOVER.md
+scripts/b264_ce47_web4_cut19_bench.js
+scripts/floor-manifest-ce47-web4-cut19.txt
+src/api/vendor/core.js
+src/api/vendor/firstBuild.js
+src/lib/vendor/firstBuild.js
