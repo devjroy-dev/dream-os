@@ -137,5 +137,6 @@ router.use('/',            require('./schedules'));
 router.use('/reminders',   require('./reminders'));
 router.use('/contracts',   require('./contracts'));
 router.use('/tds',         require('./tds'));
+router.use('/papers',      require('./papers'));   // CE-47 PRO P1: Business papers
 
 module.exports = router;

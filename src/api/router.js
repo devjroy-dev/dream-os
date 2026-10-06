@@ -30,6 +30,8 @@ router.use('/crew',               require('./crew'));          // TDW_04.5 P3 鈥
 router.use('/public/vendor-card', require('./public/vendorCard'));
 // CE-47 WEB-4 cut 3 路 the client's own page for kind words (single use; try limits; the token's hash only).
 router.use('/public/testimonial', require('./public/testimonial'));
+// CE-47 PRO P1 路 the check door for her issued papers (public, keyed on the check code; one miss for every refusal; 60 tries an hour per address).
+router.use('/public/check',       require('./public/check'));
 // CE-47 WEB-4 cut 4 路 visits and hearts on her site (always 204; nobody identified; daily totals only).
 router.use('/public/site-kind', require('./public/siteKind'));
 // CE-47 WEB-4 cut 7 路 the website panel's two doors (WEB-7's contract): the enquiry, then the chat by its token.
