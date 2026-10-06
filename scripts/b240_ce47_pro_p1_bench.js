@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// scripts/b240_ce47_pro_p1_bench.js · CE-47 · PRO · P1, server half, part 1: 0208, 0209 and the verified-weddings rule.
+// scripts/b240_ce47_pro_p1_bench.js · CE-47 · PRO · P1, server half: 0208, 0209, the verified-weddings rule, the papers,
+// the check door; cut 2 (§10): each verified wedding's month and city, and the ID's photo (R3 (b)).
 // No network, no database: the migrations are read as text; the rule runs on rows and through a fake store.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
@@ -151,5 +152,45 @@ const rd = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
   const keys = [...require(path.join(ROOT, 'src/api/public/check.js'))._limiter._map.keys()];
   ok(keys.length === 1 && /^addr:check:[0-9a-f]{64}$/.test(keys[0]) && !keys[0].includes('127.0.0.1'), '9.6 the address is kept only as its sha256');
   srv.close();
+
+  console.log('\n── 10  cut 2: month and city; the ID\'s photo ──');
+  const C2 = { today: '2026-10-06' };
+  const r10 = countVerified({ ...C2, invoices: [{ binder_id: 'B', amount_paid: 10 }, { lead_id: 'L2', amount_paid: 5 }, { binder_id: 'B3', amount_paid: 5 }],
+    events: [{ linked_binder_id: 'B', event_date: '2026-02-14' }, { linked_binder_id: 'B3', event_date: '2026-09-20' }],
+    leads: [{ id: 'LB', binder_id: 'B', wedding_city: '  Udaipur ', wedding_date: '2026-02-14' }, { id: 'L2', wedding_city: 'Delhi', wedding_date: '2025-12-01', name: 'Meera', phone: '+91' }] });
+  ok(r10.count === 3 && JSON.stringify(r10.weddings) === JSON.stringify([{ month: '2026-09', city: null }, { month: '2026-02', city: 'Udaipur' }, { month: '2025-12', city: 'Delhi' }]), '10.1 each wedding\'s month and city, newest first; a binder\'s own lead gives its city; none known is null', JSON.stringify(r10.weddings));
+  ok(!JSON.stringify(r10.weddings).match(/Meera|\+91|amount|L2|LB|"B/), '10.2 nothing but month and city leaves (no name, phone, amount or id)');
+  const T10 = { invoices: [{ vendor_id: 'v1', binder_id: 'B', lead_id: null, amount_paid: 100, deleted_at: null }], events: [{ vendor_id: 'v1', linked_binder_id: 'B', event_date: '2026-09-20', deleted_at: null }],
+    leads: [{ vendor_id: 'v1', id: 'LB', binder_id: 'B', wedding_city: 'Jaipur', wedding_date: '2026-09-20', deleted_at: null }] };
+  const w10 = await verifiedWeddings({ supabase: store(T10), vendorId: 'v1', now: Date.parse('2026-10-06T06:00:00Z') });
+  ok(w10.count === 1 && w10.weddings[0].city === 'Jaipur' && w10.weddings[0].month === '2026-09', '10.3 through a store: the binder\'s lead is read for its city; the count is unchanged', JSON.stringify(w10));
+  const PF = { vendor_portfolio: [{ vendor_id: 'v1', image_url: 'https://res.cloudinary.com/x/image/upload/v1/me.jpg', approval_state: 'approved' }, { vendor_id: 'v1', image_url: 'https://res.cloudinary.com/x/image/upload/v1/no.jpg', approval_state: 'rejected' }, { vendor_id: 'v2', image_url: 'https://res.cloudinary.com/x/image/upload/v1/hers.jpg', approval_state: 'approved' }] };
+  const st10 = mk({ ...JSON.parse(JSON.stringify(T7)), ...PF });
+  const idOk = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/me.jpg' }, now: N });
+  ok(idOk.ok && idOk.paper.figures.photo_url === 'https://res.cloudinary.com/x/image/upload/v1/me.jpg', '10.4 an ID with her own portfolio photo keeps it on the paper');
+  const idOther = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/hers.jpg' }, now: N });
+  const idRej = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/no.jpg' }, now: N });
+  const idHttp = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'http://example.com/a.jpg' }, now: N });
+  ok([idOther, idRej, idHttp].every((r) => !r.ok && r.status === 400 && r.error === 'Pick a photo from your portfolio.'), '10.5 another vendor\'s photo, a refused photo, or a non-https link is refused in plain words');
+  const idNone = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card' }, now: N });
+  const cert10 = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'certificate', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/me.jpg' }, now: N });
+  ok(idNone.ok && idNone.paper.figures.photo_url === null && cert10.ok && cert10.paper.figures.photo_url === undefined, '10.6 the photo stays optional on the ID and never rides on a certificate');
+  const zl = require('zlib'); const png = (() => { const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]); const ch = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(zl.crc32(td) >>> 0); return Buffer.concat([l, td, c]); };
+    const ih = Buffer.alloc(13); ih.writeUInt32BE(4, 0); ih.writeUInt32BE(4, 4); ih[8] = 8; const raw = Buffer.alloc(20); for (let r = 0; r < 4; r++) raw.fill(150, r * 5 + 1, r * 5 + 5); return Buffer.concat([sig, ch('IHDR', ih), ch('IDAT', zl.deflateSync(raw)), ch('IEND', Buffer.alloc(0))]); })();
+  const withImg = (await R.paperFile(idOk.paper, { fetchImage: async () => png })).body.toString('latin1');
+  const noImg = (await R.paperFile(idOk.paper, { fetchImage: async () => null })).body.toString('latin1');
+  const nImg = (t) => (t.match(/\/Subtype\s*\/Image/g) || []).length;   // the QR codes are images too: count, never test presence
+  ok(nImg(withImg) === nImg(noImg) + 1 && noImg.startsWith('%PDF-'), '10.7 the ID draws her photo (one more image than without it), and still prints without it', `${nImg(withImg)} vs ${nImg(noImg)}`);
+  ok(R.isImg(png) && !R.isImg(Buffer.from('<html>not an image</html>')), '10.8 only real JPEG or PNG bytes are drawn');
+  require(path.join(ROOT, 'src/api/public/check.js'))._limiter._map.clear();   // §9.5 spent this address's hour on purpose
+  const app10 = express(); app10.locals.supabase = st10; app10.use('/c', require(path.join(ROOT, 'src/api/public/check.js')));
+  const s10 = http.createServer(app10); await new Promise((r) => s10.listen(0, r)); const p10 = s10.address().port;
+  const g10 = (u) => new Promise((res) => http.get(`http://127.0.0.1:${p10}${u}`, (r) => { let b = ''; r.on('data', (c) => (b += c)); r.on('end', () => res(JSON.parse(b))); }));
+  st10.ins.find((r) => r.id === cert10.paper.id).figures.photo_url = 'https://res.cloudinary.com/x/image/upload/v1/me.jpg';   // planted: a certificate row carrying a photo by hand
+  const gi = await g10(`/c/${idOk.paper.check_code}`), gc = await g10(`/c/${cert10.paper.check_code}`);
+  ok(gi.paper.photo_url === 'https://res.cloudinary.com/x/image/upload/v1/me.jpg' && gc.paper.photo_url === null, '10.9 the ID\'s check page carries its photo; a certificate\'s never does, even with one planted on its row');
+  await I.withdrawPaper({ supabase: st10, vendorId: 'v1', id: idOk.paper.id, now: N }); const gw = await g10(`/c/${idOk.paper.check_code}`);
+  ok(gw.paper.state === 'withdrawn' && gw.paper.photo_url === undefined, '10.10 a withdrawn ID shows no photo');
+  s10.close();
   console.log(`\nb240: ${pass} passed, ${fail} failed`); if (fail) { console.log('FAILED: ' + failed.join(' · ')); process.exit(1); }
 })();

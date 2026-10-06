@@ -28,7 +28,8 @@ router.get('/:code', async (req, res) => {
     const p = r.data; const name = (p.figures || {}).name || '';
     if (p.withdrawn_at) return res.json({ ok: true, paper: { check_code: p.check_code, title: W.KIND_TITLE[p.kind], state: 'withdrawn', name, issued_on: W.fullDate(p.issued_at), withdrawn_on: W.fullDate(p.withdrawn_at), lines: [], note: `${name} withdrew this paper. It no longer stands.` } });
     return res.json({ ok: true, paper: { check_code: p.check_code, title: W.KIND_TITLE[p.kind], state: 'valid', name, issued_on: W.fullDate(p.issued_at),
-      purpose: p.kind === 'statement' && p.purpose ? W.PURPOSE[p.purpose] : null, lines: [...lines(p), ['Issued', W.fullDate(p.issued_at)]], note: note(p) } });
+      purpose: p.kind === 'statement' && p.purpose ? W.PURPOSE[p.purpose] : null, lines: [...lines(p), ['Issued', W.fullDate(p.issued_at)]], note: note(p),
+      photo_url: p.kind === 'id_card' && /^https:\/\//.test(String((p.figures || {}).photo_url || '')) ? p.figures.photo_url : null } });
   } catch (_e) { return res.status(503).json({ ok: false, error: 'TDW could not check this code just now. Please try again.' }); }
 });
 module.exports = router;

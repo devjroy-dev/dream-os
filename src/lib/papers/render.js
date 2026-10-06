@@ -55,11 +55,39 @@ function note(paper) {
   return 'Her own records from TDW for her CA: invoices, expenses with GST, and TDS, month by month.';
 }
 
-async function paperPdf(paper) {
+// CUT 2 · the ID's photo (R3 (b)): fetched at render from the URL kept on the paper, 5 s at most, JPEG or PNG only (what
+// pdfkit draws); a Cloudinary picture is asked for as JPEG. If it cannot be had, the ID prints without it, as before.
+const isImg = (b) => b && b.length > 8 && ((b[0] === 0xff && b[1] === 0xd8) || (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47));
+async function defaultFetchImage(url) {
+  const tries = [url]; if (/\/upload\//.test(url) && /res\.cloudinary\.com/.test(url)) tries.push(url.replace('/upload/', '/upload/f_jpg,w_600/'));
+  for (const u of tries) {
+    try { const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 5000);
+      const r = await fetch(u, { signal: ac.signal }); clearTimeout(t); if (!r.ok) continue;
+      const b = Buffer.from(await r.arrayBuffer()); if (b.length <= 5 * 1024 * 1024 && isImg(b)) return b;
+    } catch (_e) { /* next */ }
+  }
+  return null;
+}
+async function idCard(doc, paper, o) {
+  const f = paper.figures || {}; const x = 56, y = doc.y, w = 483, h = 230;
+  doc.roundedRect(x, y, w, h, 14).lineWidth(0.8).strokeColor(RULE).stroke();
+  const img = f.photo_url && /^https:\/\//.test(f.photo_url) ? await (o.fetchImage || defaultFetchImage)(f.photo_url) : null;
+  let tx = x + 24;
+  if (img) { try { doc.save(); doc.roundedRect(x + 20, y + 20, 140, 180, 10).clip(); doc.image(img, x + 20, y + 20, { cover: [140, 180], align: 'center', valign: 'center' }); doc.restore(); tx = x + 180; } catch (_e) { doc.restore(); } }
+  doc.font('Helvetica-Bold').fontSize(18).fillColor(INK).text(f.name || '', tx, y + 28, { width: x + w - tx - 20 });
+  doc.font('Helvetica').fontSize(12).fillColor(MUTE).text(`${f.trade || ''}  ·  ${f.city || ''}`, tx, doc.y + 6, { width: x + w - tx - 20 });
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(INK).text(`${f.weddings_verified} weddings on TDW, verified by TDW`, tx, doc.y + 14, { width: x + w - tx - 20 });
+  doc.image(await qr(W.checkUrl(paper.check_code)), x + w - 96, y + h - 96, { width: 76 });
+  doc.font('Helvetica').fontSize(9).fillColor(MUTE).text(paper.check_code, tx, y + h - 30, { width: 200 });
+  doc.x = 56; doc.y = y + h + 18;
+  return !!img;
+}
+
+async function paperPdf(paper, o = {}) {
   return pdf(async (doc) => {
     head(doc, W.KIND_TITLE[paper.kind], paper);
     if (paper.kind === 'statement' && paper.purpose) doc.font('Helvetica').fontSize(11).fillColor(MUTE).text(W.PURPOSE[paper.purpose], 56, doc.y).moveDown(0.6);
-    rows(doc, lines(paper));
+    if (paper.kind === 'id_card') await idCard(doc, paper, o); else rows(doc, lines(paper));
     doc.font('Helvetica').fontSize(10).fillColor(INK).text(note(paper), 56, doc.y, { width: 483, lineGap: 2 }).moveDown(1);
     if (paper.kind === 'ca_pack') caSummaryTable(doc, paper.figures);
     await checkBlock(doc, paper);
@@ -81,8 +109,8 @@ function caSummaryTable(doc, f) {
 
 /** The CA pack ZIP: the summary PDF, summary.csv, and per month one CSV each for sales, purchases and TDS (only the
  *  months and kinds that have rows). File names are plain and sort by month. */
-async function caPackZip(paper) {
-  const f = paper.figures || {}; const files = [{ name: `TDW_CA_pack_${paper.period_from}_to_${paper.period_to}.pdf`, data: await paperPdf(paper) }];
+async function caPackZip(paper, o = {}) {
+  const f = paper.figures || {}; const files = [{ name: `TDW_CA_pack_${paper.period_from}_to_${paper.period_to}.pdf`, data: await paperPdf(paper, o) }];
   const months = Object.keys(f.months || {}).sort();
   files.push({ name: 'summary.csv', data: toCsv(['Month', 'Invoiced (Rs)', 'GST charged (Rs)', 'Received (Rs)', 'Spent (Rs)', 'GST paid on purchases (Rs)', 'TDS deducted (Rs)'],
     months.map((m) => { const t = f.months[m]; return [W.monthName(m), t.invoiced, t.gst_charged, t.received, t.spent, t.gst_paid, t.tds]; })) });
@@ -97,10 +125,10 @@ async function caPackZip(paper) {
 }
 
 /** The file for a paper: { name, type, body }. */
-async function paperFile(paper) {
-  if (paper.kind === 'ca_pack') return { name: `TDW_CA_pack_${paper.period_from}_to_${paper.period_to}.zip`, type: 'application/zip', body: await caPackZip(paper) };
+async function paperFile(paper, o = {}) {
+  if (paper.kind === 'ca_pack') return { name: `TDW_CA_pack_${paper.period_from}_to_${paper.period_to}.zip`, type: 'application/zip', body: await caPackZip(paper, o) };
   const slug = W.KIND_TITLE[paper.kind].replace(/\s+/g, '_');
-  return { name: `TDW_${slug}_${paper.check_code}.pdf`, type: 'application/pdf', body: await paperPdf(paper) };
+  return { name: `TDW_${slug}_${paper.check_code}.pdf`, type: 'application/pdf', body: await paperPdf(paper, o) };
 }
 
-module.exports = { paperFile, paperPdf, caPackZip, lines, note };
+module.exports = { paperFile, paperPdf, caPackZip, lines, note, isImg };

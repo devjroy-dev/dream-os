@@ -11,7 +11,13 @@ const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNa
 function readAsk(body, now = Date.now()) {
   const kind = String(body && body.kind || '');
   if (!KINDS.includes(kind)) return { ok: false, error: 'Pick a paper to make.' };
-  if (kind === 'certificate' || kind === 'id_card') return { ok: true, kind, from: null, to: null, purpose: null };
+  if (kind === 'certificate') return { ok: true, kind, from: null, to: null, purpose: null, photo: null };
+  if (kind === 'id_card') {
+    // R3 (b), ruled: the ID's photo is one she picks in the room, kept on the paper. Optional; https only.
+    const ph = body.photo_url === undefined || body.photo_url === null || body.photo_url === '' ? null : String(body.photo_url);
+    if (ph !== null && (!/^https:\/\/[^\s"'<>]+$/.test(ph) || ph.length > 1000)) return { ok: false, error: 'Pick a photo from your portfolio.' };
+    return { ok: true, kind, from: null, to: null, purpose: null, photo: ph };
+  }
   const from = body.period_from, to = body.period_to;
   if (!isDay(from) || !isDay(to)) return { ok: false, error: 'Pick the first and last day of the period.' };
   if (from > to) return { ok: false, error: 'The first day must come before the last day.' };
@@ -19,14 +25,24 @@ function readAsk(body, now = Date.now()) {
   if ((Date.parse(to) - Date.parse(from)) / 864e5 > 366) return { ok: false, error: 'A period can be at most one year.' };
   let purpose = null;
   if (kind === 'statement') { purpose = String(body.purpose || ''); if (!PURPOSES.includes(purpose)) return { ok: false, error: 'Pick who the statement is for.' }; }
-  return { ok: true, kind, from, to, purpose };
+  return { ok: true, kind, from, to, purpose, photo: null };
+}
+
+/** The photo must be one of HER portfolio pictures (vendor_portfolio.image_url), and not one TDW refused. */
+async function photoIsHers(supabase, vendorId, url) {
+  const r = await supabase.from('vendor_portfolio').select('image_url, approval_state').eq('vendor_id', vendorId).eq('image_url', url).limit(1);
+  if (r.error) return { ok: false, error: 'TDW could not read your portfolio just now. Please try again.' };
+  const row = (r.data || [])[0];
+  return row && row.approval_state !== 'rejected' ? { ok: true } : { ok: false, error: 'Pick a photo from your portfolio.' };
 }
 
 async function issuePaper({ supabase, vendor, body, now = Date.now() }) {
   const a = readAsk(body, now); if (!a.ok) return { ok: false, status: 400, error: a.error };
+  if (a.photo) { const h = await photoIsHers(supabase, vendor.id, a.photo); if (!h.ok) return { ok: false, status: h.error.startsWith('TDW could not') ? 503 : 400, error: h.error }; }
   const f = a.kind === 'statement' ? await F.statement({ supabase, vendor, from: a.from, to: a.to })
     : a.kind === 'ca_pack' ? await F.caPack({ supabase, vendor, from: a.from, to: a.to })
       : await F.professional({ supabase, vendor, now });
+  if (f.ok && a.kind === 'id_card') f.figures.photo_url = a.photo || null;
   if (!f.ok) return { ok: false, status: 503, error: f.error };
   for (let i = 0; i < 4; i++) {
     const row = { vendor_id: vendor.id, kind: a.kind, period_from: a.from, period_to: a.to, purpose: a.purpose, figures: f.figures, check_code: newCode() };

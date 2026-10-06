@@ -1,6 +1,7 @@
 // src/api/vendor/papers.js · CE-47 · PRO · P1 · BUSINESS PAPERS, her doors (mounted at /api/v2/vendor/papers).
 //   GET  /:vendorId                     her papers, newest first, each with what it states and its check link
 //   GET  /:vendorId/about               what a certificate would state today (for the room, before she issues)
+//   GET  /:vendorId/weddings            cut 2: her verified weddings, the count and each one's month and city only
 //   POST /:vendorId                     issue one: { kind, period_from, period_to, purpose }
 //   POST /:vendorId/:paperId/withdraw   withdraw one (one way)
 //   GET  /:vendorId/:paperId/file       the PDF, or the CA pack ZIP
@@ -13,6 +14,7 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { issuePaper, listPapers, getPaper, withdrawPaper } = require('../../lib/papers/issue');
 const { professional } = require('../../lib/papers/figures');
+const { verifiedWeddings } = require('../../lib/papers/verifiedWeddings');
 const { paperFile, lines, note } = require('../../lib/papers/render');
 const W = require('../../lib/papers/words');
 
@@ -30,6 +32,11 @@ router.get('/:vendorId', ...auth, asyncHandler(async (req, res) => {
 router.get('/:vendorId/about', ...auth, asyncHandler(async (req, res) => {
   const r = await professional({ supabase: req.app.locals.supabase, vendor: req.vendor });
   return r.ok ? okRes(res, { about: { ...r.figures, gstin: req.vendor.gstin || null } }) : errRes(res, 503, r.error);
+}));
+router.get('/:vendorId/weddings', ...auth, asyncHandler(async (req, res) => {
+  const r = await verifiedWeddings({ supabase: req.app.locals.supabase, vendorId: req.vendor.id });
+  if (r.count === null) return errRes(res, 503, 'TDW could not count your weddings just now. Please try again.');
+  return okRes(res, { count: r.count, weddings: r.weddings || [] });
 }));
 router.post('/:vendorId', ...auth, express.json(), asyncHandler(async (req, res) => {
   const r = await issuePaper({ supabase: req.app.locals.supabase, vendor: req.vendor, body: req.body || {} });

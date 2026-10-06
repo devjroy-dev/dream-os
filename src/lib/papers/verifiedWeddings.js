@@ -10,6 +10,7 @@
 // deleted_at), events(linked_binder_id, event_date, deleted_at), leads(id, binder_id, wedding_date, deleted_at).
 
 const IST_MS = 5.5 * 3600 * 1000;
+const clean = (c) => { const t = String(c || '').replace(/\s+/g, ' ').trim(); return t ? t.slice(0, 60) : null; };
 /** Today's date in India as YYYY-MM-DD. */
 function todayIST(now = Date.now()) { return new Date(now + IST_MS).toISOString().slice(0, 10); }
 
@@ -22,17 +23,26 @@ function countVerified({ invoices = [], events = [], leads = [], today }) {
     const prev = lastEvent.get(e.linked_binder_id);
     if (!prev || e.event_date > prev) lastEvent.set(e.linked_binder_id, e.event_date);
   }
-  const keys = new Set();
+  const keys = new Set(); const detail = new Map();
+  const cityByBinder = new Map();
+  for (const l of leads) if (!l.deleted_at && l.binder_id && l.wedding_city && !cityByBinder.has(l.binder_id)) cityByBinder.set(l.binder_id, l.wedding_city);
   for (const inv of invoices) {
     if (inv.deleted_at || !(Number(inv.amount_paid) > 0)) continue;
     const lead = inv.lead_id ? leadById.get(inv.lead_id) : null;
     const binder = inv.binder_id || (lead && lead.binder_id) || null;
     const date = (binder && lastEvent.get(binder)) || (lead && lead.wedding_date) || null;
     if (!date || !(String(date).slice(0, 10) < today)) continue;
-    keys.add(binder ? `b:${binder}` : lead ? `l:${lead.id}` : null);
+    const key = binder ? `b:${binder}` : lead ? `l:${lead.id}` : null;
+    if (!key) continue;
+    keys.add(key);
+    // CUT 2 (PTN's ask, chair-placed): each counted wedding's MONTH and CITY, and nothing else. The city is the wedding
+    // city on the invoice's lead, else on any lead in the same binder; no name, phone or amount ever leaves.
+    const city = clean((lead && lead.wedding_city) || (binder && cityByBinder.get(binder)) || null);
+    const prev = detail.get(key);
+    if (!prev) detail.set(key, { month: String(date).slice(0, 7), city }); else if (!prev.city && city) prev.city = city;
   }
-  keys.delete(null);
-  return { count: keys.size, keys: [...keys] };
+  const weddings = [...detail.values()].sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0));
+  return { count: keys.size, keys: [...keys], weddings };
 }
 
 /** Reads her rows and applies the rule. Never throws: a read that fails reports error and a count of null. */
@@ -41,14 +51,19 @@ async function verifiedWeddings({ supabase, vendorId, now = Date.now() }) {
     const inv = await supabase.from('invoices').select('id, binder_id, lead_id, amount_paid, deleted_at').eq('vendor_id', vendorId).is('deleted_at', null).gt('amount_paid', 0);
     if (inv.error) return { count: null, error: 'invoices' };
     const invoices = inv.data || [];
-    if (!invoices.length) return { count: 0, keys: [] };
+    if (!invoices.length) return { count: 0, keys: [], weddings: [] };
     const leadIds = [...new Set(invoices.map((i) => i.lead_id).filter(Boolean))];
-    const leads = leadIds.length ? await supabase.from('leads').select('id, binder_id, wedding_date, deleted_at').eq('vendor_id', vendorId).in('id', leadIds) : { data: [] };
+    const leads = leadIds.length ? await supabase.from('leads').select('id, binder_id, wedding_date, wedding_city, deleted_at').eq('vendor_id', vendorId).in('id', leadIds) : { data: [] };
     if (leads.error) return { count: null, error: 'leads' };
     const binderIds = [...new Set([...invoices.map((i) => i.binder_id), ...(leads.data || []).map((l) => l.binder_id)].filter(Boolean))];
+    // cut 2: the binder's own leads, for a wedding city when the invoice names no lead
+    const byBinder = binderIds.length ? await supabase.from('leads').select('id, binder_id, wedding_date, wedding_city, deleted_at').eq('vendor_id', vendorId).in('binder_id', binderIds) : { data: [] };
+    if (byBinder.error) return { count: null, error: 'leads' };
+    const seen = new Set((leads.data || []).map((l) => l.id));
+    const allLeads = [...(leads.data || []), ...(byBinder.data || []).filter((l) => !seen.has(l.id))];
     const events = binderIds.length ? await supabase.from('events').select('linked_binder_id, event_date, deleted_at').eq('vendor_id', vendorId).in('linked_binder_id', binderIds) : { data: [] };
     if (events.error) return { count: null, error: 'events' };
-    return countVerified({ invoices, events: events.data || [], leads: leads.data || [], today: todayIST(now) });
+    return countVerified({ invoices, events: events.data || [], leads: allLeads, today: todayIST(now) });
   } catch (_e) { return { count: null, error: 'read' }; }
 }
 
