@@ -47,6 +47,9 @@ const collabSocial = require('../../lib/collab/social');
 const collabPublish = require('../../lib/collab/publish');
 const { houseGate } = require('../../lib/collab/gate');
 const { uploadUrl, signUpload, nowTimestamp } = require('../../lib/cloudinarySign');
+// CE-47 · CLB-2a: the collab role list served beside the eleven, and "a call was made" for PTN's sends.
+const { COLLAB_ROLES } = require('../../lib/collab/roles');
+const collabEvents = require('../../lib/collab/events');
 
 // ── THE DORMANCY SEAM (CE-59, ruling (ii)A/(ii)B) ────────────────────────────
 // 0096_collab_planner.sql is WITHHELD and founder-run. This code deploys BEFORE
@@ -163,6 +166,7 @@ router.get('/requirement-types', requireAuth, resolveVendor(), asyncHandler(asyn
   return okRes(res, {
     requirement_types: [...REQUIREMENT_TYPES],
     shoot_event_types: [...SHOOT_EVENT_TYPES],
+    collab_roles: [...COLLAB_ROLES],   // CE-47 CLB-2a: the call's roles (the eleven plus model, stylist, studio)
   });
 }));
 
@@ -349,6 +353,10 @@ router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, r
     return { ...p, items, first_look_until, interested_count, accepted_count, total_responses: interested_count + accepted_count };
   }));
 
+  // CE-47 · CLB-2a: a call TDW sent for her carries source 'tdw_forward' (her row reads "Sent by TDW at your request").
+  const srcRows = await tolerate('collab_posts.source', [], () => supabase.from('collab_posts').select('id, source, asked_at').in('id', myPostIds));
+  const SRC = new Map((srcRows || []).map((r) => [r.id, r]));
+  for (const p of enriched) { const r = SRC.get(p.id); p.source = r ? r.source : 'vendor'; p.asked_at = r ? r.asked_at || null : null; }
   return okRes(res, { posts: enriched });
 }));
 
@@ -525,6 +533,7 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
         position:         i.position,
         requirement_type: i.requirement_type,
         note:             i.note,
+        needed:           i.needed || 1,   // CE-47 CLB-2a (0197)
       })));
 
     // ── F-04.110 (live regression, founder-caught at the dormancy walk) ─────
@@ -619,6 +628,12 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
       shares = made || [];
     }
   }
+
+  // CE-47 · CLB-2a: tell whoever listens (PTN's sends). Never fails her post.
+  const fl = await tolerate('collab_posts.first_look_until', null, () => supabase.from('collab_posts').select('first_look_until').eq('id', post.id).maybeSingle());
+  await collabEvents.postCreated({ post_id: post.id, vendor_id: vendorId, city: post.city, event_date: post.event_date,
+    pay_kind: v2 ? payKind : null, source: 'vendor', roles: items.map((i) => ({ role: i.requirement_type, needed: i.needed || 1 })),
+    first_look_until: fl ? fl.first_look_until || null : null });
 
   return okRes(res, {
     post,

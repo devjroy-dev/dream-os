@@ -50,7 +50,7 @@ async function shareOf(sb, id) {
 /** The publish, after the reply. Exported so a bench drives it with a fake Meta. */
 async function runPublish(sb, share, deps = {}) {
   try {
-    const r = await publish.publishShare(share, deps);
+    const r = await publish.publishShare(share, { supabase: sb, ...deps });   // CLB-2a: the house token is read (and refreshed) through houseFor
     await sb.from('collab_shares').update({ state: 'published', media_id: r.media_id, permalink: r.permalink, published_at: new Date().toISOString(), error: null }).eq('id', share.id);
     return { ok: true };
   } catch (e) {

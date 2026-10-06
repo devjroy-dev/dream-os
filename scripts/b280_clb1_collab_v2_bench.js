@@ -165,6 +165,8 @@ async function cells() {
     if (/\/M1$/.test(u.pathname)) return { ok: true, status: 200, json: async () => ({ permalink: 'https://www.instagram.com/p/M1/' }) };
     return { ok: false, status: 404, json: async () => ({ error: { message: 'no' } }) }; };
   const env = { ...ENV, TDW_HOUSE_IG_USER_ID: '1789', TDW_HOUSE_IG_TOKEN: 'HOUSETOKEN' };
+  // CLB-2a: a house token refreshed today, so the publish makes no refresh call (b282 holds the refresh itself).
+  db._tables.collab_house_tokens = [{ platform: 'instagram', token: 'HOUSETOKEN', refreshed_at: new Date().toISOString() }];
   let pr = await admin.runPublish(db, { ...ig1 }, { fetch: fakeMeta, env, sleep: async () => {} });
   ok(pr.ok && ig1.state === 'published' && ig1.media_id === 'M1' && ig1.permalink === 'https://www.instagram.com/p/M1/', '4.5 a publish writes published, the media id and the link', JSON.stringify(ig1).slice(0, 200));
   ok(seen.length === 4 && seen.every((x) => x.url.startsWith('https://graph.instagram.com/') && x.url.includes('/1789/') === (/media/.test(x.url))), '4.6 four calls, all to Instagram\u2019s graph, on TDW\u2019s house id', seen.map((x) => x.url.split('?')[0]).join(' '));

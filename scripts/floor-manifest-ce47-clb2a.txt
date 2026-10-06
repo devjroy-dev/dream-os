@@ -1,0 +1,32 @@
+# scripts/floor-manifest-ce47-clb2a.txt
+# CE-47 · CLB-2a · THE SEAMS PTN NEEDS (dream-os, server only): 0197, the collab role list, partner rows, onPostCreated, createCallFor, the house token refresh; b282. BASE: d1aeab15bec5.
+# MIGRATION: 0197 runs in Supabase BEFORE the push. No new folder (src/lib/collab/ landed in CLB-1).
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# 1a8a6b5de5eee6ed4097313a0942c42bb77506313733fdd821016afb0a43bb45 · ADDED · db/migrations/0197_collab_roles_partner_interest.sql
+# bcaab2ea63585402404dedf40e302df2c9e22cf3b8f64a14ee4f20e5f035a9b2 · ADDED · docs/handovers/TDW_CE47_CLB2A_HANDOVER.md
+# 42bb914bb16c0a7816d52085e2c27684cc6c04e5b83c78833897c15a59de0704 · CHANGED · scripts/b280_clb1_collab_v2_bench.js
+# 8fdfce3a207be59bb35621b0c5fa8b6e2e9436c6265afe58a9bab0e79b5c00b7 · ADDED · scripts/b282_clb2a_partner_seams_bench.js
+# c380bfa64a183f9d79f925031619586f746d12985a844cb4fcb4e9fd28de3f39 · CHANGED · src/api/admin/collab.js
+# ceeddee85da792e213aa19bafb4c9da64b9422f477565581ae008522e683aaa6 · CHANGED · src/api/vendor/collab.js
+# dfadd0a9db7f8ae5bfe5cbd38d832d9c9e45fb293d1486b9630299039ed59698 · ADDED · src/lib/collab/calls.js
+# 5d513a8bc306f397f7c59276e4d7c408c9859e458fa05aa44303880545ea3105 · ADDED · src/lib/collab/events.js
+# 8c761a28cec67ee56071aa4456cf6daa7fdd41dfd71934f765b2d364fc76512f · ADDED · src/lib/collab/interest.js
+# 8d6d7a85ff9f2051732eaacd1d8b50795bc8e357abafb651d15964635aa2993a · ADDED · src/lib/collab/joinLink.js
+# f88ddf33d072fdd8246215081a3e41fb2a64f55cf7308de5534498eb5515b756 · CHANGED · src/lib/collab/publish.js
+# a858dd3cc2a7d9808d5767f1cb9b9ad8e0b9148b87179e4f5ff07e51804da3b0 · ADDED · src/lib/collab/roles.js
+# a8e2209b2810dbd39ea7a5d13266fefd83bb74580c424e636b953d574c78bc59 · CHANGED · src/lib/vendor/collabItems.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-clb2a.txt
+db/migrations/0197_collab_roles_partner_interest.sql
+docs/handovers/TDW_CE47_CLB2A_HANDOVER.md
+scripts/b280_clb1_collab_v2_bench.js
+scripts/b282_clb2a_partner_seams_bench.js
+src/api/admin/collab.js
+src/api/vendor/collab.js
+src/lib/collab/calls.js
+src/lib/collab/events.js
+src/lib/collab/interest.js
+src/lib/collab/joinLink.js
+src/lib/collab/publish.js
+src/lib/collab/roles.js
+src/lib/vendor/collabItems.js
+scripts/floor-manifest-ce47-clb2a.txt

@@ -38,6 +38,10 @@
 // ⚠ EDIT categories.js AND YOU OWE A MIGRATION. See that file's header.
 const { VENDOR_CATEGORIES } = require('../../agent/categories');
 const REQUIREMENT_TYPES = Object.freeze([...VENDOR_CATEGORIES]);
+// CE-47 CLB-2a: a call may ask for any collab role (the eleven plus model, stylist, studio; ruled 6 October 2026).
+// REQUIREMENT_TYPES stays the vendor eleven (what a vendor IS); a call's roles are checked against COLLAB_ROLES.
+const { isCollabRole } = require('../collab/roles');
+const MAX_NEEDED = 20;
 
 const MAX_ITEMS = 8;
 const MIN_ITEMS = 1;
@@ -144,10 +148,10 @@ function normaliseItemsInput(body) {
   // Legacy single-type create keeps working, unchanged, forever.
   if (!raw) {
     if (!body?.requirement_type) return { ok: false, error: 'requirement_type or items required' };
-    if (!REQUIREMENT_TYPES.includes(body.requirement_type)) {
+    if (!isCollabRole(body.requirement_type)) {
       return { ok: false, error: 'Unknown requirement_type' };
     }
-    return { ok: true, items: [{ requirement_type: body.requirement_type, note: null, position: 0 }] };
+    return { ok: true, items: [{ requirement_type: body.requirement_type, note: null, position: 0, needed: 1 }] };
   }
 
   if (raw.length < MIN_ITEMS || raw.length > MAX_ITEMS) {
@@ -157,14 +161,18 @@ function normaliseItemsInput(body) {
   const items = [];
   for (let i = 0; i < raw.length; i++) {
     const t = raw[i]?.requirement_type;
-    if (!t || !REQUIREMENT_TYPES.includes(t)) {
+    if (!t || !isCollabRole(t)) {
       return { ok: false, error: `items[${i}].requirement_type is missing or unknown` };
     }
     const note = raw[i]?.note ?? null;
     if (note && String(note).length > 200) {
       return { ok: false, error: `items[${i}].note must be 200 characters or less` };
     }
-    items.push({ requirement_type: t, note: note || null, position: i });
+    const n = raw[i]?.needed == null ? 1 : Number(raw[i].needed);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_NEEDED) {
+      return { ok: false, error: `items[${i}].needed must be a whole number from 1 to ${MAX_NEEDED}` };
+    }
+    items.push({ requirement_type: t, note: note || null, position: i, needed: n });
   }
   return { ok: true, items };
 }

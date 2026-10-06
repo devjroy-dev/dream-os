@@ -19,6 +19,49 @@ function houseOf(platform, env = process.env) {
   return id && token ? { id: String(id), token: String(token) } : null;
 }
 
+// ── CE-47 · CLB-2a · THE HOUSE TOKEN'S REFRESH, BESIDE houseOf ────────────────────────────────────────────────────
+// A long-lived Instagram or Threads token lasts about 60 days. houseFor() reads collab_house_tokens (0197) first and the
+// Railway value second, and refreshes a token older than REFRESH_AFTER_DAYS through Meta's own refresh call, storing
+// the answer. A failed refresh is logged and the current token is used. The token is never logged or returned to a door.
+// Refresh happens on use (every publish, and PTN's reads through houseFor); refreshHouseTokens() is the same work for
+// a scheduled caller. Nothing schedules it in this package.
+const REFRESH_AFTER_DAYS = 50;
+const REFRESH_URL = {
+  instagram: (t) => `${IG_GRAPH}/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(t)}`,
+  threads: (t) => `https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=${encodeURIComponent(t)}`,
+};
+
+async function houseFor(platform, supabase, deps = {}) {
+  const env = deps.env || process.env; const fetchImpl = deps.fetch || fetch; const now = deps.now ? deps.now() : new Date();
+  const base = houseOf(platform, env); if (!base) return null;
+  let row = null;
+  if (supabase) {
+    try { const r = await supabase.from('collab_house_tokens').select('platform, token, refreshed_at').eq('platform', platform).maybeSingle(); row = r && !r.error ? r.data : null; } catch (_e) { row = null; }
+  }
+  let token = row && row.token ? row.token : base.token;
+  const age = row && row.refreshed_at ? (now - new Date(row.refreshed_at)) / 86400000 : Infinity;
+  if (supabase && age > REFRESH_AFTER_DAYS) {
+    try {
+      const r = await fetchImpl(REFRESH_URL[platform](token), { method: 'GET' });
+      const body = await r.json().catch(() => null);
+      if (r.ok && body && body.access_token) {
+        token = String(body.access_token);
+        const expires = Number(body.expires_in) > 0 ? new Date(now.getTime() + Number(body.expires_in) * 1000).toISOString() : null;
+        await supabase.from('collab_house_tokens').upsert({ platform, token, refreshed_at: now.toISOString(), expires_at: expires }, { onConflict: 'platform' });
+      } else {
+        console.warn(`[collab:house] ${platform} token refresh refused: HTTP ${r.status}`);
+      }
+    } catch (e) { console.warn(`[collab:house] ${platform} token refresh failed: ${e && e.message}`); }
+  }
+  return { id: base.id, token };
+}
+
+async function refreshHouseTokens(supabase, deps = {}) {
+  const out = {};
+  for (const p of ['instagram', 'threads']) out[p] = !!(await houseFor(p, supabase, deps));
+  return out;
+}
+
 /** The picture card: her first reference picture, filled to 4:5, the roles and the date on it in Graphite ink. */
 function cardUrl(post, items, deps = {}) {
   const env = deps.env || process.env;
@@ -54,7 +97,7 @@ async function publishShare(share, deps = {}) {
   const env = deps.env || process.env; const fetchImpl = deps.fetch || fetch; const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const why = social.refuse(share.caption); if (why) throw new Error(why);
   if (share.account !== 'house') throw new Error('only TDW\u2019s own accounts post in this cut');
-  const house = houseOf(share.platform, env); if (!house) throw new Error(`TDW's ${share.platform === 'instagram' ? 'Instagram' : 'Threads'} account is not connected on this service`);
+  const house = deps.supabase ? await houseFor(share.platform, deps.supabase, deps) : houseOf(share.platform, env); if (!house) throw new Error(`TDW's ${share.platform === 'instagram' ? 'Instagram' : 'Threads'} account is not connected on this service`);
   if (!share.image_url) throw new Error('the call has no picture to post');
   const q = (o) => new URLSearchParams({ ...o, access_token: house.token }).toString();
   if (share.platform === 'instagram') {
@@ -80,4 +123,4 @@ async function publishShare(share, deps = {}) {
   throw new Error('unknown platform');
 }
 
-module.exports = { houseOf, cardUrl, publishShare, IG_GRAPH, THREADS_GRAPH };
+module.exports = { houseOf, houseFor, refreshHouseTokens, REFRESH_AFTER_DAYS, cardUrl, publishShare, IG_GRAPH, THREADS_GRAPH };
