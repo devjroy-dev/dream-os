@@ -47,6 +47,18 @@ function formatDate(input) {
   return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+// CE-47 INS-A · THE FULL MONTH, for the words a vendor or a visitor reads ("14 February 2027"; standing rule:
+// full months). Date-only strings are read as calendar days, never shifted by a timezone.
+const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function formatDateLong(input) {
+  if (!input) return null;
+  const m = typeof input === 'string' && input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${Number(m[3])} ${MONTHS_LONG[Number(m[2]) - 1]} ${m[1]}`;
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 function formatRs(n) {
   const s = String(n);
   if (s.length <= 3) return s;
@@ -66,4 +78,4 @@ function formatPercent(part, whole) {
   return `${Math.round((part / whole) * 100)}%`;
 }
 
-module.exports = { formatRs, formatPercent, formatDate, MONTHS_SHORT };
+module.exports = { formatRs, formatPercent, formatDate, formatDateLong, MONTHS_SHORT, MONTHS_LONG };

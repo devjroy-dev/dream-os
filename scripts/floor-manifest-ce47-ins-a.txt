@@ -1,0 +1,18 @@
+# scripts/floor-manifest-ce47-ins-a.txt
+# CE-47 · INS-A server half r3 (r2 + canonical trades, bOB 6.1; b55 amended) · base a29a45b52022 · rungs b220, b221 · b44 and b55 amended by label · migration 0200 · F-19.16: a dirty path outside this list stops the floor.
+# No new directory. No file deleted.
+db/migrations/0200_insurance_room.sql
+docs/handovers/TDW_CE47_INS_A_SERVER_HANDOVER.md
+scripts/b220_ins_a_rules_bench.js
+scripts/b221_ins_a_doors_bench.js
+scripts/b44_public_vendor_card_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/floor-manifest-ce47-ins-a.txt
+src/api/public/vendorCard.js
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/insurance.js
+src/cron.js
+src/lib/format.js
+src/lib/vendor/insurance.js
+src/lib/vendor/insuranceRoom.js
+src/lib/vendor/policyRead.js

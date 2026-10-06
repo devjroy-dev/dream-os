@@ -435,6 +435,21 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── CE-47 INS-A · THE INSURANCE RENEWAL SWEEP — 10:00 IST ─────────────────
+  // A daytime minute, not the night band: it may message the vendor. A policy due its 30- or 7-day reminder is
+  // told on WhatsApp only while her window is open, and stamped only when sent; a shut window holds it for the
+  // next morning (no approved template yet; the room's "Renew soon" carries it). Never twice.
+  cron.schedule('0 10 * * *', async () => {
+    try {
+      const { runRenewalSweep } = require('./lib/vendor/insuranceRoom');
+      await runRenewalSweep(supabase);
+    } catch (err) {
+      console.error('[cron:insuranceRenewals] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── G3.1 s2 · THE SEARCH CONSOLE PULL (F-40.261 a) — 03:40 IST ────────────
   // Its own minute in the night band (see searchConsoleNightly.js for the
   // derivation); after the seal (:20) and the reminders (:25). Heartbeat: the

@@ -253,7 +253,9 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_ena
                    'enquire_link', 'enquiry_phone', 'handle', 'is_demo', 'meta', 'packages', 'photos',
                    'seal', 'site', 'starting_price', 'weddings',
                    // AMENDED BY LABEL, CE-47 WEB-4 cut 3 (b161): five named fields join (CE-47's accepted list)
-                   'collections', 'eliza', 'faq', 'looks', 'testimonials'].sort();   // G3.1 s2: `meta` joins (0147 §4); WEB-1 cut 4: packages, site
+                   'collections', 'eliza', 'faq', 'looks', 'testimonials',
+                   // AMENDED BY LABEL, CE-47 INS-A (b220): `insured` joins, the Insured mark, an object or null (rulings 2 and b)
+                   'insured'].sort();   // G3.1 s2: `meta` joins (0147 §4); WEB-1 cut 4: packages, site
 
 (async () => {
   await new Promise((r) => { server = app.listen(0, '127.0.0.1', r); });

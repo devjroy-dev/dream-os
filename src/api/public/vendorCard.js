@@ -226,6 +226,9 @@ const CARD_KEYS = Object.freeze([
   // `site` now names its shape by `v` ('classic' for Basic, 'styles' for Essential and up). b44, b55 and b148 move
   // by label in this edit; b58's emitted-object cell holds card() to the same list.
   'looks', 'collections', 'testimonials', 'faq', 'eliza',
+  // CE-47 INS-A · the Insured mark (ruled 2 and b, 4 October): an OBJECT OR NULL, decided by the server
+  // (src/lib/vendor/insurance.js insuredMark), so the leaf only draws it. b44 amended by name in the same edit.
+  'insured',
 ]);
 
 /**
@@ -388,7 +391,7 @@ function metaFor({ business_name, category, city, about, seo_title, seo_descript
  *            about: string|null, starting_price: number|null,
  *            photos: Array<{url: string, caption: string|null, hero: boolean, position: number}>}}
  */
-function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings, meta, packages, site , looks, collections, testimonials, faq, eliza}) {
+function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings, meta, packages, site , looks, collections, testimonials, faq, eliza, insured}) {
   return {
     business_name: business_name || null,
     category:      category      || null,
@@ -407,6 +410,7 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     // G2 · an OBJECT or NULL. `sealFor` has already decided; the card does not
     // second-guess it, exactly as it does not second-guess the portfolio's cap.
     seal:          seal || null,
+    insured:       insured || null,   // CE-47 INS-A: the mark or null, never a partial shape
     packages:      Array.isArray(packages) ? packages : [],
     site:          site || { v: 'classic', ...siteModel.defaultSite(category) },   // CE-47 WEB-4 cut 3: the shape named
     // ── G3.1 · F-40.169 — THE TWO NAMES THIS BUILDER NEVER LEARNED ─────────
@@ -708,9 +712,14 @@ router.get('/:code', async (req, res) => {
         const { data: dr, error: drErr } = await supabase.from('vendor_domains').select(DOMAIN_SELECT).eq('vendor_id', v.id).eq('status', 'live').is('deleted_at', null).limit(1);
         if (!drErr && Array.isArray(dr) && dr[0]) liveDomain = dr[0].domain;
       } catch (_drErr) { liveDomain = null; }
+      // CE-47 INS-A · the Insured mark: her switch on and a confirmed policy in date, or null. A failed read is null:
+      // the page never shows a mark it could not prove.
+      let insured = null;
+      try { insured = await require('../../lib/vendor/insuranceRoom').publicMark(supabase, v.id, v.business_name); } catch (_insErr) { insured = null; }
       return res.status(200).json({
         ok: true,
         card: card({
+          insured,
           business_name: v.business_name,
           category:      v.category,
           city:          v.city,
