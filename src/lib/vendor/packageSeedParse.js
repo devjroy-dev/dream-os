@@ -89,6 +89,38 @@ function deliveryFromLine(text) {
   throw new Error(`seed: unrecognised delivery line: ${JSON.stringify(text)}`);
 }
 
+// ── CE-47 WEB-4 cut 15 · NO "BRIDE" IN WHAT TDW WRITES (the founder's rule; the chair's words, accepted 4 October 2026).
+// The source document is the founder's and stays as written; `source_name` keeps its words (the record, never copied to
+// a vendor, never shown, and the key DEFAULT_BY_SECTION reads). What a NEW vendor receives (name, description, each
+// line item's detail) carries these words instead. Existing vendors' packages are theirs and are not touched.
+const RENAMED = Object.freeze({
+  'makeup|BRIDE, ONE FUNCTION': 'One function',
+  'makeup|BRIDE, EVERY FUNCTION WITH A TRIAL': 'Every function, with a trial',
+  'makeup|BRIDE AND FAMILY': 'Wedding party makeup',
+  'hairstylist|BRIDE, ONE FUNCTION': 'One function',
+  'hairstylist|BRIDE, EVERY FUNCTION WITH A TRIAL': 'Every function, with a trial',
+  'hairstylist|BRIDE AND FAMILY': 'Wedding party hair',
+  'jewellery|BRIDAL SET MADE TO ORDER': 'Wedding set made to order',
+  'designer|BRIDAL SET MADE TO ORDER': 'Wedding outfits made to order, as one set',
+});
+const NEW_COPY_PHRASES = Object.freeze([
+  ['We do your bridal makeup', 'We do your wedding makeup'],
+  ['You choose a bridal set', 'You choose a wedding set'],
+  ['We design and make your bridal set', 'We design and make your wedding set'],
+  ['the bride and up to 4 family members', 'you and up to 4 family members'],
+  ['1 trial for the bride before the wedding', '1 trial for you before the wedding'],
+  ['for the bride and', 'for you and'],
+  ['before the bride must be ready', 'before you must be ready'],
+  ['a bridal room', 'a getting-ready room'],
+]);
+function newCopyWords(text) {
+  let t = text == null ? text : String(text);
+  if (t == null) return t;
+  for (const [from, to] of NEW_COPY_PHRASES) t = t.split(from).join(to);
+  return t;
+}
+function newCopyDetail(detail) { return detail === 'the bride' ? 'you' : newCopyWords(detail); }
+
 function parseSeedSource(src) {
   const lines = String(src).split('\n');
   const categories = [];
@@ -160,14 +192,15 @@ function parseSeedSource(src) {
       middle_enabled: true,
       options: c.options.map((o, idx) => ({
         seed_key: `${c.category}:${idx + 1}`,
-        name: sentenceCase(o.name),
+        name: RENAMED[`${c.category}|${o.name}`] || sentenceCase(o.name),
         source_name: o.name,
-        description: o.description,
-        line_items: o.line_items,
+        description: newCopyWords(o.description),
+        line_items: o.line_items.map((li) => ({ ...li, detail: newCopyDetail(li.detail) })),
         is_default: def !== null && o.name === def,
       })),
     };
   });
 }
 
-module.exports = { parseSeedSource, sentenceCase, KEEP_UPPER, SECTION_TITLES, SECTION_TO_CATEGORY, DEFAULT_BY_SECTION, SCHEDULE_PREFIX };
+module.exports = { parseSeedSource, sentenceCase, KEEP_UPPER, SECTION_TITLES, SECTION_TO_CATEGORY, DEFAULT_BY_SECTION, SCHEDULE_PREFIX,
+  RENAMED, newCopyWords, newCopyDetail };

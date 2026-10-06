@@ -1,0 +1,9 @@
+# scripts/floor-manifest-ce47-web4-cut15.txt
+# CE-47 · WEB-4 cut 15 · the starter packages say no bride (new copies only; source_name kept) · r2 (rung b260) · base eb6b51c · F-19.16: a dirty path outside this list stops the floor.
+# Rung b260 (14 cells). b81 four cells amended by label. No migration. No new directory. No file deleted.
+db/seeds/package_seeds.json
+docs/handovers/TDW_CE47_WEB4_CUT15_HANDOVER.md
+scripts/b260_ce47_web4_cut15_bench.js
+scripts/b81_lc2_p1_seed_bench.js
+scripts/floor-manifest-ce47-web4-cut15.txt
+src/lib/vendor/packageSeedParse.js

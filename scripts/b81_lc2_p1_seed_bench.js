@@ -232,12 +232,24 @@ async function main() {
   ok(full && cats.every((c) => c.schedule_line.startsWith('Deposit, 30% of the fee, on booking · 30% one month before the first function (optional) · The remainder, on delivery, before the work is handed over'))
     && cats.filter((c) => c.schedule_line.endsWith('For this work, delivery is the handover date, which falls before the wedding.')).map((c) => c.category).join() === 'designer,jewellery',
     '§1.7 the ruled schedule wording on all eleven; the handover sentence on designer and jewellery only');
-  ok(full && cats.every((c) => c.options.every((o) => o.line_items.length > 0 && o.line_items.every((li) => li.label && li.detail && src.includes(`  ${li.label}: ${li.detail}\n`)))),
-    '§1.8 every line item is a verbatim "label: detail" line of the source');
-  ok(full && cats.every((c) => c.options.every((o) => src.includes(`\n${o.source_name}\n${o.description}\n`))), '§1.9 every source name and description is verbatim, capitals kept in source_name');
-  ok(full && cats.every((c) => c.options.every((o) => o.name.toLowerCase() === o.source_name.toLowerCase()
-      && o.name.charAt(0) === o.source_name.charAt(0) && (o.name === o.source_name || o.name.slice(1) !== o.source_name.slice(1)))),
-    '§1.11 C-43.15: every name is its source name in sentence case (case only, no other byte)');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 15 (b260; the chair's ruling): what a NEW vendor receives carries the ruled words
+  // (no "bride"); the source document and source_name are unchanged. The parser's own named step is applied to the
+  // source before the verbatim comparison, so every OTHER byte is still held to the source.
+  const srcLines = new Set(src.split('\n').map((l) => { const m = l.match(/^  ([^:]+): (.*)$/); return m && parse ? `${m[1]}: ${parse.newCopyDetail(m[2])}` : null; }).filter(Boolean));
+  ok(full && cats.every((c) => c.options.every((o) => o.line_items.length > 0 && o.line_items.every((li) => li.label && li.detail && srcLines.has(`${li.label}: ${li.detail}`)))),
+    '§1.8 every line item is a verbatim "label: detail" line of the source (after the ruled new-copy words)');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 15 (b260; the chair's ruling): what a NEW vendor receives carries the ruled words
+  // (no "bride"); the source document and source_name are unchanged. The parser's own named step is applied to the
+  // source before the verbatim comparison, so every OTHER byte is still held to the source.
+  // every description that follows this source name anywhere in the source (a name can stand in two crafts' sections)
+  const srcDescs = (name) => { const out = []; let i = src.indexOf(`\n${name}\n`); while (i >= 0) { const rest = src.slice(i + name.length + 2); out.push(rest.slice(0, rest.indexOf('\n'))); i = src.indexOf(`\n${name}\n`, i + 1); } return out; };
+  ok(full && cats.every((c) => c.options.every((o) => parse && srcDescs(o.source_name).some((d) => parse.newCopyWords(d) === o.description))), '§1.9 every source name verbatim, capitals kept in source_name; every description verbatim after the ruled new-copy words');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 15 (b260; the chair's ruling): what a NEW vendor receives carries the ruled words
+  // (no "bride"); the source document and source_name are unchanged. The parser's own named step is applied to the
+  // source before the verbatim comparison, so every OTHER byte is still held to the source.
+  ok(full && parse && cats.every((c) => c.options.every((o) => (parse.RENAMED[`${c.category}|${o.source_name}`] === o.name) || (o.name.toLowerCase() === o.source_name.toLowerCase()
+      && o.name.charAt(0) === o.source_name.charAt(0) && (o.name === o.source_name || o.name.slice(1) !== o.source_name.slice(1))))),
+    '§1.11 C-43.15: every name is its source name in sentence case (case only, no other byte), or its ruled new-copy name');
   {
     const perf = cats.find((c) => c.category === 'performer');
     const photo = cats.find((c) => c.category === 'photography');
@@ -329,7 +341,8 @@ async function main() {
     if (m8.mod && json) { const p2 = m8.mod.parseSeedSource(src); red = p2.find((c) => c.category === 'performer').options[1].name !== 'DJ, one function'; }
     ok(red, '§7 M8 the acronym keep-list emptied → §1.12 RED (Dj, one function)');
 
-    const m9 = loadMutated('src/lib/vendor/packageSeedParse.js', 'name: sentenceCase(o.name),', 'name: o.name,');
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 15 (b260): the name line now reads RENAMED[...] || sentenceCase(o.name).
+    const m9 = loadMutated('src/lib/vendor/packageSeedParse.js', '|| sentenceCase(o.name),', '|| o.name,');
     red = false;
     if (m9.mod && json) { const p2 = m9.mod.parseSeedSource(src); red = JSON.stringify(p2) !== JSON.stringify(json.categories); }
     ok(red, '§7 M9 the case normalisation removed → §1.1 RED');
