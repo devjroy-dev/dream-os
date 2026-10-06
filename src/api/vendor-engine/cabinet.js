@@ -143,7 +143,7 @@ router.get('/:vendorId',
     // a SELLABLE date; claiming it is occupied costs the vendor work.
     // `done` does NOT count either, per the ruling: "on the calendar" answers
     // what's ahead; history lives in timelines.
-    const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
+    const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other', 'shop'];   // + 'shop' (0204, F-44.340)
     const booked = allEvents.filter(e =>
       e.event_date && e.event_date >= today && BOOKED_KINDS.includes(e.kind)
       && (e.state || 'upcoming') === 'upcoming');

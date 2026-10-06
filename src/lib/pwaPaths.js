@@ -52,6 +52,9 @@ const VENDOR_PATHS = Object.freeze({
   // The Leads room, as vendorInbound.js's template link has always spelled it.
   leads:     '/vendor/leads',
 
+  // CE-47 OFF-A1: the Off-season shop room, where a new shop order's notice sends her (public/shop.js).
+  shop:      '/vendor/off-season-shop',
+
   // ── COLLAPSED AT PHASE 7 (P7.2 Arm E, CE-39 2026-09-04) ───────────────────────
   // This key spelled `/vendor/list/leads` because enquire.js's enquiry body sent that
   // address while vendorInbound.js sent `/vendor/leads`; the note above said collapsing

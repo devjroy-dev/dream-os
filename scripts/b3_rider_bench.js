@@ -20,14 +20,16 @@ let pass = 0;
 const ok = (name) => { pass++; console.log(`  PASS  ${name}`); };
 
 console.log('\n── 1. THE TERNARY (subset proposal §3, CE-ratified) ──');
-assert.strictEqual(CALENDAR_KINDS.length, 13);
-assert.strictEqual(OCCUPYING_KINDS.length, 3);
+// AMENDED BY LABEL · CE-47 OFF-A1 (the chair's fork (a), 4 October 2026, F-44.340): 0204 adds 'shop', the 14th kind, and it
+// OCCUPIES (a paid shop booking or workshop holds the day like a shoot). Counts move 13 to 14 and 3 to 4; no cell is removed.
+assert.strictEqual(CALENDAR_KINDS.length, 14);
+assert.strictEqual(OCCUPYING_KINDS.length, 4);
 assert.strictEqual(APPOINTMENT_KINDS.length, 8);
-ok('CALENDAR_KINDS 13 · OCCUPYING 3 · APPOINTMENT 8');
+ok('CALENDAR_KINDS 14 · OCCUPYING 4 · APPOINTMENT 8');
 
 const neither = CALENDAR_KINDS.filter((k) => !isOccupying(k) && !isAppointment(k));
 assert.deepStrictEqual(neither.sort(), ['blocked', 'other']);
-ok(`3 + 8 + 2 = 13 — NEITHER is exactly [${neither}]`);
+ok(`4 + 8 + 2 = 14 — NEITHER is exactly [${neither}]`);
 
 assert.strictEqual(OCCUPYING_KINDS.filter((k) => isAppointment(k)).length, 0);
 ok('OCCUPYING ∩ APPOINTMENT = ∅ — no kind has two homes');
@@ -36,12 +38,15 @@ for (const k of [...OCCUPYING_KINDS, ...APPOINTMENT_KINDS]) assert.ok(CALENDAR_K
 ok('every classified kind exists in the write vocabulary (no phantom kinds)');
 
 // The four-list law, proven by command rather than by trusting the comment.
-const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
+const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other', 'shop'];   // + 'shop' (OFF-A1, by label)
 const bookedThatAreAppointments = BOOKED_KINDS.filter((k) => isAppointment(k));
 assert.deepStrictEqual(bookedThatAreAppointments, ['meeting', 'recce', 'fitting', 'trial', 'social']);
-ok(`BOOKED_KINDS ⊄ OCCUPYING — 5 of its 9 are appointments [${bookedThatAreAppointments}]`);
+ok(`BOOKED_KINDS ⊄ OCCUPYING — 5 of its 10 are appointments [${bookedThatAreAppointments}]`);
 assert.ok(!isOccupying('other') && BOOKED_KINDS.includes('other'));
 ok("and occupying ⊄ BOOKED_KINDS's converse: `other` is booked-but-not-occupying");
+// OFF-A1 (by label): the shop kind is both on the calendar's count and occupying, and is no appointment.
+assert.ok(isOccupying('shop') && !isAppointment('shop') && BOOKED_KINDS.includes('shop') && CALENDAR_KINDS.includes('shop'));
+ok("'shop' (0204) occupies the day, counts as booked, is no appointment, and is in the write vocabulary");
 
 console.log('\n── 2. Q-B3-9: "NOT APPOINTMENT" ≠ "OCCUPYING" (the amendment) ──');
 const notAppointment = CALENDAR_KINDS.filter((k) => !isAppointment(k));

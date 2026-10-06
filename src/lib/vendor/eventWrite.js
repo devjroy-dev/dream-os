@@ -132,6 +132,7 @@ const CALENDAR_KINDS = [
   'shoot', 'call', 'meeting', 'task', 'reminder', 'recce',
   'fitting', 'trial', 'family', 'ceremony', 'social', 'other',  // 0007 + 0013 — 12
   'blocked',                                                     // 0069 — the 13th
+  'shop',                                                        // 0204 — the 14th (CE-47 OFF-A1, F-44.340)
 ];
 
 // created_at is NOT decoration: availability.js's toBlock() maps it onto the FROZEN

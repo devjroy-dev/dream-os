@@ -468,5 +468,6 @@ router.use('/quiet', require('./quiet'));
 router.use('/whatsapp-eliza', require('./whatsappEliza'));
 // CE-47 INS-A · the room "Insurance" (Run the business): kinds of cover, where to buy, her policies, the Insured switch (insurance.js).
 router.use('/insurance', require('./insurance'));
+router.use('/shop', require('./shop'));   // CE-47 OFF-A1 · the Off-season shop room (flag.off_shop)
 
 module.exports = router;

@@ -28,6 +28,12 @@
       "note": "**CE-46 · ELZ-3 · THE PRICE SWITCH** — `vendors.price_share_enabled` boolean NOT NULL DEFAULT false (her switch, \"Share approximate prices in chat\", beside `date_check_enabled` from `0140`). Alters one existing table; creates no table. Numbered `0183` by the chair and landed AFTER `0184` (G6-4 cut B, `ig_deletion_purge`), so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 30 September 2026).",
       "stale_for": "`public.vendors`",
       "state": "OWED — the snapshot does not carry `vendors.price_share_enabled`; `0183` and this file are its witnesses until the next PAIR regen."
+    },
+    {
+      "number": 204,
+      "note": "**CE-47 · OFF-A1 · THE OFF-SEASON SHOP** — creates `shop_items`, `shop_orders`, `shop_vouchers` (RLS on, service_role only); widens `vendor_site_sections.key` and `events.kind` by `'shop'`; seeds `flag.off_shop` 'off'. Numbered `0204` from the chair's OFF range (0204-0207) and landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 6 October 2026).",
+      "stale_for": "`public.shop_items`, `public.shop_orders`, `public.shop_vouchers`, `public.vendor_site_sections`, `public.events`",
+      "state": "OWED — the snapshot does not carry the three tables or the two widened CHECKs; `0204` and this file are their witnesses until the next PAIR regen."
     }
   ]
 }

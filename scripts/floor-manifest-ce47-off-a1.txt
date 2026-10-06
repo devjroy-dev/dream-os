@@ -1,0 +1,22 @@
+# repo: devjroy-dev/dream-os · base a29a45b52022 · CE-47 OFF-A1 · the off-season shop · the declared dirt for run-floor.sh --delivery
+db/migrations/0204_off_season_shop.sql
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_OFF_A1_SHOP_PACKET.md
+scripts/b105_lcv13_move_cancel_bench.js
+scripts/b106_lcv14_team_reminder_bench.js
+scripts/b108_lcv14_lookups_bench.js
+scripts/b230_ce47_off_a1_shop_bench.js
+scripts/b3_rider_bench.js
+scripts/floor-manifest-ce47-off-a1.txt
+scripts/lib/b230_fake_sb.js
+src/api/public/shop.js
+src/api/router.js
+src/api/vendor-engine/cabinet.js
+src/api/vendor-engine/chat.js
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/shop.js
+src/lib/pwaPaths.js
+src/lib/shop/gate.js
+src/lib/shop/shop.js
+src/lib/vendor/eventWrite.js
+src/lib/vendor/occupancy.js

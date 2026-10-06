@@ -35,6 +35,7 @@ router.use('/public/site-kind', require('./public/siteKind'));
 // CE-47 WEB-4 cut 7 · the website panel's two doors (WEB-7's contract): the enquiry, then the chat by its token.
 router.use('/public/site-enquiry', require('./public/siteEnquiry').enquiry);
 router.use('/public/site-chat', require('./public/siteEnquiry').chat);   // CE-47 WEB-4 cut 5 · { v }, cacheable, WEB-5's middleware
+router.use('/public/shop', require('./public/shop'));   // CE-47 OFF-A1 · the shop her website and storefront read (flag.off_shop)
 router.use('/public/site', require('./public/siteVisit'));
 // F-41.128 — the second unauthenticated per-enquiry read. Mounted BESIDE the vendor
 // card deliberately: both are public, both are read-only, and keeping them adjacent

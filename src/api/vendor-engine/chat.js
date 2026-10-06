@@ -374,7 +374,7 @@ function invoiceLines(documents) {
 // door writes the real row into public.events (vendor-keyed) and confirms. Shared by the
 // JSON + SSE paths, and the same handler a future WhatsApp door will call. The cabinet's
 // "Booked" already reads public.events, so a booking shows up there with no UI change.
-const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
+const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other', 'shop'];   // + 'shop' (0204, F-44.340)
 // (c) A booking's link to a client binder: Donna's explicit binder_id is the EXACT path; if she
 // gave none, the door tries a CONFIDENT name-match from the title (exact client name, single hit
 // only) — never a guess. 0 or >1 matches -> left honestly unlinked (null). The link is what lets

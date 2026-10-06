@@ -100,7 +100,9 @@
 'use strict';
 
 // Work the vendor sells. Consumes capacity. May speak for the binder's date.
-const OCCUPYING_KINDS = ['shoot', 'family', 'ceremony'];
+// CE-47 OFF-A1 (the chair's fork (a), 4 October 2026, F-44.340): 'shop', a paid shop booking or workshop (0204), occupies the
+// day like a shoot: she cannot do an engagement look or run a workshop and also take a wedding that morning.
+const OCCUPYING_KINDS = ['shoot', 'family', 'ceremony', 'shop'];
 
 // C5 verbatim. Never consumes capacity; soft-warns when sharing a slot with an
 // occupying booking. NEVER speaks for a binder's date.
