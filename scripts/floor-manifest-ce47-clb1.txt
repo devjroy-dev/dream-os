@@ -1,0 +1,27 @@
+# scripts/floor-manifest-ce47-clb1.txt
+# CE-47 · CLB-1 · COLLAB HUB v2, THE SERVER HALF (dream-os): 0196, src/lib/collab/, the vendor and admin collab doors; b280. BASE: a29a45b52022.
+# MIGRATION: 0196_collab_v2.sql runs in Supabase BEFORE the push. A-45.3: the new folder src/lib/collab/ is declared as a line AND file by file.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# 6f1774b1d7855ea3a17907309776022380210990a40abd733b367b4a892398b7 · ADDED · db/migrations/0196_collab_v2.sql
+# 36fc7238ffb1a73a9b226e9ba9ed1a6eb55b292e1a67e43d33046386fc321656 · ADDED · docs/handovers/TDW_CE47_CLB1_HANDOVER.md
+# 921656bdb0c930d1b47de47543359e655c7e6bcac7de185c8693942e9df69fe3 · ADDED · scripts/b280_clb1_collab_v2_bench.js
+# 0d96fba9994a6cd735974dc5c7ecba05ac589563ae735d9b5352424405aae212 · ADDED · src/api/admin/collab.js
+# 4db31e0df59986180afe55c61488021c8a50d6f1fad7af35538920de89fb4ec2 · CHANGED · src/api/router.js
+# 83b32156f67632db6fe9a0ae056bc0a0471a34250a135f1146bc64974049e5b6 · CHANGED · src/api/vendor/collab.js
+# 39df0956745b43f7ecd3dd441126fdac083f50f56889cd757359d24057e33fd2 · ADDED · src/lib/collab/gate.js
+# 18aed80da2315bbc659aac42d55a8c1146c2db93bc29b9ddad047716130df3f4 · ADDED · src/lib/collab/publish.js
+# 4633e16902a97c525b7fad8debd6aa0c9c83fd34455377f4ba233897532c4e9a · ADDED · src/lib/collab/social.js
+# 52fb17a4834615e90b83c49cd6ce6796d064b3fdd652a20c3662aaefdc94f8a2 · ADDED · src/lib/collab/testers.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-clb1.txt
+db/migrations/0196_collab_v2.sql
+docs/handovers/TDW_CE47_CLB1_HANDOVER.md
+scripts/b280_clb1_collab_v2_bench.js
+src/api/admin/collab.js
+src/api/router.js
+src/api/vendor/collab.js
+src/lib/collab/gate.js
+src/lib/collab/publish.js
+src/lib/collab/social.js
+src/lib/collab/testers.js
+src/lib/collab/
+scripts/floor-manifest-ce47-clb1.txt

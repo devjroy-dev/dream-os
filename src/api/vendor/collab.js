@@ -41,6 +41,12 @@ const { addEdgesOnAccept } = require('../../lib/vendor/roster');
 const { REQUIREMENT_TYPES } = require('../../lib/vendor/collabItems');
 const { SHOOT_EVENT_TYPES, kindOfPost, parseKind, isShootEventType, shootExpiresAt } = require('../../lib/vendor/collabKinds');
 const { sameCity } = require('../../lib/vendor/cityMatch');
+// CE-47 · CLB-1 · COLLAB HUB v2: the call's pay and pictures, and TDW's own Instagram and Threads (Rules 1 and 2).
+const crypto = require('crypto');
+const collabSocial = require('../../lib/collab/social');
+const collabPublish = require('../../lib/collab/publish');
+const { houseGate } = require('../../lib/collab/gate');
+const { uploadUrl, signUpload, nowTimestamp } = require('../../lib/cloudinarySign');
 
 // ── THE DORMANCY SEAM (CE-59, ruling (ii)A/(ii)B) ────────────────────────────
 // 0096_collab_planner.sql is WITHHELD and founder-run. This code deploys BEFORE
@@ -452,6 +458,14 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     details,
   } = req.body;
 
+  // ── CLB-1 · v2 FIELDS (absent from a v1 body; then nothing below changes) ──
+  const v2 = req.body && (req.body.pay_kind !== undefined || req.body.reference_urls !== undefined || req.body.share_tdw !== undefined);
+  const payKind = req.body && req.body.pay_kind != null ? req.body.pay_kind : null;
+  if (payKind !== null && !collabSocial.PAY_KINDS.includes(payKind)) return errRes(res, 400, 'pay_kind must be paid, unpaid or credit_only');
+  const referenceUrls = collabSocial.cleanReferences(req.body && req.body.reference_urls);
+  const shareTdw = !!(req.body && req.body.share_tdw === true);
+  if (shareTdw && referenceUrls.length === 0) return errRes(res, 400, 'Add a picture to post this call on TDW\u2019s Instagram and Threads.');
+
   // ── ITEMS (spec §P4.1) ────────────────────────────────────────────────────
   // One home validates and orders them. A body with no `items` key takes the
   // legacy single-`requirement_type` path and comes back as a one-entry list —
@@ -489,6 +503,7 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
       event_type:           event_type   || null,
       details:              details      || null,
       state:                'open',
+      ...(v2 ? { pay_kind: payKind, reference_urls: referenceUrls } : {}),
       // Ruling 1(a): a SHOOT expires at the end of its own day (IST), not 30
       // days after posting — F-42.181's early death. Every other kind keeps
       // 0048's DEFAULT by not naming the column at all.
@@ -588,11 +603,56 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     }
   }
 
+  // ── CLB-1 · TDW'S OWN ACCOUNTS: one queued row per open platform; the admin approves each (Rule 1 gates). ──
+  let shares = [];
+  if (shareTdw) {
+    const open = await houseGate(supabase, vendorId);
+    const full = { ...post, pay_kind: payKind, reference_urls: referenceUrls, budget_inr: budget_inr || null, event_type: event_type || null, details: details || null };
+    const image = collabPublish.cardUrl(full, items);
+    const rows = collabSocial.PLATFORMS.filter((p) => open[p]).map((p) => {
+      const c = collabSocial.captionFor(full, items, p, null);
+      return { post_id: post.id, vendor_id: vendorId, account: 'house', platform: p, state: 'queued', caption: c.caption, hashtags: c.hashtags, image_url: image };
+    });
+    if (rows.length) {
+      const { data: made, error: shErr } = await supabase.from('collab_shares').insert(rows).select('id, account, platform, state');
+      if (shErr) console.warn('[collab:clb-1] shares not queued:', shErr.message);
+      shares = made || [];
+    }
+  }
+
   return okRes(res, {
     post,
     items,
+    shares,
     message: `Posted. We'll notify matching vendors in ${city}.`,
   });
+}));
+
+// ── CLB-1 · GET /share-gate: whether her call may go to TDW's Instagram and Threads (the tick shows only then). ──
+router.get('/share-gate', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const house = await houseGate(req.app.locals.supabase, req.vendor.id);
+  return okRes(res, { house });
+}));
+
+// ── CLB-1 · POST /reference/sign: one signed Cloudinary upload for a reference picture. ──
+router.post('/reference/sign', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const folder = `collab_refs/${req.vendor.id}`;
+  const publicId = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  return okRes(res, { upload_url: uploadUrl(), params: signUpload({ folder, publicId, timestamp: nowTimestamp() }) });
+}));
+
+// ── CLB-1 · GET /:post_id/shares: where her call is posted, and its pictures and pay (tolerated before 0196). ──
+router.get('/:post_id/shares', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { data: post } = await supabase.from('collab_posts').select('id').eq('id', req.params.post_id).eq('vendor_id', req.vendor.id).maybeSingle();
+  if (!post) return errRes(res, 404, 'Not your call');
+  const shares = await tolerate('collab_shares', [], () => supabase.from('collab_shares')
+    .select('id, account, platform, state, hashtags, permalink, error, published_at, created_at')
+    .eq('post_id', post.id).order('created_at', { ascending: true }));
+  const v2 = await tolerate('collab_posts.pay_kind', null, () => supabase.from('collab_posts').select('pay_kind, reference_urls').eq('id', post.id).maybeSingle());
+  // Only what her page shows: the caption and the card stay on the admin's side.
+  const view = (shares || []).map((x) => ({ id: x.id, account: x.account, platform: x.platform, state: x.state, hashtags: x.hashtags, permalink: x.permalink || null, published_at: x.published_at || null }));
+  return okRes(res, { shares: view, pay_kind: v2 ? v2.pay_kind : null, reference_urls: v2 && Array.isArray(v2.reference_urls) ? v2.reference_urls : [] });
 }));
 
 
