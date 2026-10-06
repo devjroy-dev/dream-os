@@ -34,6 +34,42 @@
       "note": "**CE-47 · OFF-A1 · THE OFF-SEASON SHOP** — creates `shop_items`, `shop_orders`, `shop_vouchers` (RLS on, service_role only); widens `vendor_site_sections.key` and `events.kind` by `'shop'`; seeds `flag.off_shop` 'off'. Numbered `0204` from the chair's OFF range (0204-0207) and landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 6 October 2026).",
       "stale_for": "`public.shop_items`, `public.shop_orders`, `public.shop_vouchers`, `public.vendor_site_sections`, `public.events`",
       "state": "OWED — the snapshot does not carry the three tables or the two widened CHECKs; `0204` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 196,
+      "note": "**CE-47 · CLB-1 · COLLAB HUB v2** — creates `collab_interest`, `collab_prospects`, `collab_shares`; alters `collab_posts`; seeds rows in `capabilities`. Numbered `0196` from CLB's range. Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
+      "stale_for": "`public.collab_interest`, `public.collab_prospects`, `public.collab_shares`, `public.collab_posts`, `public.capabilities`",
+      "state": "OWED — the snapshot does not carry the three tables or the new `collab_posts` columns; `0196` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 200,
+      "note": "**CE-47 · INS-A · THE INSURANCE ROOM** — creates `vendor_insurance_settings` and `vendor_policies`. Numbered `0200` from INS's range. Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
+      "stale_for": "`public.vendor_insurance_settings`, `public.vendor_policies`",
+      "state": "OWED — the snapshot does not carry the two tables; `0200` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 208,
+      "note": "**CE-47 · PRO · P1 · GST ON EXPENSES AND INVOICES** — alters `expenses` and `invoices` (the GST columns). Numbered `0208` from PRO's range (0208-0211). Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
+      "stale_for": "`public.expenses`, `public.invoices`",
+      "state": "OWED — the snapshot does not carry the GST columns; `0208` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 209,
+      "note": "**CE-47 · PRO · P1 · BUSINESS PAPERS** — creates `issued_papers` (one row per paper issued, its check code, figures frozen at issue). Numbered `0209` from PRO's range. Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
+      "stale_for": "`public.issued_papers`",
+      "state": "OWED — the snapshot does not carry the table; `0209` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 205,
+      "note": "**CE-47 · OFF-A1b · THE CLASS LINK** — `shop_items.class_link` text, https only (length 11 to 508 checked apart from the pattern, since Postgres caps a repetition count at 255). Alters one existing table; creates no table. Numbered `0205` from the chair's OFF range (0204-0207) and lands after `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3).",
+      "stale_for": "`public.shop_items`",
+      "state": "OWED — the snapshot does not carry `shop_items.class_link`; `0205` and this file are its witnesses until the next PAIR regen."
+    },
+    {
+      "number": 195,
+      "note": "**CE-47 · WEB-4 cut 16 · BASIC'S ONE FREE STYLE** — `vendor_sites.style_changed_at` timestamptz (Basic's 30-day style clock, started at Publish when the published style changes); `vendor_portfolio.source` and `vendor_look_photos.source` text NOT NULL DEFAULT 'upload', CHECK upload | instagram (cut 17's columns, as the chair ruled). Alters three existing tables; creates no table. Numbered `0195` from WEB-4's range (0194-0195) and lands LAST in server train 3, after `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 6 October 2026).",
+      "stale_for": "`public.vendor_sites`, `public.vendor_portfolio`, `public.vendor_look_photos`",
+      "state": "OWED — the snapshot does not carry the three columns; `0195` and this file are their witnesses until the next PAIR regen."
     }
   ]
 }

@@ -1,0 +1,19 @@
+# scripts/floor-manifest-ce47-web4-cut16.txt
+# CE-47 · WEB-4 cut 16 · Basic's one free style; 0195; the register for train 3 · base d1aeab1 (LAST in server train 3) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b261 (32 cells). Six benches amended by label. Migration 0195 goes in BEFORE the push. b15 red on this base alone (0205's file arrives with OFF-A1b). No new directory. No file deleted.
+db/migrations/0195_basic_style_and_photo_source.sql
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_WEB4_CUT16_HANDOVER.md
+scripts/b146_ce46_web1_domain_bench.js
+scripts/b160_ce46_web4_site_model_bench.js
+scripts/b196_ce47_web4_cut3_bench.js
+scripts/b198_ce47_web4_cut5_bench.js
+scripts/b208_ce47_web4_cut14_bench.js
+scripts/b261_ce47_web4_cut16_bench.js
+scripts/floor-manifest-ce47-web4-cut16.txt
+src/api/public/siteKind.js
+src/api/public/vendorCard.js
+src/api/vendor/solutions/domain.js
+src/api/vendor/solutions/siteRoom.js
+src/lib/site/siteCard.js
+src/lib/site/siteModel.js

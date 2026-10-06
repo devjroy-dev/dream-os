@@ -22,7 +22,7 @@ router.get('/:code', async (req, res) => {
     if (error) return res.status(500).json({ ok: false, error: 'Lookup failed.' });
     if (!v || v.status !== 'active' || v.discover_paused === true) return notFound(res);
     let kind = 'classic';
-    if (siteModel.tierOf(v.tier) !== 'basic') {
+    {   // cut 16: every plan, Basic included, is a styles site once published
       const { data: s } = await sb.from('vendor_sites').select('published_at').eq('vendor_id', v.id).maybeSingle();
       if (s && s.published_at) kind = 'styles';
     }

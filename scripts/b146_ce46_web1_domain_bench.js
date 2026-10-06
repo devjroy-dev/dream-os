@@ -70,7 +70,8 @@ function dbl() {
 }
 process.env.RESELLERCLUB_USER_ID = 'u1'; process.env.RESELLERCLUB_API_KEY = 'k1'; process.env.VERCEL_TOKEN = 't1'; process.env.VERCEL_PROJECT_ID = 'prj_1';
 process.env.RAZORPAY_KEY_ID = 'rzp_test'; process.env.RAZORPAY_KEY_SECRET = 's'; delete process.env.RESELLERCLUB_GST_PCT;
-const vendor = { id: 'v-1', routing_handle: 'DEV440', business_name: 'Aarohi Sen Photography' };
+// AMENDED BY LABEL, CE-47 WEB-4 cut 16 (b261): her own domain opens on Signature (ruling f), so the vendor who orders one is on it.
+const vendor = { id: 'v-1', routing_handle: 'DEV440', business_name: 'Aarohi Sen Photography', tier: 'signature' };
 const registrant = { name: 'Aarohi Sen', email: 'aarohi@example.in', phone: '9999999999', address1: '12 Sainik Farms', city: 'New Delhi', state: 'Delhi', zipcode: '110062' };
 
 (async () => {

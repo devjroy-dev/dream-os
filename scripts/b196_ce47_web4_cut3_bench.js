@@ -13,6 +13,22 @@ function ok(c, name, info) { let v = false; try { v = typeof c === 'function' ? 
   if (v) { pass += 1; console.log(`  PASS  ${name}`); } else { fail += 1; failed.push(name); console.log(`  FAIL  ${name}${info === undefined ? '' : '  [' + String(info).slice(0, 220) + ']'}`); } }
 const sec = (t) => console.log(`\n§${t}`);
 const { makeStore } = require('./lib/b196_store');
+// cut 16 r2 (e-275): a CAUSAL stage meter over any b196_store (see 1.16). It wraps each query's `then`: a read's stage is
+// 1 + the highest stage completed in this epoch when the read is issued; `stages` is the highest stage reached.
+function causalMeter(store) {
+  const m = { epoch: 0, done: 0, max: 0 };
+  const from = store.from.bind(store);
+  store.from = (name) => {
+    const q = from(name); const then = q.then.bind(q);
+    q.then = (res, rej) => {
+      const ep = m.epoch; const stage = m.done + 1; if (stage > m.max) m.max = stage;
+      const settle = () => { if (ep === m.epoch && stage > m.done) m.done = stage; };
+      return then((v) => { settle(); return v; }, (e) => { settle(); throw e; }).then(res, rej);
+    };
+    return q;
+  };
+  return { reset() { m.epoch += 1; m.done = 0; m.max = 0; }, get stages() { return m.max; } };
+}
 
 // the two middlewares stubbed as b148 does: the vendor is injected per request
 for (const m of ['src/api/middleware/requireAuth.js', 'src/api/middleware/resolveVendor.js', 'src/api/admin/requireAdmin.js']) {
@@ -106,13 +122,29 @@ function seed() {
   store.failOn.add('vendor_looks'); const failed1 = await cardOf(S, 'sig1'); store.failOn.delete('vendor_looks');
   ok(() => failed1 && failed1.looks.length === 0 && failed1.site.v === 'styles', '1.15 a failed looks read gives an empty list, never a 500 on her page');
   // CE-47's cure 1 (r2): the new reads run in two stages, not nine in a row
-  store.meter.waves = 0; await cardOf(S, 'basic1'); const wBasic = store.meter.waves;
-  store.meter.waves = 0; await cardOf(S, 'sig1'); const wSig = store.meter.waves;
-  store.meter.waves = 0; await S.call('GET', '/card/sig1/look/the-emerald-bride'); const wLook = store.meter.waves;
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 16 r2 (b261; e-275): 1.16 and 1.17 count stages CAUSALLY, not by timing. The
+  // store's own meter (a read starting while none is in flight opens a stage) depends on real timers: under load, two
+  // stages can merge, or a straggler from an earlier call can hide one, so the count moved from run to run. The causal
+  // meter below gives every read the stage 1 + the highest stage COMPLETED before it was issued, and counts the highest
+  // stage reached. Reads issued together share a stage; a read issued after awaiting another is one stage later;
+  // reads from an earlier measurement (an older epoch) are ignored. The same code gives the same number on every run.
+  // The baseline for "no site reads" is Basic's card with her site unpublished (cut 16: a PUBLISHED Basic site now reads
+  // its rows like any plan; the gate is decided first, cut 6).
+  const causal = causalMeter(store);
+  const bRow = (store.tables.vendor_sites || []).find((x) => x.vendor_id === 'basic1'); const bPub = bRow ? bRow.published_at : undefined; if (bRow) bRow.published_at = null;
+  causal.reset(); await cardOf(S, 'basic1'); const wBasic = causal.stages;
+  if (bRow) bRow.published_at = bPub;
+  causal.reset(); await cardOf(S, 'sig1'); const wSig = causal.stages;
+  causal.reset(); await S.call('GET', '/card/sig1/look/the-emerald-bride'); const wLook = causal.stages;
   ok(() => wSig - wBasic === 2, '1.16 a Signature card awaits exactly two stages more than a Basic one (the reads run together)', `basic ${wBasic}, signature ${wSig}`);
   ok(() => wLook <= 4, '1.17 a look\'s page awaits at most four stages (vendor, looks, photos, credits with package)', `look ${wLook}`);
   { const m = makeStore({ a: [{ id: 1 }] }); await m.from('a').select('id'); await m.from('a').select('id'); const serial = m.meter.waves; m.meter.waves = 0;
     await Promise.all([m.from('a').select('id'), m.from('a').select('id')]); ok(() => serial === 2 && m.meter.waves === 1, '1.18 control: the meter counts two reads in a row as two stages and two together as one'); }
+  { const m = makeStore({ a: [{ id: 1 }] }); const c = causalMeter(m);
+    c.reset(); await m.from('a').select('id'); await m.from('a').select('id'); const serial = c.stages;
+    c.reset(); await Promise.all([m.from('a').select('id'), m.from('a').select('id')]); const together = c.stages;
+    const straggler = m.from('a').select('id'); const sp = straggler.then((x) => x); c.reset(); await sp; await m.from('a').select('id'); const afterStraggler = c.stages;
+    ok(() => serial === 2 && together === 1 && afterStraggler === 1, '1.19 control (cut 16 r2): the causal meter counts two in a row as two, two together as one, and ignores a read from before its reset', `${serial}/${together}/${afterStraggler}`); }
 
   sec('2  a look\'s own page (D)');
   const lp = await S.call('GET', '/card/sig1/look/the-emerald-bride');
@@ -128,7 +160,8 @@ function seed() {
   const la = list.body.looks.find((l) => l.id === idA); const lb = list.body.looks.find((l) => l.id === idB);
   ok(() => la.public_state === 'live' && la.photos[0].review === 'approved' && lb.public_state === 'waiting_for_photos' && lb.photos[0].review === 'waiting', '3.2 per look public_state and per photo review (gap 6)');
   const b403 = await S.call('POST', '/site/looks', { title: 'x' }, vendorOf(store, 'basic1'));
-  ok(() => b403.status === 403 && store.tables.vendor_looks.every((l) => l.vendor_id !== 'basic1'), '3.3 Basic has no six-style site: 403, nothing written');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 16 (b261): Basic holds one free style and its looks section is open (ruling 1).
+  ok(() => b403.status === 200 && store.tables.vendor_looks.some((l) => l.vendor_id === 'basic1'), '3.3 Basic\'s looks section is open (cut 16): her look is written');
   const noPh = await sig('POST', '/looks', { title: 'Empty' }); const pubE = await sig('POST', `/looks/${noPh.body.look.id}/publish`);
   ok(() => pubE.status === 400, '3.4 a look with no photo cannot be published');
   const glow = await S.call('PATCH', '/site/settings', { style: 'couture', button_style: 'glow' }, vendorOf(store, 'pre1'));

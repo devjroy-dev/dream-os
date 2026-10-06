@@ -43,7 +43,8 @@ const kindRows = () => ({
   const a = await cut.call('GET', '/d/swati1'), b = await cut.call('GET', '/d/draft2'), c = await cut.call('GET', '/d/basic3'), d = await cut.call('GET', '/d/nobody');
   await cut.close();
   ok(() => a.status === 200 && JSON.stringify(a.body) === '{"ok":true,"v":"styles"}' && appRule(a.body) === 'styles', '1.1 a published Prestige site: { ok: true, v: "styles" }, and the app draws the styles site', JSON.stringify(a.body));
-  ok(() => appRule(b.body) === 'classic' && b.body.ok === true && b.body.v === 'classic' && appRule(c.body) === 'classic' && c.body.v === 'classic', '1.2 unpublished, and Basic: { ok: true, v: "classic" }, and the app draws the classic page');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 16 (b261): a PUBLISHED Basic site is a styles site now; unpublished stays classic.
+  ok(() => appRule(b.body) === 'classic' && b.body.ok === true && b.body.v === 'classic' && appRule(c.body) === 'styles' && c.body.v === 'styles', '1.2 unpublished: classic; a published Basic site: styles (cut 16), each read through the app\'s rule');
   ok(() => d.status === 404 && appRule(d.body) === 'classic', '1.3 no such vendor: the one 404, and the app falls to classic');
   const tip = await serve(load('src/api/public/siteKind.js', tipSrc), makeStore(kindRows()));
   const t = await tip.call('GET', '/d/swati1'); await tip.close();

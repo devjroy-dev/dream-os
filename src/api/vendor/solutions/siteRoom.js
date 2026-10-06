@@ -68,20 +68,26 @@ const LINES = Object.freeze({
   videoPlan: 'Video testimonials are on Signature and up.',
   phone: 'Enter the number with its country code, like +91 98765 43210.',
   nothingToPublish: 'There are no changes to publish.',
+  // CE-47 WEB-4 cut 16: Basic's room, each locked field refused by name with the plan that opens it (ruling 3)
+  basicOneStyle: 'Basic has one style. More styles open on Essential.',
+  basicPalette: 'Colour sets open on Essential.',
+  basicFont: 'Font pairings open on Essential.',
+  reviewsClosed: 'Client reviews open on Essential.',
+  visitorsClosed: 'Visitor counts open on Essential.',
+  styleClock: (words) => `You can change your style once every 30 days. You can change it again on ${words}.`,
 });
 
-/** Her tier, from her own row (resolveVendor loads it). Basic has no six-style site. */
-function gate(req, res) {
-  if (rank(req.vendor.tier) < 1) { errRes(res, 403, LINES.basic); return false; }
-  return true;
-}
+/** CE-47 WEB-4 cut 16: the room is open to Basic (one free style). What her plan does not open is refused field by field,
+ * by name, with the plan that opens it; `gateAt` keeps a whole door shut below a plan. */
+function gate(_req, _res) { return true; }
+function gateAt(req, res, at, line) { if (rank(req.vendor.tier) < at) { errRes(res, 403, line); return false; } return true; }
 
 async function rows(q) { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch { return []; } }
 async function one(q) { try { const { data, error } = await q; return !error && data ? data : null; } catch { return null; } }
 
 // ── GET /room ─────────────────────────────────────────────────────────────────────────────────────────────────────
 async function siteRowOf(sb, vid) {
-  return one(sb.from('vendor_sites').select('look, pages, credit_shown, published_at, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy').eq('vendor_id', vid).maybeSingle());
+  return one(sb.from('vendor_sites').select('look, pages, credit_shown, published_at, style_changed_at, style, styles_picked, palette_id, palette_custom, font_pair, motion, corners, texture, button_style, cover_mode, cover, monogram, site_name, copy').eq('vendor_id', vid).maybeSingle());
 }
 
 // ── CUT 5 · THE DRAFT (the chair's item 1; WEB-6's W6-k) ──────────────────────────────────────────────────────────
@@ -151,7 +157,8 @@ router.get('/room', ...auth, asyncHandler(async (req, res) => {
     changes: { count: list.length, list, published_at: (row && row.published_at) || null },
     is_live: Boolean(row && row.published_at),
     // the card door serves her draft to this token only: GET /api/v2/public/vendor-card/<handle>?preview=<token>[&style=<id>]
-    preview: rank(v.tier) >= 1 ? previewLib.issue(v.id) : null,
+    preview: previewLib.issue(v.id),   // cut 16: Basic has a styles site to preview too
+    style_clock: siteModel.styleClock(v.tier, row || {}, Date.now()),   // cut 16: her last change and the day she next can
     styles: REG.STYLE_IDS.map((s2) => ({ id: s2, label: REG.STYLES[s2].label, pairs: REG.STYLES[s2].pairs, palettes: REG.palettesOf(s2).map((p) => ({ id: p.id, label: p.label, swatch: { ground: p.roles.ground, ink: p.roles.ink, accent: p.roles.accent } })) })),   // swatch: cut 7, WEB-6
     finish: offeredFinish(v.tier),
     to_fix: { packages_below_starting_price: siteCard.packagesBelowStart(pkgs, v.rate_display, v.rate_min) },
@@ -162,11 +169,28 @@ router.get('/room', ...auth, asyncHandler(async (req, res) => {
 router.post('/publish', ...auth, asyncHandler(async (req, res) => {
   if (!gate(req, res)) return;
   const sb = req.app.locals.supabase; const v = req.vendor;
+  // cut 16 (ruling 2): read the published style first, so the clock can refuse (Basic) and be started (every plan)
+  const [live, draft] = await Promise.all([siteRowOf(sb, v.id), draftOf(sb, v.id)]);
+  const draftStyle = draft && draft.settings && draft.settings.style !== undefined ? draft.settings.style : (live && live.style) || null;
+  const clockLine = styleClockRefusal(v.tier, live, draftStyle);
+  if (clockLine) return errRes(res, 400, clockLine);
   const { data, error } = await sb.rpc('site_publish_draft', { p_vendor: v.id });
   if (error) return errRes(res, 503, LINES.saveFailed);
   if (!data) return errRes(res, 400, LINES.nothingToPublish);
+  // the clock starts when a PUBLISHED style changes (her first published style is free)
+  if (live && live.published_at && live.style && draftStyle && draftStyle !== live.style) {
+    try { await sb.from('vendor_sites').update({ style_changed_at: data }).eq('vendor_id', v.id); } catch (_e) { /* the publish stands; the clock is best effort */ }
+  }
   return okRes(res, { published_at: data, is_live: true });
 }));
+
+/** cut 16 (ruling 2): the refusal line when a Basic vendor would change her published style inside 30 days, else null.
+ * Her first published style is free (no published row, or no published style); drafts are free until she publishes. */
+function styleClockRefusal(tier, live, wantStyle) {
+  if (rank(tier) >= 1 || !live || !live.published_at || !live.style || !wantStyle || wantStyle === live.style) return null;
+  const c = siteModel.styleClock(tier, live, Date.now());
+  return c.locked ? LINES.styleClock(c.next_change_words) : null;
+}
 router.post('/discard', ...auth, asyncHandler(async (req, res) => {
   const sb = req.app.locals.supabase; const v = req.vendor;
   const { error } = await sb.from('vendor_site_drafts').delete().eq('vendor_id', v.id);
@@ -177,25 +201,33 @@ router.post('/discard', ...auth, asyncHandler(async (req, res) => {
 function checkSettings(tier, current, body) {
   const b = obj(body); const patch = {}; const r = rank(tier);
   if ('styles_picked' in b || 'style' in b) {
-    const picks = 'styles_picked' in b ? arr(b.styles_picked).filter((s) => REG.STYLE_IDS.includes(s)) : arr(current.styles_picked);
+    // cut 16: on Basic her one style IS her pick; choosing a style replaces it (a second is refused only when she asks for two)
+    const picks = 'styles_picked' in b ? arr(b.styles_picked).filter((s) => REG.STYLE_IDS.includes(s)) : (r < 1 && 'style' in b ? [] : arr(current.styles_picked));
     const n = siteModel.STYLE_ALLOWANCE[siteModel.tierOf(tier)];
     if (new Set(picks).size !== picks.length || ('styles_picked' in b && picks.length !== arr(b.styles_picked).length)) return { error: LINES.styleClosed };
     const style = 'style' in b ? b.style : current.style;
     const withStyle = style && !picks.includes(style) ? [...picks, style] : picks;
-    if (n < 6 && withStyle.length > n) return { error: LINES.tooManyStyles(n) };
+    if (n < 6 && withStyle.length > n) return { error: r < 1 ? LINES.basicOneStyle : LINES.tooManyStyles(n) };
     if (style !== undefined && style !== null && !REG.STYLE_IDS.includes(style)) return { error: LINES.styleClosed };
     patch.styles_picked = withStyle; if ('style' in b) patch.style = style;
   }
   const style = patch.style || current.style || (siteModel.stylesOpen(tier, current)[0]);
-  if ('palette_id' in b) { if (b.palette_id !== null && !REG.palettesOf(style).some((p) => p.id === b.palette_id)) return { error: LINES.paletteClosed }; patch.palette_id = b.palette_id; }
+  if ('palette_id' in b) { if (b.palette_id !== null && !REG.palettesOf(style).some((p) => p.id === b.palette_id)) return { error: LINES.paletteClosed };
+    // cut 16 (ruling b): on Basic the palette is her style's default; choosing another is Essential's
+    if (r < 1 && b.palette_id !== null && b.palette_id !== (REG.palettesOf(style)[0] || {}).id) return { error: LINES.basicPalette };
+    patch.palette_id = b.palette_id; }
   if ('palette_custom' in b) {
     const c = obj(b.palette_custom); const out = {};
+    if (r < 1 && Object.keys(c).some((k) => c[k] !== undefined && c[k] !== null)) return { error: LINES.basicPalette };   // cut 16
     if (c.accent !== undefined && c.accent !== null) { if (r < 2) return { error: LINES.ownColour }; if (!/^#[0-9a-f]{6}$/i.test(String(c.accent))) return { error: LINES.ownColour }; out.accent = String(c.accent).toLowerCase(); }
     if (c.base !== undefined && c.base !== null) { if (!REG.palettesOf(style).some((p) => p.id === c.base)) return { error: LINES.paletteClosed }; out.base = c.base; }
     if (c.gradient !== undefined && c.gradient !== null) { if (r < 3) return { error: LINES.gradient }; const g = arr(c.gradient); if (g.length < 2 || g.length > 3 || !g.every((x) => /^#[0-9a-f]{6}$/i.test(String(x)))) return { error: LINES.gradient }; out.gradient = g.map((x) => String(x).toLowerCase()); }
     patch.palette_custom = out;
   }
-  if ('font_pair' in b) { if (b.font_pair !== null && !(REG.STYLES[style] || { pairs: [] }).pairs.includes(b.font_pair)) return { error: LINES.fontClosed }; patch.font_pair = b.font_pair; }
+  if ('font_pair' in b) { if (b.font_pair !== null && !(REG.STYLES[style] || { pairs: [] }).pairs.includes(b.font_pair)) return { error: LINES.fontClosed };
+    // cut 16 (ruling b): on Basic the pairing is her style's default; choosing another is Essential's
+    if (r < 1 && b.font_pair !== null && b.font_pair !== ((REG.STYLES[style] || { pairs: [] }).pairs[0] || null)) return { error: LINES.basicFont };
+    patch.font_pair = b.font_pair; }
   if ('motion' in b) { if (!siteModel.MOTIONS.includes(b.motion)) return { error: LINES.finishClosed }; patch.motion = b.motion; }
   if ('corners' in b) { if (!REG.finishIds(style, 'corners').includes(b.corners)) return { error: LINES.finishClosed }; patch.corners = b.corners; }
   if ('button_style' in b) { if (!REG.finishIds(style, 'buttons').includes(b.button_style)) return { error: LINES.finishClosed }; patch.button_style = b.button_style; }
@@ -238,6 +270,9 @@ router.patch('/settings', ...auth, asyncHandler(async (req, res) => {
   const current = previewLib.overlay(live || {}, [], [], draft).site;
   const r = checkSettings(v.tier, current, req.body);
   if (r.error) return errRes(res, 400, r.error);
+  // cut 16 (ruling 2): on Basic, a style other than her PUBLISHED one is refused inside 30 days of her last change
+  const clockLine = styleClockRefusal(v.tier, live, r.patch.style !== undefined ? r.patch.style : current.style);
+  if (clockLine) return errRes(res, 400, clockLine);
   // cut 5: into her draft, not the live row
   if (!(await saveDraft(sb, v.id, { settings: Object.assign({}, (draft && draft.settings) || {}, r.patch) }))) return errRes(res, 503, LINES.saveFailed);
   const warning = limits.priceWarning([obj(r.patch.copy).intro, obj(r.patch.copy).studio_body, obj(r.patch.copy).pricing_note], v.rate_display);
@@ -591,7 +626,7 @@ router.get('/testimonials', ...auth, asyncHandler(async (req, res) => {
 }));
 
 router.post('/testimonials/requests', ...auth, asyncHandler(async (req, res) => {
-  if (!gate(req, res)) return;
+  if (!gateAt(req, res, 1, LINES.reviewsClosed)) return;   // cut 16: still Essential's
   const sb = req.app.locals.supabase; const v = req.vendor; const b = obj(req.body);
   let person = null; let phone = null; let clientId = null;
   if (b.client_id !== undefined) {
@@ -654,7 +689,7 @@ router.delete('/testimonials/:id', ...auth, asyncHandler(async (req, res) => {
 const SOURCES = ['google', 'instagram', 'facebook', 'whatsapp', 'direct', 'other'];
 const istDay = (t) => new Date(t + 330 * 60000).toISOString().slice(0, 10);
 router.get('/visitors', ...auth, asyncHandler(async (req, res) => {
-  if (!gate(req, res)) return;
+  if (!gateAt(req, res, 1, LINES.visitorsClosed)) return;   // cut 16: still Essential's
   const sb = req.app.locals.supabase; const v = req.vendor; const r = rank(v.tier);
   const days = String(req.query.days) === '28' ? 28 : 7;
   const now0 = Date.now(); const to = istDay(now0); const from = istDay(now0 - (days - 1) * 86400000);

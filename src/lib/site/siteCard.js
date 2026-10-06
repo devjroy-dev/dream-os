@@ -287,8 +287,7 @@ function siteCard(input) {
  */
 function lookPage(input) {
   try {
-    const i = obj(input); const tier = siteModel.tierOf(i.tier);
-    if (rank(tier) < 1) return null;
+    const i = obj(input); const tier = siteModel.tierOf(i.tier);   // cut 16: Basic's looks section is open, so its look pages are
     const photoMap = photosByLook(i.lookPhotos);
     const live = liveLooks(i.looks, photoMap);
     const l = live.find((x) => x.slug === i.slug);

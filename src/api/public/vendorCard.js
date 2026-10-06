@@ -514,7 +514,7 @@ router.get('/:code/look/:slug', async (req, res) => {
   try {
     const { data: v, error: vErr } = await supabase.from('vendors').select(VENDOR_SELECT).eq('routing_handle', raw.toUpperCase()).maybeSingle();
     if (vErr) throw vErr;
-    if (!v || v.status !== 'active' || v.discover_paused === true || siteModel.tierOf(v.tier) === 'basic') return notFound(res);
+    if (!v || v.status !== 'active' || v.discover_paused === true) return notFound(res);   // cut 16: Basic's looks have pages too
     const safe = async (q) => { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch (_e) { return []; } };
     const looks = await safe(supabase.from('vendor_looks').select(LOOKS_SELECT).eq('vendor_id', v.id).eq('status', 'published').is('deleted_at', null).order('position', { ascending: true }).limit(60));
     const lookIds = looks.map((l) => l.id).filter(Boolean);
@@ -664,7 +664,7 @@ router.get('/:code', async (req, res) => {
       } catch (_srErr) { siteRow = null; }
       // CE-47 WEB-4 cut 3 · Essential and up read their site's own rows; Basic reads none of them. Every read is
       // guarded like the ones above: a failed read gives an empty list, never a 500 on a couple's page.
-      let styles = siteModel.tierOf(v.tier) !== 'basic';
+      let styles = true;   // cut 16: Basic has its one style too; the published gate below still decides
       // CE-47 WEB-4 cut 5 · `?preview=<token>` from her room serves HER DRAFT (and `?style=<id>` a style card) to that
       // token only; the answer is never cached and never indexed. Without it, the card reads the LIVE rows only, and an
       // Essential-and-up site shows as today's page until her first Publish (vendor_sites.published_at).

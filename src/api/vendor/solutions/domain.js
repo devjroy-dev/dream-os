@@ -21,6 +21,7 @@ const { ok: okRes, err: errRes } = require('../../../lib/response');
 const env = require('./env');
 const contract = require('./contract');
 const service = require('../../../lib/domains/service');
+const siteModel = require('../../../lib/site/siteModel');
 
 function statusShape(vendor, row) {
   return {
@@ -64,6 +65,8 @@ router.get('/search', requireAuth, resolveVendor(), asyncHandler(async (req, res
 }));
 
 router.post('/order', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  // CE-47 WEB-4 cut 16 (f): her own domain opens on Signature
+  if (siteModel.rank(req.vendor.tier) < 2) return errRes(res, 403, 'Your own domain opens on Signature.');
   if (!env.gates().p2) return errRes(res, 503, 'Your own name is not open yet.');
   const body = req.body || {};
   const out = await service.order(req.app.locals.supabase, req.vendor, { domain: body.domain, registrant: body.registrant, years: body.years ? Number(body.years) : 1 }, req.app.locals.domainDeps || {});
@@ -72,6 +75,8 @@ router.post('/order', requireAuth, resolveVendor(), asyncHandler(async (req, res
 }));
 
 router.post('/wire', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  // CE-47 WEB-4 cut 16 (f): her own domain opens on Signature
+  if (siteModel.rank(req.vendor.tier) < 2) return errRes(res, 403, 'Your own domain opens on Signature.');
   if (!env.gates().p2) return errRes(res, 503, 'Your own name is not open yet.');
   await service.sweepWiring(req.app.locals.supabase, req.app.locals.domainDeps || {});
   const row = await service.current(req.app.locals.supabase, req.vendor.id);

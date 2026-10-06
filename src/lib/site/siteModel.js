@@ -95,22 +95,30 @@ const limits = require('./limits');
 const TIER_RANK = Object.freeze({ basic: 0, essential: 1, signature: 2, prestige: 3 });
 const rank = (t) => TIER_RANK[tierOf(t)];
 // How many of the six she may hold (design §7: Essential 2, Signature 4, Prestige all).
-const STYLE_ALLOWANCE = Object.freeze({ basic: 0, essential: 2, signature: 4, prestige: 6 });
+// CE-47 WEB-4 cut 16 (the founder): Basic holds ONE style, free (was 0).
+const STYLE_ALLOWANCE = Object.freeze({ basic: 1, essential: 2, signature: 4, prestige: 6 });
+// cut 16: the plan that opens a locked item, by name (the room shows "Available on <plan>").
+const PLAN_NAME = Object.freeze({ basic: 'Basic', essential: 'Essential', signature: 'Signature', prestige: 'Prestige' });
+const PLAN_AT = Object.freeze(['basic', 'essential', 'signature', 'prestige']);
+// cut 16 (ruling 2): one style change every 30 days on Basic; the clock starts at Publish when the published style changes.
+const STYLE_CHANGE_DAYS = 30;
 
 // The sections (design §5) in their default order, and the tier that opens each (design §7; Q6: Collections and the
 // Journal on Signature and Prestige). `fixed` sections hold their place below Prestige (Q11): the cover first, the
 // footer (enquire) last; both are always shown there, because the footer carries her enquiry and the credit.
+// cut 16 (ruling 1): Basic's set is cover, looks, band, pricing, studio, faq, enquire; reviews stays Essential (written
+// testimonials are Essential's); collections and the journal stay Signature.
 const SECTION_DEFAULTS = Object.freeze([
-  { key: 'cover',       min: 'essential', fixed: 'first' },
-  { key: 'looks',       min: 'essential' },
+  { key: 'cover',       min: 'basic', fixed: 'first' },
+  { key: 'looks',       min: 'basic' },
   { key: 'collections', min: 'signature' },
-  { key: 'band',        min: 'essential' },
+  { key: 'band',        min: 'basic' },
   { key: 'reviews',     min: 'essential' },
-  { key: 'pricing',     min: 'essential' },
-  { key: 'studio',      min: 'essential' },
+  { key: 'pricing',     min: 'basic' },
+  { key: 'studio',      min: 'basic' },
   { key: 'journal',     min: 'signature' },
-  { key: 'faq',         min: 'essential' },
-  { key: 'enquire',     min: 'essential', fixed: 'last' },
+  { key: 'faq',         min: 'basic' },
+  { key: 'enquire',     min: 'basic', fixed: 'last' },
 ]);
 const SECTION_KEYS = Object.freeze(SECTION_DEFAULTS.map((d) => d.key));
 const CUSTOM_KEY = /^custom-[a-z0-9-]{1,40}$/;
@@ -177,7 +185,8 @@ function styleFor(tier, site) {
 function paletteFor(tier, style, site) {
   const s = obj(site); const curated = REG.palettesOf(style);
   if (!curated.length) return null;
-  const chosen = curated.find((p) => p.id === s.palette_id) || curated[0];
+  // cut 16 (ruling b): on Basic the palette is fixed to her style's default (its first curated palette)
+  const chosen = tierOf(tier) === 'basic' ? curated[0] : (curated.find((p) => p.id === s.palette_id) || curated[0]);
   const custom = obj(s.palette_custom);
   let roles = chosen.roles; let extras = chosen.extras; let id = chosen.id; let isCustom = false;
   if (rank(tier) >= TIER_RANK.signature && contrast.parseHex(custom.accent)) {
@@ -200,10 +209,11 @@ function paletteFor(tier, style, site) {
 }
 
 /** Q7 (WEB-3's map in styles.js): every new-site tier gets the pairs its style offers; her pick if it is one of them. */
-function fontPairFor(style, site) {
+function fontPairFor(style, site, tier) {
   const offered = (REG.STYLES[style] || { pairs: [] }).pairs;
   const want = obj(site).font_pair;
-  const id = offered.includes(want) ? want : (offered[0] || null);
+  // cut 16 (ruling b): on Basic the pairing is fixed to her style's default (its first offered pair)
+  const id = tier !== undefined && tierOf(tier) === 'basic' ? (offered[0] || null) : (offered.includes(want) ? want : (offered[0] || null));
   return id ? { id, ...REG.FONT_PAIRS[id], offered: [...offered] } : null;
 }
 
@@ -220,12 +230,12 @@ function sectionsFor(tier, rows) {
   const all = [];
   for (const { d, pos } of defaults) {
     const row = byKey.get(d.key);
-    all.push({ key: d.key, custom: false, fixed: d.fixed || null, allowed: r >= TIER_RANK[d.min],
+    all.push({ key: d.key, custom: false, fixed: d.fixed || null, allowed: r >= TIER_RANK[d.min], min: d.min,
       position: row && Number.isFinite(row.position) ? row.position : pos, shown: row ? row.shown !== false : true, row });
   }
   for (const row of stored) {
     if (!CUSTOM_KEY.test(str(row.key)) || all.some((a) => a.key === row.key)) continue;
-    all.push({ key: row.key, custom: true, fixed: null, allowed: r >= TIER_RANK.signature,
+    all.push({ key: row.key, custom: true, fixed: null, allowed: r >= TIER_RANK.signature, min: 'signature',
       position: Number.isFinite(row.position) ? row.position : 1000, shown: row.shown !== false, row });
   }
   all.sort((a, b) => (a.position - b.position) || a.key.localeCompare(b.key));
@@ -240,7 +250,7 @@ function sectionsFor(tier, rows) {
   return ordered.map((a) => {
     const row = obj(a.row);
     const eyebrow = limits.field('section_eyebrow', row.eyebrow); const heading = limits.field('section_heading', row.heading);
-    return { key: a.key, custom: a.custom, allowed: a.allowed, shown: a.allowed && a.shown,
+    return { key: a.key, custom: a.custom, allowed: a.allowed, shown: a.allowed && a.shown, opens: a.allowed ? null : PLAN_NAME[a.min],   // cut 16 (g)
       variant: VARIANT.test(str(row.variant)) ? row.variant : 'default',
       eyebrow: eyebrow.ok ? eyebrow.value : null, heading: heading.ok ? heading.value : null, body: obj(row.body) };
   });
@@ -270,14 +280,31 @@ function isNew(look, now) {
 }
 
 /** The capabilities her tier opens, for her own room (design §7). Never sent whole to a public page. */
+// cut 16 (g): each locked capability with the plan that opens it. The thresholds are the ones each flag already used.
+const CAPABILITY_AT = Object.freeze({
+  palettes: 1, font_pairs: 1, custom_palette: 2, gradients: 3, collections: 2, journal: 2,
+  custom_sections: 2, custom_pages: 3, full_order: 3, credit_removable: 3,
+  written_testimonials: 1, video_testimonials: 2, live_booking: 2, own_voice: 3,
+  visitor_counts: 1, visitor_sources: 2, visitor_saves: 3, own_domain: 2, built_from_instagram: 1,
+});
 function capabilitiesFor(tier) {
-  const r = rank(tier);
-  return {
-    styles: STYLE_ALLOWANCE[tierOf(tier)], custom_palette: r >= 2, gradients: r >= 3, collections: r >= 2, journal: r >= 2,
-    custom_sections: r >= 2, custom_pages: r >= 3, full_order: r >= 3, credit_removable: r >= 3,
-    written_testimonials: r >= 1, video_testimonials: r >= 2, live_booking: r >= 2, own_voice: r >= 3,
-    visitor_counts: r >= 1, visitor_sources: r >= 2, visitor_saves: r >= 3, own_domain: r >= 2, built_from_instagram: r >= 1,
-  };
+  const r = rank(tier); const t = tierOf(tier);
+  const out = { styles: STYLE_ALLOWANCE[t] };
+  const opens = {};
+  for (const [k, at] of Object.entries(CAPABILITY_AT)) { out[k] = r >= at; if (!out[k]) opens[k] = PLAN_NAME[PLAN_AT[at]]; }
+  if (r < TIER_RANK.prestige) opens.more_styles = PLAN_NAME[PLAN_AT[r + 1]];   // the next plan holds more styles
+  out.opens = opens;
+  return out;
+}
+
+/** cut 16 (ruling 2): her style clock. Basic only enforces it; the dates are given on every plan (WEB-8's room shows them). */
+function styleClock(tier, site, nowMs) {
+  const at = obj(site).style_changed_at; const t = at ? Date.parse(at) : NaN; const now = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const next = Number.isFinite(t) ? t + STYLE_CHANGE_DAYS * 86400000 : null;
+  const day = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);   // India's date
+  const words = (ms) => new Date(ms + 330 * 60000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return { last_changed_on: Number.isFinite(t) ? day(t) : null, next_change_on: next ? day(next) : null,
+    next_change_words: next ? words(next) : null, locked: tierOf(tier) === 'basic' && next !== null && now < next };
 }
 
 /**
@@ -292,11 +319,11 @@ function resolveSite(input) {
     const mono = limits.field('monogram', site.monogram);
     const base = { credit: creditFor(tier, site), can: capabilitiesFor(tier), site_name: siteName,
       monogram: (mono.ok && mono.value) ? mono.value.toUpperCase() : monogramFor(siteName || i.businessName) };
-    if (tier === 'basic') return { v: 'classic', ...base, look: lookFor(tier, i.category, site), pages: pagesFor(tier, site) };
+    // cut 16: Basic is drawn by the styles site too (one style, its default palette and pairing, Basic's sections)
     const style = styleFor(tier, site);
     return {
       v: 'styles', ...base, style, styles_open: stylesOpen(tier, site),
-      palette: paletteFor(tier, style, site), font_pair: fontPairFor(style, site),
+      palette: paletteFor(tier, style, site), font_pair: fontPairFor(style, site, tier),
       motion: MOTIONS.includes(site.motion) ? site.motion : 'lively',
       ...finishFor(tier, style, site),
       cover_mode: COVER_MODES.includes(site.cover_mode) ? site.cover_mode : 'slideshow',
@@ -312,5 +339,5 @@ module.exports = {
   defaultSite, LOOKS, TRADE_LOOK, BASE_PAGES, SIGNATURE_PAGES, PRESTIGE_PAGES, tierOf, looksOpen, tradeLook, lookFor, allowedPages, pagesFor, creditFor,
   // WEB-4 (the six-style site)
   resolveSite, stylesOpen, styleFor, paletteFor, fontPairFor, sectionsFor, pagesOf, tradeFor, isNew, capabilitiesFor, monogramFor,
-  SECTION_DEFAULTS, SECTION_KEYS, STYLE_ALLOWANCE, MOTIONS, COVER_MODES, NEW_DAYS, CUSTOM_KEY, finishFor, LIFTED,
+  SECTION_DEFAULTS, SECTION_KEYS, STYLE_ALLOWANCE, rank, PLAN_NAME, CAPABILITY_AT, STYLE_CHANGE_DAYS, styleClock, MOTIONS, COVER_MODES, NEW_DAYS, CUSTOM_KEY, finishFor, LIFTED,
 };

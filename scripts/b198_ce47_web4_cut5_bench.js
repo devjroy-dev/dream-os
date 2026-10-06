@@ -123,7 +123,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const pg = S ? await S.call('PUT', '/site/pages', { pages: [{ title: 'Our Story' }] }, ven('pre1')) : {};
   ok(() => pg.status === 200 && !(st.tables.vendor_site_pages || []).length && st.tables.vendor_site_drafts.find((x) => x.vendor_id === 'pre1').pages[0].title === 'Our Story', '4.7 PUT /pages (Prestige) writes the draft, not the live pages');
   const SR = read('src/api/vendor/solutions/siteRoom.js');
-  ok(() => !/from\('vendor_sites'\)\.(upsert|update|insert)/.test(SR) && !/from\('vendor_site_sections'\)\.(update|insert)/.test(SR) && !/rate_display\s*:/.test(SR.replace(/v\.rate_display/g, '')), '4.8 her room writes no live site row and never touches the prices switch (prices are not drafted)');
+  /* AMENDED BY LABEL, CE-47 WEB-4 cut 16 (b261): Publish now starts the style clock, its one live write (style_changed_at), after the publish */ ok(() => !/from\('vendor_sites'\)\.(upsert|insert)/.test(SR) && (SR.match(/from\('vendor_sites'\)\.update\(/g) || []).length === 1 && /from\('vendor_sites'\)\.update\(\{ style_changed_at: data \}\)/.test(SR) && !/from\('vendor_site_sections'\)\.(update|insert)/.test(SR) && !/rate_display\s*:/.test(SR.replace(/v\.rate_display/g, '')), '4.8 her room writes no live site row and never touches the prices switch (prices are not drafted)');
 
   sec('5  the preview (the chair\'s item 2): `?preview=<token>` and `?style=<id>`');
   await S.call('PATCH', '/site/settings', { style: 'aurora', styles_picked: ['heritage', 'aurora'] }, ven('sig1'));
