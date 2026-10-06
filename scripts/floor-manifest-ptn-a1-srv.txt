@@ -1,0 +1,25 @@
+# scripts/floor-manifest-ptn-a1-srv.txt
+# TDW CE-47 · PTN-A1 server half (dream-os, base d1aeab15bec5) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. Two NEW directories, each declared as a line and file by file (A-45.3, e-265).
+db/migrations/0216_partners.sql
+db/migrations/0217_forward_requests.sql
+docs/handovers/TDW_CE47_PTN_A1_SRV.md
+scripts/b290_ptn_a1_server_bench.js
+scripts/floor-manifest-ptn-a1-srv.txt
+scripts/ptn_a1_srv.sha256
+src/api/admin/partners.js
+src/api/middleware/requirePartner.js
+src/api/partner/
+src/api/partner/index.js
+src/api/public/partnerPublic.js
+src/api/router.js
+src/lib/partners/
+src/lib/partners/connections.js
+src/lib/partners/contacts.js
+src/lib/partners/forward.js
+src/lib/partners/links.js
+src/lib/partners/orgs.js
+src/lib/partners/partnerSession.js
+src/lib/partners/reports.js
+src/lib/partners/seams.js
+src/lib/provisionRole.js

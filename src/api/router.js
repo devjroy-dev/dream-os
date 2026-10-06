@@ -28,6 +28,7 @@ router.use('/crew',               require('./crew'));          // TDW_04.5 P3 �
 // no session mounted among them would be read as guarded by association. Same
 // reasoning as the crew line above.
 router.use('/public/vendor-card', require('./public/vendorCard'));
+router.use('/public/partner',     require('./public/partnerPublic'));  // CE-47 PTN-A1: the partner page and the request link page
 // CE-47 WEB-4 cut 3 · the client's own page for kind words (single use; try limits; the token's hash only).
 router.use('/public/testimonial', require('./public/testimonial'));
 // CE-47 PRO P1 · the check door for her issued papers (public, keyed on the check code; one miss for every refusal; 60 tries an hour per address).
@@ -66,6 +67,7 @@ router.use('/public/wedding-team', require('./public/weddingTeam'));
 router.use('/credits',            require('./credits'));
 router.use('/consent',            require('./consent'));
 router.use('/sign',               require('./sign'));
+router.use('/partner',           require('./partner'));                 // CE-47 PTN-A1: the partner lane (its own kind)
 router.use('/vendor/onboarding',  require('./vendor/onboarding'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)
@@ -94,6 +96,7 @@ router.use('/admin/hot-dates',       require('./admin/hotDates'));
 router.use('/admin/config',          require('./admin/config'));
 router.use('/admin/capabilities',    require('./admin/capabilities')); // CE-41 seat C: the switchboard (R-41.8)
 router.use('/admin/collab',          require('./admin/collab'));       // CE-47 CLB-1: the collab queue and prospects (F-44.300)
+router.use('/admin/partners',        require('./admin/partners'));     // CE-47 PTN-A1: partners, contacts, forward a request (by hand)
 router.use('/admin/model_routes',    require('./admin/modelRoutes'));  // CE-41 seat F: who answers, per lane (R-41.85)
 router.use('/admin',                 require('./admin/content'));
 router.use('/admin/muse-pool',       require('./admin/musePool').adminRouter);

@@ -83,6 +83,9 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
     const digits = String(phone).replace(/[^0-9]/g, '');
     phone = digits ? '+' + digits : null;
   }
+  // CE-47 PTN-A1: 'partner' is its own kind. It makes or finds the users row (phone, name required when new, F-44.271)
+  // and writes NO role table: a partner is never a vendors or couples row. Membership lives in partner_members.
+  const isPartner = role === 'partner';
   const roleTable = role === 'couple' ? 'couples' : 'vendors';
 
   // a) already linked to this Supabase identity
@@ -172,7 +175,7 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
   // nothing is written and NameRequiredError is thrown (the door answers 400 name_required). A RETURNING account (a role
   // row exists) is never refused: the door answers needs_name instead (ruling b).
   let roleExists = false;
-  if (usersId) {
+  if (usersId && !isPartner) {
     const { data: rr } = await supabase.from(roleTable).select('id').eq('user_id', usersId).maybeSingle();
     roleExists = Boolean(rr);
   }
@@ -207,6 +210,7 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
   }
 
   // role row — find or create
+  if (isPartner) return { user_id: usersId, role_id: null, pin_set: false, name: currentName ?? null };
   let { data: roleRow } = await supabase
     .from(roleTable).select('id, pin_hash').eq('user_id', usersId).maybeSingle();
   if (!roleRow) {
