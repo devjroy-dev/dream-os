@@ -42,6 +42,7 @@ const LINES = Object.freeze({
   occasion: 'Please choose the occasion.',
   hours: 'Please add how many hours it takes.',
   leadDays: 'Please add how many days ahead it must be booked.',
+  classLink: 'Please add the class link as it starts, https://',
   notFound: 'Not found.',
   soldOut: 'Sorry, there are no seats left.',
   notEnough: 'Sorry, only a few seats are left. Please choose fewer.',
@@ -83,7 +84,7 @@ function checkItem(body, nowMs) {
   let photo_url = null;
   if (b.photo_url != null && b.photo_url !== '') { if (typeof b.photo_url !== 'string' || !/^https:\/\/\S{1,500}$/.test(b.photo_url)) return { field: 'photo_url', error: LINES.photo }; photo_url = b.photo_url; }
   const row = { kind, name, price, includes, photo_url, shown: b.shown !== false,
-    voucher_for: null, valid_months: null, starts_at: null, ends_at: null, place: null, online: false, seats_total: null, class_dates: [], occasion: null, hours: null, lead_days: null };
+    class_link: null, voucher_for: null, valid_months: null, starts_at: null, ends_at: null, place: null, online: false, seats_total: null, class_dates: [], occasion: null, hours: null, lead_days: null };
   if (kind === 'voucher') {
     row.valid_months = intIn(b.valid_months, 1, 60); if (row.valid_months == null) return { field: 'valid_months', error: LINES.validMonths };
     if (b.voucher_for != null && b.voucher_for !== '') { row.voucher_for = trimmed(b.voucher_for, 60); if (!row.voucher_for) return { field: 'voucher_for', error: LINES.voucherFor }; }
@@ -107,6 +108,13 @@ function checkItem(body, nowMs) {
     row.occasion = OCCASIONS.includes(b.occasion) ? b.occasion : null; if (!row.occasion) return { field: 'occasion', error: LINES.occasion };
     if (b.hours != null) { row.hours = intIn(b.hours, 1, 24); if (row.hours == null) return { field: 'hours', error: LINES.hours }; }
     row.lead_days = b.lead_days == null ? 0 : intIn(b.lead_days, 0, 365); if (row.lead_days == null) return { field: 'lead_days', error: LINES.leadDays };
+  }
+  // R1, reversed by the founder (CE-47, 7 October 2026): an online class or online workshop may carry her own class link
+  // (her Meet or Zoom), https only. It is given to a buyer only once the seat is paid (markPaid), never on the public side.
+  if (b.class_link != null && b.class_link !== '') {
+    const online = kind === 'class' || (kind === 'workshop' && row.online);
+    if (!online || typeof b.class_link !== 'string' || !/^https:\/\/[^\s<>"']{3,500}$/.test(b.class_link.trim())) return { field: 'class_link', error: LINES.classLink };
+    row.class_link = b.class_link.trim();
   }
   return { ok: row };
 }
@@ -158,7 +166,7 @@ function paymentLinkFor(deps) {
 }
 
 // ── her room ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-const ITEM_COLS = 'id, kind, name, slug, photo_url, price, includes, shown, position, voucher_for, valid_months, starts_at, ends_at, place, online, seats_total, class_dates, occasion, hours, lead_days, event_id, created_at';
+const ITEM_COLS = 'id, kind, name, slug, photo_url, price, includes, shown, position, class_link, voucher_for, valid_months, starts_at, ends_at, place, online, seats_total, class_dates, occasion, hours, lead_days, event_id, created_at';
 
 async function ordersFor(sb, vendorId, itemIds) {
   if (!itemIds.length) return [];
@@ -284,7 +292,8 @@ async function markPaid(sb, vendorId, orderId, { by = 'vendor', ref = null, nowM
     }
     const { error: uErr } = await sb.from('shop_orders').update(patch).eq('id', o.id).eq('vendor_id', vendorId).eq('state', 'asked');
     if (uErr) throw new Error(`order update: ${uErr.message}`);
-    return { status: 200, body: { ok: true, voucher, lead_id: patch.lead_id || null, event_id: patch.event_id || null, calendar_line: calendarLine } };
+    const online = item.kind === 'class' || (item.kind === 'workshop' && item.online);
+    return { status: 200, body: { ok: true, voucher, lead_id: patch.lead_id || null, event_id: patch.event_id || null, calendar_line: calendarLine, class_link: online ? (item.class_link || null) : null } };
   } catch (e) { console.error(`[shop] ${vendorId} order ${orderId} not marked paid: ${e && e.message}`); return { status: 503, body: { ok: false, error: LINES.failed } }; }
 }
 

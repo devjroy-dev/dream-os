@@ -78,6 +78,10 @@ async function suite(S, label) {
   res.withLink = await S.placeOrder(db, vendor, { slug: saved.klass.slug, name: 'Tanvi Arora', phone_e164: '+919811022341', wanted_date: F.ist(NOW + 10 * DAY) },
     { now: () => new Date(NOW), alert: (a) => alerts2.push(a), paymentLink: async () => 'https://rzp.io/l/example' });
   res.alerts2 = alerts2;
+  const kl = await S.saveItem(db, V, null, { ...F.klass, name: 'Live online class', class_link: 'https://meet.google.com/abc-defg-hij' }, NOW);
+  const okl = await S.placeOrder(db, vendor, { slug: kl.body.item.slug, name: 'Meera Joshi', phone_e164: '+919811022342', wanted_date: F.ist(NOW + 10 * DAY) }, { now: () => new Date(NOW) });
+  res.mpk = await S.markPaid(db, V, okl.body.order_id, { nowMs: NOW, writeEvent });
+  res.pubClass = (await S.publicItems(db, V, NOW)).find((i) => i.slug === kl.body.item.slug);
   res.cancelPaid = await S.cancelOrder(db, V, o1.body.order_id, NOW);
   res.db = db; res.saved = saved;
   return res;
@@ -108,6 +112,12 @@ async function suite(S, label) {
   ok(() => c({ ...F.voucher, includes: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] }).field === 'includes' && c({ ...F.voucher, price: 0 }).field === 'price', '2.6 seven included lines, or a price of 0, are refused');
   ok(() => c({ ...F.klass, class_dates: [S.istDate(NOW - DAY)] }).field === 'class_dates' && c({ ...F.klass, class_dates: [] }).ok, '2.7 a class date in the past is refused; no dates means On request');
   ok(() => Object.values(S.LINES).every((l) => !/\b(bride|couple)s?\b/i.test(l) && !/\u2014/.test(l)), '2.8 no line she or a buyer reads says bride or couple, or has a long dash');
+  // OFF-A1b (R1 reversed, 7 October 2026): her class link, https only, only on an online class or online workshop.
+  ok(() => c({ ...F.klass, class_link: 'https://meet.google.com/abc-defg-hij' }).ok.class_link === 'https://meet.google.com/abc-defg-hij'
+    && c({ ...F.workshop, online: true, place: '', class_link: 'https://zoom.us/j/123' }).ok.class_link === 'https://zoom.us/j/123', '2.9 a class link saves on an online class and an online workshop');
+  ok(() => c({ ...F.klass, class_link: 'http://zoom.us/j/1' }).field === 'class_link' && c({ ...F.klass, class_link: 'javascript:alert(1)' }).field === 'class_link'
+    && c({ ...F.workshop, class_link: 'https://zoom.us/j/1' }).field === 'class_link' && c({ ...F.voucher, class_link: 'https://zoom.us/j/1' }).field === 'class_link', '2.10 refused: http, javascript:, an in-person workshop, a voucher');
+  ok(() => !/class_link/.test(SHOP_SRC.slice(SHOP_SRC.indexOf('const PUBLIC_COLS'), SHOP_SRC.indexOf('\n', SHOP_SRC.indexOf('const PUBLIC_COLS')))) && /class_link/.test(read('db/migrations/0205_shop_class_link.sql')), '2.11 the public side never selects the class link (0205 adds the column)');
 
   sec('3  codes and dates');
   const codes = Array.from({ length: 3000 }, () => S.newCode());
@@ -137,6 +147,8 @@ async function suite(S, label) {
   ok(() => R.ob2row.state === 'paid' && R.mpb2.body.event_id === null && /^Marked paid\. .+ was not added to your calendar: You have blocked this day\.$/.test(R.mpb2.body.calendar_line), "5.6 the writer refuses (a blocked day): paid, no entry, and the writer's own sentence", R.mpb2.body.calendar_line);
   ok(() => R.db.t.shop_vouchers.length === 1 && (R.db.t.leads || []).length === 2, '5.7 vouchers and seats make no enquiry; two bookings, two enquiries');
   ok(() => R.cancelPaid.status === 422, '5.8 a paid order cannot be cancelled from the shop');
+  ok(() => R.mpk.body.class_link === 'https://meet.google.com/abc-defg-hij' && R.pubClass && !('class_link' in R.pubClass) && !JSON.stringify(R.pubClass).includes('meet.google'), '5.10 a paid online class returns its link; the public item never carries it');
+  ok(() => R.mpv.body.class_link === null && R.mp1.body.class_link === null, '5.9 a voucher and an in-person workshop carry no class link when paid');
 
   sec('6  vouchers');
   ok(() => R.check.status === 200 && R.check.body.voucher.state === 'valid' && /Paid Rs 3,000 on .+ · Valid until /.test(R.check.body.voucher.line), '6.1 a code typed in small letters without the dash is found and reads valid');
@@ -164,6 +176,7 @@ async function suite(S, label) {
     ['m3 the workshop entry per seat', "    if (item.kind === 'workshop' && !item.event_id) {", "    if (item.kind === 'workshop') {", (r) => r.workshopWrites === 1],
     ['m4 a booking born new, not booked', "source: 'shop', state: 'booked',", "source: 'shop', state: 'new',", (r) => r.lead && r.lead.state === 'booked'],
     ['m5 the writer asked without force', "kind: 'shop', linked_lead_id: leadId || undefined, force: true });", "kind: 'shop', linked_lead_id: leadId || undefined, force: false });", (r) => r.bookingWrite && r.bookingWrite.force === true],
+    ['m6 the public side selects AND returns the class link (both guards gone)', [["const PUBLIC_COLS = 'id, kind, name, slug, photo_url,", "const PUBLIC_COLS = 'id, kind, name, slug, class_link, photo_url,"], ["return { kind: i.kind, name: i.name, slug: i.slug,", "return { class_link: i.class_link, kind: i.kind, name: i.name, slug: i.slug,"]], null, (r) => r.pubClass && !('class_link' in r.pubClass)],
   ];
   for (const [name, from, to, cell] of MUT) {
     const pairs = Array.isArray(from) ? from : [[from, to]];
