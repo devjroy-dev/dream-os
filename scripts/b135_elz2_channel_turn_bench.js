@@ -116,7 +116,10 @@ const leadInsert = (sb) => (sb.log.inserts.find((i) => i.table === 'leads') || {
 // Derived by command at 9dff862 (CE-46 ELZ-2 cut 1): each `const result = await runCoupleAgenticTurn({ ... });` block in vendorInbound.js,
 // sha256 of its bytes, first 16. The pin is on the BLOCK, so G6-2's F-44.207 hunk (a guard elsewhere in the file) does not move it;
 // a fifth caller, or a caller passing a counterparty, is a change this rung must see.
-const CALLER_PINS = ['e1eb78bac9446583', '9614c172a578681e', '13896137d6440b36', '75e76449abeda924'];
+// RE-PINNED BY LABEL (CE-47 ELZ-4 · the per-vendor Eliza switch for WhatsApp, 0212): each of the four blocks gained ONE line, profileName
+// (the switch's lead name, R1); no counterparty is passed (1.3 holds), still four callers (1.1 holds). Was e1eb78ba, 9614c172, 13896137,
+// 75e76449 at 9dff862.
+const CALLER_PINS = ['53d181ebd227f29f', 'ddc354f579917e61', 'a26fa2128607d33f', '2f40bc3179f08787'];
 function callerBlocks() {
   const s = read('src/lib/vendorInbound.js');
   const re = /const result = await runCoupleAgenticTurn\(\{[\s\S]*?\n\s*\}\);/g; const out = []; let m;
@@ -130,7 +133,7 @@ async function main() {
   sec('§1 the four WhatsApp callers, byte-identical by label');
   const blocks = callerBlocks();
   T('1.1 exactly four call-site blocks in vendorInbound.js', blocks.length === 4);
-  T('1.2 each block matches its pin (e1eb78ba, 9614c172, 13896137, 75e76449)', blocks.map((b) => sha(b).slice(0, 16)).join(',') === CALLER_PINS.join(','));
+  T('1.2 each block matches its pin (53d181eb, ddc354f5, a26fa212, 2f40bc31; re-pinned by label, CE-47 ELZ-4)', blocks.map((b) => sha(b).slice(0, 16)).join(',') === CALLER_PINS.join(','));
   T('1.3 no caller passes a counterparty (the default path is the live path today)', blocks.every((b) => !/counterparty/.test(b)));
   T('1.4 every caller passes couplePhone: phone', blocks.every((b) => /couplePhone: phone,/.test(b)));
 

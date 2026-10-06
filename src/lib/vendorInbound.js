@@ -722,6 +722,8 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
               .from('users').select('*').eq('id', thread.vendors.user_id).maybeSingle();
 
             const result = await runCoupleAgenticTurn({
+
+              profileName: typeof profileName === 'string' ? profileName : null, // CE-47 ELZ-4 · the WhatsApp switch's lead name (R1)
               vendor: thread.vendors,
               vendorUser,
               conversation: thread,
@@ -732,17 +734,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
               anthropic,
             });
 
-            const twilioMsg = await sendWhatsApp(phone, result.reply);
+            // CE-47 ELZ-4 · the WhatsApp switch: OFF answers nothing on her behalf (result.reply null); her alert below still goes
+            if (result && typeof result.reply === 'string' && result.reply.trim()) {
+              const twilioMsg = await sendWhatsApp(phone, result.reply);
 
-            await supabase.from('messages').insert({
-              conversation_id: thread.id,
-              direction: 'outbound',
-              channel: 'whatsapp',
-              body: result.reply,
-              sent_by: 'agent',
-              twilio_sid: twilioMsg.sid,
-              tool_calls: result.toolCalls,
-            });
+              await supabase.from('messages').insert({
+                conversation_id: thread.id,
+                direction: 'outbound',
+                channel: 'whatsapp',
+                body: result.reply,
+                sent_by: 'agent',
+                twilio_sid: twilioMsg.sid,
+                tool_calls: result.toolCalls,
+              });
+            }
 
             if (result.vendorNotification && vendorUser?.phone) {
               // M-3 R3: the model's frame scrubs, her quoted sentence passes byte-exact.
@@ -889,6 +894,8 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             .from('users').select('*').eq('id', stickyThread.vendors.user_id).maybeSingle();
 
           const result = await runCoupleAgenticTurn({
+
+            profileName: typeof profileName === 'string' ? profileName : null, // CE-47 ELZ-4 · the WhatsApp switch's lead name (R1)
             vendor: stickyThread.vendors,
             vendorUser,
             conversation: stickyThread,
@@ -899,17 +906,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             anthropic,
           });
 
-          const twilioMsg = await sendWhatsApp(phone, result.reply);
+          // CE-47 ELZ-4 · the WhatsApp switch: OFF answers nothing on her behalf (result.reply null); her alert below still goes
+          if (result && typeof result.reply === 'string' && result.reply.trim()) {
+            const twilioMsg = await sendWhatsApp(phone, result.reply);
 
-          await supabase.from('messages').insert({
-            conversation_id: stickyThread.id,
-            direction: 'outbound',
-            channel: 'whatsapp',
-            body: result.reply,
-            sent_by: 'agent',
-            twilio_sid: twilioMsg.sid,
-            tool_calls: result.toolCalls,
-          });
+            await supabase.from('messages').insert({
+              conversation_id: stickyThread.id,
+              direction: 'outbound',
+              channel: 'whatsapp',
+              body: result.reply,
+              sent_by: 'agent',
+              twilio_sid: twilioMsg.sid,
+              tool_calls: result.toolCalls,
+            });
+          }
 
           if (result.vendorNotification && vendorUser?.phone) {
             // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:665).
@@ -1071,6 +1081,8 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         }
 
         const result = await runCoupleAgenticTurn({
+
+          profileName: typeof profileName === 'string' ? profileName : null, // CE-47 ELZ-4 · the WhatsApp switch's lead name (R1)
           vendor: matchedByTdw,
           vendorUser,
           conversation: coupleThread,
@@ -1088,17 +1100,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           anthropic,
         });
 
-        const twilioMsg = await sendWhatsApp(phone, result.reply);
+        // CE-47 ELZ-4 · the WhatsApp switch: OFF answers nothing on her behalf (result.reply null); her alert below still goes
+        if (result && typeof result.reply === 'string' && result.reply.trim()) {
+          const twilioMsg = await sendWhatsApp(phone, result.reply);
 
-        await supabase.from('messages').insert({
-          conversation_id: coupleThread.id,
-          direction: 'outbound',
-          channel: 'whatsapp',
-          body: result.reply,
-          sent_by: 'agent',
-          twilio_sid: twilioMsg.sid,
-          tool_calls: result.toolCalls,
-        });
+          await supabase.from('messages').insert({
+            conversation_id: coupleThread.id,
+            direction: 'outbound',
+            channel: 'whatsapp',
+            body: result.reply,
+            sent_by: 'agent',
+            twilio_sid: twilioMsg.sid,
+            tool_calls: result.toolCalls,
+          });
+        }
 
         // CE-46 ELZ-3 cut 1 · F-44.228 CURED: this site sent the vendor's notice through sendWhatsApp directly, outside the one door
         // (F-08.85's rider above: a shut 24-hour window threw here), and carried its own fallback line for a turn that composed
@@ -1330,6 +1345,8 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           .from('users').select('*').eq('id', fullVendor?.user_id).maybeSingle();
 
         const result = await runCoupleAgenticTurn({
+
+          profileName: typeof profileName === 'string' ? profileName : null, // CE-47 ELZ-4 · the WhatsApp switch's lead name (R1)
           vendor: fullVendor,
           vendorUser,
           conversation: existingThread,
@@ -1340,17 +1357,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           anthropic,
         });
 
-        const twilioMsg = await sendWhatsApp(phone, result.reply);
+        // CE-47 ELZ-4 · the WhatsApp switch: OFF answers nothing on her behalf (result.reply null); her alert below still goes
+        if (result && typeof result.reply === 'string' && result.reply.trim()) {
+          const twilioMsg = await sendWhatsApp(phone, result.reply);
 
-        await supabase.from('messages').insert({
-          conversation_id: existingThread.id,
-          direction: 'outbound',
-          channel: 'whatsapp',
-          body: result.reply,
-          sent_by: 'agent',
-          twilio_sid: twilioMsg.sid,
-          tool_calls: result.toolCalls,
-        });
+          await supabase.from('messages').insert({
+            conversation_id: existingThread.id,
+            direction: 'outbound',
+            channel: 'whatsapp',
+            body: result.reply,
+            sent_by: 'agent',
+            twilio_sid: twilioMsg.sid,
+            tool_calls: result.toolCalls,
+          });
+        }
 
         if (result.vendorNotification && vendorUser?.phone) {
           // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:933).

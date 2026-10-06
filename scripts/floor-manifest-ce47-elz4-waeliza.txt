@@ -1,0 +1,28 @@
+# scripts/floor-manifest-ce47-elz4-waeliza.txt
+# CE-47 · ELZ-4 · THE PER-VENDOR ELIZA SWITCH FOR WHATSAPP (dream-os): 0212, waEliza, the room's doors, the five callers; b250. BASE: eb6b51cd8c81.
+# MIGRATION: 0212_wa_eliza_state.sql runs in Supabase BEFORE the push. F-19.16: a dirty path outside this list is a STOP.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path (this manifest: ADDED, its hash in the card)
+# 13e7f1db0e4c02059e9ad7883ce53f4d9840eb7e6dd1a2ac03b46b19d60f9bc9 · ADDED · db/migrations/0212_wa_eliza_state.sql
+# e3cd005e9d5857e328539ab7703b31f4d8fc1b2808c361245ae0fd6c47567572 · ADDED · docs/handovers/TDW_CE47_ELZ4_WAELIZA_HANDOVER.md
+# 08ae6455f23f6ff63ca9685394d323f36fddec81cc8ee4f9854c7907bfc1de2a · CHANGED · scripts/b115_lcv15_lsp4_bench.js
+# 06b15c0a907cae6f208fa3706ca4d6d4a0f46e5800ca97d1741ec67c843cf253 · CHANGED · scripts/b135_elz2_channel_turn_bench.js
+# dcd8b6a0c345f7f0184de7665cec365ebace136d5d4ec1a317cdc847b1068acb · ADDED · scripts/b250_ce47_elz4_wa_eliza_bench.js
+# a17878b31697cdaf15447076a25edae4b34db70eafd911313992f39bf17bcb88 · CHANGED · src/agent/engine.js
+# dd650a98b3e79b634af61e1c8bf012a2135cc2d67dd98a2329529567501de937 · CHANGED · src/api/vendor/solutions/index.js
+# c263d9548844639e934e67ef75b5cd0e33bc4d196939094b64a4c1dce7155f8f · ADDED · src/api/vendor/solutions/whatsappEliza.js
+# 67e820a936292f2d171743fbab00ddba4a0a5dcb6a2b7d8bdfaab2901ef16aab · CHANGED · src/lib/ownNumber/turn.js
+# 888a40e26f7a8237af4ad6e34b3ae80b344622ee6dec6b2d13a5079b4d9ca3d3 · ADDED · src/lib/vendor/waEliza.js
+# 8b98266f33f1fe640b65b714f20ce4b3abd2b78226bb74ab8a0b1c2788a43569 · CHANGED · src/lib/vendorInbound.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-elz4-waeliza.txt
+db/migrations/0212_wa_eliza_state.sql
+docs/handovers/TDW_CE47_ELZ4_WAELIZA_HANDOVER.md
+scripts/b115_lcv15_lsp4_bench.js
+scripts/b135_elz2_channel_turn_bench.js
+scripts/b250_ce47_elz4_wa_eliza_bench.js
+src/agent/engine.js
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/whatsappEliza.js
+src/lib/ownNumber/turn.js
+src/lib/vendor/waEliza.js
+src/lib/vendorInbound.js
+scripts/floor-manifest-ce47-elz4-waeliza.txt

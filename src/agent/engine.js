@@ -21,6 +21,7 @@ const { buildEnquiryEnrichment } = require('../lib/vendor/enquiryEnrichment');
 const { studioName }            = require('./studioName');
 const { threadFacts }           = require('./coupleThreadFacts');
 const { dateState, dateStateFact, vendorDateLine } = require('../lib/vendor/coupleDateState');
+const waEliza = require('../lib/vendor/waEliza'); // CE-47 ELZ-4 · the per-vendor Eliza switch for WhatsApp
 const priceLib = require('../lib/vendor/couplePriceState'); // CE-46 ELZ-3 · the price switch (0183)
 
 
@@ -283,8 +284,24 @@ function firstMessageNotice(cp, inboundMessage, name) {
   } catch (_e) { return null; }
 }
 
-async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic, counterparty }) {
+async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic, counterparty, profileName }) {
   const cp = resolveCounterparty(counterparty, couplePhone);
+  // CE-47 ELZ-4 · THE PER-VENDOR ELIZA SWITCH FOR WHATSAPP (0212; src/lib/vendor/waEliza.js): the master first (absolute), then HER switch,
+  // read fresh from her row (a caller's vendor object may not carry the column). OFF: no model call, nothing sent; one lead (R1); the alert (R2).
+  // ONE site for the gate (b08_p5 §1.4): the lane flag is read here once, for every channel but Instagram and the website, and used twice:
+  // by her switch below and by useEliza further down.
+  const laneEliza = (cp.channel === 'instagram' || cp.channel === 'website') ? true : await readLaneFlag(supabase, 'couple.eliza_enabled');
+  if (waEliza.WA_CHANNELS.includes(cp.channel) && vendor && vendor.id) {
+    const master = laneEliza;
+    if (master === true) {
+      let row = null;
+      try { const r = await supabase.from('vendors').select('wa_eliza_state').eq('id', vendor.id).maybeSingle(); row = r && !r.error ? r.data : null; } catch (_e) { row = null; }
+      if (waEliza.isOff({ vendor: row || {}, channel: cp.channel, master })) {
+        console.log(`[couple-agent] wa_eliza off for ${vendor.id}: no turn, nothing sent`);
+        return waEliza.offTurn({ supabase, vendor, conversation, couplePhone, profileName, inboundMessage });
+      }
+    }
+  }
   // The row the door wrote holds what she ACTUALLY sent (γ refused: the audit row
   // is never rewritten to match a derived value). This is the string to filter on.
   const inboundBodyAsStored = (rawInboundBody === undefined || rawInboundBody === null)
@@ -390,7 +407,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // the founder's hand.
   // CE-46 ELZ-2 cut 1 (the founder's Q2 = 1): on Instagram the persona path runs; the flag is not consulted there.
   // CE-47 WEB-4 cut 7: the website panel IS Eliza (the founder's brief); its own switch (flag.website_eliza) is read by its caller.
-  const useEliza = (cp.channel === 'instagram' || cp.channel === 'website') ? true : await readLaneFlag(supabase, 'couple.eliza_enabled');
+  const useEliza = laneEliza; // CE-47 ELZ-4: the one read, hoisted to the turn's start (Instagram and the website: true, as before)
   console.log(`[couple-agent] lane=${useEliza ? 'eliza' : 'legacy'}`);
 
   // CE-45 ELZ-1 cut 1 · FACT 1 (§11 rule 1, F-44.125): the thread's WHOLE record, not the ten-minute window, says whether this

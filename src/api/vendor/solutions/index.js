@@ -464,5 +464,7 @@ router.use('/number', require('./number'));
 // CE-45 IGD-1 cut 2a-ii · the room "WhatsApp and Instagram": its Instagram door and switch, and the quiet time (both dark by the lane).
 router.use('/instagram', require('./instagram'));
 router.use('/quiet', require('./quiet'));
+// CE-47 ELZ-4 · the room's WhatsApp twin of Instagram messages: her own Eliza switch for WhatsApp (0212; src/lib/vendor/waEliza.js).
+router.use('/whatsapp-eliza', require('./whatsappEliza'));
 
 module.exports = router;

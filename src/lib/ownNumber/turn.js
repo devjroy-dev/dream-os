@@ -200,6 +200,18 @@ async function _handle({ supabase, anthropic, vendorId, change, env, d, msg }) {
     counterparty: { channel: 'whatsapp_own', phone, igsid: null, chatted_before },
   });
   const reply = result && typeof result.reply === 'string' ? result.reply : '';
+  // CE-47 ELZ-4 · the WhatsApp switch OFF (result.silent): nothing sent from her number; her alert (R2) goes when the turn carries one
+  if (!reply.trim() && result && result.silent === true) {
+    if (result.vendorNotification && vendorUser && vendorUser.phone) {
+      await d.sendVendorEnquiryAlert({
+        toPhone: vendorUser.phone,
+        text: d.scrubModelFrame(result.vendorNotification, msg.body, { supabase, vendorId, surface: 'whatsapp', ctx: 'ownNumber:eliza_off' }),
+        vendorName: vendorUser.name, brideName: result.leadName, link: d.leadsLink, brideMessage: msg.body,
+        supabase, vendorId, ctx: 'ownNumber:eliza_off',
+      });
+    }
+    await touch(); return { outcome: 'eliza_off' };
+  }
   if (!reply.trim()) { await touch(); return { outcome: 'no_reply' }; }
 
   // 8 · the send, from her number, and its record
