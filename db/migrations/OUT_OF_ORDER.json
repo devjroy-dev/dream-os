@@ -82,6 +82,12 @@
       "note": "**CE-47 · CLB · HUB-1 · HUB PROFILES AND CREDITS** — creates `hub_profiles` and `hub_credits`. Additive; alters no existing table. Numbered `0198` from CLB's range and lands in server train 7, after `0216`, `0217` and `0220` are applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 7 October 2026; written by WEB-4, the register's one writer, from the chair's description of `0198_hub_profiles_credits.sql`).",
       "stale_for": "`public.hub_profiles`, `public.hub_credits`",
       "state": "OWED — the snapshot does not carry the two tables; `0198` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 211,
+      "note": "**CE-47 · PRO · P2 · GEAR SHARING AND BILL DRAFTS** — creates `gear_items`, `gear_requests` and `bill_drafts` (RLS on; SELECT, INSERT, UPDATE, DELETE to service_role) and one function, `pro_gear_accept(uuid, uuid)` (SECURITY INVOKER; EXECUTE revoked from PUBLIC, anon and authenticated, granted to service_role alone). Additive: alters no existing table (the new tables only reference `vendors` and `expenses`). Numbered `0211` from PRO's range (0208-0211) and lands in server train 8, after `0216`, `0217` and `0220` are applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 7 October 2026; written by WEB-4, the register's one writer, from 0211's bytes, sha256 80cca6b6…, with PRO's draft as input).",
+      "stale_for": "`public.gear_items`, `public.gear_requests`, `public.bill_drafts`",
+      "state": "OWED — the snapshot does not carry the three tables or `pro_gear_accept`; `0211` and this file are their witnesses until the next PAIR regen."
     }
   ]
 }

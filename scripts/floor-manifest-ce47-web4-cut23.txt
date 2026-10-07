@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce47-web4-cut23.txt
+# CE-47 · WEB-4 cut 23 · the register's record for 0211 (PRO P2) · base d92edea (server train 8, after PRO P2 SRV) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b267 (7 cells). b266 amended by label. No migration. b15 red on this base alone (0211's file arrives with PRO's package). No new directory. No file deleted.
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_WEB4_CUT23_HANDOVER.md
+scripts/b266_ce47_web4_cut22_bench.js
+scripts/b267_ce47_web4_cut23_bench.js
+scripts/floor-manifest-ce47-web4-cut23.txt
