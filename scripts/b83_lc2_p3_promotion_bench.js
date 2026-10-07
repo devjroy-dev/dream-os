@@ -145,7 +145,28 @@ function makeDb(seed = {}, opts = {}) {
     }
     return b;
   }
-  const api = { from, tables, calls, schema: (s) => ({ from: (t) => from(s === 'engine' ? `engine.${t}` : t) }) };
+  // AMENDED BY LABEL · CE-47 INS PAY-A (turn 40): markMilestonePaid now moves the money only through 0201's
+  // pay_record_milestone() (one step in the database; F-44.320). This double gains a MODEL of it, faithful to the
+  // function's answers; the real SQL is proven on Postgres by b225 and judged by PAYA_0201_SUPABASE_CHECK.sql.
+  async function rpc(name, a) {
+    calls.push(['rpc', name]);
+    if (name !== 'pay_record_milestone') return { data: null, error: { message: 'b83 double: rpc ' + name + ' not modelled' } };
+    const ms = (tables.payment_schedules || []).find((m) => m.id === a.p_milestone && m.vendor_id === a.p_vendor);
+    if (!ms) return { data: { ok: false, code: 'NO_LINE' }, error: null };
+    const inv = (tables.invoices || []).find((i) => i.id === ms.invoice_id && i.vendor_id === a.p_vendor);
+    if (!inv) return { data: { ok: false, code: 'NO_INVOICE' }, error: null };
+    if (inv.state === 'cancelled') return { data: { ok: false, code: 'INVOICE_CANCELLED' }, error: null };
+    if (ms.state !== 'pending') return { data: { ok: false, code: 'NOT_PENDING' }, error: null };
+    const total = (Number(ms.paid_amount) || 0) + a.p_amount;
+    ms.paid_amount = total;
+    if (total >= ms.amount_due) { ms.state = 'paid'; ms.paid_at = a.p_received ? `${a.p_received}T00:00:00+05:30` : new Date().toISOString(); }
+    inv.amount_paid = (Number(inv.amount_paid) || 0) + a.p_amount;
+    inv.state = inv.amount_paid >= inv.amount_total ? 'paid' : inv.state === 'unpaid' ? 'advance_paid' : inv.state;
+    const next = (tables.payment_schedules || []).filter((m) => m.invoice_id === inv.id && m.state === 'pending').sort((x, y) => x.ordinal - y.ordinal)[0];
+    inv.due_date = next ? next.due_date : null;
+    return { data: { ok: true, applied: true, settled: ms.state === 'paid', milestone: { ...ms }, invoice: { ...inv } }, error: null };
+  }
+  const api = { from, rpc, tables, calls, schema: (s) => ({ from: (t) => from(s === 'engine' ? `engine.${t}` : t) }) };
   return api;
 }
 
@@ -815,7 +836,11 @@ function fakeWriteEvent(db, mode = 'ok') {
     ['src/lib/vendor/promotion.js', '.eq(\'id\', leadId).eq(\'vendor_id\', vendorId).is(\'binder_id\', null)', ".eq('id', leadId).eq('vendor_id', vendorId)", async (m) => !(await promotionCells(m)).reserveFirst, 'M8 the reservation loses WHERE binder_id IS NULL → §6.2 RED'],
     ['src/lib/vendor/promotion.js', 'if (empty(binder.amount_received)) edit.amount_received = money.received;', 'edit.amount_received = money.received; edit.amount = money.total;', async (m) => !(await promotionCells(m)).choice4, 'M9 money written over a filled cell → §6.18 RED'],
     ['src/lib/vendor/schedules.js', 'amounts.push(t - used); return;', 'amounts.push(Math.round((t * Number(m.pct)) / 100)); return;', async (m) => !(await scheduleCells(m)).remainder, 'M10 the last milestone rounded, not computed → §4.1 RED'],
-    ['src/lib/vendor/schedules.js', 'due_date:    next ? next.due_date : null,', '', async (m) => !(await scheduleCells(m)).dueMoved, 'M11 due_date not moved → §4.7 RED'],
+    // AMENDED BY LABEL · CE-47 INS PAY-A (turn 40): M11 RETIRED HERE. The due date is no longer moved in schedules.js; it is
+    // decided in the database by 0201's pay_settle_invoice(). Its mutation lives where the code lives: b225 2b.2 (the due
+    // date moves to the next line) on a real Postgres, with b225's own 0201 mutations. This double only models it.
+    // THE LIVING PROOF: scripts/b225_ins_paya_0201_postgres_bench.js, cell 2b.2 ('advance_paid stays advance_paid; the due
+    // date moves to the next line'), and PAYA_0201_SUPABASE_CHECK.sql's invoice_moved_with_it on the founder's database.
     ['src/lib/vendor/schedules.js', 'if (inv && inv.lead_package_id)', 'if (false)', async (m) => !(await scheduleCells(m)).f16, 'M12 F16 guard removed → §4.15 RED'],
     ['src/lib/vendor/schedules.js', "if (!mirrorEnabled(deps.env)) return { mirrored: false, reason: 'off' };", '', async (m) => !(await scheduleCells(m)).mirrorGate, 'M13 the mirror ignores its flag → §4.17 RED'],
     ['src/lib/vendor/invoices.js', 'lead_package_id: lead_package_id || null,', '', async (m) => !(await invoiceLibCells(m)).links, 'M14 lead_package_id not inserted → §5.1 RED'],

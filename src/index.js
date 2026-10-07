@@ -322,6 +322,10 @@ app.post('/webhook/meta', async (req, res) => {
 //   • the flip is order-independent: it derives from the event's own
 //     subscription state, never from an assumed delivery sequence — Razorpay
 //     states plainly that events may arrive out of order.
+// CE-47 INS PAY-A · POST /webhook/razorpay-partner: the vendors' own Razorpay accounts, PAY-A's own secret and door
+// (src/api/webhooks/razorpayPartner.js). TDW's billing door below is not edited and shares nothing with it.
+app.post('/webhook/razorpay-partner', (req, res, next) => require('./api/webhooks/razorpayPartner')(req, res).catch(next));
+
 app.post('/webhook/razorpay', async (req, res) => {
   const secret  = process.env.RAZORPAY_WEBHOOK_SECRET;
   const eventId = req.headers['x-razorpay-event-id'];

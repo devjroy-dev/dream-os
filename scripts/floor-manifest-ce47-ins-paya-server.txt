@@ -1,0 +1,31 @@
+# scripts/floor-manifest-ce47-ins-paya-server.txt
+# CE-47 · INS · PAY-A SERVER (payment links in her own Razorpay; built to the door, not switched on) · base 2d349dcdd714
+# migrations 0201 (frozen 18dbb3f0…) and 0202 (0419d5e5…, FROZEN with this package) · rungs b224 b225 b226 b227 · b83 amended by label
+# No file deleted. OUT_OF_ORDER.json is WEB-4's (records 201, 202).
+# r3: four benches amended BY LABEL (b105 6.4, b106 6.3, b108 8.3: paymentReminders.js's pinned blob moves 60ff12d0 -> 98bd8f04,
+#     F-44.320; b07_f0772 §2.7: payRazorpay.js named as a declared exception beside igOAuth.js).
+db/migrations/0201_payment_links.sql
+db/migrations/0202_pay_oauth_states.sql
+docs/handovers/PAYA_0201_SUPABASE_CHECK.sql
+docs/handovers/PAYA_0202_SUPABASE_CHECK.sql
+docs/handovers/TDW_CE47_INS_PAYA_SERVER_HANDOVER.md
+scripts/b07_f0772_circle_auth_bench.js
+scripts/b105_lcv13_move_cancel_bench.js
+scripts/b106_lcv14_team_reminder_bench.js
+scripts/b108_lcv14_lookups_bench.js
+scripts/b224_ins_paya_part_payments_bench.js
+scripts/b225_ins_paya_0201_postgres_bench.js
+scripts/b226_ins_paya_links_bench.js
+scripts/b227_ins_paya_webhook_bench.js
+scripts/b83_lc2_p3_promotion_bench.js
+scripts/floor-manifest-ce47-ins-paya-server.txt
+src/api/vendor/solutions/index.js
+src/api/vendor/solutions/paylinks.js
+src/api/webhooks/razorpayPartner.js
+src/cron.js
+src/index.js
+src/lib/invoiceMessage.js
+src/lib/vendor/payLinks.js
+src/lib/vendor/payRazorpay.js
+src/lib/vendor/paymentReminders.js
+src/lib/vendor/schedules.js

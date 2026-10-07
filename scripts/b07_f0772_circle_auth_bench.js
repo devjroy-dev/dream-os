@@ -289,7 +289,13 @@ t('§2.6 adminSession exports the SAME SIX names, unchanged', () => {
 // re-usable session token, THIS EXCEPTION MUST BE RE-READ and the fold argued
 // again — which is what naming it here, instead of narrowing the predicate until
 // it disappeared, is for.
-const ONE_HOME_EXCEPTIONS = new Set(['src/lib/vendor/igOAuth.js']);
+// AMENDED BY LABEL · CE-47 INS PAY-A: `src/lib/vendor/payRazorpay.js` is the SAME declared case as igOAuth.js, argued
+// on its own bytes: it signs a SINGLE-USE OAuth `state` for "Connect Razorpay" whose replay defence lives in the
+// DATABASE (the nonce is stored in 0202's vendor_pay_oauth_states and spent once, in one guarded UPDATE, on return),
+// bound to her vendor and session and expiring in ten minutes; its payload is a base64url JSON blob, not a dot-joined
+// field list; it mints no re-usable session token. Named here, not hidden by a narrower predicate. igOAuth.js's entry
+// is unchanged.
+const ONE_HOME_EXCEPTIONS = new Set(['src/lib/vendor/igOAuth.js', 'src/lib/vendor/payRazorpay.js']);
 
 t('§2.7 THERE IS ONE IMPLEMENTATION — no second session signer outside the one home', () => {
   const offenders = [];

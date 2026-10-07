@@ -2,7 +2,7 @@
 
 const { formatRs, formatPercent, formatDate } = require('./format');
 
-function buildInvoiceMessage({ clientName, vendorDisplayName, invoiceNumber, description, amountTotal, amountAdvance, dueDate, upiId }) {
+function buildInvoiceMessage({ clientName, vendorDisplayName, invoiceNumber, description, amountTotal, amountAdvance, dueDate, upiId, payLink }) {
   // S2 · THE LOCAL COPY IS RETIRED. This message is ABOUT the document the PDF draws,
   // and it reaches the same couple in the same thread — so a due date spelled `3 Sept`
   // here and `3 Sep` there is one fact in two spellings, feet apart. One home:
@@ -39,6 +39,8 @@ function buildInvoiceMessage({ clientName, vendorDisplayName, invoiceNumber, des
     }
   }
 
+  // CE-47 INS PAY-A: when the vendor has made a payment link for this invoice (her own Razorpay), one plain line.
+  if (payLink && payLink.url && Number.isInteger(payLink.amount) && payLink.amount > 0) { parts.push(''); parts.push(`Pay Rs ${formatRs(payLink.amount)} online: ${payLink.url}`); }
   parts.push('');
   parts.push('Thanks.');
   return parts.join('\n');

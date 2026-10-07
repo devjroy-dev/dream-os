@@ -333,7 +333,9 @@ async function sendOneReminder(supabase, { vendorId, milestone, invoice, vendorN
   // nowhere.
   const toPhone   = await resolveClientPhone(supabase, invoice);
   const clientNm  = (invoice && invoice.client_name) || null;
-  const phrase    = composeMilestonePhrase(milestone.milestone_label, milestone.amount_due);
+  // F-44.320 (PAY-A): a part-paid line asks only for what is still owed, never for money already received.
+  const stillOwed = Math.max(0, (Number(milestone.amount_due) || 0) - (Number(milestone.paid_amount) || 0));
+  const phrase    = composeMilestonePhrase(milestone.milestone_label, stillOwed);
   const dueWords  = formatDueDate(milestone.due_date);
 
   // ── F-41.14 · THE FIVE REFUSALS COME FIRST, AND THE CLAIM SECOND ─────────
@@ -467,7 +469,7 @@ async function runReminderSweep(supabase, deps = {}) {
 
   const { data, error } = await supabase
     .from('payment_schedules')
-    .select('id, invoice_id, vendor_id, milestone_label, amount_due, due_date, state')
+    .select('id, invoice_id, vendor_id, milestone_label, amount_due, paid_amount, due_date, state')   // F-44.320: paid_amount, for what is still owed
     .eq('state', 'pending')
     .not('due_date', 'is', null)
     .gte('due_date', from)

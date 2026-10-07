@@ -142,7 +142,13 @@ async function mirrorToBinder(supabase, vendorId, invoiceId, deps = {}) {
 // milestone. `opts.agentId` (or `opts.resolveAgentId`, called only when the mirror is on)
 // lets the mirror reach the binder.
 async function markMilestonePaid(supabase, vendorId, milestoneId, amountPaid, receivedOn, opts = {}) {
-  if (!amountPaid || amountPaid <= 0) return { ok: false, error: 'amount_paid must be greater than zero.' };
+  // PAY-A (the chair, turn 41): 0201 takes WHOLE rupees (integer). A fraction would reach the database, be refused by
+  // its type, and tell her "Try again", which could never work. So it is answered here, in line 40's words, before any
+  // call. The door upstream (api/vendor/schedules.js :88) passes the body's amount_paid through unchecked, so this is
+  // the one check; a number sent as a string ("5000") is read as its number, as the door has always allowed.
+  const amt = Number(amountPaid);
+  if (!Number.isInteger(amt) || amt <= 0) return { ok: false, error: 'Payment amounts must be whole rupees above zero.', code: 'BAD_AMOUNT' };
+  amountPaid = amt;
   if (receivedOn != null && (typeof receivedOn !== 'string' || !DATE_RE.test(receivedOn)))
     return { ok: false, error: 'received_on must be a date (YYYY-MM-DD).' };
 
@@ -161,37 +167,25 @@ async function markMilestonePaid(supabase, vendorId, milestoneId, amountPaid, re
   if (invErr || !inv) return { ok: false, error: 'Parent invoice not found.' };
   if (inv.state === 'cancelled') return { ok: false, error: 'Parent invoice is cancelled.' };
 
-  const paidAt = receivedOn ? `${receivedOn}T00:00:00+05:30` : new Date().toISOString();
-
-  // Update milestone
-  const { error: msUpErr } = await supabase.from('payment_schedules').update({
-    state:       'paid',
-    paid_at:     paidAt,
-    paid_amount: amountPaid,
-  }).eq('id', milestoneId).eq('vendor_id', vendorId);
-  if (msUpErr) return { ok: false, error: msUpErr.message };
-
-  // F6: the next unpaid milestone becomes the invoice's due date.
-  const { data: rest, error: restErr } = await readSchedule(supabase, vendorId, ms.invoice_id);
-  if (restErr) return { ok: false, error: restErr.message };
-  const next = firstPending((rest || []).filter((m) => m.id !== milestoneId));
-
-  // Update invoice amount_paid + state
-  const newAmountPaid = inv.amount_paid + amountPaid;
-  const newState = newAmountPaid >= inv.amount_total ? 'paid'
-    : inv.state === 'unpaid' ? 'advance_paid'
-    : inv.state;
-
-  const { data: invUpdated, error: invUpErr } = await supabase.from('invoices').update({
-    amount_paid: newAmountPaid,
-    state:       newState,
-    due_date:    next ? next.due_date : null,
-    updated_at:  new Date().toISOString(),
-  }).eq('id', inv.id).eq('vendor_id', vendorId).select().single();
-  if (invUpErr) return { ok: false, error: invUpErr.message };
-
-  const { data: msUpdated } = await supabase.from('payment_schedules')
-    .select('*').eq('id', milestoneId).eq('vendor_id', vendorId).single();
+  // PAY-A · 0201 (the chair's two cures, turns 34 to 37): the money is recorded IN THE DATABASE, in one step, by
+  // pay_record_milestone(). It adds to paid_amount, decides 'paid' from the total it returns (F-44.320: a part never
+  // marks the line paid), moves the invoice in the same call, and takes the invoice row first (one lock order). The
+  // checks above keep their own words for the vendor; the function is the one place the money moves. The hand path
+  // passes no payment id: add only. If the call itself fails (network, timeout), this answers the error and changes
+  // nothing; there is NO fallback to the old JS add (the chair, turn 38).
+  let rec;
+  try {
+    rec = await supabase.rpc('pay_record_milestone', { p_vendor: vendorId, p_milestone: milestoneId, p_amount: amountPaid, p_received: receivedOn || null });
+  } catch (e) {
+    return { ok: false, error: 'The payment could not be recorded. Try again.', code: 'RPC_ERROR', detail: e && e.message };
+  }
+  if (!rec || rec.error || !rec.data) return { ok: false, error: 'The payment could not be recorded. Try again.', code: 'RPC_ERROR', detail: rec && rec.error && rec.error.message };
+  const out = rec.data;
+  if (!out.ok) {
+    const words = { NOT_PENDING: 'Milestone is already paid.', INVOICE_CANCELLED: 'Parent invoice is cancelled.', NO_LINE: 'Milestone not found.', NO_INVOICE: 'Parent invoice not found.', BAD_AMOUNT: 'amount_paid must be greater than zero.' };
+    return { ok: false, error: words[out.code] || 'The payment could not be recorded.', code: out.code === 'NOT_PENDING' ? 'ALREADY_PAID' : out.code };
+  }
+  const msUpdated = out.milestone, invUpdated = out.invoice;
 
   const mirror = await mirrorToBinder(supabase, vendorId, inv.id, { agentId: opts.agentId, resolveAgentId: opts.resolveAgentId, env: opts.env, executeAndPatch: opts.executeAndPatch });
   return { ok: true, milestone: msUpdated, invoice: invUpdated, mirror };

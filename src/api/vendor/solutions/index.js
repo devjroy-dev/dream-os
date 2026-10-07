@@ -466,8 +466,10 @@ router.use('/instagram', require('./instagram'));
 router.use('/quiet', require('./quiet'));
 // CE-47 ELZ-4 · the room's WhatsApp twin of Instagram messages: her own Eliza switch for WhatsApp (0212; src/lib/vendor/waEliza.js).
 router.use('/whatsapp-eliza', require('./whatsappEliza'));
-// CE-47 INS-A · the room "Insurance" (Run the business): kinds of cover, where to buy, her policies, the Insured switch (insurance.js).
+// CE-47 INS-A · the room "Insurance" (Run the business): kinds of cover, quotes from insurers, her policies, the Insured switch (insurance.js).
 router.use('/insurance', require('./insurance'));
+// CE-47 INS PAY-A · the room "Payment links" (Get paid): her own Razorpay, links on package invoices, refunds taken off by her tap. Built to the door, not switched on.
+router.use('/payment-links', require('./paylinks'));
 router.use('/shop', require('./shop'));   // CE-47 OFF-A1 · the Off-season shop room (flag.off_shop)
 
 module.exports = router;

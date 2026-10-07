@@ -450,6 +450,22 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── CE-47 INS PAY-A · THE BINDER PAYMENT SWEEP — :09 :24 :39 :54 ───────────
+  // A payment on a binder-only invoice is HELD, answered 200, then applied; if that apply failed or the process died,
+  // this retries it (at most 50 a run, held 2 minutes or more), through the same claim and compare-and-flip. It never
+  // answers a BINDER_UNCERTAIN payment: that is hers. Its minutes share none with any band above or PTN's drain (2-59/5).
+  // Built to the door: with the partner values unset, there is nothing held, and it reads one empty page.
+  cron.schedule('9,24,39,54 * * * *', async () => {
+    try {
+      const { sweepBinderEvents } = require('./lib/vendor/payLinks');
+      await sweepBinderEvents({ supabase });
+    } catch (err) {
+      console.error('[cron:payBinderSweep] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── CE-47 PRO P2 · THE BILL SWEEP — nightly 03:35 IST ────────────────────
   // A bill she uploaded but never added to Expenses is deleted with its draft after 7 days (P2-F2 (a), the
   // founder's ruling). :35 is free in the night band (:00 :15 :20 :25 :40 :45, 04:15) and in the hourly band
