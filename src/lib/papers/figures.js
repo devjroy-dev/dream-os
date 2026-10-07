@@ -5,7 +5,7 @@ const { verifiedWeddings, todayIST } = require('./verifiedWeddings');
 const { tradeOf } = require('./words');
 
 const ROW_CAP = 5000;
-const EXP = 'amount, category, description, expense_date, created_at, supplier_name, supplier_gstin, bill_number, taxable_value, gst_rate, gst_amount';   // a pack larger than this is refused in words, never silently cut
+const EXP = 'amount, category, description, expense_date, created_at, supplier_name, supplier_gstin, bill_number, taxable_value, gst_rate, gst_amount, bill_file_url';   // a pack larger than this is refused in words, never silently cut
 const IST = '+05:30';
 const startOf = (d) => `${d}T00:00:00${IST}`, endOf = (d) => `${d}T23:59:59.999${IST}`;
 const istDay = (ts) => new Date(new Date(ts).getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
@@ -49,7 +49,7 @@ async function caPack({ supabase, vendor, from, to }) {
   ]);
   if (inv.error || exp.error || tds.error) return { ok: false, error: 'TDW could not read your records just now. Please try again.' };
   const sales = (inv.data || []).map((x) => ({ date: istDay(x.created_at), number: x.invoice_number, client: x.client_name, total: Number(x.amount_total) || 0, paid: Number(x.amount_paid) || 0, gst_rate: x.gst_rate, gst_amount: x.gst_amount }));
-  const purchases = (exp.data || []).map((x) => ({ date: x.expense_date || istDay(x.created_at), category: x.category, description: x.description, supplier: x.supplier_name, supplier_gstin: x.supplier_gstin, bill_number: x.bill_number, taxable: x.taxable_value, gst_rate: x.gst_rate, gst_amount: x.gst_amount, total: Number(x.amount) || 0 }))
+  const purchases = (exp.data || []).map((x) => ({ date: x.expense_date || istDay(x.created_at), category: x.category, description: x.description, supplier: x.supplier_name, supplier_gstin: x.supplier_gstin, bill_number: x.bill_number, taxable: x.taxable_value, gst_rate: x.gst_rate, gst_amount: x.gst_amount, total: Number(x.amount) || 0, bill_kept: !!x.bill_file_url }))   // P2: whether her bill is kept in TDW; the path itself never leaves
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const deductions = (tds.data || []).map((x) => ({ date: x.deduction_date, client: x.client_name, pan: x.client_pan, section: x.section, gross: x.gross_amount, rate: x.tds_rate, tds: x.tds_amount, net: x.net_received, certificate: x.certificate_no, fy: x.financial_year }));
   if (sales.length > ROW_CAP || purchases.length > ROW_CAP || deductions.length > ROW_CAP) return { ok: false, error: 'This period has too many entries for one pack. Please choose a shorter period.' };

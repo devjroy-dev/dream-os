@@ -118,7 +118,7 @@ async function caPackZip(paper, o = {}) {
   for (const m of months) {
     const s = by(f.sales, m), p = by(f.purchases, m), d = by(f.deductions, m);
     if (s.length) files.push({ name: `${m}_sales.csv`, data: toCsv(['Date', 'Invoice number', 'Client', 'Total (Rs)', 'GST rate (%)', 'GST (Rs)', 'Received (Rs)'], s.map((x) => [W.fullDate(x.date), x.number, x.client, x.total, x.gst_rate ?? '', x.gst_amount ?? '', x.paid])) });
-    if (p.length) files.push({ name: `${m}_purchases.csv`, data: toCsv(['Date', 'Category', 'Description', 'Supplier', 'Supplier GSTIN', 'Bill number', 'Value before GST (Rs)', 'GST rate (%)', 'GST (Rs)', 'Total (Rs)'], p.map((x) => [W.fullDate(x.date), x.category, x.description, x.supplier, x.supplier_gstin, x.bill_number, x.taxable ?? '', x.gst_rate ?? '', x.gst_amount ?? '', x.total])) });
+    if (p.length) files.push({ name: `${m}_purchases.csv`, data: toCsv(['Date', 'Category', 'Description', 'Supplier', 'Supplier GSTIN', 'Bill number', 'Value before GST (Rs)', 'GST rate (%)', 'GST (Rs)', 'Total (Rs)', 'Bill kept in TDW'], p.map((x) => [W.fullDate(x.date), x.category, x.description, x.supplier, x.supplier_gstin, x.bill_number, x.taxable ?? '', x.gst_rate ?? '', x.gst_amount ?? '', x.total, x.bill_kept ? 'Yes' : 'No'])) });
     if (d.length) files.push({ name: `${m}_tds.csv`, data: toCsv(['Date', 'Client', 'Client PAN', 'Section', 'Gross (Rs)', 'TDS rate (%)', 'TDS (Rs)', 'Net received (Rs)', 'Certificate number', 'Financial year'], d.map((x) => [W.fullDate(x.date), x.client, x.pan, x.section, x.gross, x.rate, x.tds, x.net, x.certificate, x.fy])) });
   }
   return zip(files);

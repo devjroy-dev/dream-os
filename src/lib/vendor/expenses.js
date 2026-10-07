@@ -142,6 +142,25 @@ async function readRecentExpenses(supabase, vendorId, today) {
 
 // ── createExpense ─────────────────────────────────────────────────────────
 
+// CE-47 PRO P2 (F1 (a), the chair's ruling): this stays the ONE write home for an expense. It also carries a bill's
+// GST columns (0208) when they are given; every other caller passes none and writes exactly what it wrote before.
+// bill_file_url holds a PRIVATE storage path, never an address: anything that looks like one is refused (P2-F2).
+const GST_KEYS = ['taxable_value', 'gst_rate', 'gst_amount', 'supplier_name', 'supplier_gstin', 'bill_number', 'bill_file_url', 'source'];
+function gstColumns(p) {
+  const out = {};
+  if (!GST_KEYS.some((k) => p[k] !== undefined && p[k] !== null)) return { out };
+  const whole = (v) => Number.isInteger(v) && v >= 0;
+  if (p.taxable_value != null) { if (!whole(p.taxable_value)) return { error: 'taxable_value must be whole rupees.' }; out.taxable_value = p.taxable_value; }
+  if (p.gst_amount != null) { if (!whole(p.gst_amount)) return { error: 'gst_amount must be whole rupees.' }; out.gst_amount = p.gst_amount; }
+  if (p.gst_rate != null) { if (typeof p.gst_rate !== 'number' || p.gst_rate < 0 || p.gst_rate > 28) return { error: 'gst_rate must be between 0 and 28.' }; out.gst_rate = p.gst_rate; }
+  if (p.supplier_gstin != null) { if (!/^[0-9]{2}[A-Z0-9]{13}$/.test(String(p.supplier_gstin))) return { error: 'supplier_gstin is not a GSTIN.' }; out.supplier_gstin = String(p.supplier_gstin); }
+  if (p.supplier_name != null) out.supplier_name = String(p.supplier_name).slice(0, 120);
+  if (p.bill_number != null) out.bill_number = String(p.bill_number).slice(0, 30);
+  if (p.bill_file_url != null) { if (/^[a-z]+:|^\/\//i.test(String(p.bill_file_url))) return { error: 'bill_file_url must be a private storage path.' }; out.bill_file_url = String(p.bill_file_url); }
+  if (p.source != null) { if (!['manual', 'bill'].includes(p.source)) return { error: 'source must be manual or bill.' }; out.source = p.source; }
+  return { out };
+}
+
 async function createExpense(supabase, vendorId, params) {
   const { amount, category, description, expense_date, client_name, linked_lead_id, notes } = params;
 
@@ -150,6 +169,8 @@ async function createExpense(supabase, vendorId, params) {
   if (!ALLOWED_CATEGORIES.includes(category)) {
     return { ok: false, error: CATEGORY_REFUSAL };
   }
+  const gst = gstColumns(params);
+  if (gst.error) return { ok: false, error: gst.error };
 
   const { data: expense, error } = await supabase
     .from('expenses')
@@ -162,6 +183,7 @@ async function createExpense(supabase, vendorId, params) {
       client_name:    client_name  || null,
       linked_lead_id: linked_lead_id || null,
       notes:          notes        || null,
+      ...gst.out,
     })
     .select('id, amount, category, description, expense_date, client_name, created_at')
     .single();

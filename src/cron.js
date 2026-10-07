@@ -450,6 +450,21 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── CE-47 PRO P2 · THE BILL SWEEP — nightly 03:35 IST ────────────────────
+  // A bill she uploaded but never added to Expenses is deleted with its draft after 7 days (P2-F2 (a), the
+  // founder's ruling). :35 is free in the night band (:00 :15 :20 :25 :40 :45, 04:15) and in the hourly band
+  // (:05 :30 :50). It sends nothing to anyone. Asia/Kolkata declared (B3(a)).
+  cron.schedule('35 3 * * *', async () => {
+    try {
+      const { purgeStaleDrafts } = require('./lib/bills/bills');
+      await purgeStaleDrafts(supabase);
+    } catch (err) {
+      console.error('[cron:billSweep] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── G3.1 s2 · THE SEARCH CONSOLE PULL (F-40.261 a) — 03:40 IST ────────────
   // Its own minute in the night band (see searchConsoleNightly.js for the
   // derivation); after the seal (:20) and the reminders (:25). Heartbeat: the

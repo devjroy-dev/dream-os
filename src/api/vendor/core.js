@@ -139,6 +139,8 @@ router.use('/reminders',   require('./reminders'));
 router.use('/contracts',   require('./contracts'));
 router.use('/tds',         require('./tds'));
 router.use('/papers',      require('./papers'));   // CE-47 PRO P1: Business papers
+router.use('/gear',        require('./gear'));     // CE-47 PRO P2: Gear sharing (Supplies)
+router.use('/bills',       require('./bills'));    // CE-47 PRO P2: Bills into Expenses (Supplies)
 router.use('/first-build', require('./firstBuild'));   // CE-47 WEB-4 cut 19: the two-minute start's first build
 
 module.exports = router;
