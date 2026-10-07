@@ -53,6 +53,10 @@
 // Run: node scripts/b38_doorboot_enrich_bench.js
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
+// AMENDED BY LABEL, CE-47 WEB-4 cut 18 (b262; F-44.401): an enquiry to a REAL vendor needs a Dreamer session, and her
+// name and phone come from HER ROW only. So the bench signs Sarah in (a stand-in session resolver, the real door's own
+// import) and plants her couple and user rows with the same name and phone the body used to carry.
+
 
 process.env.SUPABASE_URL = 'http://127.0.0.1:1/bench-placeholder-not-a-credential';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'bench-placeholder-not-a-credential';
@@ -194,7 +198,10 @@ function makeSupabase(seed, writes) {
         };
         return u;
       },
-      upsert(p) { writes.push({ op: 'upsert', table, payload: p }); return Promise.resolve({ data: null, error: null }); },
+      // AMENDED BY LABEL, cut 18 (b262): a signed-in enquiry writes her couple_enquiries row with .upsert().select('id').single()
+      upsert(p) { writes.push({ op: 'upsert', table, payload: p }); const done = Promise.resolve({ data: null, error: null });
+        const one = Promise.resolve({ data: { id: 'ce-' + table }, error: null });
+        return Object.assign(done, { select: () => ({ single: () => one, maybeSingle: () => one, then: (r, j) => one.then(r, j) }) }); },
       delete() { return { eq: () => Promise.resolve({ data: null, error: null }) }; },
     };
     return b;
@@ -215,9 +222,9 @@ const seed = (leads) => ({
     discover_eligible: true, discover_paused: false, routing_handle: 'devroy',
     base_fee_min: null, base_fee_max: null,
   }],
-  users: [{ id: 'u-1', phone: '+919888294440', name: 'Dev' }],
+  users: [{ id: 'u-1', phone: '+919888294440', name: 'Dev' }, { id: 'u-sarah', phone: SARAH, name: 'Sarah' }, { id: 'u-f1', phone: '+919000000001', name: 'Sarah' }, { id: 'u-f2', phone: '+919000000002', name: null }, { id: 'u-noname', phone: SARAH, name: null }, { id: 'u-sc', phone: SARAH, name: 'Sarah Chatterjee' }],
   leads: leads || [],
-  clients: [], couples: [], couple_enquiries: [], enquiry_taps: [],
+  clients: [], couples: [{ id: 'c-sarah', user_id: 'u-sarah' }, { id: 'c-f1', user_id: 'u-f1' }, { id: 'c-f2', user_id: 'u-f2' }, { id: 'c-noname', user_id: 'u-noname' }, { id: 'c-sc', user_id: 'u-sc' }], couple_enquiries: [], enquiry_taps: [],
   conversations: [], messages: [], invoices: [], events: [], notes: [],
   engagements: [],
 });
@@ -233,11 +240,12 @@ const liveLead = (over) => Object.assign({
 }, over || {});
 
 // ── DRIVE THE REAL DOOR OVER REAL HTTP ──────────────────────────────────────
-async function callDoor(body, leads) {
+async function callDoor(body, leads, signedInAs) {   // cut 18: signedInAs names the Dreamer signed in
   const writes = [];
   const app = express();
   app.use(express.json());
   app.locals.supabase = makeSupabase(seed(leads), writes);
+  { const k = require.resolve(P('src/lib/resolveCoupleIfPresent.js')); require.cache[k] = { id: k, filename: k, loaded: true, exports: { resolveCoupleIfPresent: async (req) => ({ present: true, coupleId: (req && req.headers && req.headers['x-b38-couple']) || ({ '+919000000001': 'c-f1', '+919000000002': 'c-f2' })[(req && req.body && req.body.bride_phone) || ''] || 'c-sarah' }) } }; }   // cut 18: the Dreamer whose phone the cell names is the one signed in (the body's phone itself is never read by the door)
   delete require.cache[require.resolve(P('src/api/couple/enquire.js'))];
   app.use('/enquire', require(P('src/api/couple/enquire.js')));
   const server = http.createServer(app);
@@ -245,7 +253,7 @@ async function callDoor(body, leads) {
   const port = server.address().port;
   try {
     const r = await fetch(`http://127.0.0.1:${port}/enquire`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, signedInAs ? { 'x-b38-couple': signedInAs } : {}),
       body: JSON.stringify(body),
     });
     return { status: r.status, json: await r.json().catch(() => ({})), writes,
@@ -428,14 +436,16 @@ await t('5.1', 'a silent city does NOT fill a null with the VENDOR\'s city', asy
 });
 
 await t('5.2', 'a nameless bride does NOT fill a null name with the stock literal', async () => {
-  const r = await callDoor(ENQUIRY({ bride_name: undefined }), [liveLead({ name: null })]);
+  // AMENDED BY LABEL, cut 18 (b262): her name comes from HER ROW; a nameless bride is one whose row has no name
+  const r = await callDoor(ENQUIRY({ bride_name: undefined }), [liveLead({ name: null })], 'c-noname');
   assert.strictEqual(rowOf(r.store).name, null,
     `a placeholder was written as her name: ${rowOf(r.store).name}`);
 });
 
 await t('5.3', 'and a REAL posted name still fills a genuinely nameless lead', async () => {
   // The other half: 5.2 must not be green because enrichment is dead.
-  const r = await callDoor(ENQUIRY({ bride_name: 'Sarah Chatterjee' }), [liveLead({ name: null })]);
+  // AMENDED BY LABEL, cut 18 (b262): her real name is the one on HER ROW, not a posted one
+  const r = await callDoor(ENQUIRY({ bride_name: 'Sarah Chatterjee' }), [liveLead({ name: null })], 'c-sc');
   assert.strictEqual(rowOf(r.store).name, 'Sarah Chatterjee', 'her real name did not land');
 });
 

@@ -20,6 +20,10 @@
 // Run: node scripts/b39_telemetry_bench.js
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
+// AMENDED BY LABEL, CE-47 WEB-4 cut 18 (b262; F-44.401): an enquiry to a REAL vendor needs a Dreamer session, and her
+// name and phone come from HER ROW only. So the bench signs Sarah in (a stand-in session resolver, the real door's own
+// import) and plants her couple and user rows with the same name and phone the body used to carry.
+
 
 process.env.SUPABASE_URL = 'http://127.0.0.1:1/bench-placeholder-not-a-credential';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'bench-placeholder-not-a-credential';
@@ -271,7 +275,8 @@ function fakeSupabase(seed) {
                              maybeSingle: () => Promise.resolve({ data: null, error: null }),
                              single: () => Promise.resolve({ data: null, error: null }),
                              then(r) { return Promise.resolve({ data: [], error: null }).then(r); } }; return u; },
-      upsert() { return Promise.resolve({ data: null, error: null }); },
+      // AMENDED BY LABEL, cut 18 (b262): the signed-in enquiry's couple_enquiries write is .upsert().select('id').single()
+      upsert() { const one = Promise.resolve({ data: { id: 'ce-1' }, error: null }); return Object.assign(Promise.resolve({ data: null, error: null }), { select: () => ({ single: () => one, maybeSingle: () => one }) }); },
       delete() { return { eq: () => Promise.resolve({ data: null, error: null }) }; },
     };
     return b;
@@ -285,8 +290,8 @@ const seed = () => ({
               category: 'photographer', city: 'Delhi', tier: 'basic',
               discover_eligible: true, discover_paused: false, routing_handle: 'devroy',
               base_fee_min: null, base_fee_max: null }],
-  users: [{ id: 'u-1', phone: '+919888294440', name: 'Dev' }],
-  leads: [], clients: [], couples: [], couple_enquiries: [], enquiry_taps: [],
+  users: [{ id: 'u-1', phone: '+919888294440', name: 'Dev' }, { id: 'u-sarah', phone: '+919625759924', name: 'Sarah' }],
+  leads: [], clients: [], couples: [{ id: 'c-sarah', user_id: 'u-sarah' }], couple_enquiries: [], enquiry_taps: [],
   conversations: [], messages: [], invoices: [], events: [], notes: [], engagements: [],
 });
 
@@ -294,6 +299,7 @@ async function driveEnquiry() {
   const app = express();
   app.use(express.json());
   app.locals.supabase = fakeSupabase(seed());
+  { const k = require.resolve(P('src/lib/resolveCoupleIfPresent.js')); require.cache[k] = { id: k, filename: k, loaded: true, exports: { resolveCoupleIfPresent: async () => ({ present: true, coupleId: 'c-sarah' }) } }; }   // cut 18: Sarah signed in
   delete require.cache[require.resolve(P('src/api/couple/enquire.js'))];
   app.use('/enquire', require(P('src/api/couple/enquire.js')));
   const server = http.createServer(app);

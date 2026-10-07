@@ -201,7 +201,10 @@ router.post('/', asyncHandler(async (req, res) => {
   //                              fallback to the posted id — that would let
   //                              anyone holding any valid JWT forge freely.
   const coupleAuth = await resolveCoupleIfPresent(req, supabase);
-  const identityCoupleId = coupleAuth.present ? coupleAuth.coupleId : (couple_id || null);
+  // F-44.401 (CE-47 WEB-4 cut 18, the chair's ruling): identity comes from HER SESSION ONLY. The posted couple_id is
+  // never believed: a signed-out tap has no identity at all (was: the posted id, unexamined).
+  void couple_id;
+  const identityCoupleId = coupleAuth.present ? coupleAuth.coupleId : null;
 
   // ── SPECIES RESOLUTION — FROM THE DATABASE, NEVER FROM THE BODY ───────────
   // The Discover card carries `is_demo` (discover.js:247) and the client could
@@ -231,8 +234,11 @@ router.post('/', asyncHandler(async (req, res) => {
     .maybeSingle();
 
   if (vendor) {
+    // F-44.401: an enquiry to a REAL vendor needs a Dreamer session. None, or a session that is no Dreamer's: 401,
+    // nothing sent, nothing written. (A demo vendor's signed-out tap stays alert-only, below.)
+    if (!identityCoupleId) return res.status(401).json({ ok: false, error: 'Please sign in to send an enquiry.', reason: 'sign_in' });
     return await handleRealVendor({ supabase, res, vendor, couple_id: identityCoupleId,
-                                    bride_name, bride_phone,
+                                    bride_name: null, bride_phone: null,   // F-44.401: never from the body
                                     postedFunctions, wedding_date, city, postedBudgetMax, postedBudgetMin });
   }
 
@@ -354,6 +360,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       console.warn('[enquire:real] bride hydration failed (falling back to posted):', err.message);
     }
   }
+  // F-44.401: her name and phone come from HER ROW only; the body's are never read (the handler is passed null for both)
   const brideNameFinal  = hydratedName  || bride_name  || null;
   const bridePhoneFinal = hydratedPhone || bride_phone || null;
 
