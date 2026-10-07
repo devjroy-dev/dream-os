@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ptn-a2-0.txt
+# TDW CE-47 · PTN-A2-0 (r2, dream-os, base 813679e; re-stamped on train 9's tip) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory, no migration, no shared file.
+docs/handovers/TDW_CE47_PTN_A2_0.md
+scripts/b293_ptn_a2_0_rows_bench.js
+scripts/floor-manifest-ptn-a2-0.txt
+scripts/ptn_a2_0.sha256
+src/lib/partners/interestRows.js
