@@ -355,14 +355,14 @@ app.post('/webhook/razorpay', async (req, res) => {
   // unresolvable event still gets written, with vendor_id null (R-BILL.7).
   let vendorId = null;
   try {
-    vendorId = await tierFlip.resolveVendor(supabase, {
+    vendorId = normalized.partner_plan ? null : await tierFlip.resolveVendor(supabase, {
       subscriptionId: normalized.provider_subscription_id,
       notesVendorId:  normalized.notes_vendor_id,
     });
   } catch (err) {
     console.error('[webhook:razorpay] vendor resolve failed:', err && err.message);
   }
-  if (!vendorId) {
+  if (!vendorId && !normalized.partner_plan) {
     console.warn(`[webhook:razorpay] ORPHAN event ${eventId} (${normalized.event}) — `
       + `sub=${normalized.provider_subscription_id || 'none'} notes.vendor_id=${normalized.notes_vendor_id || 'none'}. `
       + 'Ledgered; no flip. Check the Subscription Link\'s Notes.');

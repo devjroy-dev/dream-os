@@ -181,6 +181,24 @@ function entitlementFor(event, tier) {
   }
 }
 
+// ── F-44.416 · CE-47 · THE PARTNER PLAN IS NEVER A VENDOR TIER ─────────────
+// Every subscription event on the account reaches this door, the partner plan's
+// included (Rs 2,999 a month, the same paise as Prestige). Left to tierFromPlan,
+// its unknown plan id falls back by amount and reads as Prestige. So the
+// partnerPlan event is recognised FIRST, before any tier is read: by its plan id
+// (RAZORPAY_PLAN_PARTNERPLAN) or by notes.partner_id, either one alone. Such an
+// event gets no tier, no entitlement and no notes vendor; its ledger row is still
+// written (money is never dropped). Every other event is untouched, byte for byte.
+function partnerPlanOf(sub) {
+  if (!sub || typeof sub !== 'object') return null;
+  const notes = (sub.notes && typeof sub.notes === 'object') ? sub.notes : {};
+  const partnerId = typeof notes.partner_id === 'string' && notes.partner_id.trim() ? notes.partner_id.trim() : null;
+  const planId = process.env.RAZORPAY_PLAN_PARTNERPLAN;
+  const byPlan = !!(planId && typeof sub.plan_id === 'string' && sub.plan_id === planId);
+  if (!byPlan && !partnerId) return null;
+  return { partner_id: partnerId };
+}
+
 // ── normalisation ───────────────────────────────────────────────────────────
 // Takes the verified body and the event-id header; returns the ledger row's
 // fields plus the entitlement to apply. Pure: no I/O, no clock, no env beyond
@@ -209,7 +227,9 @@ function normalizeRazorpayEvent(eventId, body) {
   const notes = (sub && sub.notes && typeof sub.notes === 'object') ? sub.notes : {};
   const notesVendorId = typeof notes.vendor_id === 'string' ? notes.vendor_id.trim() : null;
 
-  const tier = tierFromPlan(sub && sub.plan_id, amountPaise);
+  // F-44.416: the partnerPlan check comes FIRST; a partnerPlan event never reaches tierFromPlan.
+  const partnerPlan = partnerPlanOf(sub);
+  const tier = partnerPlan ? null : tierFromPlan(sub && sub.plan_id, amountPaise);
 
   return {
     event_id: String(eventId),
@@ -222,9 +242,10 @@ function normalizeRazorpayEvent(eventId, body) {
     counts_as_revenue:        countsAsRevenue,
     payload:                  b,
     // resolution inputs, not ledger columns
-    notes_vendor_id:          notesVendorId,
+    notes_vendor_id:          partnerPlan ? null : notesVendorId,
     tier,
-    entitlement:              entitlementFor(event, tier),
+    entitlement:              partnerPlan ? null : entitlementFor(event, tier),
+    ...(partnerPlan ? { partner_plan: partnerPlan } : {}),
   };
 }
 
@@ -233,6 +254,7 @@ module.exports = {
   normalizeRazorpayEvent,
   entitlementFor,
   tierFromPlan,
+  partnerPlanOf,
   TIER_PAISE,
   BASE_TIER,
 };

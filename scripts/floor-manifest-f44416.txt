@@ -1,0 +1,9 @@
+# scripts/floor-manifest-f44416.txt
+# TDW CE-47 · F-44.416 guard (dream-os, base a1c44e9) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory, no migration.
+docs/handovers/TDW_CE47_F44416_GUARD.md
+scripts/b294_f44416_partnerplan_guard_bench.js
+scripts/f44416.sha256
+scripts/floor-manifest-f44416.txt
+src/index.js
+src/lib/billing/razorpay.js
