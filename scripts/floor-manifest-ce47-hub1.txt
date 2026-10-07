@@ -1,0 +1,27 @@
+# scripts/floor-manifest-ce47-hub1.txt
+# CE-47 · HUB-1 · COLLAB HUB, THE SERVER HALF (dream-os): 0198, src/lib/hub/, the vendor and public hub doors; b283. BASE: d5ae450.
+# MIGRATION: 0198 runs in Supabase BEFORE the push. A-45.3: the new folder src/lib/hub/ is declared as a line AND file by file.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# 1fe9207cd669729cedb6b6aa786e2e4015956c892a21e753849168d40245ab90 · ADDED · db/migrations/0198_hub_profiles_credits.sql
+# bf15ffd5540972ef2ac9b676bc1014b2d58b27ab0d321031ee019785ad394d91 · ADDED · docs/handovers/TDW_CE47_HUB1_HANDOVER.md
+# bcdc25c76b223699c2c172289d8bed70fc1ae30074f71e7124806698da1d182f · ADDED · scripts/b283_hub1_server_bench.js
+# 21c49660ddc5321ef6c06175731e197148f9cd287f525bec409887cbe06605d7 · CHANGED · src/api/router.js
+# b24a2350e092062bc9e8dede8366ef3c7c26f57c52ce3601756bd6f35d8e4397 · ADDED · src/api/public/hub.js
+# 31b594435f1df16ecacf9b77bbcac31e8edcf546afd55b00a0103f930d5094cf · CHANGED · src/api/vendor/core.js
+# d764010b7af7d9206590b67a97957b9c0c4ce4ec565229ec56e25a9eff30d6fa · ADDED · src/api/vendor/hub.js
+# 91f48f9f2617d8cee81c5bdac149f37de9fbdcdeeff9e806d491505a9409c486 · ADDED · src/lib/hub/credits.js
+# 9a9d5470626e81a0a2b7efbedd16f39a62f42073f3703269422c3a35726627b1 · ADDED · src/lib/hub/people.js
+# ab28ebba8f565e325144d11d4ac660c90d293300ec22201d769beed993e5e39a · ADDED · src/lib/hub/profiles.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-hub1.txt
+db/migrations/0198_hub_profiles_credits.sql
+docs/handovers/TDW_CE47_HUB1_HANDOVER.md
+scripts/b283_hub1_server_bench.js
+src/api/router.js
+src/api/public/hub.js
+src/api/vendor/core.js
+src/api/vendor/hub.js
+src/lib/hub/credits.js
+src/lib/hub/people.js
+src/lib/hub/profiles.js
+src/lib/hub/
+scripts/floor-manifest-ce47-hub1.txt

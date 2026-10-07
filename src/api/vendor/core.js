@@ -86,6 +86,7 @@ router.use('/ig',          require('./ig'));
 router.use('/ads',         require('./ads'));
 router.use('/features',    require('./features'));   // CE-47 ADS-2: her Meta feature switches
 router.use('/collab',      require('./collab'));
+router.use('/hub',         require('./hub'));          // CE-47 HUB-1 · Collab Hub: Work, People, Mine, Worked with
 router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
 router.use('/referrals',   require('./referrals')); // Block 19 G5.1 — the overflow exchange's READ doors (the forward is on /leads)
 router.use('/exchange',    require('./exchange'));  // CE-42 4c-3b-1s — G5.3 the influencer exchange: role, browse, card, requests, inbox (one writer: lib/vendor/exchange.js)

@@ -40,6 +40,7 @@ router.use('/public/site-enquiry', require('./public/siteEnquiry').enquiry);
 router.use('/public/site-chat', require('./public/siteEnquiry').chat);   // CE-47 WEB-4 cut 5 · { v }, cacheable, WEB-5's middleware
 router.use('/public/shop', require('./public/shop'));   // CE-47 OFF-A1 · the shop her website and storefront read (flag.off_shop)
 router.use('/public/site', require('./public/siteVisit'));
+router.use('/public/hub', require('./public/hub'));   // CE-47 HUB-1 · the one page for everyone (/c/<handle>), read only
 // F-41.128 — the second unauthenticated per-enquiry read. Mounted BESIDE the vendor
 // card deliberately: both are public, both are read-only, and keeping them adjacent
 // means a reader of this file sees the whole public surface in one place rather than
