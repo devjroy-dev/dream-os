@@ -1,0 +1,7 @@
+# scripts/floor-manifest-ce47-web4-cut21.txt
+# CE-47 · WEB-4 cut 21 · the first build with no Instagram · base 68b6568 (server train 6, with cut 20) · F-19.16: a dirty path outside this list stops the floor.
+# b264 extended by label (30 cells). No migration. No new directory. No file deleted.
+docs/handovers/TDW_CE47_WEB4_CUT21_HANDOVER.md
+scripts/b264_ce47_web4_cut19_bench.js
+scripts/floor-manifest-ce47-web4-cut21.txt
+src/lib/vendor/firstBuild.js

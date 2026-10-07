@@ -28,6 +28,9 @@ const NEUTRAL_STYLE = 'gallery';
 const LINES = Object.freeze({
   photos: (n, more) => (n ? `We added ${n} of your photos.${more ? ` ${more} more did not fit.` : ''}` : 'Your portfolio is already full, so we added no photos.'),
   photosNone: 'We found no photos on your Instagram to add.',
+  noInstagram: 'No Instagram connected, so we added no photos.',   // cut 21: skipped, not failed
+  noInstagramBio: 'Skipped: no Instagram connected.',              // cut 21: the storefront step names the missing link
+  websiteNoPhotos: 'Your website draft is ready to check. It has no photos yet.',   // cut 21: plain, never a promise
   website: 'Your website draft is ready to check.',
   websiteKept: 'Your website already has your own work, so we left it as it is.',
   packages: (n) => `We added ${n} starter packages.`,
@@ -110,7 +113,8 @@ async function run(sb, vendor, buildId, deps) {
 const STEPS = {
   async photos(sb, vendor, deps) {
     const token = await deps.tokenFor(sb, vendor.id);
-    if (!token) throw new Error('no instagram token');
+    // cut 21: no Instagram connected is not a failure; the step is skipped and says why
+    if (!token) return { state: 'skipped', line: LINES.noInstagram, counts: { imported: 0, no_room: 0 } };
     const media = await deps.listMedia(token);
     if (!media || media.ok === false) throw new Error('media read failed');
     const urls = (media.items || media.media || []).map((m) => (m.media_type === 'VIDEO' ? (m.thumbnail_url || null) : (m.media_url || m.thumbnail_url || null))).filter(Boolean);
@@ -150,7 +154,7 @@ const STEPS = {
         approval_state: p.approval_state === 'approved' ? 'approved' : 'pending', source: p.source === 'instagram' ? 'instagram' : 'upload' });
       made += 1;
     }
-    return { state: 'done', line: LINES.website, counts: { draft: true, looks: made, cover_slides: settings.cover.length }, opens: opensFor(vendor.tier) };
+    return { state: 'done', line: pics.length ? LINES.website : LINES.websiteNoPhotos, counts: { draft: true, looks: made, cover_slides: settings.cover.length }, opens: opensFor(vendor.tier) };
   },
 
   async packages(sb, vendor, deps) {
@@ -166,7 +170,8 @@ const STEPS = {
     const v = await one(sb.from('vendors').select('about').eq('id', vendor.id).maybeSingle());
     if (v && !blank(v.about)) return { state: 'skipped', line: LINES.storefrontKept, counts: { filled: 0 } };
     const token = await deps.tokenFor(sb, vendor.id);
-    const bio = token ? await deps.fetchBio(token) : null;
+    if (!token) return { state: 'skipped', line: LINES.noInstagramBio, counts: { filled: 0 } };   // cut 21
+    const bio = await deps.fetchBio(token);
     const words = typeof bio === 'string' ? bio.trim().slice(0, 600) : '';
     if (!words) return { state: 'skipped', line: LINES.noBio, counts: { filled: 0 } };   // never a guess (ruling 3)
     await sb.from('vendors').update({ about: words }).eq('id', vendor.id);   // only reached when her About was read empty just above

@@ -90,6 +90,15 @@ async function build(mod, st, vendor, d) { let job = null; const r = await mod.s
   ok(() => Array.isArray(w.opens) && JSON.stringify(w.opens) === JSON.stringify(FB.BASIC_OPENS) && w.opens.some((o) => o.line === 'More styles, colour sets and font pairings' && o.plan === 'Essential') && s1.every((s) => s.state !== 'skipped' || s.key !== 'website'), '6.1 on Basic the DONE website step carries opens [{ line, plan }]; no whole step is skipped for her plan');
   ok(() => stepOf(s2, 'website').opens === null, '6.2 on Essential, no opens on the website step');
 
+  sec('6b  no Instagram connected (cut 21, amended by label): a whole build, nothing failed');
+  const stN = world(); const dN = deps(stN, { tokenFor: async () => null });
+  const sN = await build(FB, stN, V('v1', 'basic'), dN);
+  ok(() => stepOf(sN, 'photos').state === 'skipped' && stepOf(sN, 'photos').line === 'No Instagram connected, so we added no photos.' && JSON.stringify(stepOf(sN, 'photos').counts) === '{"imported":0,"no_room":0}', '6b.1 photos: skipped, not failed, "No Instagram connected, so we added no photos."', JSON.stringify(stepOf(sN, 'photos')));
+  ok(() => stepOf(sN, 'storefront').state === 'skipped' && stepOf(sN, 'storefront').line === 'Skipped: no Instagram connected.' && stN.tables.vendors[0].about === null, '6b.2 storefront: "Skipped: no Instagram connected."; nothing filled');
+  ok(() => stepOf(sN, 'website').state === 'done' && stepOf(sN, 'website').line === 'Your website draft is ready to check. It has no photos yet.' && stN.tables.vendor_site_drafts.length === 1 && stN.tables.vendor_looks.length === 0, '6b.3 website: her draft built from what her portfolio holds (nothing), the line says so plainly');
+  ok(() => !sN.some((x) => x.state === 'failed') && sN.filter((x) => x.state === 'skipped').every((x) => typeof x.line === 'string' && x.line.length > 0) && stN.tables.vendor_first_builds[0].state === 'done' && !stN.tables.vendor_sites.some((x) => x.published_at) && stN.tables.vendor_looks.every((l) => l.status !== 'published'), '6b.4 the whole no-Instagram build: no step failed, every skipped step has a line, the build done, nothing published', JSON.stringify(sN.map((x) => [x.key, x.state])));
+  ok(() => stepOf(s3, 'storefront').line === 'Skipped: no bio on your Instagram.', '6b.5 a connected account with an empty bio keeps "Skipped: no bio on your Instagram."');
+
   sec('7  the doors over HTTP, and 0220');
   const st7 = world(); const express = require('express'); const app = express(); app.use(express.json()); app.locals.supabase = st7; app.locals.firstBuildDeps = deps(st7);
   app.use((q, r, n) => { q.vendor = V('v1', 'basic'); n(); }); app.use('/fb', load('src/api/vendor/firstBuild.js'));
