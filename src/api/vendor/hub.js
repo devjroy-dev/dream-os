@@ -2,10 +2,12 @@
 // src/api/vendor/hub.js · CE-47 · HUB-1 · COLLAB HUB FOR A VENDOR: Work, People, Mine, her page, "Worked with".
 //   GET  /api/v2/vendor/hub/me                 her page (made on first use)      PATCH /me  roles, city, open_to, website, work
 //   GET  /api/v2/vendor/hub/work               calls for her role and city (all_cities=1 widens the city)
-//   GET  /api/v2/vendor/hub/people             THE PEOPLE DOOR: role, city, open_to, mine=1 ("My people")
+//   GET  /api/v2/vendor/hub/people             THE PEOPLE DOOR: role, city, open_to, mine=1 ("My people", with "waiting" apart)
+//   POST|DELETE /api/v2/vendor/hub/people/:id/my-people   HUB-2: add or take off a VENDOR (a person or an org: 400)
 //   GET  /api/v2/vendor/hub/mine               my calls, I applied, credits waiting for my yes, my credits
 //   POST /api/v2/vendor/hub/credits            { call_id, people } or { shoot_name, city, month, people }
 //   POST /api/v2/vendor/hub/credits/:id/yes | /no | /take-back
+// HUB-2 · RULE 1: every door is gated (hubGate); GET /me answers a closed vendor with hub_open false and makes no page.
 // No feed, no likes, no followers, no chat (ruled). Every handle and website leaves as a link (publicCard).
 const express = require('express');
 const router = express.Router();
@@ -15,23 +17,53 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const profiles = require('../../lib/hub/profiles');
 const credits = require('../../lib/hub/credits');
-const { people } = require('../../lib/hub/people');
+const { people, waitingForYes, addVendor, removeVendor } = require('../../lib/hub/people');
 const { isCollabRole } = require('../../lib/collab/roles');
 const { sameCity } = require('../../lib/vendor/cityMatch');
 const { websiteUrl } = require('../../lib/partners/links');
+
+// ── HUB-2 · RULE 1 (the chair's ruling (a), 7 Oct 2026): BLIND SWITCH-ON ─────────────────────────────────────────
+// The Hub is open to a vendor on clb.testers (read through testers.js's own reader), or to everyone once admin_config
+// 'clb.hub' is 'on'. Both fail closed: junk, a missing row or an unreachable database means closed. GET /me tells a
+// closed vendor so (and makes no page); every other Hub door refuses her with one plain sentence.
+const { testers } = require('../../lib/collab/testers');
+const SWITCH_KEY = 'clb.hub';
+const CLOSED = 'Collab Hub is not open for your account yet.';
+let _swAt = 0; let _sw = false;
+async function switchOn(sb) {
+  if (Date.now() - _swAt < 60 * 1000) return _sw;
+  try {
+    const { data, error } = await sb.from('admin_config').select('value').eq('key', SWITCH_KEY).maybeSingle();
+    const v = !error && data ? String(data.value == null ? '' : data.value).trim().replace(/^"(.*)"$/, '$1').toLowerCase() : '';
+    _sw = v === 'on';
+  } catch (_e) { _sw = false; }
+  _swAt = Date.now();
+  return _sw;
+}
+async function hubOpen(sb, vendorId) {
+  try { if (await switchOn(sb)) return true; return (await testers(sb)).includes(vendorId); } catch (_e) { return false; }
+}
+const hubGate = asyncHandler(async (req, res, next) => {
+  if (await hubOpen(req.app.locals.supabase, req.vendor.id)) return next();
+  return errRes(res, 403, CLOSED);
+});
 
 const guard = (fn) => asyncHandler(async (req, res) => {
   try { return await fn(req, res, req.app.locals.supabase); } catch (e) { return errRes(res, 400, String((e && e.message) || 'failed')); }
 });
 const me = (req, sb) => profiles.ensureVendorProfile(sb, req.vendor.id);
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const monthWords = (d) => { const m = String(d || '').match(/^(\d{4})-(\d{2})/); return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : ''; };
 const todayIST = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
 
 router.get('/me', requireAuth, resolveVendor(), guard(async (req, res, sb) => {
+  // HUB-2 · RULE 1: a closed vendor is told so, and no page is made for her (her page exists only once she opens the Hub).
+  if (!(await hubOpen(sb, req.vendor.id))) return okRes(res, { hub_open: false, line: CLOSED });
   const p = await me(req, sb);
-  return okRes(res, { page: { id: p.id, ...profiles.publicCard(p) }, worked_with: await credits.workedWith(sb, p.id) });
+  return okRes(res, { hub_open: true, page: { id: p.id, ...profiles.publicCard(p) }, worked_with: await credits.workedWith(sb, p.id) });
 }));
 
-router.patch('/me', requireAuth, resolveVendor(), guard(async (req, res, sb) => {
+router.patch('/me', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb); const b = req.body || {}; const patch = {};
   if (b.roles !== undefined) { if (!Array.isArray(b.roles) || !b.roles.every(isCollabRole)) throw new Error('roles must be collab roles'); patch.roles = [...new Set(b.roles)].slice(0, 5); }
   if (b.open_to !== undefined) { if (!Array.isArray(b.open_to) || !b.open_to.every((x) => profiles.OPEN_TO.includes(x))) throw new Error('open_to is paid, barter or credit_only'); patch.open_to = [...new Set(b.open_to)]; }
@@ -45,7 +77,7 @@ router.patch('/me', requireAuth, resolveVendor(), guard(async (req, res, sb) => 
   return okRes(res, { page: { id: data.id, ...profiles.publicCard(data) } });
 }));
 
-router.get('/work', requireAuth, resolveVendor(), guard(async (req, res, sb) => {
+router.get('/work', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb); const all = req.query.all_cities === '1';
   const { data: open } = await sb.from('collab_posts').select('id, vendor_id, requirement_type, event_date, city, pay_kind, budget_inr, details, created_at, state')
     .eq('state', 'open').neq('vendor_id', req.vendor.id).gte('event_date', todayIST()).order('created_at', { ascending: false }).limit(200);
@@ -53,7 +85,9 @@ router.get('/work', requireAuth, resolveVendor(), guard(async (req, res, sb) => 
   const items = ids.length ? ((await sb.from('collab_post_items').select('post_id, requirement_type, needed').in('post_id', ids)).data || []) : [];
   const roles = new Map(); for (const it of items) { if (!roles.has(it.post_id)) roles.set(it.post_id, []); roles.get(it.post_id).push(it); }
   const mine = new Set(p.roles || []);
-  const calls = (open || []).filter((c) => (all || !p.city || sameCity(c.city, p.city))
+  // HUB-2: a call she already answered leaves Work (it shows in Mine under "I applied"), as the old feed did.
+  const answered = ids.length ? new Set(((await sb.from('collab_responses').select('post_id').eq('responder_vendor_id', req.vendor.id).in('post_id', ids)).data || []).map((r) => r.post_id)) : new Set();
+  const calls = (open || []).filter((c) => !answered.has(c.id) && (all || !p.city || sameCity(c.city, p.city))
     && (!mine.size || (roles.get(c.id) || [{ requirement_type: c.requirement_type }]).some((r) => mine.has(r.requirement_type))));
   const posters = [...new Set(calls.map((c) => c.vendor_id))];
   const pages = posters.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('vendor_id', posters)).data || []) : [];
@@ -63,7 +97,7 @@ router.get('/work', requireAuth, resolveVendor(), guard(async (req, res, sb) => 
   return okRes(res, {
     city: p.city, roles: p.roles || [], all_cities: all,
     items: calls.map((c) => { const pg = byVendor.get(c.vendor_id); const card = pg ? profiles.publicCard(pg) : null;
-      return { kind: 'call', id: c.id, from: nameOf.get(c.vendor_id) || 'A TDW vendor', label: card ? card.label : 'Not yet checked by TDW',
+      return { kind: 'call', id: c.id, from: nameOf.get(c.vendor_id) || 'A TDW vendor',
         roles: (roles.get(c.id) || []).map((r) => ({ role: r.requirement_type, needed: r.needed || 1 })), event_date: c.event_date, city: c.city,
         pay_kind: c.pay_kind || null, budget_inr: c.budget_inr || null, details: c.details || null,
         instagram: card ? card.instagram : null, website: card ? card.website : null, page_url: card ? card.page_url : null }; }),
@@ -74,13 +108,20 @@ router.get('/work', requireAuth, resolveVendor(), guard(async (req, res, sb) => 
 }));
 
 // THE PEOPLE DOOR (named for PTN): GET /api/v2/vendor/hub/people?role=&city=&open_to=&mine=1
-router.get('/people', requireAuth, resolveVendor(), guard(async (req, res, sb) => {
+router.get('/people', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb);
-  const list = await people(sb, p, { role: req.query.role || null, city: req.query.city || null, open_to: req.query.open_to || null, mine: req.query.mine === '1' });
-  return okRes(res, { people: list, line: 'No messages inside TDW. When you pick someone for a call, you both get each other\u2019s number.' });
+  const mine = req.query.mine === '1';
+  const list = await people(sb, p, { role: req.query.role || null, city: req.query.city || null, open_to: req.query.open_to || null, mine });
+  return okRes(res, { people: list, ...(mine ? { waiting: await waitingForYes(sb, p), mine_line: 'Vendors you added, and people who said yes to a shoot you did together. Nobody else is on this list.' } : {}),
+    line: 'No messages inside TDW. When you pick someone for a call, you both get each other\u2019s number.' });
 }));
 
-router.get('/mine', requireAuth, resolveVendor(), guard(async (req, res, sb) => {
+// HUB-2 · MY PEOPLE: a vendor adds or takes off another VENDOR. A person or an organisation is refused (400): they join
+// only through a shoot credit they said yes to (CE-47 ruling, 7 Oct 2026).
+router.post('/people/:id/my-people', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await addVendor(sb, await me(req, sb), req.params.id))));
+router.delete('/people/:id/my-people', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await removeVendor(sb, await me(req, sb), req.params.id))));
+
+router.get('/mine', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb);
   const { data: calls } = await sb.from('collab_posts').select('id, event_date, city, details, state, source, asked_at, created_at').eq('vendor_id', req.vendor.id).order('created_at', { ascending: false }).limit(50);
   const cids = (calls || []).map((c) => c.id);
@@ -88,22 +129,56 @@ router.get('/mine', requireAuth, resolveVendor(), guard(async (req, res, sb) => 
   const count = (id, st) => resp.filter((r) => r.post_id === id && (!st || r.state === st)).length;
   const { data: applied } = await sb.from('collab_responses').select('id, post_id, state, created_at').eq('responder_vendor_id', req.vendor.id).order('created_at', { ascending: false }).limit(50);
   const { data: waiting } = await sb.from('hub_credits').select(credits.CREDIT_COLS).eq('person_profile_id', p.id).eq('state', 'offered');
+  const lines = await credits.workedWith(sb, p.id);
+  // names and links for everyone Mine mentions, read once
+  const pids = [...new Set([...(waiting || []).map((c) => c.giver_profile_id), ...lines.flatMap((l) => l.with_ids)])];
+  const pages = pids.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('id', pids)).data || []) : [];
+  const byId = new Map(pages.map((x) => [x.id, profiles.publicCard(x)]));
+  const cardOf = (id) => { const c = byId.get(id); return c ? { name: c.name, page_url: c.page_url } : null; };
+  const callIds = [...new Set([...(applied || []).map((a) => a.post_id), ...(waiting || []).map((c) => c.call_id).filter(Boolean)])];
+  const callRows = callIds.length ? ((await sb.from('collab_posts').select('id, vendor_id, details, event_date, city').in('id', callIds)).data || []) : [];
+  const callById = new Map(callRows.map((c) => [c.id, c]));
+  const posterIds = [...new Set(callRows.map((c) => c.vendor_id))];
+  const posterPages = posterIds.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('vendor_id', posterIds)).data || []) : [];
+  const posterNames = posterIds.length ? ((await sb.from('vendors').select('id, business_name').in('id', posterIds)).data || []) : [];
+  const posterOf = (vid) => { const pg = posterPages.find((x) => x.vendor_id === vid); if (pg) { const c = profiles.publicCard(pg); return { name: c.name, page_url: c.page_url }; }
+    const v = posterNames.find((x) => x.id === vid); return { name: v ? v.business_name : 'A TDW vendor', page_url: null }; };
+  const appliedWords = (postId) => { const c = callById.get(postId); return c ? { call: c.details ? String(c.details).slice(0, 60) : 'A call', event_date: c.event_date, city: c.city, from: posterOf(c.vendor_id) } : { call: 'A call', from: null }; };
+  const shootWords = (c) => { const call = c.call_id ? callById.get(c.call_id) : null;
+    const name = call ? (call.details ? String(call.details).slice(0, 60) : 'A TDW call') : c.shoot_name;
+    return [name, call ? call.city : c.city, monthWords(call ? call.event_date : c.month)].filter(Boolean).join(' \u00b7 '); };
   return okRes(res, {
     my_calls: (calls || []).map((c) => ({ id: c.id, event_date: c.event_date, city: c.city, details: c.details, state: c.state,
       interested: count(c.id), picked: count(c.id, 'accepted'), sent_by_tdw: c.source === 'tdw_forward', line: c.source === 'tdw_forward' ? 'Sent by TDW at your request' : null })),
-    applied: (applied || []).map((a) => ({ id: a.id, post_id: a.post_id, state: a.state, words: a.state === 'accepted' ? 'Picked' : a.state === 'declined' || a.state === 'passed' ? 'Not picked' : a.state === 'withdrawn' ? 'Withdrawn' : 'Waiting' })),
-    waiting_for_your_yes: waiting || [],
-    worked_with: await credits.workedWith(sb, p.id),
+    applied: (applied || []).map((a) => ({ id: a.id, post_id: a.post_id, state: a.state, words: a.state === 'accepted' ? 'Picked' : a.state === 'declined' || a.state === 'passed' ? 'Not picked' : a.state === 'withdrawn' ? 'Withdrawn' : 'Waiting',
+      ...appliedWords(a.post_id) })),
+    // HUB-2: each waiting credit and each "Worked with" line carries the names and page links the app shows (never ids alone).
+    waiting_for_your_yes: (waiting || []).map((c) => ({ ...c, from: cardOf(c.giver_profile_id), shoot_words: shootWords(c) })),
+    worked_with: lines.map((l) => ({ ...l, month_words: monthWords(l.month), with: l.with_ids.map(cardOf).filter(Boolean) })),
+    // HUB-2: how many "a shoot we did together" requests she can still send. The same count offerForShoot refuses on:
+    // shoot requests (no call) she offered in the last 30 days, against MONTHLY_SHOOT_OFFERS.
+    shoot_requests_left: await shootRequestsLeft(sb, p.id),
+    // HUB-2 (CE-47 ruling, 7 Oct): Mine carries a count when something waits for her answer: a request to confirm a
+    // shoot, or someone interested in one of her open calls whom she has not picked or passed yet.
+    waiting_count: (waiting || []).length + resp.filter((r) => r.state === 'interested' && (calls || []).some((c) => c.id === r.post_id && c.state === 'open')).length,
   });
 }));
 
-router.post('/credits', requireAuth, resolveVendor(), guard(async (req, res, sb) => {
+async function shootRequestsLeft(sb, profileId) {
+  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data } = await sb.from('hub_credits').select('id, call_id, offered_at').eq('giver_profile_id', profileId);
+  const used = (data || []).filter((r) => r.call_id == null && r.offered_at >= since).length;
+  return Math.max(0, credits.MONTHLY_SHOOT_OFFERS - used);
+}
+
+router.post('/credits', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb); const b = req.body || {};
   const made = b.call_id ? await credits.offerForCall(sb, p, b.call_id, b.people) : await credits.offerForShoot(sb, p, b);
   return okRes(res, { offered: made.length, credits: made, line: 'Each person sees it and decides. Nothing shows until they say yes.' });
 }));
-router.post('/credits/:id/yes', requireAuth, resolveVendor(), guard(async (req, res, sb) => okRes(res, await credits.answer(sb, await me(req, sb), req.params.id, true))));
-router.post('/credits/:id/no', requireAuth, resolveVendor(), guard(async (req, res, sb) => okRes(res, await credits.answer(sb, await me(req, sb), req.params.id, false))));
-router.post('/credits/:id/take-back', requireAuth, resolveVendor(), guard(async (req, res, sb) => okRes(res, await credits.takeBack(sb, await me(req, sb), req.params.id))));
+router.post('/credits/:id/yes', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.answer(sb, await me(req, sb), req.params.id, true))));
+router.post('/credits/:id/no', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.answer(sb, await me(req, sb), req.params.id, false))));
+router.post('/credits/:id/take-back', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.takeBack(sb, await me(req, sb), req.params.id))));
 
+router._resetGate = () => { _swAt = 0; _sw = false; };   // benches only: the 60 s cache, cleared between cells
 module.exports = router;

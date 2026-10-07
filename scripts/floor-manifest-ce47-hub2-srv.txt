@@ -1,0 +1,20 @@
+# scripts/floor-manifest-ce47-hub2-srv.txt
+# CE-47 · HUB-2 SERVER (HUB2_SRV_2, replaces the retired HUB2_SRV_1) · MY PEOPLE DOORS, THE RULE 1 GATE, NO CHECK LABEL, MINE IN WORDS (dream-os). BASE: 813679e (train 9's base). No migration.
+# Amended by label (CE-47): b283 cells 2.6 and 7.2 (no check label) and one fixture row (its vendor on clb.testers). No other cell moves.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# b0d80be5c92412234a93e02e04e64b6c875f89924a2f9c81330f65078079a9de · ADDED · docs/handovers/TDW_CE47_HUB2_SRV_HANDOVER.md
+# 17082c20dce59c3e25842024a6424a6778c3cdb68e878cda4da99cca39bbeb0c · ADDED · docs/handovers/b284_ledger_HUB2SRV.txt
+# b1722e455d128f15a62e26f85160921a8a9b58078d74a8534a49dbef74e63f83 · CHANGED · scripts/b283_hub1_server_bench.js
+# 21811d7df1a00f185d9ad8e483ff1444a741fe2218d04decaee8d723dd210d1c · ADDED · scripts/b284_hub2_server_bench.js
+# b613dde4253fdadf8ea7902f5fedb4051b1cb2d4496c28e21e3506df829a57b4 · CHANGED · src/api/vendor/hub.js
+# bd7d78333b289eb5dee7533d863cb8123c8416d4f86e89791d503d33fc3e428d · CHANGED · src/lib/hub/people.js
+# 4b5136109c12e1437eaa6475959c027d37fa05104c6001133dbf1057731bfc6d · CHANGED · src/lib/hub/profiles.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-hub2-srv.txt
+docs/handovers/TDW_CE47_HUB2_SRV_HANDOVER.md
+docs/handovers/b284_ledger_HUB2SRV.txt
+scripts/b283_hub1_server_bench.js
+scripts/b284_hub2_server_bench.js
+src/api/vendor/hub.js
+src/lib/hub/people.js
+src/lib/hub/profiles.js
+scripts/floor-manifest-ce47-hub2-srv.txt

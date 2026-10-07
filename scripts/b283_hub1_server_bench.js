@@ -82,6 +82,9 @@ const seed = () => ({
   collab_post_items: [{ post_id: 'call-future', requirement_type: 'makeup', needed: 1 }, { post_id: 'call-mumbai', requirement_type: 'makeup', needed: 1 }, { post_id: 'call-photo', requirement_type: 'photography', needed: 2 }],
   vendor_roster: [{ id: 'r1', owner_vendor_id: V1, member_vendor_id: V3, name: 'Kabir Lens', source: 'manual' }],
   partner_orgs: [{ id: 'org-blocked', check_state: 'blocked' }],
+  // HUB-2 · Rule 1, amended by label (CE-47, 7 Oct 2026): the Hub's doors are gated, so the vendor these cells serve as is
+  // on clb.testers. A fixture row only; no cell changes for it (b284 §8 holds the gate itself).
+  admin_config: [{ key: 'clb.testers', value: JSON.stringify([V1]) }],
 });
 
 async function cells() {
@@ -108,7 +111,8 @@ async function cells() {
   ok(p3.handle === 'kabir.lens' && p3.instagram_handle === null, '2.4 no Instagram: the handle comes from the business name', p3.handle);
   const card = prof.publicCard({ ...p1, website: 'https://swati.in/', open_to: ['paid', 'credit_only'], work_urls: ['https://res.cloudinary.com/x/1.jpg', 'http://evil/x.jpg'] });
   ok(card.instagram.url === 'https://www.instagram.com/makeupbyswatiroy/' && card.website.url === 'https://swati.in/' && card.page_url === 'https://thedreamwedding.in/c/makeupbyswatiroy', '2.5 handle, website and page are links (the founder\u2019s rule)', JSON.stringify(card));
-  ok(card.label === 'Not yet checked by TDW' && JSON.stringify(card.open_to_words) === '["Paid","Credit only"]' && card.work.length === 1, '2.6 the label and "Open to" in words; only Cloudinary pictures in the strip');
+  // HUB-2, amended by label (CE-47, 7 Oct 2026): no check label until a written rule and a setter exist.
+  ok(!('label' in card) && !('checked' in card) && JSON.stringify(card.open_to_words) === '["Paid","Credit only"]' && card.work.length === 1, '2.6 no check label; "Open to" in words; only Cloudinary pictures in the strip', JSON.stringify(card));
 
   sec('3  a credit from her TDW call');
   const th = async (fn) => { try { await fn(); return null; } catch (e) { return e.message; } };
@@ -156,7 +160,7 @@ async function cells() {
   let r = await s.call('GET', '/hub/people?role=photography&mine=1');
   ok(r.status === 200 && r.body.people.length === 2 && /No messages inside TDW/.test(r.body.line), '7.1 GET /hub/people answers with the list and the no-messages line', JSON.stringify(r.body).slice(0, 160));
   r = await s.call('GET', '/hub/work');
-  ok(r.status === 200 && r.body.items.length === 1 && r.body.items[0].id === 'call-future' && r.body.items[0].label && JSON.stringify(r.body.not_yet) === '["briefs from brands","paid jobs from planners","From Threads"]', '7.2 Work: calls for her craft and city only, and it names what is not in yet', JSON.stringify(r.body).slice(0, 200));
+  ok(r.status === 200 && r.body.items.length === 1 && r.body.items[0].id === 'call-future' && !('label' in r.body.items[0]) && JSON.stringify(r.body.not_yet) === '["briefs from brands","paid jobs from planners","From Threads"]', '7.2 Work: calls for her craft and city only, no check label (HUB-2), and it names what is not in yet', JSON.stringify(r.body).slice(0, 200));
   r = await s.call('GET', '/hub/work?all_cities=1');
   ok(r.body.items.map((x) => x.id).sort().join(',') === 'call-future,call-mumbai', '7.3 "all cities" widens the city, not the craft');
   db._tables.collab_posts.push({ id: 'fwd', vendor_id: V1, event_date: FUTURE, city: 'Delhi', state: 'open', source: 'tdw_forward', created_at: new Date().toISOString() });
