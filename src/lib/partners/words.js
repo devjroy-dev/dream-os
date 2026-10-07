@@ -29,4 +29,23 @@ const W = Object.freeze({
   suggestedVia: (p) => `via ${p}`,
   answeredFor: (p, first) => `${p} answered for ${first}. Contact goes through ${p}.`,
 });
-module.exports = { roleWord, needsLine, payLine, maskNote, plural, W, formatDateLong };
+// A2-1b: the state of a send, its lane, and a refusal from Resend, in plain words. ONE HOME (the admin's door read its
+// own copy of SEND_WORDS until A2-1b; it reads this one now).
+const SEND_WORDS = Object.freeze({ queued: 'Waiting to go', sent: 'Sent', held_cap: 'Waiting: today\'s calls are used', held_window: 'Waiting for 9 am',
+  held_paused: 'Waiting: calls are paused', held_no_key: 'Not sent: email is not set up yet', failed: 'Could not be sent', closed: 'Not sent: the call closed' });
+const LANE_WORDS = Object.freeze({ email: 'Email', whatsapp: 'WhatsApp' });
+// Resend's refusal as email.js records it ("resend <status>: <its message>", "resend unreachable: ...", "bad address"),
+// matched on the messages Resend documents (resend.com/docs/api-reference/errors, read 8 Oct 2026), never guessed.
+// Anything not matched reads "Resend refused it." and Resend's own words are kept beside it.
+const FAIL = [
+  [/domain is not verified/i, 'The sending domain is not verified in Resend yet.'],
+  [/only send testing emails/i, 'Resend is still in test mode: it sends only to your own address until the domain is verified.'],
+  [/api key/i, 'Resend refused the key. Check RESEND_API_KEY in Railway.'],
+  [/(daily|monthly) email sending quota/i, 'Resend\'s sending limit for the day or month is used up.'],
+  [/^resend 429\b|too many requests/i, 'Too many emails at once. Resend asked to slow down.'],
+  [/^bad address$/i, 'This partner\'s email for calls is not a valid address.'],
+  [/^resend 5\d\d\b|temporarily unavailable|unexpected error/i, 'Resend had a fault on its side.'],
+  [/^resend unreachable/i, 'Resend could not be reached.'],
+];
+const failureWords = (raw) => { const s = String(raw || ''); for (const [re, w] of FAIL) if (re.test(s)) return w; return 'Resend refused it.'; };
+module.exports = { roleWord, needsLine, payLine, maskNote, plural, W, formatDateLong, SEND_WORDS, LANE_WORDS, failureWords };

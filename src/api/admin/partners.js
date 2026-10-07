@@ -13,7 +13,8 @@ const fwd = require('../../lib/partners/forward');
 const { hiddenByReports } = require('../../lib/partners/reports');
 const seams = require('../../lib/partners/seams');
 const hubPage = require('../../lib/partners/hubPage');
-const { W: CALL_WORDS } = require('../../lib/partners/words');
+const { W: CALL_WORDS, SEND_WORDS, LANE_WORDS, failureWords } = require('../../lib/partners/words');
+const queue = require('../../lib/partners/queue');   // A2-1b: every partner's sends, and the revive
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -146,6 +147,17 @@ router.get('/', asyncHandler(async (req, res) => {
   return okRes(res, { tab, counts, partners: out });
 }));
 
+// ── A2-1b · Waiting and sent, every partner (declared before /:id, so "sends" is never read as a partner id) ────
+router.get('/sends', asyncHandler(async (req, res) => {
+  const out = await queue.listSends(req.app.locals.supabase, { show: String((req.query || {}).show || 'waiting') });
+  return out.ok ? okRes(res, { show: out.show, sends: out.sends }) : errRes(res, out.status, out.error);
+}));
+router.post('/sends/:send_id/retry', asyncHandler(async (req, res) => {
+  if (!UUID.test(String(req.params.send_id || ''))) return errRes(res, 404, queue.REVIVE.none);
+  const out = await queue.revive(req.app.locals.supabase, req.params.send_id, { by: who(req) });
+  return out.ok ? okRes(res, { line: out.line, id: out.id }) : errRes(res, out.status, out.error);
+}));
+
 router.get('/:id', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such partner.');
@@ -167,12 +179,10 @@ async function setState(req, res, patch) {
 }
 // "What was sent" to one partner: each call, when, by which channel, its state in plain words, and who it suggested
 // (name, role and link only; never a phone or email).
-const SEND_WORDS = { queued: 'Waiting to go', sent: 'Sent', held_cap: 'Waiting: today\'s calls are used', held_window: 'Waiting for 9 am',
-  held_paused: 'Waiting: calls are paused', held_no_key: 'Not sent: email is not set up yet', failed: 'Could not be sent', closed: 'Not sent: the call closed' };
 router.get('/:id/sends', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such partner.');
-  const { data: rows } = await supabase.from('partner_sends').select('id, post_id, channel, state, why, sent_at, created_at').eq('partner_id', req.params.id).order('created_at', { ascending: false }).limit(100);
+  const { data: rows } = await supabase.from('partner_sends').select('id, post_id, channel, state, why, attempts, sent_at, created_at').eq('partner_id', req.params.id).order('created_at', { ascending: false }).limit(100);
   const ids = (rows || []).map((r) => r.id);
   const { data: ans } = ids.length ? await supabase.from('partner_answers').select('send_id, talent_name, talent_role, talent_link').in('send_id', ids) : { data: [] };
   const postIds = [...new Set((rows || []).map((r) => r.post_id))];
@@ -180,6 +190,7 @@ router.get('/:id/sends', asyncHandler(async (req, res) => {
   // Named fields only: the select is a request, not a promise, so nothing else of the post can ride out.
   const P = new Map((posts || []).map((p) => [p.id, { city: p.city, event_date: p.event_date, requirement_type: p.requirement_type }]));
   return okRes(res, { sends: (rows || []).map((r) => ({ id: r.id, channel: r.channel, state: r.state, state_words: SEND_WORDS[r.state] || r.state, why: r.why,
+    lane_words: LANE_WORDS[r.channel] || r.channel, why_words: r.state === 'failed' ? failureWords(r.why) : (r.why || null), attempts: r.attempts || 0, can_retry: r.state === 'failed',
     sent_at: r.sent_at, created_at: r.created_at, call: P.get(r.post_id) || null,
     suggested: (ans || []).filter((a) => a.send_id === r.id).map((a) => ({ name: a.talent_name, role: a.talent_role, link: a.talent_link })) })) });
 }));

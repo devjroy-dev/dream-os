@@ -1,0 +1,12 @@
+# scripts/floor-manifest-ptn-a2-1b.txt
+# TDW CE-47 · PTN-A2-1b server (dream-os, base 2d349dc) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory, no migration, no Railway value.
+docs/handovers/TDW_CE47_PTN_A2_1B.md
+scripts/b295_ptn_a2_1b_queue_bench.js
+scripts/floor-manifest-ptn-a2-1b.txt
+scripts/lib/mutation_guard.js
+scripts/lib/ptn_a2_1b_pg_proof.sh
+scripts/ptn_a2_1b.sha256
+src/api/admin/partners.js
+src/lib/partners/queue.js
+src/lib/partners/words.js
