@@ -202,7 +202,9 @@ function wire(spec = {}) {
   });
   await cell('2.3 ig.js: ?scope=insights mints the flavour; the callback PROVES the grant before markInsightsGranted and returns the insights flavour to pwaPaths posts', async () => {
     const r = src('src/api/vendor/ig.js');
-    assert.ok(/req\.query\.scope/.test(r) && /mintState\(req\.vendor\.id, \{ flavour \}\)/.test(r));
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 20 (b265): authorize also carries the one allowed return, 'start', so the call
+    // reads mintState(req.vendor.id, ret ? { flavour, ret } : { flavour }); the flavour is minted exactly as before.
+    assert.ok(/req\.query\.scope/.test(r) && /mintState\(req\.vendor\.id, ret \? \{ flavour, ret \} : \{ flavour \}\)/.test(r));
     const cb = r.slice(r.indexOf("router.get('/callback'"), r.indexOf("router.get('/media'"));
     assert.ok(cb.indexOf('probeInsightsScope') > 0 && cb.indexOf('probeInsightsScope') < cb.indexOf('markInsightsGranted'), 'the grant is stored unproven');
     assert.ok(/vendorPath\('posts'\)/.test(r), 'no posts return path');

@@ -55,9 +55,14 @@ const NUMBER_RETURN_PATH = require('../../lib/pwaPaths').vendorPath('number');
 const igMeta = require('../../lib/instagram/igMeta');
 const igRoom = require('../../lib/instagram/igRoom');   // CE-46 IGD-2 cut 2c: subscribeIfOn (F-44.212)
 
-function backToPortfolio(res, params, flavour) {
+// CE-47 WEB-4 cut 20: the two-minute set-up (FE-9's S2 to S10), the ONE extra return, reached only when authorize was
+// asked return=start and the signed state carries it back. Any other value, or none, returns exactly as before.
+const ONBOARDING_RETURN_PATH = require('../../lib/pwaPaths').vendorPath('onboarding');   // the one home (F-38.p12)
+
+function backToPortfolio(res, params, flavour, ret) {
   const q = new URLSearchParams(params);
-  const home = flavour === igOAuth.FLAVOURS.insights ? POSTS_RETURN_PATH
+  const home = ret === 'start' ? ONBOARDING_RETURN_PATH
+    : flavour === igOAuth.FLAVOURS.insights ? POSTS_RETURN_PATH
     : flavour === igOAuth.FLAVOURS.messages ? NUMBER_RETURN_PATH : RETURN_PATH;
   return res.redirect(`${PWA_BASE}${home}?${q.toString()}`);
 }
@@ -116,7 +121,9 @@ router.get('/authorize', requireAuth, resolveVendor(), asyncHandler(async (req, 
   // ?scope=insights — the brief's incremental authorize (4b-3b, ruling 13(b)).
   // Anything else is the portfolio's one-scope connect, byte for byte as before.
   const flavour = String(req.query.scope || '') === igOAuth.FLAVOURS.insights ? igOAuth.FLAVOURS.insights : igOAuth.FLAVOURS.basic;
-  const { state, nonce } = igOAuth.mintState(req.vendor.id, { flavour });
+  // cut 20: 'start' is the only return allowed (an allow-list, never a path); anything else is ignored
+  const ret = String(req.query.return || '') === 'start' ? 'start' : null;
+  const { state, nonce } = igOAuth.mintState(req.vendor.id, ret ? { flavour, ret } : { flavour });
   const armed = await igConn.armState(supabase, req.vendor.id, nonce);
   if (!armed.ok) return errRes(res, 500, armed.error);
 
@@ -130,14 +137,17 @@ router.get('/authorize', requireAuth, resolveVendor(), asyncHandler(async (req, 
 router.get('/callback', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { code, state, error: metaError, error_description: metaDesc } = req.query;
+  // cut 20: where she came from, read from the signed state (pure, no database); unreadable or unsigned: none
+  const early = state ? igOAuth.verifyState(String(state)) : { ok: false };
+  const ret = early.ok ? early.ret : null;
 
   // The vendor tapped Cancel on Instagram's consent screen. That is a CHOICE,
   // not a fault, and it must not read like a crash.
   if (metaError) {
     console.warn('[ig:callback] Instagram declined:', String(metaError), String(metaDesc || ''));
-    return backToPortfolio(res, { ig: 'cancelled' });
+    return backToPortfolio(res, { ig: 'cancelled' }, undefined, ret);
   }
-  if (!code || !state) return backToPortfolio(res, { ig: 'failed', reason: 'incomplete' });
+  if (!code || !state) return backToPortfolio(res, { ig: 'failed', reason: 'incomplete' }, undefined, ret);
 
   const v = igOAuth.verifyState(String(state));
   if (!v.ok) {
@@ -152,19 +162,19 @@ router.get('/callback', asyncHandler(async (req, res) => {
   const spent = await igConn.spendState(supabase, v.vendorId, v.nonce);
   if (!spent.ok) {
     console.warn('[ig:callback] state not spendable for vendor', v.vendorId);
-    return backToPortfolio(res, { ig: 'failed', reason: 'replay' }, flavour);
+    return backToPortfolio(res, { ig: 'failed', reason: 'replay' }, flavour, ret);
   }
 
   const short = await igOAuth.exchangeCode(String(code));
   if (!short.ok) {
     console.warn('[ig:callback] code exchange refused:', short.error);
-    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' }, flavour);
+    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' }, flavour, ret);
   }
 
   const long = await igOAuth.exchangeForLongLived(short.shortLivedToken);
   if (!long.ok) {
     console.warn('[ig:callback] long-lived exchange refused:', long.error);
-    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' }, flavour);
+    return backToPortfolio(res, { ig: 'failed', reason: 'exchange' }, flavour, ret);
   }
 
   // F-07.24 — read the handle so the surface can show WHICH account is linked.
@@ -182,7 +192,7 @@ router.get('/callback', asyncHandler(async (req, res) => {
   });
   if (!saved.ok) {
     console.error('[ig:callback] could not persist connection for vendor', v.vendorId, saved.error);
-    return backToPortfolio(res, { ig: 'failed', reason: 'store' }, flavour);
+    return backToPortfolio(res, { ig: 'failed', reason: 'store' }, flavour, ret);
   }
   // CE-46 IGD-2 cut 2c (F-44.194): the professional-account id webhooks address, beside ig_user_id. Best-effort: never fails the connect.
   if (profile.ok && profile.igUserId) {
@@ -231,7 +241,7 @@ router.get('/callback', asyncHandler(async (req, res) => {
 
   // Not one token byte in this line. The vendor id and the fact of success.
   console.log('[ig:callback] connected vendor', v.vendorId, 'ig_user', short.igUserId);
-  return backToPortfolio(res, { ig }, flavour);
+  return backToPortfolio(res, { ig }, flavour, ret);
 }));
 
 // REFRESH-ON-USE lives in igConnection.tokenForCall since 4b-3b (F-42.177, zero

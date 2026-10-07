@@ -221,6 +221,9 @@ function mintState(vendorId, opts = {}) {
   const flavour  = SIGNED_FLAVOURS.includes(opts.flavour) ? opts.flavour : null;
   const body     = { v: vendorId, n: nonce, t: issuedAt };
   if (flavour) body.s = flavour;
+  // CE-47 WEB-4 cut 20: the ONE allowed return, 'start' (the two-minute set-up), written ONLY when asked; a state minted
+  // without it is built exactly as before. sign(), the HMAC, the key and the TTL are untouched.
+  if (opts.ret === 'start') body.r = 'start';
   const payload  = b64url(JSON.stringify(body));
   return { state: `${payload}.${sign(payload)}`, nonce, issuedAt, flavour: flavour || FLAVOURS.basic };
 }
@@ -252,7 +255,8 @@ function verifyState(state) {
   if (Date.now() - Number(parsed.t) > STATE_TTL_MS) {
     return { ok: false, error: 'This connection link expired. Please start again.' };
   }
-  return { ok: true, vendorId: parsed.v, nonce: parsed.n, flavour: SIGNED_FLAVOURS.includes(parsed.s) ? parsed.s : FLAVOURS.basic };
+  return { ok: true, vendorId: parsed.v, nonce: parsed.n, flavour: SIGNED_FLAVOURS.includes(parsed.s) ? parsed.s : FLAVOURS.basic,
+    ret: parsed.r === 'start' ? 'start' : null };   // cut 20: only 'start' is ever read back; anything else is none
 }
 
 /**

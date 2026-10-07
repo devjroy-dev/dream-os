@@ -49,6 +49,9 @@ const VENDOR_PATHS = Object.freeze({
   // The Portfolio room — the Instagram-import return path (ig.js).
   portfolio: '/vendor/portfolio',
 
+  // CE-47 WEB-4 cut 20: the two-minute set-up, where the Instagram connect returns her when she came from it (ig.js).
+  onboarding: '/vendor/onboarding',
+
   // The Leads room, as vendorInbound.js's template link has always spelled it.
   leads:     '/vendor/leads',
 
