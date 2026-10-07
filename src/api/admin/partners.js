@@ -11,6 +11,9 @@ const conns = require('../../lib/partners/connections');
 const contacts = require('../../lib/partners/contacts');
 const fwd = require('../../lib/partners/forward');
 const { hiddenByReports } = require('../../lib/partners/reports');
+const seams = require('../../lib/partners/seams');
+const hubPage = require('../../lib/partners/hubPage');
+const { W: CALL_WORDS } = require('../../lib/partners/words');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -79,6 +82,18 @@ router.post('/forward', asyncHandler(async (req, res) => {
     const { data: ven } = await supabase.from('vendors').select('id').eq('id', v.row.vendor_id).maybeSingle();
     if (!ven) return errRes(res, 400, 'Choose the vendor again.');
   }
+  // PTN-A2-1: a vendor on TDW gets her request as her own call (CLB-2a; she reads "Sent by TDW at your request"); its
+  // answers land on her Interested list. An outside vendor's request waits under her phone until she signs up.
+  if (v.row.vendor_id) {
+    try {
+      const made = await seams.createCallFor(supabase, { vendor_id: v.row.vendor_id, role: v.row.role, city: v.row.city, event_date: v.row.event_date,
+        budget_from: v.row.budget_from, budget_to: v.row.budget_to, pay_kind: v.row.pay_kind, source: 'tdw_forward', asked_at: new Date().toISOString() });
+      v.row.post_id = made.post_id;
+    } catch (e) {
+      const m = String((e && e.message) || '');
+      return errRes(res, 400, /date has passed/.test(m) ? 'The date has passed. Choose a date ahead.' : /collab role/.test(m) ? 'Choose what she needs from the list.' : 'Could not make her call. Check the details and try again.');
+    }
+  }
   const { data: q, error } = await supabase.from('forward_requests').insert({ ...v.row, created_by: who(req) }).select('id').single();
   if (error) return errRes(res, 500, 'Could not save the request.');
   for (const cid of ids) {
@@ -108,8 +123,8 @@ async function reportsFor(supabase, partnerIds) {
   const { data } = await supabase.from('partner_reports').select('id, partner_id, item_kind, vendor_id, reason, note, created_at, handled_at').in('partner_id', partnerIds);
   return data || [];
 }
-function adminRow(o, reports, used) {
-  return { ...orgs.ownShape(o), hidden_by_reports: hiddenByReports(o, reports), reports_open: reports.filter((r) => r.partner_id === o.id && !r.handled_at).length,
+function adminRow(o, reports, used, mark) {
+  return { ...orgs.ownShape(o, mark), hidden_by_reports: hiddenByReports(o, reports), reports_open: reports.filter((r) => r.partner_id === o.id && !r.handled_at).length,
     connections_line: conns.adminLine(used, o.plan_state), blocked_reason: o.blocked_reason, created_at: o.created_at, fee_line: orgs.FEE_LINE };
 }
 
@@ -126,7 +141,8 @@ router.get('/', asyncHandler(async (req, res) => {
   const counts = {};
   for (const s of ['unchecked', 'checked', 'blocked']) { const { count } = await supabase.from('partner_orgs').select('id', { count: 'exact', head: true }).eq('check_state', s); counts[s] = count || 0; }
   const out = [];
-  for (const o of rows) out.push(adminRow(o, reps, await conns.countFor(supabase, o.id)));
+  const mark = await orgs.markOn(supabase);
+  for (const o of rows) out.push(adminRow(o, reps, await conns.countFor(supabase, o.id), mark));
   return okRes(res, { tab, counts, partners: out });
 }));
 
@@ -140,15 +156,34 @@ router.get('/:id', asyncHandler(async (req, res) => {
   const uids = (ms || []).map((m) => m.user_id);
   const { data: us } = uids.length ? await supabase.from('users').select('id, name, phone').in('id', uids) : { data: [] };
   const people = (ms || []).map((m) => { const u = (us || []).find((x) => x.id === m.user_id) || {}; return { name: u.name || null, phone: u.phone || null, role: m.role }; });
-  return okRes(res, { partner: adminRow(o, reps, await conns.countFor(supabase, o.id)), people, reports: reps });
+  return okRes(res, { partner: adminRow(o, reps, await conns.countFor(supabase, o.id), await orgs.markOn(supabase)), people, reports: reps });
 }));
 
 async function setState(req, res, patch) {
   if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such partner.');
   const { data, error } = await req.app.locals.supabase.from('partner_orgs').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', req.params.id).select(orgs.ORG_COLS).single();
   if (error || !data) return errRes(res, 500, 'Could not save.');
-  return okRes(res, { partner: orgs.ownShape(data) });
+  return okRes(res, { partner: orgs.ownShape(data, await orgs.markOn(req.app.locals.supabase)) });
 }
+// "What was sent" to one partner: each call, when, by which channel, its state in plain words, and who it suggested
+// (name, role and link only; never a phone or email).
+const SEND_WORDS = { queued: 'Waiting to go', sent: 'Sent', held_cap: 'Waiting: today\'s calls are used', held_window: 'Waiting for 9 am',
+  held_paused: 'Waiting: calls are paused', held_no_key: 'Not sent: email is not set up yet', failed: 'Could not be sent', closed: 'Not sent: the call closed' };
+router.get('/:id/sends', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such partner.');
+  const { data: rows } = await supabase.from('partner_sends').select('id, post_id, channel, state, why, sent_at, created_at').eq('partner_id', req.params.id).order('created_at', { ascending: false }).limit(100);
+  const ids = (rows || []).map((r) => r.id);
+  const { data: ans } = ids.length ? await supabase.from('partner_answers').select('send_id, talent_name, talent_role, talent_link').in('send_id', ids) : { data: [] };
+  const postIds = [...new Set((rows || []).map((r) => r.post_id))];
+  const { data: posts } = postIds.length ? await supabase.from('collab_posts').select('id, city, event_date, requirement_type').in('id', postIds) : { data: [] };
+  // Named fields only: the select is a request, not a promise, so nothing else of the post can ride out.
+  const P = new Map((posts || []).map((p) => [p.id, { city: p.city, event_date: p.event_date, requirement_type: p.requirement_type }]));
+  return okRes(res, { sends: (rows || []).map((r) => ({ id: r.id, channel: r.channel, state: r.state, state_words: SEND_WORDS[r.state] || r.state, why: r.why,
+    sent_at: r.sent_at, created_at: r.created_at, call: P.get(r.post_id) || null,
+    suggested: (ans || []).filter((a) => a.send_id === r.id).map((a) => ({ name: a.talent_name, role: a.talent_role, link: a.talent_link })) })) });
+}));
+
 router.post('/:id/check', asyncHandler(async (req, res) => setState(req, res, { check_state: 'checked', checked_how: 'admin', checked_at: new Date().toISOString(), checked_by: who(req), blocked_at: null, blocked_reason: null })));
 router.post('/:id/block', asyncHandler(async (req, res) => {
   const reason = typeof (req.body || {}).reason === 'string' ? req.body.reason.trim().slice(0, 300) : '';

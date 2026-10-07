@@ -20,6 +20,11 @@ const { textPresent } = require('../../lib/onboardingPredicate');
 const { mintPartnerSession } = require('../../lib/partners/partnerSession');
 const orgs = require('../../lib/partners/orgs');
 const requirePartner = require('../middleware/requirePartner');
+const hubPage = require('../../lib/partners/hubPage');
+const calls = require('../../lib/partners/calls');
+const answers = require('../../lib/partners/answers');
+// PTN-A2-1: the partner's Collab Hub page follows its details. Best effort: a failure here never fails the partner's save.
+const syncHub = async (sb, org) => { try { await hubPage.ensureOrgProfile(sb, org); } catch (e) { console.warn('[partner] hub page:', e.message); } };
 
 const router = express.Router();
 const PHONE_RE = /^\+[0-9]{8,15}$/;
@@ -89,7 +94,7 @@ router.get('/me', requirePartner({ orgRequired: false }), asyncHandler(async (re
     const { data: us } = ids.length ? await supabase.from('users').select('id, name, phone').in('id', ids) : { data: [] };
     people = (ms || []).map((x) => { const p = (us || []).find((y) => y.id === x.user_id) || {}; return { name: p.name || null, phone: p.phone || null, role: x.role }; });
   }
-  return okRes(res, { name: (u && u.name) || null, partner: req.partner ? orgs.ownShape(req.partner.org) : null, role: req.partner ? req.partner.role : null, people });
+  return okRes(res, { name: (u && u.name) || null, partner: req.partner ? orgs.ownShape(req.partner.org, await orgs.markOn(supabase)) : null, role: req.partner ? req.partner.role : null, people });
 }));
 
 router.post('/org', requirePartner({ orgRequired: false }), asyncHandler(async (req, res) => {
@@ -103,7 +108,8 @@ router.post('/org', requirePartner({ orgRequired: false }), asyncHandler(async (
   if (error) { console.error('[partner:org] insert error:', error.message); return errRes(res, 500, 'Something went wrong. Please try again.'); }
   const { error: mErr } = await supabase.from('partner_members').insert({ partner_id: org.id, user_id: req.partnerUser.id, role: 'owner', added_by: req.partnerUser.id });
   if (mErr) { await supabase.from('partner_orgs').delete().eq('id', org.id); return errRes(res, 500, 'Something went wrong. Please try again.'); }
-  return okRes(res, { partner: orgs.ownShape(org) });
+  await syncHub(supabase, org);
+  return okRes(res, { partner: orgs.ownShape(org, await orgs.markOn(supabase)) });
 }));
 
 router.patch('/org', requirePartner(), asyncHandler(async (req, res) => {
@@ -116,7 +122,32 @@ router.patch('/org', requirePartner(), asyncHandler(async (req, res) => {
   v.row.updated_at = new Date().toISOString();
   const { data: org, error } = await req.app.locals.supabase.from('partner_orgs').update(v.row).eq('id', req.partner.id).select(orgs.ORG_COLS).single();
   if (error) return errRes(res, 500, 'Something went wrong. Please try again.');
-  return okRes(res, { partner: orgs.ownShape(org) });
+  await syncHub(req.app.locals.supabase, org);
+  return okRes(res, { partner: orgs.ownShape(org, await orgs.markOn(req.app.locals.supabase)) });
+}));
+
+// ── Calls for you (PTN-A2-1) ─────────────────────────────────────────────────────────────────────────────────
+// Only calls actually sent to this partner. The vendor's phone and email never appear; her note is masked.
+router.get('/calls', requirePartner(), asyncHandler(async (req, res) => {
+  const sb = req.app.locals.supabase;
+  const { data: rows } = await sb.from('partner_sends').select('id, post_id, state, sent_at, created_at').eq('partner_id', req.partner.id).eq('state', 'sent').order('sent_at', { ascending: false }).limit(50);
+  const ids = (rows || []).map((r) => r.id);
+  const { data: ans } = ids.length ? await sb.from('partner_answers').select('send_id').in('send_id', ids) : { data: [] };
+  const today = calls.todayIST(); const { data: sentToday } = await sb.from('partner_sends').select('id', { count: 'exact', head: false }).eq('partner_id', req.partner.id).eq('state', 'sent').gte('sent_at', new Date(Date.parse(`${today}T00:00:00+05:30`)).toISOString());
+  const out = [];
+  for (const r of rows || []) {
+    const c = await calls.loadCall(sb, r.post_id); if (!c) continue;
+    out.push({ send_id: r.id, sent_at: r.sent_at, ...calls.callShape(c), suggested: (ans || []).filter((a) => a.send_id === r.id).length });
+  }
+  const used = (sentToday || []).length; const cap = req.partner.org.daily_cap || 10;
+  return okRes(res, { calls: out, today_line: `You have had ${used} of your ${cap} calls today. To stop calls for a while, go to Settings.` });
+}));
+router.post('/calls/:send_id/suggest', requirePartner(), asyncHandler(async (req, res) => {
+  const sb = req.app.locals.supabase;
+  const { data: send } = await sb.from('partner_sends').select('id, partner_id, post_id, channel, state').eq('id', String(req.params.send_id || '')).maybeSingle();
+  if (!send || send.partner_id !== req.partner.id) return errRes(res, 404, 'This call was not sent to you.');
+  const out = await answers.suggest(sb, send, (req.body || {}).people, { agreed: (req.body || {}).agreed });
+  return out.ok ? okRes(res, out) : errRes(res, out.status || 400, out.error);
 }));
 
 router.post('/people', requirePartner(), asyncHandler(async (req, res) => {

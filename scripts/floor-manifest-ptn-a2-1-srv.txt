@@ -1,0 +1,27 @@
+# scripts/floor-manifest-ptn-a2-1-srv.txt
+# TDW CE-47 · PTN-A2-1 server (dream-os, base a75c2bd) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No new directory (scripts/lib and src/api/vendor exist on main).
+db/migrations/0218_partner_calls.sql
+docs/handovers/TDW_CE47_PTN_A2_1_SRV.md
+scripts/b290_ptn_a1_server_bench.js
+scripts/b292_ptn_a2_calls_bench.js
+scripts/floor-manifest-ptn-a2-1-srv.txt
+scripts/lib/ptn_fakedb.js
+scripts/ptn_a2_1_srv.sha256
+src/api/admin/partners.js
+src/api/partner/index.js
+src/api/public/partnerPublic.js
+src/api/router.js
+src/api/vendor/partnerContact.js
+src/cron.js
+src/index.js
+src/lib/partners/answers.js
+src/lib/partners/calls.js
+src/lib/partners/email.js
+src/lib/partners/forward.js
+src/lib/partners/hubPage.js
+src/lib/partners/match.js
+src/lib/partners/orgs.js
+src/lib/partners/seams.js
+src/lib/partners/sends.js
+src/lib/partners/words.js

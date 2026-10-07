@@ -146,7 +146,10 @@ if (MUT) {
   const org = { id: 'o1', ...v.row, cities: ['Delhi NCR'], check_state: 'unchecked', calls_email: 'b@mc.in', whatsapp_phone: '+919811100021', plan_state: 'free' };
   const pub = orgs.publicShape(org);
   ok(pub && pub.instagram_url === 'https://www.instagram.com/modelconnect.in/' && pub.website_url === 'https://modelconnect.in/', '5.5 the public page carries ready links');
-  ok(pub.check_words === 'Not yet checked by TDW' && pub.fee_line === 'This partner may charge its own fees. TDW takes no fee and has no part in it.', '5.6 the checked label and the ruled fee line');
+  // 5.6 amended at PTN-A2-1 (the founder's words, 7 Oct 2026): the mark is "Verified" / "Unverified", shown only when the
+  // caller passes the switch's answer (admin_config 'partners.check_label' on); by default it is not shown (null).
+  ok(pub.check_words === null && orgs.publicShape(org, true).check_words === 'Unverified' && orgs.publicShape({ ...org, check_state: 'checked' }, true).check_words === 'Verified'
+    && pub.fee_line === 'This partner may charge its own fees. TDW takes no fee and has no part in it.', '5.6 the mark (Verified / Unverified) only with the switch on, null by default; the ruled fee line');
   ok(!/phone|email|\+91|@mc\.in/.test(JSON.stringify(pub)), '5.7 no phone or email on the public page');
   ok(orgs.publicShape({ ...org, check_state: 'blocked' }) === null, '5.8 a blocked partner\'s page is null (it vanishes at once)');
 
@@ -199,13 +202,14 @@ if (MUT) {
   const srcAll = fs.readdirSync(R('src/lib/partners')).map((f) => fs.readFileSync(R('src/lib/partners/' + f), 'utf8')).join('\n') + fs.readFileSync(R('src/api/admin/partners.js'), 'utf8');
   ok(!/razorpay|createSubscription|charge\(/i.test(srcAll.replace(/razorpay_subscription_id/g, '')), '9.3 nothing in A1 charges or reaches Razorpay');
 
-  sec('10  the seams are declared and never called');
+  sec('10  the seams are declared; only PTN files call them (amended at A2-1)');
   const seams = require(R('src/lib/partners/seams'));
   ok(['createCallFor', 'addPartnerInterest', 'onPostCreated', 'kitFor', 'verifiedWeddingsFor'].every((k) => typeof seams[k] === 'function'), '10.1 the five seams exist');
-  let sThrew = false; try { await seams.createCallFor({}); } catch (e) { sThrew = /CLB-2a/.test(e.message); }
-  ok(sThrew, '10.2 a seam says plainly it is not wired');
-  const callers = require('child_process').spawnSync('grep', ['-rln', "partners/seams", R('src')], { encoding: 'utf8' }).stdout.trim().split('\n').filter(Boolean).filter((f) => !f.endsWith('src/lib/partners/seams.js'));
-  ok(callers.length === 0, '10.3 no file in src requires the seams yet', callers.join());
+  let sThrew = false; try { await seams.kitFor({}); } catch (e) { sThrew = /not wired yet/.test(e.message); }
+  ok(sThrew, '10.2 a seam not yet landed (kitFor) says plainly it is not wired');
+  const PTN_OWN = /src\/(lib\/partners\/[^/]+|api\/admin\/partners|api\/partner\/[^/]+|api\/public\/partnerPublic|api\/vendor\/partnerContact)\.js$/;
+  const callers = require('child_process').spawnSync('grep', ['-rlnE', "require\\([^)]*seams['\"]", R('src')], { encoding: 'utf8' }).stdout.trim().split('\n').filter(Boolean).filter((f) => !f.endsWith('src/lib/partners/seams.js'));
+  ok(callers.length > 0 && callers.every((f) => PTN_OWN.test(f)), '10.3 only PTN own files require the seams', callers.join());
 
   sec('11  the doors');
   const router = fs.readFileSync(R('src/api/router.js'), 'utf8');

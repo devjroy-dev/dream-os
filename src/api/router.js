@@ -70,6 +70,7 @@ router.use('/consent',            require('./consent'));
 router.use('/sign',               require('./sign'));
 router.use('/partner',           require('./partner'));                 // CE-47 PTN-A1: the partner lane (its own kind)
 router.use('/vendor/onboarding',  require('./vendor/onboarding'));
+router.use('/vendor',             require('./vendor/partnerContact')); // CE-47 PTN-A2-1: Contact <partner> and Report, on a partner's suggestion
 router.use('/vendor',             require('./vendor/core'));
 router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)
 // F-2 RULED (a): the json login door for Panel B. Mounted FIRST among the

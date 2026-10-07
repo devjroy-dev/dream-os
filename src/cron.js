@@ -465,6 +465,20 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── CE-47 PTN-A2-1 · CALLS TO PARTNERS, the drain — every five minutes at :02, :07, :12 ... ─────────────────
+  // Clear of every band above (night :00 :15 :20 :25 :35 :40 :45; hourly :05 :30 :50). It emails only between
+  // 9 am and 8 pm IST (sends.js holds the rest till 9 am); without RESEND_API_KEY it sends nothing and says why.
+  cron.schedule('2-59/5 * * * *', async () => {
+    try {
+      const { drain } = require('./lib/partners/sends');
+      await drain(supabase);
+    } catch (err) {
+      console.error('[cron:partnerCalls] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── G3.1 s2 · THE SEARCH CONSOLE PULL (F-40.261 a) — 03:40 IST ────────────
   // Its own minute in the night band (see searchConsoleNightly.js for the
   // derivation); after the seal (:20) and the reminders (:25). Heartbeat: the

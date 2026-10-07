@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { formatRs, formatDateLong } = require('../format');
 const { rolesLine, PAY_WORD } = require('../collab/social');   // CLB's one home of trade and pay words
 const links = require('./links');
+const { isCollabRole } = require('../collab/roles');
 
 const PUBLIC_BASE = 'https://thedreamwedding.in';
 // The link token is DERIVED (HMAC of the recipient row's id under PARTNER_SESSION_SECRET with its own 'forward:' label), so
@@ -37,6 +38,8 @@ function validateRequest(b = {}) {
   const role = typeof b.role === 'string' ? b.role.trim() : '';
   const city = typeof b.city === 'string' ? b.city.trim() : '';
   if (!role) return { ok: false, error: 'Write what she needs, for example a model.' };
+  // PTN-A2-1: for a vendor on TDW the request becomes her own call (CLB-2a createCallFor), whose role is a collab role key.
+  if (row.vendor_id && !isCollabRole(role)) return { ok: false, error: 'Choose what she needs from the list.' };
   if (!city) return { ok: false, error: 'Write the city.' };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.event_date || ''))) return { ok: false, error: 'Choose the date.' };
   const from = Number(b.budget_from); const to = Number(b.budget_to);

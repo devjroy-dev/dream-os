@@ -420,6 +420,7 @@ app.listen(PORT, () => {
   console.log(`[dream-os] listening on :${PORT}`);
   webhookCore.probeMessageSidColumn(supabase, { prefix: '[dream-os]' }); // TDW_05 P1b: durable-dedupe capability probe
   startCronJobs({ supabase });
+  require('./lib/partners/sends').register(() => supabase); // CE-47 PTN-A2-1: a new call is queued for matching partners (sent by the cron drain)
   startCapabilitiesSweep({ supabase }); // binds src/lib/capabilities.js's client; 03:50 IST
   // F-41.81: a forward left `queued` by a process that died mid-send is terminal
   // and unread by anything. Boot is the moment after that process came back.
