@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce47-web4-cut22.txt
+# CE-47 · WEB-4 cut 22 · the register's record for 0198 (CLB HUB-1) · base d5ae450 (server train 7, after HUB1_SRV_1) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b266 (6 cells). b263 amended by label. No migration. b15 red on this base alone (0198's file arrives with CLB's package). No new directory. No file deleted.
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_WEB4_CUT22_HANDOVER.md
+scripts/b263_ce47_web4_cut17_bench.js
+scripts/b266_ce47_web4_cut22_bench.js
+scripts/floor-manifest-ce47-web4-cut22.txt

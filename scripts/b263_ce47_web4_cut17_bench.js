@@ -54,7 +54,7 @@ const { makeStore } = require('./lib/b196_store');
 
   sec('5  the register: 0197 after 0195');
   const R = JSON.parse(read('db/migrations/OUT_OF_ORDER.json')).register;
-  ok(() => JSON.stringify(R.map((r) => r.number)) === '[183,204,196,200,208,209,205,195,197]' && /CLB-2a · THE COLLAB ROLE LIST/.test(R[8].note) && /collab_house_tokens/.test(R[8].stale_for) && /^OWED/.test(R[8].state), '5.1 0197\'s record, last, in history order (CLB-2a, server train 4)');
+  /* AMENDED BY LABEL, CE-47 WEB-4 cut 22 (b266): the register goes on after 0197 (0198 in train 7); its first nine rows are held in this order */ ok(() => JSON.stringify(R.slice(0, 9).map((r) => r.number)) === '[183,204,196,200,208,209,205,195,197]' && /CLB-2a · THE COLLAB ROLE LIST/.test(R[8].note) && /collab_house_tokens/.test(R[8].stale_for) && /^OWED/.test(R[8].state), '5.1 0197\'s record, last, in history order (CLB-2a, server train 4)');
 
   sec('6  mutations, run');
   const MS = read('src/lib/site/siteModel.js');

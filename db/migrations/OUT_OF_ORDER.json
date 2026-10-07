@@ -76,6 +76,12 @@
       "note": "**CE-47 · CLB-2a · THE COLLAB ROLE LIST, PARTNER ROWS ON A CALL, AND CALLS SENT BY TDW** — widens `collab_posts.requirement_type` and `collab_post_items.requirement_type` to the collab role list (the eleven plus model, stylist, studio); adds `collab_post_items.needed`; `collab_posts.source`, `asked_at`, `budget_from`, `budget_to`; `collab_interest.source`, `partner_id`, `send_id`, `role`, `link`, `agreed_at`, `platform` and `how` made nullable, the `collab_interest_partner_shape` CHECK and the `collab_interest_partner_once` unique index; creates `collab_house_tokens` (RLS on, service_role only). Numbered `0197` from CLB's range and lands in server train 4, after `0212`, `0214`, `0216` and `0217`, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 6 October 2026; written by WEB-4 from the file's header and body).",
       "stale_for": "`public.collab_posts`, `public.collab_post_items`, `public.collab_interest`, `public.collab_house_tokens`",
       "state": "OWED — the snapshot does not carry the widened CHECKs, the new columns, the partner index or `collab_house_tokens`; `0197` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 198,
+      "note": "**CE-47 · CLB · HUB-1 · HUB PROFILES AND CREDITS** — creates `hub_profiles` and `hub_credits`. Additive; alters no existing table. Numbered `0198` from CLB's range and lands in server train 7, after `0216`, `0217` and `0220` are applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 7 October 2026; written by WEB-4, the register's one writer, from the chair's description of `0198_hub_profiles_credits.sql`).",
+      "stale_for": "`public.hub_profiles`, `public.hub_credits`",
+      "state": "OWED — the snapshot does not carry the two tables; `0198` and this file are their witnesses until the next PAIR regen."
     }
   ]
 }
