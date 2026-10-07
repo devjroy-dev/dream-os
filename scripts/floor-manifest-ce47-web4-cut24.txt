@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce47-web4-cut24.txt
+# CE-47 · WEB-4 cut 24 · the register's record for 0218 (PTN A2-1) · base a75c2bd (server train 11, after PTN A2-1) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b268 (7 cells). b267 amended by label. No migration (0218's .sql rides PTN's package). b15 red on this base alone. No new directory. No file deleted.
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_WEB4_CUT24_HANDOVER.md
+scripts/b267_ce47_web4_cut23_bench.js
+scripts/b268_ce47_web4_cut24_bench.js
+scripts/floor-manifest-ce47-web4-cut24.txt
