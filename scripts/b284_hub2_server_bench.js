@@ -225,16 +225,17 @@ async function cells() {
 }
 
 const MUTS = [
-  ['src/api/vendor/hub.js', "  try { if (await switchOn(sb)) return true; return (await testers(sb)).includes(vendorId); } catch (_e) { return false; }", "  try { if (await switchOn(sb)) return true; return false; } catch (_e) { return false; }", 'G1 the testers list ignored', '8.1'],
+  // HUB-2b, amended by label: G1, G4 and G5 aim at src/lib/hub/gate.js, Rule 1's one home now; cells 8.1 to 8.5 unmoved.
+  ['src/lib/hub/gate.js', "  try { if (await switchOn(sb)) return true; return (await testers(sb)).includes(vendorId); } catch (_e) { return false; }", "  try { if (await switchOn(sb)) return true; return false; } catch (_e) { return false; }", 'G1 the testers list ignored', '8.1'],
   ['src/api/vendor/hub.js', "  if (await hubOpen(req.app.locals.supabase, req.vendor.id)) return next();\n  return errRes(res, 403, CLOSED);", "  return next();", 'G2 the doors left open to everyone', '8.2'],
   ['src/api/vendor/hub.js', "  if (!(await hubOpen(sb, req.vendor.id))) return okRes(res, { hub_open: false, line: CLOSED });\n", "", 'G3 a page made for a closed vendor', '8.2b'],
-  ['src/api/vendor/hub.js', "  try { if (await switchOn(sb)) return true;", "  try { if (false) return true;", 'G4 the switch ignored', '8.3'],
-  ['src/api/vendor/hub.js', "    _sw = v === 'on';", "    _sw = !!v;", 'G5 any switch value opens it', '8.4'],
+  ['src/lib/hub/gate.js', "  try { if (await switchOn(sb)) return true;", "  try { if (false) return true;", 'G4 the switch ignored', '8.3'],
+  ['src/lib/hub/gate.js', "    _sw = v === 'on';", "    _sw = !!v;", 'G5 any switch value opens it', '8.4'],
   ['src/lib/hub/people.js', "  if (t.owner_kind !== 'vendor' || !t.vendor_id) throw new Error(NOT_A_VENDOR);\n  if (t.id === me.id)", "  if (!t.vendor_id && false) throw new Error(NOT_A_VENDOR);\n  if (t.id === me.id)", 'M1 a person can be added', '2.1'],
   ['src/lib/hub/people.js', "  if (team && team.length) throw new Error", "  if (false) throw new Error", 'M2 an edge on a wedding team can be taken off', '5.1'],
   ['src/lib/hub/people.js', "  if (e.source !== 'manual') throw new Error", "  if (false) throw new Error", 'M3 an edge from a TDW call can be taken off', '5.2'],
   ['src/lib/hub/people.js', "      can_add: !w && p.owner_kind === 'vendor' && !!me.vendor_id }; });", "      can_add: !w }; });", 'M4 "Add" offered on a person', '3.2'],
-  ['src/lib/hub/profiles.js', "    // HUB-2 (CE-47, 7 Oct 2026): no check label.", "    label: 'Checked by TDW', // HUB-2 (CE-47, 7 Oct 2026): no check label.", 'M5 the check label comes back', '1.1'],
+  ['src/lib/hub/profiles.js', "    // HUB-2 (CE-47, 7 Oct 2026): no check label.", "    label: 'Verified', // HUB-2 (CE-47, 7 Oct 2026): no check label.", 'M5 the check label comes back', '1.1'],
   ['src/lib/hub/people.js', "  const ids = [...new Set((data || []).map((c) => c.person_profile_id))];", "  const ids = [];", 'M6 waiting credits vanish instead of showing apart', '4.3'],
   ['src/api/vendor/hub.js', "  const cardOf = (id) => { const c = byId.get(id); return c ? { name: c.name, page_url: c.page_url } : null; };", "  const cardOf = (id) => ({ id });", 'M8 Mine shows ids instead of names and links', '5b.2'],
   ['src/api/vendor/hub.js', "  const calls = (open || []).filter((c) => !answered.has(c.id) && (all", "  const calls = (open || []).filter((c) => (all", 'M9 an answered call stays in Work', '5b.3'],

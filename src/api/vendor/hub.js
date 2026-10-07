@@ -23,26 +23,10 @@ const { sameCity } = require('../../lib/vendor/cityMatch');
 const { websiteUrl } = require('../../lib/partners/links');
 
 // ── HUB-2 · RULE 1 (the chair's ruling (a), 7 Oct 2026): BLIND SWITCH-ON ─────────────────────────────────────────
-// The Hub is open to a vendor on clb.testers (read through testers.js's own reader), or to everyone once admin_config
-// 'clb.hub' is 'on'. Both fail closed: junk, a missing row or an unreachable database means closed. GET /me tells a
-// closed vendor so (and makes no page); every other Hub door refuses her with one plain sentence.
-const { testers } = require('../../lib/collab/testers');
-const SWITCH_KEY = 'clb.hub';
-const CLOSED = 'Collab Hub is not open for your account yet.';
-let _swAt = 0; let _sw = false;
-async function switchOn(sb) {
-  if (Date.now() - _swAt < 60 * 1000) return _sw;
-  try {
-    const { data, error } = await sb.from('admin_config').select('value').eq('key', SWITCH_KEY).maybeSingle();
-    const v = !error && data ? String(data.value == null ? '' : data.value).trim().replace(/^"(.*)"$/, '$1').toLowerCase() : '';
-    _sw = v === 'on';
-  } catch (_e) { _sw = false; }
-  _swAt = Date.now();
-  return _sw;
-}
-async function hubOpen(sb, vendorId) {
-  try { if (await switchOn(sb)) return true; return (await testers(sb)).includes(vendorId); } catch (_e) { return false; }
-}
+// The question itself lives in src/lib/hub/gate.js (HUB-2b): testers or the clb.hub switch, failing closed. GET /me tells
+// a closed vendor so (and makes no page); every other Hub door refuses her with one plain sentence.
+const { hubOpen, CLOSED, _reset: resetGate } = require('../../lib/hub/gate');   // HUB-2b: Rule 1's one home
+resetGate();   // a fresh router starts from an empty gate cache, as it did when the gate lived here (no change in a running server)
 const hubGate = asyncHandler(async (req, res, next) => {
   if (await hubOpen(req.app.locals.supabase, req.vendor.id)) return next();
   return errRes(res, 403, CLOSED);
@@ -180,5 +164,5 @@ router.post('/credits/:id/yes', requireAuth, resolveVendor(), hubGate, guard(asy
 router.post('/credits/:id/no', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.answer(sb, await me(req, sb), req.params.id, false))));
 router.post('/credits/:id/take-back', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.takeBack(sb, await me(req, sb), req.params.id))));
 
-router._resetGate = () => { _swAt = 0; _sw = false; };   // benches only: the 60 s cache, cleared between cells
+router._resetGate = () => resetGate();   // benches only: the 60 s cache, cleared between cells (gate.js holds it)
 module.exports = router;

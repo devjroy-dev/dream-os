@@ -70,7 +70,11 @@ const FUTURE = (() => { const d = new Date(Date.now() + 40 * 86400000); return d
 const PAST = (() => { const d = new Date(Date.now() - 3 * 86400000); return d.toISOString().slice(0, 10); })();
 const POST = { id: 'p1', vendor_id: ME, requirement_type: 'photography', event_date: FUTURE, city: 'Delhi', state: 'open' };
 const seed = () => ({ vendors: [{ id: ME, business_name: 'DEV440 Studio', city: 'Delhi' }], collab_posts: [{ ...POST }],
-  capabilities: [{ key: 'flag.collab_house_instagram', kind: 'flag', status: 'pending' }, { key: 'flag.collab_threads', kind: 'flag', status: 'pending' }] });
+  capabilities: [{ key: 'flag.collab_house_instagram', kind: 'flag', status: 'pending' }, { key: 'flag.collab_threads', kind: 'flag', status: 'pending' }],
+  // HUB-2b, amended by label (CE-47, 7 Oct 2026): addPartnerInterest now refuses a call whose poster does not have Collab
+  // Hub open (gate.js). The poster these cells use is DEV440, on clb.testers. A fixture row only; no cell moves (b286 §2
+  // holds the guard itself).
+  admin_config: [{ key: 'clb.testers', value: JSON.stringify([ME]) }] });
 
 async function cells() {
   const roles = require(path.join(ROOT, 'src/lib/collab/roles.js'));

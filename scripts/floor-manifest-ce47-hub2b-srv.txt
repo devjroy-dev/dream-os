@@ -1,0 +1,30 @@
+# scripts/floor-manifest-ce47-hub2b-srv.txt
+# CE-47 · HUB-2b SERVER · Rule 1's one home (gate.js), one guard on partner rows, `outside` on the responses door, F-44.417, the retired mark words. BASE: a1c44e9 + PTN A2-0 r2 (50b58de0). No migration.
+# Amended by label: b284 (mutations G1, G4, G5 re-aimed at gate.js), b282 (one fixture row). Text only: profiles.js (a comment), TDW_CE47_HUB2_SRV_HANDOVER.md (two lines).
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# a0aafc12e060f95e98b1fce54e655074b8a4250b513ad71f32908f56491c36e3 · ADDED · docs/handovers/TDW_CE47_HUB2B_SRV_HANDOVER.md
+# 1c611b5eb3cb6068dd12ca27f205157b4c7c6e88adba363f802a1a9c67119fc4 · CHANGED · docs/handovers/TDW_CE47_HUB2_SRV_HANDOVER.md
+# 029ae1608229cfae86ea22c293b08bea4318f294a83975bef0ba476dcbf3d5cd · ADDED · docs/handovers/b286_ledger_HUB2B.txt
+# 1bc514ebe17da409495ef5d6180985df9b99f79ffea692709a0e91c777461559 · CHANGED · scripts/b282_clb2a_partner_seams_bench.js
+# 35359473637f98fc19ec5508bae50a8d22ed204a0183bfeaeb60349e5fd032e9 · CHANGED · scripts/b284_hub2_server_bench.js
+# d0c94b495b58b7485f6669b2ae0b68a491a34c58bbabcba376f32a06cb24d813 · ADDED · scripts/b286_hub2b_server_bench.js
+# 12c65a38514df3982c7dc90d48f57101781232c943cfc33bf5ec7739e86e4bc4 · CHANGED · src/api/vendor/collab.js
+# 6166fedca25dbf8674ed810c5c23b1d4f4c5e458fc22c6779c1b9d1c43dd1a6a · CHANGED · src/api/vendor/hub.js
+# 1b2270a1a080702408b12e64f150231d2b5962d426a5a16a15d82c1779f795f1 · CHANGED · src/lib/collab/interest.js
+# 2b788bfc9115a48b677800154ceb641f31ddaabc78d73b6491f1416a22888a68 · CHANGED · src/lib/collab/social.js
+# cbaa7850063cd9f7da7b63fa390f11c63ae33798bf27ece74bef9dda60394d13 · ADDED · src/lib/hub/gate.js
+# ba195815aff25f88278537e0e25eb7c4ffb9474dc089a0f1774e7305891e341b · CHANGED · src/lib/hub/profiles.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-hub2b-srv.txt
+docs/handovers/TDW_CE47_HUB2B_SRV_HANDOVER.md
+docs/handovers/TDW_CE47_HUB2_SRV_HANDOVER.md
+docs/handovers/b286_ledger_HUB2B.txt
+scripts/b282_clb2a_partner_seams_bench.js
+scripts/b284_hub2_server_bench.js
+scripts/b286_hub2b_server_bench.js
+src/api/vendor/collab.js
+src/api/vendor/hub.js
+src/lib/collab/interest.js
+src/lib/collab/social.js
+src/lib/hub/gate.js
+src/lib/hub/profiles.js
+scripts/floor-manifest-ce47-hub2b-srv.txt

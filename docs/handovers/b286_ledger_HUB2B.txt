@@ -1,0 +1,21 @@
+run 1 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:42:47
+run 2 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:43:08
+run 3 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:43:28
+run 4 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:43:47
+run 5 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:44:07
+run 6 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:44:26
+run 7 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:44:46
+run 8 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:45:06
+run 9 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:45:25
+run 10 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:45:45
+run 11 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:46:06
+run 12 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:46:26
+run 13 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:46:46
+run 14 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:47:06
+run 15 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:47:26
+run 16 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:47:46
+run 17 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:48:06
+run 18 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:48:26
+run 19 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:48:46
+run 20 · b286 · 35 pass · 0 fail · b284 · 48 pass · 0 fail · b282 · 37 pass · 0 fail · 12:49:06
+SERIES END 12:49:06 · not green: 0

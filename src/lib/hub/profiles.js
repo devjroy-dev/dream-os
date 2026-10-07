@@ -50,7 +50,8 @@ function publicCard(p) {
   return { handle: p.handle, name: p.display_name, kind: p.owner_kind, roles: p.roles || [], city: p.city || null,
     open_to: (p.open_to || []).filter((x) => OPEN_TO.includes(x)), open_to_words: (p.open_to || []).map((x) => OPEN_WORD[x]).filter(Boolean),
     // HUB-2 (CE-47, 7 Oct 2026): no check label. Nothing sets hub_profiles.check_state and no rule says what is checked,
-    // so neither "Checked by TDW" nor "Not yet checked by TDW" is returned until a written rule and a setter exist.
+    // so no check mark (neither "Verified" nor "Unverified", the founder's words of 7 Oct 2026) is returned until a
+    // written rule and a setter exist.
     instagram: p.instagram_handle ? { handle: p.instagram_handle, url: instagramUrl(p.instagram_handle) } : null,
     website: p.website ? { url: websiteUrl(p.website) } : null,
     page_url: `https://thedreamwedding.in/c/${p.handle}`,

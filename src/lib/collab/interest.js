@@ -3,7 +3,12 @@
 // addPartnerInterest({ post_id, partner_id, send_id, name, role, link, agreed_at }) -> { id }. PTN calls it in the same
 // server. Idempotent on (send, name): the same person sent again for the same send returns the first row's id.
 // The row never holds a phone or an email (the schema has no column for them) and never gets the join link.
+// HUB-2b (the chair's ruling, 7 Oct 2026): ONE GUARD. A call whose poster does not have Collab Hub open (gate.js: testers
+// or the clb.hub switch, failing closed) takes no partner row: it writes nothing and says why. PTN's sending asks the same
+// question first; this is the second guard, at the one place partner rows are written.
+const NOT_OPEN = 'The vendor who posted this call does not have Collab Hub open yet, so nobody can be put forward on it.';
 const { isCollabRole } = require('./roles');
+const { hubOpen } = require('../hub/gate');   // HUB-2b · Rule 1's one home
 
 const clean = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
 function okLink(u) {
@@ -19,8 +24,9 @@ async function addPartnerInterest(supabase, input) {
   if (b.role != null && !isCollabRole(b.role)) throw new Error(`${b.role} is not a collab role`);
   if (/@|\d{10,}/.test(name)) throw new Error('a name may not hold an email or a phone number');
   const link = okLink(b.link);
-  const { data: post } = await supabase.from('collab_posts').select('id').eq('id', b.post_id).maybeSingle();
+  const { data: post } = await supabase.from('collab_posts').select('id, vendor_id').eq('id', b.post_id).maybeSingle();
   if (!post) throw new Error('no such call');
+  if (!(await hubOpen(supabase, post.vendor_id))) throw new Error(NOT_OPEN);
   const found = await supabase.from('collab_interest').select('id, display_name')
     .eq('send_id', b.send_id).eq('source', 'partner');
   const same = (found.data || []).find((r) => String(r.display_name || '').toLowerCase() === name.toLowerCase());
@@ -38,4 +44,4 @@ async function addPartnerInterest(supabase, input) {
   return { id: data.id, existed: false };
 }
 
-module.exports = { addPartnerInterest };
+module.exports = { addPartnerInterest, NOT_OPEN };

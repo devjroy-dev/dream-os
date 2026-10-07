@@ -33,6 +33,8 @@ const {
   normaliseItemsInput,
 } = require('../../lib/vendor/collabItems');
 const { addEdgesOnAccept } = require('../../lib/vendor/roster');
+// HUB-2b · the responses door's `outside` (the chair, 7 Oct 2026): partner rows come only through PTN's partnerRowsFor.
+const { partnerRowsFor } = require('../../lib/partners/interestRows');
 
 // CE-42 · SEAT R7 · 4c-1 (G5.2). Three homes this file now reads and never restates:
 //   REQUIREMENT_TYPES — collabItems.js, the eleven (served, F-42.184's cure);
@@ -361,6 +363,49 @@ router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, r
 }));
 
 
+// ── HUB-2b · `outside` helpers ────────────────────────────────────────────────────────────────────────────────────
+const OUTSIDE_READ_FAILED = 'People who answered from outside TDW could not be shown just now. Try again in a minute.';
+const PARTNERS_READ_FAILED = 'Partner suggestions could not be shown just now. Try again in a minute.';
+const PLATFORM_WORD = Object.freeze({ instagram: 'Instagram', threads: 'Threads' });
+// a name holding an email or a ten-digit run is cut to its words (the same rule PTN's rows follow)
+function outsideName(s) {
+  let t = String(s || '').replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, ' ').replace(/@/g, '');
+  t = t.replace(/\+?\(?\d[\d\s().-]{8,}\d/g, (m) => ((m.match(/\d/g) || []).length >= 10 ? ' ' : m));
+  t = t.replace(/\s+/g, ' ').trim().slice(0, 80);
+  return t || null;
+}
+// 'partners.check_label' (PTN's key, one key for both seats), read the way the gate reads 'clb.hub': exactly 'on', as text
+// or JSON, any case; junk, a missing row or no database is off. Until it is on, check_words leaves the response.
+async function partnerCheckLabelOn(sb) {
+  try {
+    const { data, error } = await sb.from('admin_config').select('value').eq('key', 'partners.check_label').maybeSingle();
+    const v = !error && data ? String(data.value == null ? '' : data.value).trim().replace(/^"(.*)"$/, '$1').toLowerCase() : '';
+    return v === 'on';
+  } catch (_e) { return false; }
+}
+async function outsideFor(sb, postId) {
+  let rows = [];
+  try {
+    const r = await sb.from('collab_interest').select('id, post_id, source, platform, how, display_name, role, link, partner_id, created_at')
+      .eq('post_id', postId).order('created_at', { ascending: false });
+    if (r.error) return { rows: [], note: OUTSIDE_READ_FAILED };
+    rows = r.data || [];
+  } catch (_e) { return { rows: [], note: OUTSIDE_READ_FAILED }; }
+  let note = null; let mapped = [];
+  try { mapped = await partnerRowsFor(sb, rows); } catch (_e) { note = PARTNERS_READ_FAILED; mapped = []; }
+  if (!(await partnerCheckLabelOn(sb))) mapped = mapped.map(({ check_words, ...rest }) => { void check_words; return rest; });
+  const partnerById = new Map(mapped.map((m) => [m.id, m]));
+  const out = [];
+  for (const r of rows) {
+    if (r.source === 'partner') { const m = partnerById.get(r.id); if (m) out.push(m); continue; }
+    if (!PLATFORM_WORD[r.source]) continue;
+    const name = outsideName(r.display_name);
+    if (!name) continue;
+    out.push({ id: r.id, source: r.source, name, platform_word: PLATFORM_WORD[r.source], how: r.how || null, when: r.created_at || null });
+  }
+  return { rows: out, note };
+}
+
 // ── GET /:post_id/responses ──────────────────────────────────────────────────
 // Returns interested vendors for a post the requester owns.
 // Identity revealed because poster owns the post.
@@ -417,7 +462,14 @@ router.get('/:post_id/responses', requireAuth, resolveVendor(), asyncHandler(asy
     },
   }));
 
-  return okRes(res, { responses: enriched });
+  // ── HUB-2b · `outside`: people from outside TDW who answered her call, beside the unchanged `responses` ──────────
+  // Her post's collab_interest rows, newest first. Partner rows are mapped ONLY through PTN's partnerRowsFor (a blocked
+  // or missing partner's row is dropped there). Instagram and Threads rows carry their name, where they answered and when;
+  // the body, external ids and vendor ids are never read out. Nothing here is ever a phone or an email.
+  // If her rows or the partners cannot be read, `responses` still answers in full and `outside_note` says so in one
+  // plain sentence: never a 500 for this.
+  const outsideOut = await outsideFor(supabase, post_id);
+  return okRes(res, { responses: enriched, outside: outsideOut.rows, ...(outsideOut.note ? { outside_note: outsideOut.note } : {}) });
 }));
 
 

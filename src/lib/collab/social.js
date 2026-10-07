@@ -10,6 +10,7 @@
 // The categories have ONE home (src/agent/categories.js). The two word tables below are keyed by it and checked
 // against it at load: a category added there with no word here throws at boot rather than posting a blank craft.
 const { VENDOR_CATEGORIES } = require('../../agent/categories');
+const { EXTRA_ROLES } = require('./roles');   // HUB-2b · F-44.417
 
 const CAPS = Object.freeze({ instagram: 5, threads: 1 });
 const PLATFORMS = Object.freeze(['instagram', 'threads']);
@@ -35,6 +36,11 @@ const CRAFT_WORD = Object.freeze({
 });
 for (const c of VENDOR_CATEGORIES) if (!(c in CRAFT_WORD)) throw new Error(`collab/social: no word for category ${c}`);
 for (const k of Object.keys(CRAFT_WORD)) if (!VENDOR_CATEGORIES.includes(k)) throw new Error(`collab/social: ${k} is not a category`);
+// HUB-2b · F-44.417: the three collab roles 0197 added (people, not vendor businesses) have their own words. CRAFT_WORD
+// stays the eleven categories (the checks above); ROLE_WORD is the rest of the collab role list, checked the same way.
+const ROLE_WORD = Object.freeze({ model: 'model', stylist: 'stylist', studio: 'studio' });
+for (const r of EXTRA_ROLES) if (!(r in ROLE_WORD)) throw new Error(`collab/social: no word for role ${r}`);
+for (const k of Object.keys(ROLE_WORD)) if (!EXTRA_ROLES.includes(k)) throw new Error(`collab/social: ${k} is not a collab role`);
 const PAY_WORD = Object.freeze({ paid: 'Paid', unpaid: 'Unpaid', credit_only: 'Credit only' });
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -70,7 +76,8 @@ function clean(s) { return String(s || '').replace(/@/g, '').replace(/\s+/g, ' '
 function rolesLine(items) {
   const words = [];
   for (const it of (items || [])) {
-    const w = it && it.requirement_type === 'other' && it.note ? clean(it.note) : CRAFT_WORD[it && it.requirement_type];
+    const k = it && it.requirement_type;
+    const w = k === 'other' && it.note ? clean(it.note) : (CRAFT_WORD[k] || ROLE_WORD[k]);   // F-44.417: all fourteen roles have a word
     if (w && !words.includes(w)) words.push(w);
   }
   return words.join(', ');
