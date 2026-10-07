@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce47-web4-cut25.txt
+# CE-47 · WEB-4 cut 25 · the register's records for 0201 and 0202 (INS PAY-A) · base 2d349dc (server train 12, after INS PAY-A) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b269 (9 cells). b268 amended by label. No migration (0201 and 0202 ride INS's package). b15 red on this base alone. No new directory. No file deleted.
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_WEB4_CUT25_HANDOVER.md
+scripts/b268_ce47_web4_cut24_bench.js
+scripts/b269_ce47_web4_cut25_bench.js
+scripts/floor-manifest-ce47-web4-cut25.txt

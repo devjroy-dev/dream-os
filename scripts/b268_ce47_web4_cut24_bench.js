@@ -11,13 +11,15 @@ function ok(c, name, info) { let v = false; try { v = typeof c === 'function' ? 
 const J = JSON.parse(fs.readFileSync(P('db/migrations/OUT_OF_ORDER.json'), 'utf8'));
 const BASE = JSON.parse(execSync('git show a75c2bd:db/migrations/OUT_OF_ORDER.json', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString());
 const R = J.register;
-const good = (reg) => { const x = reg.find((r) => r.number === 218); return Boolean(x) && reg[reg.length - 1] === x && reg.filter((r) => r.number === 218).length === 1
+// AMENDED BY LABEL, CE-47 WEB-4 cut 25 (b269): the register goes on after 0218 (0201 and 0202 in train 12), so 0218 is held
+// at its place in history (the twelfth row), not as the last.
+const good = (reg) => { const x = reg.find((r) => r.number === 218); return Boolean(x) && reg[11] === x && reg.filter((r) => r.number === 218).length === 1
   && ['partner_sends', 'partner_answers', 'collab_interest_partner_fk'].every((t) => x.note.includes(t)) && /fills a hole below the applied ladder tip/.test(x.note)
   && x.stale_for === '`public.partner_sends`, `public.partner_answers`, `public.collab_interest`' && /^OWED/.test(x.state); };
 const x = R.find((r) => r.number === 218) || { note: '' };
 
 console.log('\n§1  the record for 0218, last, in history order');
-ok(() => JSON.stringify(R.map((r) => r.number)) === '[183,204,196,200,208,209,205,195,197,198,211,218]', '1.1 the register reads 183 ... 198, 211, 218 (order is history, never sorted)', JSON.stringify(R.map((r) => r.number)));
+ok(() => JSON.stringify(R.slice(0, 12).map((r) => r.number)) === '[183,204,196,200,208,209,205,195,197,198,211,218]', '1.1 the first twelve rows of the register read 183 ... 198, 211, 218 (order is history, never sorted)', JSON.stringify(R.map((r) => r.number)));
 ok(() => good(R), '1.2 0218: the two tables and the foreign key named; stale_for the two and collab_interest; OWED until the next PAIR regen');
 
 console.log('\n§2  it says what 0218 does');
@@ -29,7 +31,7 @@ ok(() => JSON.stringify(R.slice(0, BASE.register.length)) === JSON.stringify(BAS
 
 console.log('\n§4  mutations, run');
 ok(() => !good(R.filter((r) => r.number !== 218)), '4.1 the record removed: 1.2 reddens');
-ok(() => !good([R[R.length - 1]].concat(R.slice(0, -1))), '4.2 the record moved first (sorted, not history): 1.2 reddens');
+ok(() => !good([R[11]].concat(R.slice(0, 11), R.slice(12))), '4.2 the record moved first (sorted, not history): 1.2 reddens');
 
 console.log(`\nb268 ${pass} passed, ${fail} failed${fail ? ': ' + failed.join(' | ') : ''}`);
 process.exit(fail ? 1 : 0);

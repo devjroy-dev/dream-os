@@ -94,6 +94,18 @@
       "note": "**CE-47 · PTN · A2-1 · PARTNER CALLS** — creates `partner_sends` and `partner_answers` (RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the same transaction) and adds the foreign key `collab_interest_partner_fk` on `collab_interest`, the partner link `0197` left without one. Numbered `0218` from PTN's range (0216-0219) and lands in server train 11, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 7 October 2026; written by WEB-4, the register's one writer).",
       "stale_for": "`public.partner_sends`, `public.partner_answers`, `public.collab_interest`",
       "state": "OWED — the snapshot does not carry the two tables or `collab_interest_partner_fk`; `0218` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 201,
+      "note": "**CE-47 · INS · PAY-A · PAYMENT LINKS** — creates `vendor_pay_accounts`, `vendor_pay_links`, `vendor_pay_events` and `vendor_pay_settings` (each: RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the transaction) and three functions, `pay_record_milestone`, `pay_settle_invoice` and `pay_record_invoice` (no SECURITY clause, so invoker rights; EXECUTE revoked from PUBLIC, anon and authenticated, granted to service_role alone). Alters no existing table's shape (the functions write rows in `invoices` and `payment_schedules`). Numbered `0201` from INS's range and lands in server train 12, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0201's bytes, sha256 18dbb3f0…).",
+      "stale_for": "`public.vendor_pay_accounts`, `public.vendor_pay_links`, `public.vendor_pay_events`, `public.vendor_pay_settings`",
+      "state": "OWED — the snapshot does not carry the four tables or the three functions; `0201` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 202,
+      "note": "**CE-47 · INS · PAY-A · CONNECT STATES, REFUNDS AND BINDER PAYMENTS** — creates `vendor_pay_oauth_states` and `vendor_pay_event_answers` (each: RLS on; the four service_role grants in the transaction); alters three of `0201`'s tables: `vendor_pay_links` gains `binder_id`, its `invoice_id` drops NOT NULL and the CHECK `vendor_pay_links_one_home` is added; `vendor_pay_events` gains `binder_id`, `claimed_at` and `binder_base_received`, and its CHECK `vendor_pay_events_not_applied_reason_check` is dropped and re-added by name; `vendor_pay_settings` gains `accept_partial` boolean NOT NULL DEFAULT false. Seven functions (`pay_sweep_oauth_states`, `pay_take_off_refund`, `pay_hold_binder_payment`, `pay_claim_binder_event`, `pay_keep_binder_base`, `pay_finish_binder_event`, `pay_resolve_binder_event`; invoker rights; EXECUTE to service_role alone). Numbered `0202` from INS's range and lands in server train 12, after `0201` and below the applied ladder tip, so it fills a hole (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4 from 0202's bytes, sha256 0419d5e5…).",
+      "stale_for": "`public.vendor_pay_oauth_states`, `public.vendor_pay_event_answers`, `public.vendor_pay_links`, `public.vendor_pay_events`, `public.vendor_pay_settings`",
+      "state": "OWED — the snapshot does not carry the two tables, the three tables' new columns and CHECKs, or the seven functions; `0202` and this file are their witnesses until the next PAIR regen."
     }
   ]
 }
