@@ -1,0 +1,10 @@
+# scripts/floor-manifest-ce47-web4-cut28.txt
+# CE-47 · WEB-4 cut 28 · record 203 (INS F-44.420), the two time-zone cures (F-44.426), one R-47.1 line · base dae04b0 (server train 13 landed) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b269 extended by label (§6, 20 cells). tdw15_p3_daystogo and b92_lcv_p6a cured by label. No migration (0203 rides INS's package). b15 red on this base alone. No new directory. No file deleted.
+db/migrations/OUT_OF_ORDER.json
+docs/handovers/TDW_CE47_WEB4_CUT28_HANDOVER.md
+scripts/b269_ce47_web4_cut25_bench.js
+scripts/b92_lcv_p6a_bench.js
+scripts/floor-manifest-ce47-web4-cut28.txt
+scripts/tdw15_p3_daystogo_bench.js
+src/api/vendor/solutions/domain.js

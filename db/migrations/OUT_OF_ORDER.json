@@ -112,6 +112,12 @@
       "note": "**CE-47 · PTN · A2-1c · THE HISTORY OF A SEND** — creates `partner_send_log`, append-only (RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the transaction; its rows are removed only by the cascade from `partner_sends`), with the trigger `partner_send_log_no_update` and its function `partner_send_log_append_only` (refuses every UPDATE; EXECUTE revoked from PUBLIC, anon and authenticated); the function `partner_send_revive(uuid, text, text)` (one statement: the guarded UPDATE of `partner_sends` and its log line; invoker rights; EXECUTE to service_role alone). Alters `partner_orgs`: adds `whatsapp_opt_at` timestamptz NULL and `whatsapp_opt_words` text NULL (CHECK at most 300 characters). Seeds three `capabilities` rows, `template.tdw_partner_call`, `template.tdw_partner_picked` and `template.tdw_collab_request_sent`, born 'pending' (rows only; no shape change). Numbered `0219` from PTN's range (0216-0219) and lands in server train 13, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0219's bytes, sha256 adf13f68…).",
       "stale_for": "`public.partner_send_log`, `public.partner_orgs`",
       "state": "OWED — the snapshot does not carry `partner_send_log` or the two `partner_orgs` columns; `0219` and this file are their witnesses until the next PAIR regen."
+    },
+    {
+      "number": 203,
+      "note": "**CE-47 · INS · F-44.420 · TWO LIVE TRIGGERS WRITTEN INTO THE REPO** — `CREATE OR REPLACE TRIGGER invoices_updated_at` on `invoices` and `payment_schedules_set_updated_at` on `payment_schedules`, each BEFORE UPDATE, FOR EACH ROW, EXECUTE FUNCTION `set_updated_at()` (`0001`, unchanged); drops `invoices_set_updated_at` (`0008`), the repo's old name for the invoices trigger, which the live database does not carry. On the live database it changes nothing; on a database built from the repo it leaves one trigger per table, as live. No table, column, grant or policy changes. Numbered `0203` from INS's range and lands in server train 14, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0203's bytes, sha256 770bc39f…).",
+      "stale_for": "none: the snapshot carries no triggers",
+      "state": "NOTHING OWED: removed with the others at the next PAIR regen"
     }
   ]
 }

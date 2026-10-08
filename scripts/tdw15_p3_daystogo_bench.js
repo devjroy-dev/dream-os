@@ -135,7 +135,7 @@ const WEDDING = '2027-02-14';
 // STOOD in `today.js` and is reproduced ONLY as the thing being disagreed with.
 function utcBasisDays(weddingDate, nowMs) {
   const w = new Date(weddingDate).getTime();
-  const t = new Date(nowMs); t.setHours(0, 0, 0, 0);
+  const t = new Date(nowMs); t.setUTCHours(0, 0, 0, 0);   // F-44.426 (WEB-4 cut 28): UTC midnight on any host, not the host's own midnight
   const d = Math.ceil((w - t.getTime()) / 86400000);
   return d > 0 ? d : 0;
 }

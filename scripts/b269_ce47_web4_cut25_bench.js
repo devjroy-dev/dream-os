@@ -2,6 +2,9 @@
 // TDW · CE-47 · WEB-4 cut 25 · b269 — THE REGISTER'S RECORDS FOR 0201 AND 0202 (INS PAY-A, server train 12), from their
 // bytes. §1 the records, last, in history order · §2 they say what the files do, and name every table altered ·
 // §3 nothing before them moved · §4 mutations. No timing cell.
+// EXTENDED BY LABEL, cut 28 (the chair, 8 October): §6 the record for 0203 (INS F-44.420, server train 14), from its
+// bytes, last; 0219 held at its place (the fifteenth row). Amended: 1.1, 5.1 (good219), 5.4. Its stale_for names no table:
+// the snapshot carries no triggers (public_constraints_dump.sql :72); NOTHING OWED.
 // EXTENDED BY LABEL, cut 27 (the chair, 8 October): §5 the record for 0219 (PTN A2-1c, server train 13), from its
 // bytes, last; 201 and 202 held at their places (the thirteenth and fourteenth rows). Amended: 1.1, 1.2 (good), 4.2.
 'use strict';
@@ -26,7 +29,7 @@ const good = (reg) => { const a = reg.find((r) => r.number === 201); const b = r
 const a = R.find((r) => r.number === 201) || { note: '' }; const b = R.find((r) => r.number === 202) || { note: '' };
 
 console.log('\n§1  the records for 0201 and 0202, last, in history order');
-ok(() => JSON.stringify(R.map((r) => r.number)) === '[183,204,196,200,208,209,205,195,197,198,211,218,201,202,219]', '1.1 the register reads ... 211, 218, 201, 202, 219 (order is history: 0201 runs before 0202; cut 27: 0219 after them)', JSON.stringify(R.map((r) => r.number)));
+ok(() => JSON.stringify(R.map((r) => r.number)) === '[183,204,196,200,208,209,205,195,197,198,211,218,201,202,219,203]', '1.1 the register reads ... 211, 218, 201, 202, 219, 203 (order is history: 0201 runs before 0202; cut 27: 0219 after them; cut 28: 0203 after 0219)', JSON.stringify(R.map((r) => r.number)));
 ok(() => good(R), '1.2 both records: their tables and functions named; stale_for exact; OWED until the next PAIR regen');
 
 console.log('\n§2  they say what the files do');
@@ -46,15 +49,28 @@ console.log('\n§5  cut 27: the record for 0219 (PTN A2-1c), from its bytes, las
 const c = R.find((r) => r.number === 219) || { note: '', stale_for: '', state: '' };
 const ST219 = st(['partner_send_log', 'partner_orgs']);
 const good219 = (reg) => { const x = reg.find((r) => r.number === 219);
-  return Boolean(x) && reg[reg.length - 1] === x && reg.filter((r) => r.number === 219).length === 1 && x.stale_for === ST219
+  return Boolean(x) && reg[14] === x && reg.filter((r) => r.number === 219).length === 1 && x.stale_for === ST219
     && ['partner_send_log', 'partner_send_log_no_update', 'partner_send_log_append_only', 'partner_send_revive', 'whatsapp_opt_at', 'whatsapp_opt_words',
       'template.tdw_partner_call', 'template.tdw_partner_picked', 'template.tdw_collab_request_sent'].every((t) => x.note.includes(t))
     && /fills a hole/.test(x.note) && /^OWED/.test(x.state); };
-ok(() => good219(R), '5.1 0219 last: the table, its trigger and both functions, the two partner_orgs columns and the three capability rows named; stale_for exact; OWED');
+ok(() => good219(R), '5.1 0219 the fifteenth row (cut 28: held at its place): the table, its trigger and both functions, the two partner_orgs columns and the three capability rows named; stale_for exact; OWED');
 ok(() => /append-only/.test(c.note) && /EXECUTE to service_role alone/.test(c.note) && /RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the transaction/.test(c.note) && /adf13f68/.test(c.note) && /rows only; no shape change/.test(c.note), '5.2 0219 says what the file does: append-only, RLS and the four grants, revive service_role only, capabilities rows only; from its bytes');
 ok(() => !good219(R.map((r) => (r.number === 219 ? Object.assign({}, r, { stale_for: st(['partner_send_log']) }) : r))), '5.3 mutation: partner_orgs left out of stale_for (the table 0219 alters): 5.1 reddens');
-ok(() => !good219(R.slice(0, -2).concat([R[R.length - 1], R[R.length - 2]])), '5.4 mutation: 0219 placed before 0202: 5.1 reddens');
+ok(() => !good219(R.slice(0, 13).concat([R[14], R[13]], R.slice(15))), '5.4 mutation: 0219 placed before 0202: 5.1 reddens');
 ok(() => !good219(R.filter((r) => r.number !== 219)), '5.5 mutation: record 219 removed: 5.1 reddens');
+
+console.log('\n§6  cut 28: the record for 0203 (INS F-44.420), from its bytes, last');
+const g = R.find((r) => r.number === 203) || { note: '', stale_for: '', state: '' };
+const good203 = (reg) => { const x = reg.find((r) => r.number === 203);
+  return Boolean(x) && reg[reg.length - 1] === x && reg.filter((r) => r.number === 203).length === 1
+    && ['invoices_updated_at', 'payment_schedules_set_updated_at', 'invoices_set_updated_at', 'set_updated_at()', '`invoices`', '`payment_schedules`'].every((t) => x.note.includes(t))
+    && x.stale_for === 'none: the snapshot carries no triggers' && x.state === 'NOTHING OWED: removed with the others at the next PAIR regen' && /fills a hole/.test(x.note); };
+ok(() => good203(R), '6.1 0203 last: both triggers and the dropped old name named; stale_for and state exactly as the chair ruled');
+ok(() => /changes nothing/.test(g.note) && /No table, column, grant or policy changes/.test(g.note) && /770bc39f/.test(g.note), '6.2 0203 says what the file does: nothing on live; one trigger per table on a repo-built database; from its bytes');
+ok(() => /TRIGGERS\s+ARE\s+ABSENT/.test(fs.readFileSync(P('db/queries/public_constraints_dump.sql'), 'utf8')), '6.3 the reason nothing is owed holds: the constraints dump says triggers are absent, deliberately');
+ok(() => !good203(R.map((r) => (r.number === 203 ? Object.assign({}, r, { state: 'OWED' }) : r))), '6.4 mutation: 0203 marked OWED: 6.1 reddens');
+ok(() => !good203(R.slice(0, -2).concat([R[R.length - 1], R[R.length - 2]])), '6.5 mutation: 0203 placed before 0219: 6.1 reddens');
+ok(() => !good203(R.filter((r) => r.number !== 203)), '6.6 mutation: record 203 removed: 6.1 reddens');
 
 console.log(`\nb269 ${pass} passed, ${fail} failed${fail ? ': ' + failed.join(' | ') : ''}`);
 process.exit(fail ? 1 : 0);

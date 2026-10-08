@@ -57,7 +57,7 @@ router.get('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
 
 router.get('/search', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim();
-  if (!q) return errRes(res, 400, 'The search needs a name.');
+  if (!q) return errRes(res, 400, 'Type a name to search for.');
   if (!env.gates().p2) return okRes(res, { results: [], live: false });
   const results = await service.search(q, req.app.locals.domainDeps || {});
   for (const r of results) { const v = contract.shape('DomainSearchResult', r); if (!v.ok) return errRes(res, 500, 'TDW could not show this. Please try again.', 'CONTRACT_VIOLATION'); }

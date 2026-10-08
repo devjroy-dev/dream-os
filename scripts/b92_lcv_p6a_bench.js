@@ -439,7 +439,7 @@ async function main() {
       async (rq) => leadCase(rq, 'Add a new lead, Sharma, wedding on 15 March 0227', [{ act: 'lead', client_as_spoken: 'Sharma', date_as_spoken: '15 March 0227' }])));
     // The door planned "227-03-15"; createLead re-parses it (new Date('227-03-15') is 15 March 227) and stores
     // "0227-03-15": the row his walk of 20 September would have made.
-    m14ok = m14.r.door === true && m14.ins.length === 1 && m14.ins[0].wedding_date === '0227-03-15';
+    m14ok = m14.r.door === true && m14.ins.length === 1 && m14.ins[0].wedding_date === new Date('227-03-15').toISOString().split('T')[0];   // F-44.426 (WEB-4 cut 28): the date createLead derives on THIS host (a three-digit year is read as host-local time)
   } catch (e) { console.log(`        (${e.message})`); }
   T('10.14 M14 r2 reproduced (the resolver\'s cure and the door\'s strict parse reverted): the specimen FILES a lead dated 0227-03-15 (reddens 5.20)', m14ok);
   await mut('10.15 M15 planLead without its guard throws on a hostile act (reddens 9.1 and 9.3)', WDf,
