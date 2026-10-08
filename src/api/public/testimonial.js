@@ -21,13 +21,13 @@ const siteModel = require('../../lib/site/siteModel');
 const { videoKind } = require('../../lib/site/siteCard');
 
 const NOT_FOUND = { ok: false, error: 'This link is not available.' };
-const TOO_MANY = 'Too many tries. Please try again in an hour.';
+const TOO_MANY = 'You have tried too many times. Please try again in an hour.';
 const LINES = Object.freeze({
   consent: 'Please tick the box to let the studio show your words.',
   words: 'Please write a few words.',
-  month: 'Choose the month of the wedding or occasion.',
-  video: 'Use a YouTube or Instagram link.',
-  videoPlan: 'This studio takes written words only.',
+  month: 'Please choose the month of the wedding or occasion.',
+  video: 'Please use a YouTube or Instagram link.',
+  videoPlan: 'This studio accepts written reviews only, not videos.',
   failed: 'Your words could not be saved. Please try again in a moment.',
 });
 const HOUR = 3600 * 1000;

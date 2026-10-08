@@ -1,0 +1,23 @@
+# scripts/floor-manifest-ce47-web4-cut26.txt
+# CE-47 · WEB-4 cut 26 · the first build from her own photos, and the R-47.1 lines in WEB-4's rooms · base bcdb364 (server train 12 tip) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b271 (37 cells). b148, b160, b196, b198, b200, b261, b263 and b264 amended by label (words only). No migration. No new directory. No file deleted.
+docs/handovers/TDW_CE47_WEB4_CUT16_HANDOVER.md
+docs/handovers/TDW_CE47_WEB4_CUT26_HANDOVER.md
+scripts/b148_ce46_web1_site_card_bench.js
+scripts/b160_ce46_web4_site_model_bench.js
+scripts/b196_ce47_web4_cut3_bench.js
+scripts/b198_ce47_web4_cut5_bench.js
+scripts/b200_ce47_web4_cut7_bench.js
+scripts/b261_ce47_web4_cut16_bench.js
+scripts/b263_ce47_web4_cut17_bench.js
+scripts/b264_ce47_web4_cut19_bench.js
+scripts/b271_ce47_web4_cut26_bench.js
+scripts/floor-manifest-ce47-web4-cut26.txt
+src/api/public/testimonial.js
+src/api/vendor/firstBuild.js
+src/api/vendor/solutions/domain.js
+src/api/vendor/solutions/site.js
+src/api/vendor/solutions/siteRoom.js
+src/lib/site/limits.js
+src/lib/vendor/firstBuild.js
+src/lib/website/enquiry.js

@@ -13,6 +13,19 @@
 // NEVER: publishes; overwrites a field she filled; invents a fact. A failed step is reported in plain words and the
 // steps that do not need it still run. A restart resumes from the last finished step. On Basic, what her plan does
 // not open is reported 'skipped' with the plan that opens it.
+// CE-47 WEB-4 cut 26 (b271) · THE FIRST BUILD FROM HER OWN PHOTOS (the chair's rulings of 8 October, (a) to (e)):
+//   (a) TDW'S UNTOUCHED DRAFT, no column: the website step records the updated_at it wrote (counts.draft_written_at).
+//       The draft is TDW's and untouched only while ALL FOUR hold: its updated_at still equals that stamp; that step
+//       wrote it with no photos (no looks, no cover slides); she has no looks; her site was never published or styled.
+//       Every write of hers goes through the room's saveDraft, which stamps updated_at, so any edit of hers makes the
+//       draft hers for good; Discard deletes it, and no draft is never TDW's.
+//   (b) POST /first-build { step: 'website' } runs ONLY the website step again, inside her latest build, and fills
+//       only under (a); GET /latest carries website_can_fill. No hook on upload.
+//   (c) a look made from her photo takes its source from the photo: 'instagram' from Instagram, 'manual' otherwise
+//       (vendor_looks.source allows manual, phone, instagram; 'manual' now includes looks TDW made from her uploads).
+//       The look PHOTO's own source ('instagram' or 'upload') is what her site's rule reads (siteCard showsOnHerSite).
+//   (d) no Instagram but photos in her portfolio: the photos step says so, and says they were used only when the
+//       website step used them. No Instagram and no photos: the not-connected line, as before.
 const siteModel = require('../site/siteModel');
 const REG = require('../site/styles');
 const limits = require('../site/limits');
@@ -28,8 +41,11 @@ const NEUTRAL_STYLE = 'gallery';
 const LINES = Object.freeze({
   photos: (n, more) => (n ? `We added ${n} of your photos.${more ? ` ${more} more did not fit.` : ''}` : 'Your portfolio is already full, so we added no photos.'),
   photosNone: 'We found no photos on your Instagram to add.',
-  noInstagram: 'No Instagram connected, so we added no photos.',   // cut 21: skipped, not failed
-  noInstagramBio: 'Skipped: no Instagram connected.',              // cut 21: the storefront step names the missing link
+  noInstagram: 'Instagram is not connected, so we added no photos.',   // cut 21: skipped, not failed; cut 26: R-47.1
+  // cut 26 (d): no Instagram, but her own photos are in her portfolio; the second sentence only when the website used them
+  photosOwn: (n, used) => (n === 1 ? `Your portfolio has 1 photo.${used ? ' We used it for your website.' : ''}`
+    : `Your portfolio has ${n} photos.${used ? ' We used them for your website.' : ''}`),
+  noInstagramBio: 'Instagram is not connected, so we left your About empty.',   // cut 21; cut 26: R-47.1
   websiteNoPhotos: 'Your website draft is ready to check. It has no photos yet.',   // cut 21: plain, never a promise
   website: 'Your website draft is ready to check.',
   websiteKept: 'Your website already has your own work, so we left it as it is.',
@@ -37,18 +53,25 @@ const LINES = Object.freeze({
   packagesKept: 'You already have packages, so we left them as they are.',
   storefront: 'We filled in your About from your Instagram bio.',
   storefrontKept: 'Your About is already filled in, so we left it as it is.',
-  noBio: 'Skipped: no bio on your Instagram.',
+  noBio: 'Your Instagram has no bio, so we left your About empty.',   // cut 26: R-47.1
   eliza: 'Eliza knows your packages and prices.',
-  elizaGap: (what) => `Eliza needs ${what} before she can answer about it.`,
-  failed: 'This step could not finish. You can add this yourself.',
+  // cut 26: R-47.1; `gaps` is a list, joined "a, b and c"
+  elizaGap: (gaps) => `Add ${andList(gaps)} so Eliza can answer clients' questions.`,
+  failed: 'TDW could not finish this step. You can fill in this part yourself.',   // cut 26: R-47.1
+  // cut 26 (b): POST { step: 'website' } refused, by its code
+  websiteHers: 'Your website already has your own work, so we left it as it is.',
+  websiteNoPhotosYet: 'Your portfolio has no photos yet, so we did not change your website.',
+  noBuild: 'TDW has not made a website draft for you yet.',
 });
+function andList(xs) { const a = [].concat(xs).filter(Boolean); return a.length < 2 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`; }
 // Amendment 1 (FE-9 via the chair): on Basic no whole step is skipped; PARTS of the website step are, carried on the
-// step itself as opens: [{ line, plan }] (the room shows "Available on <plan>").
+// step itself as opens: [{ line, plan }]. cut 26 (the chair, 8 October, R-47.1): each line is one whole sentence with
+// its plan in it, and the app shows it as it is; `plan` stays for the app's logic.
 const BASIC_OPENS = Object.freeze([
-  Object.freeze({ line: 'More styles, colour sets and font pairings', plan: 'Essential' }),
-  Object.freeze({ line: 'The client reviews section', plan: 'Essential' }),
-  Object.freeze({ line: 'Collections and the journal', plan: 'Signature' }),
-  Object.freeze({ line: 'Your own domain', plan: 'Signature' }),
+  Object.freeze({ line: 'More styles, colour sets and font pairings are available on Essential.', plan: 'Essential' }),
+  Object.freeze({ line: 'The client reviews section is available on Essential.', plan: 'Essential' }),
+  Object.freeze({ line: 'Collections and the journal are available on Signature.', plan: 'Signature' }),
+  Object.freeze({ line: 'Your own domain is available on Signature.', plan: 'Signature' }),
 ]);
 
 const nowIso = () => new Date().toISOString();
@@ -73,10 +96,47 @@ async function start(sb, vendor, deps) {
   return { build_id: created.id, already: false };
 }
 
-/** GET latest: her most recent build and its state (Home: "Your business is ready to check"), or null. */
+/** GET latest: her most recent build and its state (Home: "Your business is ready to check"), or null.
+ *  cut 26 (b): website_can_fill, true only when POST { step: 'website' } would fill her draft. */
 async function latest(sb, vendorId) {
   const r = await rows(sb.from('vendor_first_builds').select('id').eq('vendor_id', vendorId).order('started_at', { ascending: false }).limit(1));
-  return r.length ? Object.assign({ build_id: r[0].id }, await read(sb, vendorId, r[0].id)) : null;
+  if (!r.length) return null;
+  const b = await read(sb, vendorId, r[0].id); if (!b) return null;
+  const can = b.state === 'running' ? { ok: false } : await canFillWebsite(sb, vendorId, b.steps);
+  return Object.assign({ build_id: r[0].id }, b, { website_can_fill: can.ok === true });
+}
+
+/** cut 26 (a)+(b): may the website step fill her draft from her photos now? { ok } or { ok: false, code }. */
+async function canFillWebsite(sb, vendorId, steps) {
+  const w = (Array.isArray(steps) ? steps : []).find((s) => s.key === 'website');
+  if (!w || !w.counts || (w.state !== 'done' && w.state !== 'skipped')) return { ok: false, code: 'NO_BUILD' };
+  const st = await websiteState(sb, vendorId, w.counts);
+  if (st.hers || !st.untouched) return { ok: false, code: 'WEBSITE_HERS' };
+  if (!st.pics.length) return { ok: false, code: 'NO_PHOTOS' };
+  return { ok: true };
+}
+const REFUSAL_LINES = Object.freeze({ WEBSITE_HERS: LINES.websiteHers, NO_PHOTOS: LINES.websiteNoPhotosYet, NO_BUILD: LINES.noBuild });
+
+/** POST { step: 'website' }: the website step alone, again, inside her latest build; only under (a). Not a hook on upload. */
+async function rerunWebsite(sb, vendor, deps) {
+  const running = await one(sb.from('vendor_first_builds').select('id').eq('vendor_id', vendor.id).eq('state', 'running').maybeSingle());
+  if (running) return { build_id: running.id, already: true };
+  const r = await rows(sb.from('vendor_first_builds').select('id, state, steps').eq('vendor_id', vendor.id).order('started_at', { ascending: false }).limit(1));
+  if (!r.length) return { refused: 'NO_BUILD', line: REFUSAL_LINES.NO_BUILD };
+  const row = r[0]; const steps = Array.isArray(row.steps) ? row.steps.map((s) => Object.assign({}, s)) : [];
+  const can = await canFillWebsite(sb, vendor.id, steps);
+  if (!can.ok) return { refused: can.code, line: REFUSAL_LINES[can.code] };
+  const w = steps.find((s) => s.key === 'website'); w.state = 'waiting'; w.line = null;   // its counts stay: the stamp
+  // one guarded flip: only a build that is not running becomes running (the unique index refuses a second runner)
+  const flipped = await rows(sb.from('vendor_first_builds').update({ state: 'running', steps, finished_at: null, updated_at: nowIso() })
+    .eq('id', row.id).eq('vendor_id', vendor.id).neq('state', 'running').select('id'));
+  if (!flipped.length) {
+    const again = await one(sb.from('vendor_first_builds').select('id').eq('vendor_id', vendor.id).eq('state', 'running').maybeSingle());
+    return again ? { build_id: again.id, already: true } : { error: 'start_failed' };
+  }
+  const job = run(sb, vendor, row.id, deps);   // only the website step is waiting, so only it runs
+  if (deps && deps.onRun) deps.onRun(job);
+  return { build_id: row.id, already: false };
 }
 
 /** GET: her build, as the app reads it. */
@@ -100,14 +160,47 @@ async function run(sb, vendor, buildId, deps) {
   for (const key of STEP_KEYS) {
     const s = steps.find((x) => x.key === key);
     if (!s || ['done', 'skipped', 'failed'].includes(s.state)) continue;
+    const prev = s.counts ? Object.assign({}, s.counts) : null;   // cut 26 (a): the stamp a rerun compares against
     s.state = 'running'; await save(sb, buildId, steps);
-    try { Object.assign(s, await STEPS[key](sb, vendor, deps || {})); }
+    try { Object.assign(s, await STEPS[key](sb, vendor, deps || {}, prev)); }
     catch (_e) { Object.assign(s, { state: 'failed', line: LINES.failed, counts: null }); }
+    if (key === 'website') photosLineAfterWebsite(steps);
     await save(sb, buildId, steps);
   }
   const anyFailed = steps.some((s) => STEP_KEYS.includes(s.key) && s.state === 'failed');
   await save(sb, buildId, steps, anyFailed ? 'failed' : 'done');
   return steps;
+}
+
+/** cut 26 (d): the photos step is skipped only when no Instagram is connected. When her portfolio has her own photos,
+ *  its line names them, and says they were used only when the website step put them on her draft. */
+function photosLineAfterWebsite(steps) {
+  const p = steps.find((x) => x.key === 'photos'); const w = steps.find((x) => x.key === 'website');
+  if (!p || p.state !== 'skipped' || !w || !w.counts) return;
+  const n = Number(w.counts.photos) || 0; if (!n) return;
+  const used = w.state === 'done' && ((w.counts.looks || 0) > 0 || (w.counts.cover_slides || 0) > 0);
+  p.line = LINES.photosOwn(n, used); p.counts = Object.assign({}, p.counts, { own: n });
+}
+
+/** cut 26 (a): what the website step reads, and whether her draft is TDW's untouched one (all four conditions). */
+async function websiteState(sb, vendorId, prev) {
+  const [live, draft, looks, photos] = await Promise.all([
+    one(sb.from('vendor_sites').select('published_at, style').eq('vendor_id', vendorId).maybeSingle()),
+    one(sb.from('vendor_site_drafts').select('settings, sections, pages, updated_at').eq('vendor_id', vendorId).maybeSingle()),
+    rows(sb.from('vendor_looks').select('id').eq('vendor_id', vendorId).is('deleted_at', null)),
+    rows(sb.from('vendor_portfolio').select('id, image_url, caption, approval_state, source').eq('vendor_id', vendorId).order('position', { ascending: true })),
+  ]);
+  const pics = photos.filter((p) => /^https:\/\//.test(String(p.image_url || '')));
+  const untouched = untouchedDraft(draft, prev);
+  const hers = Boolean((live && (live.published_at || live.style)) || looks.length
+    || (draft && draft.settings && Object.keys(draft.settings).length && !untouched));
+  return { pics, untouched, hers };
+}
+function untouchedDraft(draft, prev) {
+  if (!draft || !prev || prev.draft !== true || !prev.draft_written_at) return false;
+  if ((prev.looks || 0) !== 0 || (prev.cover_slides || 0) !== 0) return false;     // that step wrote no photos
+  const a = Date.parse(draft.updated_at); const b = Date.parse(prev.draft_written_at);
+  return Number.isFinite(a) && a === b;                                            // no write of hers since
 }
 
 const STEPS = {
@@ -128,33 +221,30 @@ const STEPS = {
     return { state: 'done', line: LINES.photos(n, more), counts: { imported: n, no_room: more } };   // amendment 3
   },
 
-  async website(sb, vendor) {
-    const [live, draft, looks, photos] = await Promise.all([
-      one(sb.from('vendor_sites').select('published_at, style').eq('vendor_id', vendor.id).maybeSingle()),
-      one(sb.from('vendor_site_drafts').select('settings, sections, pages').eq('vendor_id', vendor.id).maybeSingle()),
-      rows(sb.from('vendor_looks').select('id').eq('vendor_id', vendor.id).is('deleted_at', null)),
-      rows(sb.from('vendor_portfolio').select('id, image_url, caption, approval_state, source').eq('vendor_id', vendor.id).order('position', { ascending: true })),
-    ]);
-    const hers = (live && (live.published_at || live.style)) || (draft && draft.settings && Object.keys(draft.settings).length) || looks.length;
-    if (hers) return { state: 'skipped', line: LINES.websiteKept, counts: { draft: false, looks: 0, cover_slides: 0 }, opens: opensFor(vendor.tier) };
+  async website(sb, vendor, _deps, prev) {
+    const { pics, hers } = await websiteState(sb, vendor.id, prev);
+    if (hers) return { state: 'skipped', line: LINES.websiteKept, counts: { draft: false, looks: 0, cover_slides: 0, photos: pics.length }, opens: opensFor(vendor.tier) };
     const style = NEUTRAL_STYLE;   // never from her trade
-    const name = limits.field('site_name', vendor.business_name || ''); const pics = photos.filter((p) => /^https:\/\//.test(String(p.image_url || '')));
+    const name = limits.field('site_name', vendor.business_name || '');
     const settings = { style, styles_picked: [style], palette_id: null, font_pair: null,   // her style's defaults (b)
       site_name: name.ok && name.value ? name.value : null,
       cover: pics.slice(0, COVER_SLIDES).map((p) => ({ photo: { url: p.image_url }, headline: null, eyebrow: null, emphasis: null, button: null, target: null })) };
-    await sb.from('vendor_site_drafts').upsert({ vendor_id: vendor.id, settings, sections: [], pages: [], updated_at: nowIso() }, { onConflict: 'vendor_id' });
+    const stamp = nowIso();   // cut 26 (a): recorded, so a later rerun can tell her draft is still TDW's untouched one
+    const wrote = await one(sb.from('vendor_site_drafts').upsert({ vendor_id: vendor.id, settings, sections: [], pages: [], updated_at: stamp }, { onConflict: 'vendor_id' }).select('updated_at').single());
     let made = 0; const taken = [];
     for (const p of pics.slice(0, LOOKS_MAX)) {
       const words = String(p.caption || '').split('\n').map((x) => x.trim()).find(Boolean) || '';
       const t = limits.field('look_title', words.slice(0, 60)); const title = (t.ok && t.value) || `Look ${made + 1}`;
       const slug = limits.slugFrom(title, taken); taken.push(slug);
-      const look = await one(sb.from('vendor_looks').insert({ vendor_id: vendor.id, slug, title, status: 'draft', source: 'instagram' }).select('id').single());
+      // cut 26 (c): the look's source follows its photo's; 'manual' includes looks TDW made from her uploaded photos
+      const look = await one(sb.from('vendor_looks').insert({ vendor_id: vendor.id, slug, title, status: 'draft', source: p.source === 'instagram' ? 'instagram' : 'manual' }).select('id').single());
       if (!look) continue;
       await sb.from('vendor_look_photos').insert({ look_id: look.id, vendor_id: vendor.id, image_url: p.image_url, position: 0,
         approval_state: p.approval_state === 'approved' ? 'approved' : 'pending', source: p.source === 'instagram' ? 'instagram' : 'upload' });
       made += 1;
     }
-    return { state: 'done', line: pics.length ? LINES.website : LINES.websiteNoPhotos, counts: { draft: true, looks: made, cover_slides: settings.cover.length }, opens: opensFor(vendor.tier) };
+    return { state: 'done', line: pics.length ? LINES.website : LINES.websiteNoPhotos, opens: opensFor(vendor.tier),
+      counts: { draft: true, looks: made, cover_slides: settings.cover.length, photos: pics.length, draft_written_at: (wrote && wrote.updated_at) || stamp } };
   },
 
   async packages(sb, vendor, deps) {
@@ -187,7 +277,7 @@ const STEPS = {
     if (!v || blank(v.category)) gaps.push('your trade'); if (!v || blank(v.city)) gaps.push('your city');
     if (!pk.some((p) => Number(p.total) > 0)) gaps.push('a package with a price');
     const facts = 3 - gaps.length;
-    return { state: 'done', line: gaps.length ? LINES.elizaGap(gaps.join(', ')) : LINES.eliza, counts: { facts } };
+    return { state: 'done', line: gaps.length ? LINES.elizaGap(gaps) : LINES.eliza, counts: { facts } };
   },
 };
 
@@ -215,4 +305,5 @@ function liveDeps() {
   };
 }
 
-module.exports = { start, read, latest, run, STEPS, STEP_KEYS, N_PHOTOS, NEUTRAL_STYLE, LINES, BASIC_OPENS, fetchBio, liveDeps, freshSteps };
+module.exports = { start, read, latest, run, STEPS, STEP_KEYS, N_PHOTOS, NEUTRAL_STYLE, LINES, BASIC_OPENS, fetchBio, liveDeps, freshSteps,
+  rerunWebsite, canFillWebsite, untouchedDraft, REFUSAL_LINES };

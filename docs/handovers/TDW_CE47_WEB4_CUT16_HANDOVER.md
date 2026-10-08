@@ -33,3 +33,23 @@ replaced the zeroed meter with a CAUSAL stage meter, deterministic under load; 1
 exits identical but two. b196 is 1/0, its flaky cell on the clean tip. b15 is red on this base ALONE, expected: the
 formatter aborts on 0205's record until OFF-A1b r2 brings 0205's file, ahead of this cut; the chair proves b15 green on
 the combined tree.
+
+## Walk card (added by cut 26, for WALK-1; the chair's word of 7 October: "into its handover, not a package of its own")
+The words below are the ones in force once cut 26 lands (R-47.1). If the walk runs before cut 26 lands, the old words
+are in brackets.
+VENDOR: a test vendor on Basic. Find one, or set one test vendor's plan to Basic in the admin. SWITCH ON FIRST: nothing.
+1 Open Business Solutions, then Website. SEE: the room opens. The locked items say "Available on Essential",
+  "Available on Signature" or "Available on Prestige".
+2 Pick one style. SEE: it saves. Try a second style. SEE: "Basic includes one style. More styles are available on
+  Essential." ["Basic has one style. More styles open on Essential."]
+3 Try another colour set, then another font pairing. SEE: "Colour sets are available on Essential." and "Font pairings
+  are available on Essential." ["... open on Essential."]
+4 Publish. SEE: it publishes. Open her site address. SEE: the new styles site, in her style and its default colours,
+  not the old one-page site.
+5 Change to a different style, and Publish again. SEE: it is allowed (her first published style was free).
+6 Change the style once more, the same day. SEE: "You can change your style once every 30 days. You can change it
+  again on <day month>."
+7 Try to buy or connect her own domain. SEE: "Your own domain is available on Signature." ["Your own domain opens on
+  Signature."]
+IT FAILED IF: the room does not open on Basic; a second style saves; the site still shows the old page after Publish;
+or step 6 lets the change through.

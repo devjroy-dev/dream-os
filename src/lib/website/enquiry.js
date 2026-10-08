@@ -20,13 +20,13 @@ const LINES = Object.freeze({
   phoneIN: 'Please add a 10-digit mobile number.',
   phone: 'Please add your mobile number.',
   occasion: 'Please choose the occasion.',
-  package: 'Choose a package from the list.',   // cut 17
-  date: 'Please choose a date from today on.',
-  consent: 'Please send again to agree to the line above Send.',
-  tooMany: 'Too many tries. Please try again in an hour.',
+  package: 'Please choose a package from the list.',   // cut 17
+  date: 'Please choose today\'s date or a later date.',
+  consent: 'Your enquiry was not sent. Please press Send again to agree to the words above the button.',
+  tooMany: 'You have tried too many times. Please try again in an hour.',
   enquiryFailed: 'Your enquiry could not be sent. Please try again in a moment.',
   chatEmpty: 'Please write a message.',
-  oneMoment: 'One moment.',
+  oneMoment: 'Your last message is still being answered. Please wait a moment.',
   chatFailed: 'Your message could not be sent. Please try again in a moment.',
 });
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

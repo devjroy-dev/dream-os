@@ -40,10 +40,10 @@ router.get('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
 router.post('/look', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const look = String((req.body && req.body.look) || '').trim();
   if (!siteModel.LOOKS.includes(look)) return errRes(res, 400, 'Pick one of the three looks.');
-  if (!siteModel.looksOpen(req.vendor.tier)) return errRes(res, 403, 'More looks are on Essential.');
+  if (!siteModel.looksOpen(req.vendor.tier)) return errRes(res, 403, 'More looks are available on Essential.');
   const supabase = req.app.locals.supabase;
   const { error } = await supabase.from('vendor_sites').upsert({ vendor_id: req.vendor.id, look, updated_at: new Date().toISOString() }, { onConflict: 'vendor_id' });
-  if (error) return errRes(res, 503, 'Your look could not be saved yet.');
+  if (error) return errRes(res, 503, 'Your look could not be saved. Please try again.');
   const row = await siteRowOf(supabase, req.vendor.id);
   return okRes(res, { site: shape(req.vendor, row) });
 }));

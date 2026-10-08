@@ -235,7 +235,7 @@ function seed() {
   const er = await S2.call('POST', '/site/testimonials/requests', { person_name: 'Kavya' }, store2.tables.vendors.find((x) => x.id === 'ess1'));
   const et = er.body && er.body.link.split('/').pop();
   const ev = await S2.call('POST', '/t/' + et, body, null, '10.0.0.2');
-  ok(() => ev.status === 400 && /written words only/.test(ev.raw), '6.13 Essential: a video link is refused with a plain line');
+  ok(() => ev.status === 400 && /accepts written reviews only, not videos\./.test(ev.raw), '6.13 Essential: a video link is refused with a plain line');
   const bad = await S2.call('POST', '/t/' + et, Object.assign({}, body, { video_url: undefined, consent: false }), null, '10.0.0.2');
   ok(() => bad.status === 400, '6.14 no consent, no words saved');
   // per-token limit: five refused tries, then even a good one reads 404
@@ -246,7 +246,7 @@ function seed() {
   // AMENDED BY LABEL, CE-47 WEB-4 (cut 5, b198): the maps became one pruned, capped limiter.
   if (TS && TS._limiter) TS._limiter._map.clear();
   let last = null; for (let i = 0; i < 21; i += 1) last = await S2.call('POST', '/t/' + 'y'.repeat(30), {}, null, '10.9.9.9');
-  ok(() => last.status === 429 && /Too many tries/.test(last.raw), '6.16 per address: the 21st POST in an hour is 429 with the plain line');
+  ok(() => last.status === 429 && /You have tried too many times\./.test(last.raw), '6.16 per address: the 21st POST in an hour is 429 with the plain line');
   ok(() => !JSON.stringify(store2.tables).includes('10.9.9.9') && !JSON.stringify(store.tables).includes('10.0.0.1'), '6.17 no address is stored anywhere');
   // expired and revoked
   const r2 = await sig('POST', '/testimonials/requests', { person_name: 'Old' }); const t2 = r2.body.link.split('/').pop();
@@ -257,7 +257,7 @@ function seed() {
   ok(() => e2.status === 404 && e3.status === 404 && e2.raw === e3.raw, '6.18 expired and revoked read as the same 404 body');
   // CE-47's cure 2 (r2): "not after this month" is India's calendar month
   const mb = { consent: true, name: 'M', month: '2026-10', words: 'w' };
-  ok(() => !TS.checkSubmission(mb, true, new Date('2026-09-30T19:00:00Z')).error && TS.checkSubmission(mb, true, new Date('2026-09-30T18:29:00Z')).error === 'Choose the month of the wedding or occasion.', '6.19 00:30 IST on 1 October accepts October; 23:59 IST on 30 September refuses it (both ways)');
+  ok(() => !TS.checkSubmission(mb, true, new Date('2026-09-30T19:00:00Z')).error && TS.checkSubmission(mb, true, new Date('2026-09-30T18:29:00Z')).error === 'Please choose the month of the wedding or occasion.', '6.19 00:30 IST on 1 October accepts October; 23:59 IST on 30 September refuses it (both ways)');
   ok(() => !TS.checkSubmission(Object.assign({}, mb, { month: '2027-01' }), true, new Date('2026-12-31T18:30:00Z')).error, '6.20 across a year\'s end in India\'s calendar');
   // CE-47's cure 3 (r2): a failed insert does not burn the link
   const r4 = await sig('POST', '/testimonials/requests', { person_name: 'Nisha', phone: '+919876543210' }); const t4 = r4.body.link.split('/').pop();

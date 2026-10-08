@@ -40,7 +40,7 @@ for (const m of ['src/api/middleware/requireAuth.js', 'src/api/middleware/resolv
   const srv = await new Promise((r) => { const x = app.listen(0, '127.0.0.1', () => r(x)); });
   const get = (p, as) => new Promise((res) => { who = as; http.get(`http://127.0.0.1:${srv.address().port}${p}`, (rs) => { let b = ''; rs.on('data', (d) => (b += d)); rs.on('end', () => { let j = null; try { j = JSON.parse(b); } catch { /* */ } res({ status: rs.statusCode, body: j, raw: b }); }); }); });
   const ven = (id) => st.tables.vendors.find((x) => x.id === id);
-  ok(() => SR && SR.changesOf({}, [], [], { sections: [{ key: 'reviews', shown: false }] })[0].line === 'Client reviews section changed', '3.1 her change line reads "Client reviews section changed"');
+  ok(() => SR && SR.changesOf({}, [], [], { sections: [{ key: 'reviews', shown: false }] })[0].line === 'You changed the Client reviews section.', '3.1 her change line reads "You changed the Client reviews section."');
   const room = await get('/site/room', ven('sig1'));
   const pal = room.body && room.body.room.styles[0].palettes[0];
   ok(() => pal && /^#[0-9a-f]{6}$/i.test(pal.swatch.ground) && pal.swatch.ink && pal.swatch.accent && JSON.stringify(Object.keys(pal.swatch)) === '["ground","ink","accent"]', '3.2 room.styles[].palettes[].swatch { ground, ink, accent }');
@@ -95,7 +95,7 @@ for (const m of ['src/api/middleware/requireAuth.js', 'src/api/middleware/resolv
   ok(() => e2.status === 200 && st2.tables.leads.length === 1 && st2.tables.leads[0].event_types[0] === 'Engagement' && notices.length === 1, '4.7 again within 7 days: the open lead gains the facts; no second lead, no second notice');
   const v = async (x, f) => { const r = await post('/e/sig1', good(x), { ip: '198.51.100.' + Math.floor(Math.random() * 200) }); return r.status === 400 && r.body.field === f ? r.body.error : 'status ' + r.status + ' ' + r.raw; };
   const lines = [await v({ name: ' ' }, 'name'), await v({ phone_e164: '+91512345678' }, 'phone'), await v({ country: 'US', phone_e164: '+4412345678' }, 'phone'), await v({ occasion: '' }, 'occasion'), await v({ date: '2020-01-01' }, 'date'), await v({ date: `${yr + 4}-01-01` }, 'date'), await v({ consent: 'yes' }, 'consent')];
-  ok(() => JSON.stringify(lines) === JSON.stringify(['Please add your name.', 'Please add a 10-digit mobile number.', 'Please add your mobile number.', 'Please choose the occasion.', 'Please choose a date from today on.', 'Please choose a date from today on.', 'Please send again to agree to the line above Send.']), '4.8 one plain line per field (name, +91, other codes, occasion, date past and 3 years on, consent)', JSON.stringify(lines));
+  ok(() => JSON.stringify(lines) === JSON.stringify(['Please add your name.', 'Please add a 10-digit mobile number.', 'Please add your mobile number.', 'Please choose the occasion.', 'Please choose today\'s date or a later date.', 'Please choose today\'s date or a later date.', 'Your enquiry was not sent. Please press Send again to agree to the words above the button.']), '4.8 one plain line per field (name, +91, other codes, occasion, date past and 3 years on, consent)', JSON.stringify(lines));
   ok(() => W.phoneFor('US', '+14155550123').ok && W.phoneFor('AE', '+971501234567').ok && !W.phoneFor('US', '+914155550123').ok && !W.phoneFor('ZZ', '+14155550123').ok && W.phoneFor('IN', '+919876543210').ok && !W.phoneFor('IN', '+915876543210').ok, '4.9 the phone is checked against its country (IN: +91 then 6-9 and nine digits)');
   ok(() => !W.checkEnquiry(good({ date: today })).error && W.checkEnquiry(good({ date: today }), Date.parse(today + 'T00:00:00Z') - 330 * 60000 - 60000).ok, '4.10 today in India is allowed (the day starts at 00:00 IST)');
   const misses = await Promise.all([post('/e/nobody', good()), post('/e/paus1', good()), post('/e/gone1', good()), post('/e/sig1', good(), { origin: 'https://evil.example' }), post('/e/sig1', good(), { origin: '' })]);
@@ -106,7 +106,7 @@ for (const m of ['src/api/middleware/requireAuth.js', 'src/api/middleware/resolv
   caps['flag.website_chat'] = 'armed'; const armedOther = await post('/e/sig1', good({ phone_e164: '+919876500003' }), { ip: '192.0.2.4' }); const armedWalk = await post('/e/walk1', good({ phone_e164: '+919876500004' }), { origin: 'https://walk1.thedreamwedding.in', ip: '192.0.2.5' }); caps['flag.website_chat'] = 'on';
   ok(() => armedOther.status === 404 && armedWalk.status === 200, '4.13 armed: open for the walk vendor only');
   let last = null; for (let i = 0; i < 11; i += 1) last = await post('/e/sig1', good({ name: '' }), { ip: '10.1.1.1' });
-  ok(() => last.status === 429 && last.body.error === 'Too many tries. Please try again in an hour.', '4.14 per address: the 11th POST in an hour is 429');
+  ok(() => last.status === 429 && last.body.error === 'You have tried too many times. Please try again in an hour.', '4.14 per address: the 11th POST in an hour is 429');
   for (let i = 0; i < 3; i += 1) await post('/e/ess1', good({ phone_e164: '+919811122233' }), { origin: 'https://ess1.thedreamwedding.in', ip: '10.2.2.' + i });
   const fourth = await post('/e/ess1', good({ phone_e164: '+919811122233' }), { origin: 'https://ess1.thedreamwedding.in', ip: '10.2.2.9' });
   ok(() => fourth.status === 429, '4.15 per vendor + phone: the 4th in a day is 429');
@@ -136,7 +136,7 @@ for (const m of ['src/api/middleware/requireAuth.js', 'src/api/middleware/resolv
   let release; turnImpl = () => new Promise((r) => { release = () => r({ reply: 'Slow answer.', stoodIn: false }); });
   const pSlow = post('/c/sig1', { chat_token: ctok, text: 'first' }); await new Promise((r) => setTimeout(r, 120));
   const busy = await post('/c/sig1', { chat_token: ctok, text: 'second' }); if (release) release(); const slow = await pSlow;
-  ok(() => busy.status === 409 && busy.body.error === 'One moment.' && slow.status === 200, '5.7 while a turn for this token runs: 409 "One moment."');
+  ok(() => busy.status === 409 && busy.body.error === 'Your last message is still being answered. Please wait a moment.' && slow.status === 200, '5.7 while a turn for this token runs: 409 "Your last message is still being answered. Please wait a moment."');
   turnImpl = async () => { throw new Error('model down'); }; const m1 = await post('/c/sig1', { chat_token: ctok, text: 'a' });
   turnImpl = async () => ({ reply: "Thanks, we'll be in touch soon!", stoodIn: true }); const m2 = await post('/c/sig1', { chat_token: ctok, text: 'b' });
   ok(() => m1.status === 503 && m2.status === 503 && m1.body.error === 'Your message could not be sent. Please try again in a moment.' && !st2.tables.messages.some((m) => m.direction === 'outbound' && /in touch soon/.test(m.body)), '5.8 a model failure or the engine\'s stand-in: 503, and no invented reply is shown or recorded');

@@ -110,7 +110,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   ok(() => p1.status === 200 && !(st.tables.vendor_sites || []).some((x) => x.vendor_id === 'sig1') && st.tables.vendor_site_drafts.find((x) => x.vendor_id === 'sig1').settings.style === 'heritage', '4.1 PATCH /settings writes her draft; the live row is untouched');
   await S.call('PUT', '/site/sections', { sections: [{ key: 'band', shown: false }] }, ven('sig1'));
   const r1 = S ? await room('sig1') : null;
-  ok(() => r1 && r1.room.stored.style === 'heritage' && r1.room.is_live === false && r1.room.changes.count === 3 && JSON.stringify(r1.room.changes.list) === JSON.stringify([{ area: 'settings', line: 'Your styles changed' }, { area: 'settings', line: 'Style changed' }, { area: 'sections', line: 'Band section changed' }]), '4.2 GET /room: `stored` is the draft; changes in plain words; is_live false before the first Publish', r1 && JSON.stringify(r1.room.changes));
+  ok(() => r1 && r1.room.stored.style === 'heritage' && r1.room.is_live === false && r1.room.changes.count === 3 && JSON.stringify(r1.room.changes.list) === JSON.stringify([{ area: 'settings', line: 'You changed the styles you picked.' }, { area: 'settings', line: 'You changed your style.' }, { area: 'sections', line: 'You changed the Band section.' }]), '4.2 GET /room: `stored` is the draft; changes in plain words; is_live false before the first Publish', r1 && JSON.stringify(r1.room.changes));
   const c0 = S ? await card('sig1') : null;
   ok(() => c0 && c0.card.site.v === 'classic' && c0.card.looks.length === 0, '4.3 unpublished, the public card is today\'s page (live rows only)');
   const pub = S ? await S.call('POST', '/site/publish', undefined, ven('sig1')) : {};

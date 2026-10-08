@@ -45,7 +45,7 @@ function statusShape(vendor, row) {
 function sendStatus(res, vendor, row) {
   const payload = statusShape(vendor, row);
   const v = contract.shape('DomainStatus', payload);
-  if (!v.ok) return errRes(res, 500, 'Response failed its contract.', 'CONTRACT_VIOLATION');
+  if (!v.ok) return errRes(res, 500, 'TDW could not show this. Please try again.', 'CONTRACT_VIOLATION');
   return okRes(res, { domain: payload });
 }
 
@@ -57,17 +57,17 @@ router.get('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
 
 router.get('/search', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim();
-  if (!q) return errRes(res, 400, 'A search term is required.');
+  if (!q) return errRes(res, 400, 'The search needs a name.');
   if (!env.gates().p2) return okRes(res, { results: [], live: false });
   const results = await service.search(q, req.app.locals.domainDeps || {});
-  for (const r of results) { const v = contract.shape('DomainSearchResult', r); if (!v.ok) return errRes(res, 500, 'Response failed its contract.', 'CONTRACT_VIOLATION'); }
+  for (const r of results) { const v = contract.shape('DomainSearchResult', r); if (!v.ok) return errRes(res, 500, 'TDW could not show this. Please try again.', 'CONTRACT_VIOLATION'); }
   return okRes(res, { results, live: true });
 }));
 
 router.post('/order', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   // CE-47 WEB-4 cut 16 (f): her own domain opens on Signature
-  if (siteModel.rank(req.vendor.tier) < 2) return errRes(res, 403, 'Your own domain opens on Signature.');
-  if (!env.gates().p2) return errRes(res, 503, 'Your own name is not open yet.');
+  if (siteModel.rank(req.vendor.tier) < 2) return errRes(res, 403, 'Your own domain is available on Signature.');
+  if (!env.gates().p2) return errRes(res, 503, 'Buying your own domain through TDW is not available yet.');
   const body = req.body || {};
   const out = await service.order(req.app.locals.supabase, req.vendor, { domain: body.domain, registrant: body.registrant, years: body.years ? Number(body.years) : 1 }, req.app.locals.domainDeps || {});
   if (!out.ok) return errRes(res, 409, out.reason);
@@ -76,8 +76,8 @@ router.post('/order', requireAuth, resolveVendor(), asyncHandler(async (req, res
 
 router.post('/wire', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   // CE-47 WEB-4 cut 16 (f): her own domain opens on Signature
-  if (siteModel.rank(req.vendor.tier) < 2) return errRes(res, 403, 'Your own domain opens on Signature.');
-  if (!env.gates().p2) return errRes(res, 503, 'Your own name is not open yet.');
+  if (siteModel.rank(req.vendor.tier) < 2) return errRes(res, 403, 'Your own domain is available on Signature.');
+  if (!env.gates().p2) return errRes(res, 503, 'Buying your own domain through TDW is not available yet.');
   await service.sweepWiring(req.app.locals.supabase, req.app.locals.domainDeps || {});
   const row = await service.current(req.app.locals.supabase, req.vendor.id);
   return sendStatus(res, req.vendor, row);

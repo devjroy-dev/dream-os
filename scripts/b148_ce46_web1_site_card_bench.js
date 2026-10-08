@@ -92,7 +92,7 @@ await (async () => {
   const g1 = await call('GET', '/s');
   ok(g1.status === 200 && g1.body.site.look === 'bloom' && g1.body.site.looks_open === false && g1.body.site.trade_look === 'bloom' && JSON.stringify(g1.body.site.looks) === '["quiet","bloom","atelier"]', '5b.1 Basic (makeup): her trade\'s look, looks_open false');
   const p1 = await call('POST', '/s/look', { look: 'atelier' });
-  ok(p1.status === 403 && writes.length === 0 && /More looks are on Essential\./.test(JSON.stringify(p1.body)), '5b.2 Basic cannot change her look: 403 with the plain line, nothing written');
+  ok(p1.status === 403 && writes.length === 0 && /More looks are available on Essential\./.test(JSON.stringify(p1.body)), '5b.2 Basic cannot change her look: 403 with the plain line, nothing written');
   vendor = { id: 'v-1', tier: 'essential', category: 'makeup' };
   const p2 = await call('POST', '/s/look', { look: 'atelier' });
   ok(p2.status === 200 && p2.body.site.look === 'atelier' && p2.body.site.looks_open === true && writes.length === 1 && writes[0].look === 'atelier', '5b.3 Essential saves a look (one upsert on vendor_id) and the answer reads it back');

@@ -73,16 +73,16 @@ async function server(store, parts) {
   const fnt = await set({ style: 'noir', font_pair: require(P('src/lib/site/styles.js')).STYLES.noir.pairs[1] });
   const cred = await set({ credit_shown: false });
   const own = await set({ palette_custom: { accent: '#aa3344' } });
-  ok(() => two.status === 400 && /Basic has one style\. More styles open on Essential\./.test(two.raw), '2.2 a second style: "Basic has one style. More styles open on Essential."', two.raw);
-  ok(() => pal.status === 400 && /Colour sets open on Essential\./.test(pal.raw) && own.status === 400 && /Colour sets open on Essential\./.test(own.raw), '2.3 another palette, or her own colour: "Colour sets open on Essential."');
-  ok(() => fnt.status === 400 && /Font pairings open on Essential\./.test(fnt.raw), '2.4 another font pairing: "Font pairings open on Essential."');
-  ok(() => cred.status === 400 && /Removing the credit is on Prestige\./.test(cred.raw), '2.5 removing the line below Prestige: refused, naming Prestige');
+  ok(() => two.status === 400 && /Basic includes one style\. More styles are available on Essential\./.test(two.raw), '2.2 a second style: "Basic includes one style. More styles are available on Essential."', two.raw);
+  ok(() => pal.status === 400 && /Colour sets are available on Essential\./.test(pal.raw) && own.status === 400 && /Colour sets are available on Essential\./.test(own.raw), '2.3 another palette, or her own colour: "Colour sets are available on Essential."');
+  ok(() => fnt.status === 400 && /Font pairings are available on Essential\./.test(fnt.raw), '2.4 another font pairing: "Font pairings are available on Essential."');
+  ok(() => cred.status === 400 && /Removing the TDW line at the bottom of your site is available on Prestige\./.test(cred.raw), '2.5 removing the line below Prestige: refused, naming Prestige');
   const okStyle = await set({ style: 'heritage' });
   ok(() => okStyle.status === 200 && st.tables.vendor_site_drafts.find((x) => x.vendor_id === 'basic1').settings.style === 'heritage', '2.6 choosing her one style (and changing it in her draft before her first Publish) is free');
   const pub = await S.call('POST', '/site/publish', undefined, ven('basic1'));
   ok(() => pub.status === 200 && st.tables.vendor_sites.find((x) => x.vendor_id === 'basic1').published_at && !st.tables.vendor_sites.find((x) => x.vendor_id === 'basic1').style_changed_at, '2.7 (d) Publish is allowed on Basic; her FIRST published style starts no clock');
   const rv = await S.call('POST', '/site/testimonials/requests', { name: 'A' }, ven('basic1')); const vis = await S.call('GET', '/site/visitors', undefined, ven('basic1'));
-  ok(() => rv.status === 403 && /Client reviews open on Essential\./.test(rv.raw) && vis.status === 403 && /Visitor counts open on Essential\./.test(vis.raw), '2.8 still Essential\'s: review requests and visitor counts, each refused by name');
+  ok(() => rv.status === 403 && /Client reviews are available on Essential\./.test(rv.raw) && vis.status === 403 && /Visitor counts are available on Essential\./.test(vis.raw), '2.8 still Essential\'s: review requests and visitor counts, each refused by name');
 
   sec('3  the 30-day style clock (Basic; ruling 2)');
   const c1 = await set({ style: 'heritage' }, 'basic2');
@@ -118,7 +118,7 @@ async function server(store, parts) {
   const DS = await server(sd, { '/dom': D });
   const d1 = await DS.call('POST', '/dom/order', { domain: 'swati.in' }, VEN('basic1', 'basic')); const d2 = await DS.call('POST', '/dom/wire', { domain: 'swati.in' }, VEN('ess1', 'essential'));
   await DS.close();
-  ok(() => d1.status === 403 && /Your own domain opens on Signature\./.test(d1.raw) && d2.status === 403 && /Your own domain opens on Signature\./.test(d2.raw), '5.1 ordering or wiring her own domain below Signature: "Your own domain opens on Signature."');
+  ok(() => d1.status === 403 && /Your own domain is available on Signature\./.test(d1.raw) && d2.status === 403 && /Your own domain is available on Signature\./.test(d2.raw), '5.1 ordering or wiring her own domain below Signature: "Your own domain is available on Signature."');
 
   sec('6  0195 and the out-of-order register');
   const SQL = read('db/migrations/0195_basic_style_and_photo_source.sql').split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');

@@ -45,35 +45,34 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CLOUD = /^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//;
 
 const LINES = Object.freeze({
-  basic: 'The new website is on Essential and up.',
   notYours: 'That was not found.',
   saveFailed: 'That could not be saved yet. Please try again.',
-  styleClosed: 'That style is not one of the styles your plan opens.',
-  tooManyStyles: (n) => `Your plan opens ${n} styles. Remove one to add another.`,
-  paletteClosed: 'That colour set is not one of this style\'s.',
-  ownColour: 'Your own colour is on Signature and up.',
-  gradient: 'Gradients are on Prestige.',
-  fontClosed: 'That font pair is not one this style offers.',
-  finishClosed: 'That choice is not one this style offers.',
-  textureClosed: 'Textures are on Prestige.',
-  creditRemoval: 'Removing the credit is on Prestige.',
-  pagesClosed: 'Extra pages are on Prestige.',
-  collectionsClosed: 'Collections are on Signature and up.',
-  sectionClosed: 'That section is not on your plan.',
-  photoAddress: 'Upload the photo again, then add it.',
+  styleClosed: 'Your plan does not include that style.',
+  tooManyStyles: (n) => `Your plan includes ${n} styles. Remove one before you add another.`,
+  paletteClosed: 'That colour set does not belong to this style. Pick one of its own.',
+  ownColour: 'Choosing your own colour is available on Signature.',
+  gradient: 'Colour blends are available on Prestige.',
+  fontClosed: 'This style does not offer that font pairing. Pick one of its own.',
+  finishClosed: 'This style does not offer that option.',
+  textureClosed: 'Background textures are available on Prestige.',
+  creditRemoval: 'Removing the TDW line at the bottom of your site is available on Prestige.',
+  pagesClosed: 'Extra pages are available on Prestige.',
+  collectionsClosed: 'Collections are available on Signature.',
+  sectionClosed: 'Your plan does not include that section.',
+  photoAddress: 'That photo could not be found. Upload it again, then add it.',
   photoCap: `A look can hold up to ${limits.COUNTS.photos_per_look} photos.`,
   publishedCap: `You can have up to ${limits.COUNTS.published_looks} looks on your site.`,
-  needPhoto: 'Add at least one photo first.',
+  needPhoto: 'Add at least one photo to this look first.',
   videoLink: 'Use a YouTube or Instagram link.',
-  videoPlan: 'Video testimonials are on Signature and up.',
+  videoPlan: 'Video reviews are available on Signature.',
   phone: 'Enter the number with its country code, like +91 98765 43210.',
   nothingToPublish: 'There are no changes to publish.',
   // CE-47 WEB-4 cut 16: Basic's room, each locked field refused by name with the plan that opens it (ruling 3)
-  basicOneStyle: 'Basic has one style. More styles open on Essential.',
-  basicPalette: 'Colour sets open on Essential.',
-  basicFont: 'Font pairings open on Essential.',
-  reviewsClosed: 'Client reviews open on Essential.',
-  visitorsClosed: 'Visitor counts open on Essential.',
+  basicOneStyle: 'Basic includes one style. More styles are available on Essential.',
+  basicPalette: 'Colour sets are available on Essential.',
+  basicFont: 'Font pairings are available on Essential.',
+  reviewsClosed: 'Client reviews are available on Essential.',
+  visitorsClosed: 'Visitor counts are available on Essential.',
   styleClock: (words) => `You can change your style once every 30 days. You can change it again on ${words}.`,
 });
 
@@ -104,10 +103,11 @@ async function saveDraft(sb, vid, patch) {
   return !error;
 }
 const SETTING_LINES = Object.freeze({
-  style: 'Style changed', styles_picked: 'Your styles changed', palette_id: 'Colours changed', palette_custom: 'Colours changed',
-  font_pair: 'Fonts changed', motion: 'Movement changed', corners: 'Corners changed', button_style: 'Buttons changed',
-  texture: 'Texture changed', cover_mode: 'Cover changed', cover: 'Cover changed', monogram: 'Monogram changed',
-  site_name: 'Site name changed', copy: 'Words changed', credit_shown: 'Credit changed',
+  // cut 26: R-47.1, each a sentence that says who did what
+  style: 'You changed your style.', styles_picked: 'You changed the styles you picked.', palette_id: 'You changed your colours.', palette_custom: 'You changed your colours.',
+  font_pair: 'You changed your fonts.', motion: 'You changed how your site moves.', corners: 'You changed the corners.', button_style: 'You changed the buttons.',
+  texture: 'You changed the background texture.', cover_mode: 'You changed your cover.', cover: 'You changed your cover.', monogram: 'You changed your monogram.',
+  site_name: 'You changed your site name.', copy: 'You changed the words on your site.', credit_shown: 'You changed the TDW line at the bottom of your site.',
 });
 const SECTION_LABELS = Object.freeze({ cover: 'Cover', looks: 'Looks', collections: 'Collections', band: 'Band', reviews: 'Client reviews',
   pricing: 'Prices', studio: 'Studio', journal: 'Journal', faq: 'Questions', enquire: 'Enquire' });
@@ -121,11 +121,11 @@ function changesOf(live, liveSections, livePages, draft) {
   for (const x of Array.isArray(d.sections) ? d.sections : []) {
     const was = byKey.get(x.key) || {};
     const differs = ['variant', 'shown', 'position', 'eyebrow', 'heading', 'body'].some((f) => x[f] !== undefined && !same(x[f], was[f]));
-    if (differs) push('sections', `${SECTION_LABELS[x.key] || 'Your own section'} section changed`);
+    if (differs) push('sections', SECTION_LABELS[x.key] ? `You changed the ${SECTION_LABELS[x.key]} section.` : 'You changed one of your own sections.');
   }
   if (Array.isArray(d.pages)) {
     const a = (livePages || []).map((p) => [p.slug, p.title, p.shown !== false]); const b = d.pages.map((p) => [p.slug, p.title, p.shown !== false]);
-    if (!same(a, b)) push('pages', 'Pages changed');
+    if (!same(a, b)) push('pages', 'You changed your pages.');
   }
   return out;
 }
@@ -576,7 +576,7 @@ router.get('/collections', ...auth, asyncHandler(async (req, res) => {
 const lookupLimiter = require('../../../lib/site/limiter').makeLimiter({ cap: 5000 });
 router.get('/credit-lookup', ...auth, asyncHandler(async (req, res) => {
   const sb = req.app.locals.supabase; const v = req.vendor;
-  if (!lookupLimiter.hit('v:' + v.id, 120, 3600000)) return errRes(res, 429, 'Too many tries. Please try again in an hour.');
+  if (!lookupLimiter.hit('v:' + v.id, 120, 3600000)) return errRes(res, 429, 'You have tried too many times. Please try again in an hour.');
   const h = String(req.query.handle || '').trim().replace(/^@/, '');
   if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,39}$/.test(h)) return errRes(res, 404, LINES.notYours);
   const o = await one(sb.from('vendors').select('id, business_name, routing_handle, status, discover_paused').eq('routing_handle', h.toUpperCase()).maybeSingle());

@@ -76,7 +76,7 @@ const LINES = Object.freeze({
   oneLine: (label) => `${label} must be on one line.`,
   tooMany: (label, n) => `You can add up to ${n}.`,
   priceForm: 'Write the price as Rs 45,000.',
-  priceHidden: 'Your page hides prices, but this text has a price in it, so it will show.',
+  priceHidden: 'Your prices are hidden on your page, but this text has a price in it, and that price will show.',
 });
 
 /**

@@ -49,7 +49,7 @@ const { makeStore } = require('./lib/b196_store');
   const e2 = E.checkEnquiry(base, now);
   const e3 = E.checkEnquiry(Object.assign({}, base, { package: 'x'.repeat(81) }), now);
   ok(() => e1.ok && e1.ok.package === 'Every function, with a trial' && e2.ok && e2.ok.package === null, '4.1 optional, trimmed; absent is null', JSON.stringify(e1).slice(0, 160));
-  ok(() => e3.field === 'package' && /Choose a package from the list\./.test(e3.error), '4.2 over 80 characters: refused by name', JSON.stringify(e3));
+  ok(() => e3.field === 'package' && /Please choose a package from the list\./.test(e3.error), '4.2 over 80 characters: refused by name', JSON.stringify(e3));
   ok(() => E.firstLine(e1.ok) === 'Website enquiry: Wedding, no date, from Pricing, about Every function, with a trial.' && E.firstLine(e2.ok) === 'Website enquiry: Wedding, no date, from Pricing.', '4.3 the thread\'s first line names the package; without one it is unchanged');
 
   sec('5  the register: 0197 after 0195');
