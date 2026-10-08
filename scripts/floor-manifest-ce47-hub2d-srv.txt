@@ -1,0 +1,28 @@
+# scripts/floor-manifest-ce47-hub2d-srv.txt
+# CE-47 · HUB-2d SERVER · the founder's walk (8 Oct 2026): a call's title in one home ("Decor needed", src/lib/hub/title.js), "calls posted on Threads" lower case, every Hub line under R-47.1 (the founder's People line word for word). BASE: bcdb364 (server train 12). No migration.
+# Amended by label: b283 (word cells 3.1, 4.4, 5.2, 5.4, 5.6, 7.1, 7.2, 7.5, 7.6, 7.9; mutation anchors M3, M6), b284 (2.1, 3.4, 4.3, 5b.2).
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# fc89780d0f1dda35eac29649ae18277776d04088c15c24b103e4924da654e6de · ADDED · docs/handovers/TDW_CE47_HUB2D_SRV_HANDOVER.md
+# 4037067911fef2eafc6d0f8c09d03df3f7727575d75fd2c0423062aff41cc517 · ADDED · docs/handovers/b287_ledger_HUB2D.txt
+# c98c66afc8c6947812146311442a45f4091d04bf6f24946fd814325be3b92be6 · CHANGED · scripts/b283_hub1_server_bench.js
+# 348edfc27c4fa296c8f39e0917e7a56e2cab5682abc1d3cd7e7f12a2b193a742 · CHANGED · scripts/b284_hub2_server_bench.js
+# 2b4e01eedb28de039dec8fa10387ac0f309582c39f652e941ce0fbe0a074c826 · ADDED · scripts/b287_hub2d_server_bench.js
+# 88c15ec49f5cb49e09b545b9cdb0958421f37295cb5f2ed6bf3a325f654fa15b · CHANGED · src/api/public/hub.js
+# 9ec49ba76afa5b953e2cf730b9b29f56b4a26942b12961e246bb8f12595062d8 · CHANGED · src/api/vendor/hub.js
+# 2b1f4f38a33736515eacc47d32253c0322e18faeb6afc1db7cf61afa47c89819 · CHANGED · src/lib/collab/interest.js
+# b6ad2387e0a645540c0de98668ee0493fae37545aa968547d64afc8c550c31ce · CHANGED · src/lib/hub/credits.js
+# e7e9872e4925fc7824d138faba081e888566db86cd81122a59790c9d59d29889 · CHANGED · src/lib/hub/people.js
+# f7e6fecf4ed5b9ba3841c85954852c17e300dfc39bbb2804a4ba76d2bb79941b · ADDED · src/lib/hub/title.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-hub2d-srv.txt
+docs/handovers/TDW_CE47_HUB2D_SRV_HANDOVER.md
+docs/handovers/b287_ledger_HUB2D.txt
+scripts/b283_hub1_server_bench.js
+scripts/b284_hub2_server_bench.js
+scripts/b287_hub2d_server_bench.js
+src/api/public/hub.js
+src/api/vendor/hub.js
+src/lib/collab/interest.js
+src/lib/hub/credits.js
+src/lib/hub/people.js
+src/lib/hub/title.js
+scripts/floor-manifest-ce47-hub2d-srv.txt

@@ -6,7 +6,8 @@
 // HUB-2b (the chair's ruling, 7 Oct 2026): ONE GUARD. A call whose poster does not have Collab Hub open (gate.js: testers
 // or the clb.hub switch, failing closed) takes no partner row: it writes nothing and says why. PTN's sending asks the same
 // question first; this is the second guard, at the one place partner rows are written.
-const NOT_OPEN = 'The vendor who posted this call does not have Collab Hub open yet, so nobody can be put forward on it.';
+// HUB-2d (R-47.1): one idea in a sentence. PTN reads this constant (answers.js), never its own copy.
+const NOT_OPEN = 'The vendor who posted this call does not have Collab Hub open yet. You cannot suggest anyone for this call until they do.';
 const { isCollabRole } = require('./roles');
 const { hubOpen } = require('../hub/gate');   // HUB-2b · Rule 1's one home
 

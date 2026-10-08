@@ -26,6 +26,7 @@ const { websiteUrl } = require('../../lib/partners/links');
 // The question itself lives in src/lib/hub/gate.js (HUB-2b): testers or the clb.hub switch, failing closed. GET /me tells
 // a closed vendor so (and makes no page); every other Hub door refuses her with one plain sentence.
 const { hubOpen, CLOSED, _reset: resetGate } = require('../../lib/hub/gate');   // HUB-2b: Rule 1's one home
+const { callTitle } = require('../../lib/hub/title');   // HUB-2d: "Decor needed", one home
 resetGate();   // a fresh router starts from an empty gate cache, as it did when the gate lived here (no change in a running server)
 const hubGate = asyncHandler(async (req, res, next) => {
   if (await hubOpen(req.app.locals.supabase, req.vendor.id)) return next();
@@ -85,9 +86,9 @@ router.get('/work', requireAuth, resolveVendor(), hubGate, guard(async (req, res
         roles: (roles.get(c.id) || []).map((r) => ({ role: r.requirement_type, needed: r.needed || 1 })), event_date: c.event_date, city: c.city,
         pay_kind: c.pay_kind || null, budget_inr: c.budget_inr || null, details: c.details || null,
         instagram: card ? card.instagram : null, website: card ? card.website : null, page_url: card ? card.page_url : null }; }),
-    // Brands' briefs, planners' paid jobs and From Threads arrive through PTN's reads when they land; until then the
-    // list says so rather than looking empty.
-    not_yet: ['briefs from brands', 'paid jobs from planners', 'From Threads'],
+    // Brands' briefs, planners' paid jobs and calls posted on Threads arrive through PTN's reads when they land; until
+    // then the list says so rather than looking empty. HUB-2d: all lower case (the founder's walk: "From Threads" was a slip).
+    not_yet: ['briefs from brands', 'paid jobs from planners', 'calls posted on Threads'],
   });
 }));
 
@@ -96,8 +97,8 @@ router.get('/people', requireAuth, resolveVendor(), hubGate, guard(async (req, r
   const p = await me(req, sb);
   const mine = req.query.mine === '1';
   const list = await people(sb, p, { role: req.query.role || null, city: req.query.city || null, open_to: req.query.open_to || null, mine });
-  return okRes(res, { people: list, ...(mine ? { waiting: await waitingForYes(sb, p), mine_line: 'Vendors you added, and people who said yes to a shoot you did together. Nobody else is on this list.' } : {}),
-    line: 'No messages inside TDW. When you pick someone for a call, you both get each other\u2019s number.' });
+  return okRes(res, { people: list, ...(mine ? { waiting: await waitingForYes(sb, p), mine_line: 'This list has the vendors you added and the people who confirmed a shoot with you. Nobody else is on it.' } : {}),
+    line: 'TDW has no chat. When you choose someone for your call, each of you gets the other\u2019s phone number.' });
 }));
 
 // HUB-2 · MY PEOPLE: a vendor adds or takes off another VENDOR. A person or an organisation is refused (400): they join
@@ -107,7 +108,7 @@ router.delete('/people/:id/my-people', requireAuth, resolveVendor(), hubGate, gu
 
 router.get('/mine', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb);
-  const { data: calls } = await sb.from('collab_posts').select('id, event_date, city, details, state, source, asked_at, created_at').eq('vendor_id', req.vendor.id).order('created_at', { ascending: false }).limit(50);
+  const { data: calls } = await sb.from('collab_posts').select('id, requirement_type, event_date, city, details, state, source, asked_at, created_at').eq('vendor_id', req.vendor.id).order('created_at', { ascending: false }).limit(50);
   const cids = (calls || []).map((c) => c.id);
   const resp = cids.length ? ((await sb.from('collab_responses').select('post_id, state').in('post_id', cids)).data || []) : [];
   const count = (id, st) => resp.filter((r) => r.post_id === id && (!st || r.state === st)).length;
@@ -120,19 +121,22 @@ router.get('/mine', requireAuth, resolveVendor(), hubGate, guard(async (req, res
   const byId = new Map(pages.map((x) => [x.id, profiles.publicCard(x)]));
   const cardOf = (id) => { const c = byId.get(id); return c ? { name: c.name, page_url: c.page_url } : null; };
   const callIds = [...new Set([...(applied || []).map((a) => a.post_id), ...(waiting || []).map((c) => c.call_id).filter(Boolean)])];
-  const callRows = callIds.length ? ((await sb.from('collab_posts').select('id, vendor_id, details, event_date, city').in('id', callIds)).data || []) : [];
+  const callRows = callIds.length ? ((await sb.from('collab_posts').select('id, vendor_id, requirement_type, details, event_date, city').in('id', callIds)).data || []) : [];
   const callById = new Map(callRows.map((c) => [c.id, c]));
+  const itemIds = [...new Set([...cids, ...callIds])];
+  const itemRows = itemIds.length ? ((await sb.from('collab_post_items').select('post_id, requirement_type, needed').in('post_id', itemIds)).data || []) : [];
+  const titleOf = (post) => callTitle(post, itemRows.filter((r) => r.post_id === post.id));
   const posterIds = [...new Set(callRows.map((c) => c.vendor_id))];
   const posterPages = posterIds.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('vendor_id', posterIds)).data || []) : [];
   const posterNames = posterIds.length ? ((await sb.from('vendors').select('id, business_name').in('id', posterIds)).data || []) : [];
   const posterOf = (vid) => { const pg = posterPages.find((x) => x.vendor_id === vid); if (pg) { const c = profiles.publicCard(pg); return { name: c.name, page_url: c.page_url }; }
     const v = posterNames.find((x) => x.id === vid); return { name: v ? v.business_name : 'A TDW vendor', page_url: null }; };
-  const appliedWords = (postId) => { const c = callById.get(postId); return c ? { call: c.details ? String(c.details).slice(0, 60) : 'A call', event_date: c.event_date, city: c.city, from: posterOf(c.vendor_id) } : { call: 'A call', from: null }; };
+  const appliedWords = (postId) => { const c = callById.get(postId); return c ? { call: titleOf(c), details: c.details ? String(c.details).slice(0, 60) : null, event_date: c.event_date, city: c.city, from: posterOf(c.vendor_id) } : { call: 'A call', details: null, from: null }; };
   const shootWords = (c) => { const call = c.call_id ? callById.get(c.call_id) : null;
-    const name = call ? (call.details ? String(call.details).slice(0, 60) : 'A TDW call') : c.shoot_name;
+    const name = call ? titleOf(call) : c.shoot_name;
     return [name, call ? call.city : c.city, monthWords(call ? call.event_date : c.month)].filter(Boolean).join(' \u00b7 '); };
   return okRes(res, {
-    my_calls: (calls || []).map((c) => ({ id: c.id, event_date: c.event_date, city: c.city, details: c.details, state: c.state,
+    my_calls: (calls || []).map((c) => ({ id: c.id, title: titleOf(c), event_date: c.event_date, city: c.city, details: c.details, state: c.state,
       interested: count(c.id), picked: count(c.id, 'accepted'), sent_by_tdw: c.source === 'tdw_forward', line: c.source === 'tdw_forward' ? 'Sent by TDW at your request' : null })),
     applied: (applied || []).map((a) => ({ id: a.id, post_id: a.post_id, state: a.state, words: a.state === 'accepted' ? 'Picked' : a.state === 'declined' || a.state === 'passed' ? 'Not picked' : a.state === 'withdrawn' ? 'Withdrawn' : 'Waiting',
       ...appliedWords(a.post_id) })),
@@ -158,11 +162,12 @@ async function shootRequestsLeft(sb, profileId) {
 router.post('/credits', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb); const b = req.body || {};
   const made = b.call_id ? await credits.offerForCall(sb, p, b.call_id, b.people) : await credits.offerForShoot(sb, p, b);
-  return okRes(res, { offered: made.length, credits: made, line: 'Each person sees it and decides. Nothing shows until they say yes.' });
+  return okRes(res, { offered: made.length, credits: made, line: 'Each person gets a request to confirm. The shoot appears on your page and theirs only after they confirm it.' });
 }));
 router.post('/credits/:id/yes', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.answer(sb, await me(req, sb), req.params.id, true))));
 router.post('/credits/:id/no', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.answer(sb, await me(req, sb), req.params.id, false))));
 router.post('/credits/:id/take-back', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => okRes(res, await credits.takeBack(sb, await me(req, sb), req.params.id))));
 
+router._callTitle = callTitle;   // benches only: the title's one home, run for real
 router._resetGate = () => resetGate();   // benches only: the 60 s cache, cleared between cells (gate.js holds it)
 module.exports = router;

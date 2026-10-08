@@ -135,7 +135,7 @@ async function cells() {
 
   sec('2  POST /hub/people/:id/my-people · vendors only');
   r = await s.call('POST', '/hub/people/p-riya/my-people');
-  ok(r.status === 400 && r.body && /Only vendors can be added\. People and organisations join when they say yes to a shoot\./.test(JSON.stringify(r.body)) && db._tables.vendor_roster.length === 2, '2.1 a person is refused with the plain words, and nothing is written', JSON.stringify(r.body));
+  ok(r.status === 400 && r.body && /You can add only vendors\. People and organisations join your list when they confirm a shoot you did together\./.test(JSON.stringify(r.body)) && db._tables.vendor_roster.length === 2, '2.1 a person is refused with the plain words, and nothing is written (HUB-2d: the words amended by label)', JSON.stringify(r.body));
   r = await s.call('POST', '/hub/people/p-star/my-people');
   ok(r.status === 400 && db._tables.vendor_roster.length === 2, '2.2 an organisation is refused, and nothing is written');
   r = await s.call('POST', `/hub/people/${pa.id}/my-people`);
@@ -151,13 +151,13 @@ async function cells() {
   ok(row(pa.id).in_my_people && row(pa.id).why === 'added' && row(pa.id).why_words === 'you added them' && row(pa.id).can_take_off === true && row(pa.id).can_add === false, '3.1 an added vendor: in, "you added them", can be taken off', JSON.stringify(row(pa.id)));
   ok(row('p-tara').can_add === false && row('p-nova').can_add === false && row(pk.id).can_add === true && row(pk.id).in_my_people === false, '3.2 "Add" is offered on a vendor only, never on a person or an organisation');
   ok(row(pe.id).in_my_people && row(pe.id).why_words === 'you worked together on a TDW call' && row(pe.id).can_take_off === false, '3.3 an edge from a TDW call is in, and cannot be taken off', JSON.stringify(row(pe.id)));
-  ok(row('p-riya').why === 'said_yes' && row('p-riya').why_words === 'said yes to Rooftop editorial, August 2026' && row('p-star').why_words === 'said yes to Studio portrait shoot, September 2026', '3.4 a yes credit, either way round, reads "said yes to <shoot>, <month>"', JSON.stringify([row('p-riya'), row('p-star')]));
+  ok(row('p-riya').why === 'said_yes' && row('p-riya').why_words === 'confirmed Rooftop editorial, August 2026' && row('p-star').why_words === 'confirmed Studio portrait shoot, September 2026', '3.4 a yes credit, either way round, reads "confirmed <shoot>, <month>" (HUB-2d: amended by label)', JSON.stringify([row('p-riya'), row('p-star')]));
 
   sec('4  GET /hub/people?mine=1 · nobody on the list without agreeing');
   r = await s.call('GET', '/hub/people?mine=1'); const ids = r.body.people.map((x) => x.id).sort();
   ok(JSON.stringify(ids) === JSON.stringify([pa.id, pe.id, 'p-riya', 'p-star'].sort()), '4.1 My people: vendors on her roster plus yes credits, each once', ids.join(','));
   ok(!ids.includes('p-tara') && !ids.includes('p-nova') && !r.body.people.some((x) => x.name === 'Someone By Phone'), '4.2 a waiting credit, a "no", and an old phone-only roster row are not on the list');
-  ok(Array.isArray(r.body.waiting) && r.body.waiting.length === 1 && r.body.waiting[0].id === 'p-tara' && r.body.waiting[0].words === 'Waiting for their yes' && /Nobody else is on this list/.test(r.body.mine_line), '4.3 the waiting credit is shown apart, with its words', JSON.stringify(r.body.waiting));
+  ok(Array.isArray(r.body.waiting) && r.body.waiting.length === 1 && r.body.waiting[0].id === 'p-tara' && r.body.waiting[0].words === 'Waiting for them to confirm' && /Nobody else is on it\./.test(r.body.mine_line), '4.3 the waiting credit is shown apart, with its words (HUB-2d: amended by label)', JSON.stringify(r.body.waiting));
   ok(!('waiting' in (await s.call('GET', '/hub/people')).body), '4.4 the full list carries no waiting block');
 
   sec('5  DELETE /hub/people/:id/my-people · only her own vendor edge');
@@ -183,14 +183,14 @@ async function cells() {
   ok(r.status === 200 && r.body.shoot_requests_left === 17, '5b.1 Mine says how many are left: 20 less the shoot requests of the last 30 days (old ones and call credits not counted)', r.body && r.body.shoot_requests_left);
   db._tables.hub_credits = db._tables.hub_credits.filter((c) => !String(c.id).startsWith('left'));
   db._tables.hub_credits.push({ id: 'c-ask', call_id: null, shoot_name: 'Summer colour shoot', city: 'Noida', month: '2026-07-01', giver_profile_id: pk.id, person_profile_id: me.id, state: 'offered', offered_at: now });
-  db._tables.collab_posts.push({ id: 'call-k', vendor_id: VK, details: 'Studio portrait shoot', event_date: '2026-11-08', city: 'Gurugram', state: 'open' });
+  db._tables.collab_posts.push({ id: 'call-k', vendor_id: VK, requirement_type: 'photography', details: 'Studio portrait shoot', event_date: '2026-11-08', city: 'Gurugram', state: 'open' });   // HUB-2d: a call has its role
   db._tables.collab_responses.push({ id: 'resp1', post_id: 'call-k', responder_vendor_id: VME, state: 'accepted', created_at: now });
   r = await s.call('GET', '/hub/mine');
   const ask = (r.body.waiting_for_your_yes || []).find((c) => c.id === 'c-ask'); const rw = (r.body.worked_with || []).find((l) => l.shoot_name === 'Rooftop editorial');
   const ap = (r.body.applied || []).find((a) => a.id === 'resp1');
   ok(ask && ask.from && ask.from.name === 'Kabir Lens' && ask.from.page_url === 'https://thedreamwedding.in/c/kabirlens' && ask.shoot_words === 'Summer colour shoot \u00b7 Noida \u00b7 July 2026'
     && rw && rw.month_words === 'August 2026' && rw.with.some((w) => w.name === 'Riya Kapoor' && w.page_url === 'https://thedreamwedding.in/c/riya.kapoor')
-    && ap && ap.call === 'Studio portrait shoot' && ap.words === 'Picked' && ap.from.page_url === 'https://thedreamwedding.in/c/kabirlens'
+    && ap && ap.call === 'Photography needed' && ap.details === 'Studio portrait shoot' && ap.words === 'Picked'   // HUB-2d: titled by its role, as today's room does && ap.from.page_url === 'https://thedreamwedding.in/c/kabirlens'
     && !/9811|"phone"|"email"/.test(JSON.stringify(r.body)),
     '5b.2 Mine names everyone it mentions, each with a page link, in words; no phone or email', JSON.stringify({ ask, rw, ap }).slice(0, 300));
   // CE-47: read the RAW body for anything shaped like a phone number or an email address, not only the field names.

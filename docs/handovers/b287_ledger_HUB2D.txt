@@ -1,0 +1,22 @@
+SERIES START 08:17:23 · base bcdb364 + HUB2D_SRV_1 · load: b290 and b292 looping · each run --mutate (5 mutations through mutation_guard)
+run 1 · b287 · 21 pass · 0 fail · rc 0 · 08:17:26
+run 2 · b287 · 21 pass · 0 fail · rc 0 · 08:17:28
+run 3 · b287 · 21 pass · 0 fail · rc 0 · 08:17:31
+run 4 · b287 · 21 pass · 0 fail · rc 0 · 08:17:33
+run 5 · b287 · 21 pass · 0 fail · rc 0 · 08:17:36
+run 6 · b287 · 21 pass · 0 fail · rc 0 · 08:17:39
+run 7 · b287 · 21 pass · 0 fail · rc 0 · 08:17:41
+run 8 · b287 · 21 pass · 0 fail · rc 0 · 08:17:44
+run 9 · b287 · 21 pass · 0 fail · rc 0 · 08:17:46
+run 10 · b287 · 21 pass · 0 fail · rc 0 · 08:17:48
+run 11 · b287 · 21 pass · 0 fail · rc 0 · 08:17:51
+run 12 · b287 · 21 pass · 0 fail · rc 0 · 08:17:53
+run 13 · b287 · 21 pass · 0 fail · rc 0 · 08:17:55
+run 14 · b287 · 21 pass · 0 fail · rc 0 · 08:17:58
+run 15 · b287 · 21 pass · 0 fail · rc 0 · 08:18:00
+run 16 · b287 · 21 pass · 0 fail · rc 0 · 08:18:04
+run 17 · b287 · 21 pass · 0 fail · rc 0 · 08:18:08
+run 18 · b287 · 21 pass · 0 fail · rc 0 · 08:18:12
+run 19 · b287 · 21 pass · 0 fail · rc 0 · 08:18:17
+run 20 · b287 · 21 pass · 0 fail · rc 0 · 08:18:21
+SERIES END 08:18:21 · not green: 0

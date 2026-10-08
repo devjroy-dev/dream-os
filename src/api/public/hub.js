@@ -33,7 +33,7 @@ router.get('/:handle', asyncHandler(async (req, res) => {
     page: profiles.publicCard(p),
     worked_with: lines.map((l) => ({ shoot: l.shoot_name, city: l.city, month: monthWords(l.month), from_call: l.from_call,
       with: l.with_ids.map((id) => card.get(id)).filter(Boolean).map((c) => ({ name: c.name, page_url: c.page_url })) })),
-    line: `Each line was confirmed by the person it names. Contact happens when someone picks ${p.display_name} for a call.`,
+    line: `Every person named on this page confirmed the shoot they are listed with. TDW gives ${p.display_name}\u2019s contact details only to a vendor who chooses them for a call.`,
   });
 }));
 

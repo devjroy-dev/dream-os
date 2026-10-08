@@ -58,7 +58,7 @@ async function people(sb, me, q = {}) {
 // credit they answered yes to. Nobody outside the vendor pool appears on a list without having agreed.
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const monthWords = (d) => { const m = String(d || '').match(/^(\d{4})-(\d{2})/); return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : ''; };
-const NOT_A_VENDOR = 'Only vendors can be added. People and organisations join when they say yes to a shoot.';
+const NOT_A_VENDOR = 'You can add only vendors. People and organisations join your list when they confirm a shoot you did together.';
 
 /** id -> { why: 'added' | 'said_yes', words, can_take_off }. A yes credit wins: taking off an edge would not remove them. */
 async function myPeopleWhy(sb, me) {
@@ -71,7 +71,7 @@ async function myPeopleWhy(sb, me) {
     let name = c.shoot_name; let month = c.month;
     if (c.call_id) { const { data: call } = await sb.from('collab_posts').select('id, details, event_date').eq('id', c.call_id).maybeSingle();
       name = call && call.details ? String(call.details).slice(0, 60) : 'a TDW call'; month = call ? call.event_date : null; }
-    out.set(other, { why: 'said_yes', words: `said yes to ${name}${monthWords(month) ? `, ${monthWords(month)}` : ''}`, can_take_off: false });
+    out.set(other, { why: 'said_yes', words: `confirmed ${name}${monthWords(month) ? `, ${monthWords(month)}` : ''}`, can_take_off: false });
   }
   if (me.vendor_id) {
     const { data: rosterRows } = await sb.from('vendor_roster').select('id, member_vendor_id, source').eq('owner_vendor_id', me.vendor_id);
@@ -95,18 +95,18 @@ async function waitingForYes(sb, me) {
   if (!ids.length) return [];
   const already = await myPeopleWhy(sb, me);
   const { data: pages } = await sb.from('hub_profiles').select(COLS).in('id', ids.filter((i) => !already.has(i)));
-  return (pages || []).map((p) => ({ id: p.id, ...publicCard(p), words: 'Waiting for their yes', line: 'Not on your list until they say yes' }));
+  return (pages || []).map((p) => ({ id: p.id, ...publicCard(p), words: 'Waiting for them to confirm', line: 'Not on your list until they say yes' }));
 }
 
 /** Add a vendor to her people. Vendors only; a person or an organisation is refused. One edge, never two. */
 async function addVendor(sb, me, profileId) {
   if (!me.vendor_id) throw new Error('only a vendor keeps My people');
   const { data: t } = await sb.from('hub_profiles').select(COLS).eq('id', String(profileId || '')).maybeSingle();
-  if (!t) throw new Error('no such page');
+  if (!t) throw new Error('This page no longer exists.');
   if (t.owner_kind !== 'vendor' || !t.vendor_id) throw new Error(NOT_A_VENDOR);
-  if (t.id === me.id) throw new Error('that is your own page');
+  if (t.id === me.id) throw new Error('This is your own page.');
   const r = await upsertRosterEdge(sb, { ownerVendorId: me.vendor_id, memberVendorId: t.vendor_id, name: t.display_name, source: 'manual' });
-  return { added: !!r.created, line: r.created ? 'Added to your people.' : 'Already in your people.' };
+  return { added: !!r.created, line: r.created ? 'They are now on your list.' : 'They are already on your list.' };
 }
 
 /** Take a vendor she added off her people. Only her own manual edge; never a yes credit; never an edge on a wedding team. */
@@ -115,13 +115,13 @@ async function removeVendor(sb, me, profileId) {
   const { data: t } = await sb.from('hub_profiles').select(COLS).eq('id', String(profileId || '')).maybeSingle();
   if (!t || t.owner_kind !== 'vendor' || !t.vendor_id) throw new Error(NOT_A_VENDOR);
   const { data: e } = await sb.from('vendor_roster').select('id, source').eq('owner_vendor_id', me.vendor_id).eq('member_vendor_id', t.vendor_id).maybeSingle();
-  if (!e) throw new Error('they are not on your list as a vendor you added');
-  if (e.source !== 'manual') throw new Error('you worked together on a TDW call, so they stay');
+  if (!e) throw new Error('You did not add them, so you cannot take them off.');
+  if (e.source !== 'manual') throw new Error('You worked together on a call on TDW, so they stay on your list.');
   const { data: team } = await sb.from('team_members').select('id').eq('roster_vendor_id', e.id).limit(1);
-  if (team && team.length) throw new Error('they are on one of your wedding teams. Take them off the team first.');
+  if (team && team.length) throw new Error('They are on one of your wedding teams. Take them off that team first.');
   const { error } = await sb.from('vendor_roster').delete().eq('id', e.id).eq('owner_vendor_id', me.vendor_id);
   if (error) throw new Error(error.message);
-  return { removed: true, line: 'Taken off your people. Shoots they said yes to stay on both pages.' };
+  return { removed: true, line: 'They are no longer on your list. Shoots they confirmed still appear on both pages.' };
 }
 
 module.exports = { people, myPeopleIds, workedCounts, myPeopleWhy, waitingForYes, addVendor, removeVendor, NOT_A_VENDOR };

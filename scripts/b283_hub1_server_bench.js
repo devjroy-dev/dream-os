@@ -116,7 +116,7 @@ async function cells() {
 
   sec('3  a credit from her TDW call');
   const th = async (fn) => { try { await fn(); return null; } catch (e) { return e.message; } };
-  ok(/not your call/.test(await th(() => cr.offerForCall(db, p2, 'call-past', [p1.id]))), '3.1 only the call\u2019s poster gives credits for it');
+  ok(/This call is not yours\./.test(await th(() => cr.offerForCall(db, p2, 'call-past', [p1.id]))), '3.1 only the call\u2019s poster gives credits for it (HUB-2d: words amended by label)');
   ok(/after the shoot date/.test(await th(() => cr.offerForCall(db, p2, 'call-future', [p1.id]))), '3.2 credits open after the shoot date');
   let made1 = await cr.offerForCall(db, p1, 'call-past', [p2.id, p3.id, p1.id]);
   ok(made1.length === 2 && made1.every((c) => c.state === 'offered' && c.giver_profile_id === p1.id), '3.3 offered to the two others (never to herself), state offered', made1.length);
@@ -129,21 +129,21 @@ async function cells() {
   ok(s1.length === 1 && s1[0].month === `${YM(-2)}-01` && s1[0].call_id == null, '4.3 a shoot credit is offered with its month', JSON.stringify(s1[0]));
   for (let i = 0; i < 19; i += 1) db._tables.hub_credits.push({ id: `fill${i}`, call_id: null, shoot_name: `s${i}`, city: 'Delhi', month: `${YM(-1)}-01`, giver_profile_id: p1.id, person_profile_id: p3.id, state: 'offered', offered_at: new Date().toISOString() });
   const m21 = await th(() => cr.offerForShoot(db, p1, { shoot_name: 'One too many', city: 'Delhi', month: YM(-1), people: [p2.id] }));
-  ok(/up to 20 shoot credits a month; 0 left/.test(m21 || ''), '4.4 the twenty-first shoot offer in a month is refused, with how many are left', m21);
+  ok(/up to 20 of these requests in any 30 days\. You have 0 left\./.test(m21 || ''), '4.4 the twenty-first shoot offer in a month is refused, with how many are left (HUB-2d: words amended by label)', m21);
   db._tables.hub_credits = db._tables.hub_credits.filter((c) => !String(c.id).startsWith('fill'));
 
   sec('5  yes, no, take back');
   const c2 = db._tables.hub_credits.find((c) => c.call_id === 'call-past' && c.person_profile_id === p2.id);
   const c3 = db._tables.hub_credits.find((c) => c.call_id === 'call-past' && c.person_profile_id === p3.id);
   ok((await cr.workedWith(db, p1.id)).length === 0, '5.1 an offered credit shows nowhere');
-  ok(/not your credit/.test(await th(() => cr.answer(db, p1, c2.id, true))), '5.2 only the person named answers');
+  ok(/This request is not for you/.test(await th(() => cr.answer(db, p1, c2.id, true))), '5.2 only the person named answers (HUB-2d: words amended by label)');
   await cr.answer(db, p2, c2.id, true); await cr.answer(db, p3, c3.id, false);
   let w1 = await cr.workedWith(db, p1.id); let w2 = await cr.workedWith(db, p2.id);
   ok(w1.length === 1 && w1[0].from_call && JSON.stringify(w1[0].with_ids) === JSON.stringify([p2.id]) && w2.length === 1 && w2[0].with_ids.includes(p1.id), '5.3 a yes shows on both pages; a no shows nowhere', JSON.stringify({ w1, w2 }));
-  ok(/already on your page/.test(await th(() => cr.answer(db, p2, c2.id, false))), '5.4 an answered credit cannot be answered again');
+  ok(/You already said yes to this request\./.test(await th(() => cr.answer(db, p2, c2.id, false))), '5.4 an answered credit cannot be answered again (HUB-2d: words amended by label)');
   await cr.takeBack(db, p1, c2.id);
   ok((await cr.workedWith(db, p1.id)).length === 0 && (await cr.workedWith(db, p2.id)).length === 0, '5.5 taken back by the giver: it leaves both pages');
-  ok(/not your credit/.test(await th(() => cr.takeBack(db, p3, s1[0].id))), '5.6 only the two people on it may take it back');
+  ok(/This request is not for you/.test(await th(() => cr.takeBack(db, p3, s1[0].id))), '5.6 only the two people on it may take it back (HUB-2d: words amended by label)');
 
   sec('6  THE PEOPLE DOOR (GET /api/v2/vendor/hub/people)');
   await cr.answer(db, p2, s1[0].id, true);
@@ -158,19 +158,19 @@ async function cells() {
   sec('7  the doors');
   const s = await serve(db, V1);
   let r = await s.call('GET', '/hub/people?role=photography&mine=1');
-  ok(r.status === 200 && r.body.people.length === 2 && /No messages inside TDW/.test(r.body.line), '7.1 GET /hub/people answers with the list and the no-messages line', JSON.stringify(r.body).slice(0, 160));
+  ok(r.status === 200 && r.body.people.length === 2 && /TDW has no chat\./.test(r.body.line), '7.1 GET /hub/people answers with the list and the no-messages line (HUB-2d: words amended by label)', JSON.stringify(r.body).slice(0, 160));
   r = await s.call('GET', '/hub/work');
-  ok(r.status === 200 && r.body.items.length === 1 && r.body.items[0].id === 'call-future' && !('label' in r.body.items[0]) && JSON.stringify(r.body.not_yet) === '["briefs from brands","paid jobs from planners","From Threads"]', '7.2 Work: calls for her craft and city only, no check label (HUB-2), and it names what is not in yet', JSON.stringify(r.body).slice(0, 200));
+  ok(r.status === 200 && r.body.items.length === 1 && r.body.items[0].id === 'call-future' && !('label' in r.body.items[0]) && JSON.stringify(r.body.not_yet) === '["briefs from brands","paid jobs from planners","calls posted on Threads"]', '7.2 Work: calls for her craft and city only, no check label (HUB-2), and it names what is not in yet (HUB-2d: words amended by label)', JSON.stringify(r.body).slice(0, 200));
   r = await s.call('GET', '/hub/work?all_cities=1');
   ok(r.body.items.map((x) => x.id).sort().join(',') === 'call-future,call-mumbai', '7.3 "all cities" widens the city, not the craft');
   db._tables.collab_posts.push({ id: 'fwd', vendor_id: V1, event_date: FUTURE, city: 'Delhi', state: 'open', source: 'tdw_forward', created_at: new Date().toISOString() });
   r = await s.call('GET', '/hub/mine');
   ok(r.status === 200 && r.body.my_calls.some((c) => c.id === 'fwd' && c.line === 'Sent by TDW at your request'), '7.4 Mine: a forwarded call reads "Sent by TDW at your request"');
   r = await s.call('POST', '/hub/credits', { shoot_name: 'Studio day', city: 'Delhi', month: YM(-1), people: [p3.id] });
-  ok(r.status === 200 && r.body.offered === 1 && /Nothing shows until they say yes/.test(r.body.line), '7.5 POST /hub/credits offers and says nothing shows until a yes');
+  ok(r.status === 200 && r.body.offered === 1 && /The shoot appears on your page and theirs only after they confirm it\./.test(r.body.line), '7.5 POST /hub/credits offers and says nothing shows until a yes (HUB-2d: words amended by label)');
   r = await s.call('GET', '/public/hub/makeupbyswatiroy');
   const flat = JSON.stringify(r.body || {});
-  ok(r.status === 200 && r.body.page.name === 'Swati Roy Makeup' && r.body.worked_with.length === 1 && r.body.worked_with[0].with[0].page_url === 'https://thedreamwedding.in/c/aman.frames.2' && /confirmed by the person it names/.test(r.body.line), '7.6 the public page: card, "Worked with" with linked names, the confirmed line', flat.slice(0, 220));
+  ok(r.status === 200 && r.body.page.name === 'Swati Roy Makeup' && r.body.worked_with.length === 1 && r.body.worked_with[0].with[0].page_url === 'https://thedreamwedding.in/c/aman.frames.2' && /confirmed the shoot they are listed with\./.test(r.body.line), '7.6 the public page: card, "Worked with" with linked names, the confirmed line (HUB-2d: words amended by label)', flat.slice(0, 220));
   ok(!/98110000|phone|email|"vendor_id"|"user_id"/.test(flat), '7.7 the public page holds no phone, email or owner ids');
   r = await s.call('GET', '/public/hub/nobody.here');
   db._tables.hub_profiles.push({ id: 'orgp', owner_kind: 'org', org_id: 'org-blocked', handle: 'blocked.agency', display_name: 'B', roles: [], open_to: [], check_state: 'unchecked' });
@@ -178,16 +178,16 @@ async function cells() {
   ok(r.status === 404 && rb.status === 404 && JSON.stringify(r.body) === JSON.stringify(rb.body), '7.8 no page and a blocked partner\u2019s page are the same miss');
   await s.close();
   const vhub = fs.readFileSync(path.join(ROOT, 'src/api/vendor/hub.js'), 'utf8');
-  ok(!/likes?|followers?|feed|chat/i.test(vhub.replace(/\/\/.*$/gm, '').replace(/No messages inside TDW[^']*/g, '')), '7.9 the Hub doors hold no likes, followers, feed or chat (ruled)');
+  ok(!/likes?|followers?|feed|chat/i.test(vhub.replace(/\/\/.*$/gm, '').replace(/TDW has no chat[^']*/g, '')), '7.9 the Hub doors hold no likes, followers, feed or chat (ruled) (HUB-2d: words amended by label)');
 }
 
 const MUTS = [
   ['src/lib/hub/credits.js', "  const b = await sb.from('hub_credits').select(CREDIT_COLS).eq('state', 'yes').eq('giver_profile_id', profileId);", "  const b = await sb.from('hub_credits').select(CREDIT_COLS).eq('giver_profile_id', profileId);", 'M1 an offered credit shows on a page', '5.1'],
   ['src/lib/hub/credits.js', "  if (used + people.length > MONTHLY_SHOOT_OFFERS)", '  if (false)', 'M2 the 20-a-month guard is gone', '4.4'],
-  ['src/lib/hub/credits.js', "  if (new Date(`${call.event_date}T23:59:59+05:30`) > now) throw new Error('credits open after the shoot date');\n", '', 'M3 a credit before the shoot date', '3.2'],
+  ['src/lib/hub/credits.js', "  if (new Date(`${call.event_date}T23:59:59+05:30`) > now) throw new Error('You can send these requests after the shoot date.');\n", '', 'M3 a credit before the shoot date (HUB-2d: anchor amended by label, the words now plain)', '3.2'],
   ['src/lib/hub/people.js', "  if (me.vendor_id) {\n    const { data: roster }", "  if (false) {\n    const { data: roster }", 'M4 My people loses her roster', '6.3'],
   ['src/api/public/hub.js', "    if (!o || o.check_state === 'blocked') return miss();", '    void o;', 'M5 a blocked partner\u2019s page shows', '7.8'],
-  ['src/lib/hub/credits.js', "  if (!c || c.person_profile_id !== me.id) throw new Error('not your credit');", '  if (!c) throw new Error(\'not your credit\');', 'M6 anyone may answer a credit', '5.2'],
+  ['src/lib/hub/credits.js', "  if (!c || c.person_profile_id !== me.id) throw new Error('This request is not for you.');", '  if (!c) throw new Error(\'This request is not for you.\');', 'M6 anyone may answer a credit (HUB-2d: anchor amended by label)', '5.2'],
 ];
 const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 function leftovers() {   // e-277: no mutation already present before the first cell
