@@ -136,7 +136,13 @@ async function drive(lane, text, from, prospectState) {
 
   // §2
   sec('2 the marketing lane and the bride lane are untouched (C-44.7: bytes pinned from 46af98d)');
-  T('2.1 prospects.js is byte-identical to 46af98d (isStopWord, the two word lists, the marketing lane\'s own opt-out)', sha(src('src/lib/prospects.js')) === '59bd32b721a281b370ac80454281d1ac50a6ea3f20fc5bb7c5db60595d115ddd');
+  // LABELED AMENDMENT · CE-47 PTN-A2-3 (the owner's yes for one call block: the chair, 8 Oct 2026): prospects.js gains ONE block,
+  // PTN's partner arm, between its broadcast arm and its STOP arm. The pin now reads the file WITH THAT BLOCK TAKEN OUT, which
+  // must still be byte-identical to 46af98d: isStopWord, the two word lists and the lane's own opt-out are unchanged.
+  { const full = src('src/lib/prospects.js');
+    const at = full.indexOf('  // ── CE-47 · PTN-A2-3 · IS SHE A PARTNER'); const to = full.indexOf('  // ── STOP → opt out (cross-line)');
+    const without = at > 0 && to > at ? full.slice(0, at) + full.slice(to) : full;
+    T('2.1 prospects.js, PTN-A2-3\'s one block taken out, is byte-identical to 46af98d (isStopWord, the two word lists, the marketing lane\'s own opt-out)', sha(without) === '59bd32b721a281b370ac80454281d1ac50a6ea3f20fc5bb7c5db60595d115ddd'); }
   // LABELED AMENDMENT · CE-45 ELZ-1 cut 2a: re-pinned again (F-44.145's persistence half: persistBrideOptOutTurn).
   // LABELED AMENDMENT · CE-45 ELZ-1 cut 1: F-44.145's own sitting came. This read "byte-identical to 46af98d (it still calls the
   // first-token matcher)"; the bride lane now calls the whole-message matcher, one call, and is pinned to cut 1's bytes.

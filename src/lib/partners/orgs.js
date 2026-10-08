@@ -22,7 +22,7 @@ async function markOn(sb) {   // read exactly as CLB reads it (src/api/vendor/co
   } catch (_e) { return false; }
 }
 const FEE_LINE = 'This partner may charge its own fees. TDW takes no fee and has no part in it.';
-const ORG_COLS = 'id, name, kind, instagram_handle, website, cities, roles, pay_rule, wants, calls_email, whatsapp_opt, whatsapp_phone, daily_cap, send_state, paused_until, check_state, checked_how, checked_at, blocked_at, blocked_reason, plan_state, created_at';
+const ORG_COLS = 'id, name, kind, instagram_handle, website, cities, roles, pay_rule, wants, calls_email, whatsapp_opt, whatsapp_phone, whatsapp_opt_at, daily_cap, send_state, paused_until, check_state, checked_how, checked_at, blocked_at, blocked_reason, plan_state, created_at';
 
 const strArr = (v, max = 20) => (Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean).slice(0, max) : []);
 
@@ -49,12 +49,12 @@ function validateOrgInput(b = {}, { partial = false } = {}) {
   }
   if (b.calls_email !== undefined) {
     const e = b.calls_email === null ? '' : String(b.calls_email).trim();
-    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return { ok: false, error: 'Write the email address calls should go to.' };
+    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return { ok: false, error: 'Write the email address where TDW should send calls.' };
     row.calls_email = e || null;
   }
   if (b.cities !== undefined) row.cities = strArr(b.cities);
   if (b.roles !== undefined) row.roles = strArr(b.roles);
-  if (b.pay_rule !== undefined) { if (!['paid_only', 'paid_and_credit'].includes(b.pay_rule)) return { ok: false, error: 'Choose paid only, or paid and credit only.' }; row.pay_rule = b.pay_rule; }
+  if (b.pay_rule !== undefined) { if (!['paid_only', 'paid_and_credit'].includes(b.pay_rule)) return { ok: false, error: 'Choose which calls you want: paid only, or paid and credit only.' }; row.pay_rule = b.pay_rule; }
   if (b.wants !== undefined) { const w = strArr(b.wants).filter((x) => ['calls', 'briefs', 'requirements'].includes(x)); row.wants = w; }
   if (!partial && row.wants === undefined) row.wants = WANTS_BY_KIND[row.kind].slice();
   return { ok: true, row };
@@ -65,7 +65,8 @@ function ownShape(o, mark = false) {
   return { id: o.id, name: o.name, kind: o.kind, kind_words: KIND_WORDS[o.kind], instagram_handle: o.instagram_handle,
     instagram_url: links.instagramUrl(o.instagram_handle), website: o.website, website_url: links.websiteUrl(o.website),
     cities: o.cities || [], roles: o.roles || [], pay_rule: o.pay_rule, wants: o.wants || [], calls_email: o.calls_email,
-    whatsapp_opt: !!o.whatsapp_opt, daily_cap: o.daily_cap, send_state: o.send_state, paused_until: o.paused_until,
+    whatsapp_opt: !!o.whatsapp_opt, whatsapp_on: !!(o.whatsapp_opt && o.whatsapp_opt_at), whatsapp_phone: o.whatsapp_phone || null,   // A2-3: the partner's OWN number, to itself only
+    daily_cap: o.daily_cap, send_state: o.send_state, paused_until: o.paused_until,
     check_state: o.check_state, check_words: mark === true ? (CHECK_WORDS[o.check_state] || null) : null, plan_state: o.plan_state };
 }
 

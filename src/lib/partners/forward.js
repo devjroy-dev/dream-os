@@ -32,19 +32,19 @@ function validateRequest(b = {}) {
     const h = links.normalizeIgHandle(b.outside_handle);
     const p = typeof b.outside_phone === 'string' ? b.outside_phone.replace(/[^0-9+]/g, '') : '';
     if (!h) return { ok: false, error: links.WORDS.badHandle };
-    if (!/^\+[0-9]{8,15}$/.test(p)) return { ok: false, error: 'Write her phone number with the country code, for example +91 98111 00007.' };
+    if (!/^\+[0-9]{8,15}$/.test(p)) return { ok: false, error: "Write the vendor's phone number with the country code, for example +91 98111 00007." };
     row.outside_handle = h.toLowerCase(); row.outside_phone = p;
   }
   const role = typeof b.role === 'string' ? b.role.trim() : '';
   const city = typeof b.city === 'string' ? b.city.trim() : '';
-  if (!role) return { ok: false, error: 'Write what she needs, for example a model.' };
+  if (!role) return { ok: false, error: 'Write what the vendor needs, for example a model.' };
   // PTN-A2-1: for a vendor on TDW the request becomes her own call (CLB-2a createCallFor), whose role is a collab role key.
-  if (row.vendor_id && !isCollabRole(role)) return { ok: false, error: 'Choose what she needs from the list.' };
-  if (!city) return { ok: false, error: 'Write the city.' };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.event_date || ''))) return { ok: false, error: 'Choose the date.' };
+  if (row.vendor_id && !isCollabRole(role)) return { ok: false, error: 'Choose what the vendor needs from the list.' };
+  if (!city) return { ok: false, error: 'Write the city of the shoot.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.event_date || ''))) return { ok: false, error: 'Choose the date of the shoot.' };
   const from = Number(b.budget_from); const to = Number(b.budget_to);
-  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < from) return { ok: false, error: 'Write the budget, from and to, in Rs.' };
-  if (!['paid', 'credit_only'].includes(b.pay_kind)) return { ok: false, error: 'Choose Paid or Credit only.' };
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < from) return { ok: false, error: 'Write the lowest and the highest budget in rupees.' };
+  if (!['paid', 'credit_only'].includes(b.pay_kind)) return { ok: false, error: 'Choose whether the work is Paid or Credit only.' };
   Object.assign(row, { role: role.slice(0, 40), city: city.slice(0, 60), event_date: b.event_date, budget_from: from, budget_to: to, pay_kind: b.pay_kind,
     note: typeof b.note === 'string' && b.note.trim() ? b.note.trim().slice(0, 300) : null });
   return { ok: true, row };

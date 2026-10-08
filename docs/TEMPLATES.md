@@ -505,6 +505,32 @@ first live send's long-press copy is the wire witness, as it was for row 13.
   `variable: 'page_code'` — are **R6's in 4b-2** (chair, 2026-09-10). Until they land, §8's census
   will read these two as WABA-only, and that reading is correct.
 
+
+### 18 · `partner_call` · UTILITY (filed) · marketing line · Meta name **`tdw_partner_call`**
+**Added CE-47 PTN-A2-3 (8 Oct 2026).** Filed by the founder on 8 Oct 2026 and approved by Meta as Utility, ID
+**`1809457166864769`**. Sent from the marketing line to a partner that said yes to calls on WhatsApp. Variables:
+`{{1}}` the partner's name, `{{2}}` the vendor's name, `{{3}}` what the vendor needs, `{{4}}` the date, `{{5}}` the city.
+The founder edited one sentence before filing ("Tap View details to respond."); this is the filed body.
+
+> Hi {{1}}. {{2}} has raised a request for {{3}} for a shoot on {{4}} in {{5}}. Tap View details to respond. Reply STOP CALLS to stop these messages, or PAUSE CALLS to pause them for a week.
+
+Button: URL, label `View details`, dynamic, base `https://thedreamwedding.in/partner/call/` and nothing else (§1a). The
+dynamic suffix is the call's token; the sample filed was a full link with a made-up token.
+
+### 19 · `partner_picked` · UTILITY (filed) · marketing line · Meta name **`tdw_partner_picked`**
+**Added CE-47 PTN-A2-3 (8 Oct 2026).** Filed and approved as Utility on 8 Oct 2026, ID **`1144140224837871`**. To a
+partner when a vendor wants to talk about someone it suggested. Variables: `{{1}}` the vendor, `{{2}}` the person
+suggested, `{{3}}` the date. Registered; no sender yet.
+
+> Update on your suggestion: {{1}} wants to talk about {{2}} for the shoot on {{3}}. They will contact you directly. TDW takes no fee and has no part in any fee.
+
+### 20 · `collab_request_sent` · UTILITY (filed) · marketing line · Meta name **`tdw_collab_request_sent`**
+**Added CE-47 PTN-A2-3 (8 Oct 2026).** Filed and approved as Utility on 8 Oct 2026, ID **`1665884328396587`** (the
+founder renamed it from tdw_request_sent before filing). To the vendor when TDW forwards her request. Variables: `{{1}}`
+what she needs, `{{2}}` the city, `{{3}}` the date, `{{4}}` how many partners. Registered; no sender yet.
+
+> Your request for {{1}} in {{2}} on {{3}} has gone to {{4}} partners. When someone is suggested, you will see it on your call in The Dream Wedding.
+
 ## 3. Submission tracker
 
 All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`) and **all six were approved the same day** (the four in review cleared within minutes). `status` mirrors the registry's `status` field in `src/lib/templates.js`; all six read `approved`. `demo_invite` was approved as **UTILITY** — the tightened copy held, so no category reconciliation was needed.

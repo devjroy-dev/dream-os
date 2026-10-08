@@ -13,7 +13,7 @@ const fwd = require('../../lib/partners/forward');
 const { hiddenByReports } = require('../../lib/partners/reports');
 const seams = require('../../lib/partners/seams');
 const hubPage = require('../../lib/partners/hubPage');
-const { W: CALL_WORDS, SEND_WORDS, LANE_WORDS, failureWords, providerWords } = require('../../lib/partners/words');
+const { W: CALL_WORDS, SEND_WORDS, LANE_WORDS, stateWords, failureWords, providerWords } = require('../../lib/partners/words');
 const queue = require('../../lib/partners/queue');   // A2-1b: every partner's sends, and the revive
 
 const router = express.Router();
@@ -25,7 +25,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 router.get('/contacts', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { data, error } = await supabase.from('partner_contacts').select('id, name, kind, instagram_handle, website, phone, how_we_know, knows_tdw, created_at').order('created_at', { ascending: false }).limit(500);
-  if (error) return errRes(res, 500, 'Could not read contacts.');
+  if (error) return errRes(res, 500, 'TDW could not read the contacts. Please try again.');
   const stopped = await contacts.stoppedPhones(supabase, (data || []).map((c) => c.phone));
   return okRes(res, { contacts: (data || []).map((c) => contacts.contactShape(c, c.phone && stopped.has(c.phone))) });
 }));
@@ -33,16 +33,16 @@ router.post('/contacts', asyncHandler(async (req, res) => {
   const v = contacts.validateContact(req.body || {});
   if (!v.ok) return errRes(res, 400, v.error);
   const { data, error } = await req.app.locals.supabase.from('partner_contacts').insert({ ...v.row, added_by: who(req) }).select('id, name, kind, instagram_handle, website, phone, how_we_know, knows_tdw').single();
-  if (error) return errRes(res, 500, 'Could not save the contact.');
+  if (error) return errRes(res, 500, 'TDW could not save the contact. Please try again.');
   return okRes(res, { contact: contacts.contactShape(data, false) });
 }));
 router.patch('/contacts/:id', asyncHandler(async (req, res) => {
-  if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such contact.');
+  if (!UUID.test(req.params.id)) return errRes(res, 404, 'This contact does not exist.');
   const v = contacts.validateContact(req.body || {}, { partial: true });
   if (!v.ok) return errRes(res, 400, v.error);
   v.row.updated_at = new Date().toISOString();
   const { data, error } = await req.app.locals.supabase.from('partner_contacts').update(v.row).eq('id', req.params.id).select('id, name, kind, instagram_handle, website, phone, how_we_know, knows_tdw').single();
-  if (error) return errRes(res, 500, 'Could not save the contact.');
+  if (error) return errRes(res, 500, 'TDW could not save the contact. Please try again.');
   const stopped = await contacts.stoppedPhones(req.app.locals.supabase, [data.phone]);
   return okRes(res, { contact: contacts.contactShape(data, data.phone && stopped.has(data.phone)) });
 }));
@@ -69,19 +69,19 @@ async function recipientsOf(supabase, requestId) {
 
 router.get('/forward', asyncHandler(async (req, res) => {
   const { data, error } = await req.app.locals.supabase.from('forward_requests').select('id, vendor_id, outside_handle, role, city, event_date, created_at').order('created_at', { ascending: false }).limit(100);
-  if (error) return errRes(res, 500, 'Could not read requests.');
+  if (error) return errRes(res, 500, 'TDW could not read the requests. Please try again.');
   return okRes(res, { requests: data || [] });
 }));
 router.post('/forward', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  if (!process.env.PARTNER_SESSION_SECRET) return errRes(res, 503, 'Forwarding is not open yet: PARTNER_SESSION_SECRET is not set.');
+  if (!process.env.PARTNER_SESSION_SECRET) return errRes(res, 503, 'Forwarding is not open yet, because PARTNER_SESSION_SECRET is not set in Railway.');
   const v = fwd.validateRequest(req.body || {});
   if (!v.ok) return errRes(res, 400, v.error);
   const ids = Array.isArray(req.body.contact_ids) ? [...new Set(req.body.contact_ids.filter((x) => UUID.test(String(x))))] : [];
   if (!ids.length) return errRes(res, 400, 'Choose at least one person to send it to.');
   if (v.row.vendor_id) {
     const { data: ven } = await supabase.from('vendors').select('id').eq('id', v.row.vendor_id).maybeSingle();
-    if (!ven) return errRes(res, 400, 'Choose the vendor again.');
+    if (!ven) return errRes(res, 400, 'TDW could not find this vendor. Choose the vendor again.');
   }
   // PTN-A2-1: a vendor on TDW gets her request as her own call (CLB-2a; she reads "Sent by TDW at your request"); its
   // answers land on her Interested list. An outside vendor's request waits under her phone until she signs up.
@@ -92,11 +92,11 @@ router.post('/forward', asyncHandler(async (req, res) => {
       v.row.post_id = made.post_id;
     } catch (e) {
       const m = String((e && e.message) || '');
-      return errRes(res, 400, /date has passed/.test(m) ? 'The date has passed. Choose a date ahead.' : /collab role/.test(m) ? 'Choose what she needs from the list.' : 'Could not make her call. Check the details and try again.');
+      return errRes(res, 400, /date has passed/.test(m) ? 'This date has passed. Choose a date in the future.' : /collab role/.test(m) ? 'Choose what the vendor needs from the list.' : "TDW could not make the vendor's call. Check the details and try again.");
     }
   }
   const { data: q, error } = await supabase.from('forward_requests').insert({ ...v.row, created_by: who(req) }).select('id').single();
-  if (error) return errRes(res, 500, 'Could not save the request.');
+  if (error) return errRes(res, 500, 'TDW could not save the request. Please try again.');
   for (const cid of ids) {
     const { data: r, error: rErr } = await supabase.from('forward_recipients').insert({ request_id: q.id, contact_id: cid, token_hash: require('crypto').randomBytes(32).toString('hex') }).select('id').single();
     if (rErr) continue;
@@ -105,16 +105,16 @@ router.post('/forward', asyncHandler(async (req, res) => {
   return okRes(res, await recipientsOf(supabase, q.id));
 }));
 router.get('/forward/:id', asyncHandler(async (req, res) => {
-  if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such request.');
+  if (!UUID.test(req.params.id)) return errRes(res, 404, 'This request does not exist.');
   const out = await recipientsOf(req.app.locals.supabase, req.params.id);
-  if (!out) return errRes(res, 404, 'No such request.');
+  if (!out) return errRes(res, 404, 'This request does not exist.');
   return okRes(res, out);
 }));
 router.post('/forward/recipients/:rid/sent', asyncHandler(async (req, res) => {
-  if (!UUID.test(req.params.rid)) return errRes(res, 404, 'No such recipient.');
+  if (!UUID.test(req.params.rid)) return errRes(res, 404, 'This person is not on this request.');
   const sent = req.body && req.body.sent === false ? null : new Date().toISOString();
   const { error } = await req.app.locals.supabase.from('forward_recipients').update({ sent_at: sent, sent_by: sent ? who(req) : null }).eq('id', req.params.rid);
-  if (error) return errRes(res, 500, 'Could not save.');
+  if (error) return errRes(res, 500, 'TDW could not save this. Please try again.');
   return okRes(res, { sent_at: sent });
 }));
 
@@ -135,7 +135,7 @@ router.get('/', asyncHandler(async (req, res) => {
   let q = supabase.from('partner_orgs').select(orgs.ORG_COLS).order('created_at', { ascending: false }).limit(300);
   if (tab !== 'reports') q = q.eq('check_state', tab);
   const { data, error } = await q;
-  if (error) return errRes(res, 500, 'Could not read partners.');
+  if (error) return errRes(res, 500, 'TDW could not read the partners. Please try again.');
   const reps = await reportsFor(supabase, (data || []).map((o) => o.id));
   let rows = data || [];
   if (tab === 'reports') rows = rows.filter((o) => reps.some((r) => r.partner_id === o.id && !r.handled_at));
@@ -165,9 +165,9 @@ router.post('/sends/:send_id/retry', asyncHandler(async (req, res) => {
 
 router.get('/:id', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such partner.');
+  if (!UUID.test(req.params.id)) return errRes(res, 404, 'This partner does not exist.');
   const { data: o } = await supabase.from('partner_orgs').select(orgs.ORG_COLS).eq('id', req.params.id).maybeSingle();
-  if (!o) return errRes(res, 404, 'No such partner.');
+  if (!o) return errRes(res, 404, 'This partner does not exist.');
   const reps = await reportsFor(supabase, [o.id]);
   const { data: ms } = await supabase.from('partner_members').select('user_id, role').eq('partner_id', o.id);
   const uids = (ms || []).map((m) => m.user_id);
@@ -177,16 +177,16 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 async function setState(req, res, patch) {
-  if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such partner.');
+  if (!UUID.test(req.params.id)) return errRes(res, 404, 'This partner does not exist.');
   const { data, error } = await req.app.locals.supabase.from('partner_orgs').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', req.params.id).select(orgs.ORG_COLS).single();
-  if (error || !data) return errRes(res, 500, 'Could not save.');
+  if (error || !data) return errRes(res, 500, 'TDW could not save this. Please try again.');
   return okRes(res, { partner: orgs.ownShape(data, await orgs.markOn(req.app.locals.supabase)) });
 }
 // "What was sent" to one partner: each call, when, by which channel, its state in plain words, and who it suggested
 // (name, role and link only; never a phone or email).
 router.get('/:id/sends', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  if (!UUID.test(req.params.id)) return errRes(res, 404, 'No such partner.');
+  if (!UUID.test(req.params.id)) return errRes(res, 404, 'This partner does not exist.');
   const { data: rows } = await supabase.from('partner_sends').select('id, post_id, channel, state, why, attempts, sent_at, created_at').eq('partner_id', req.params.id).order('created_at', { ascending: false }).limit(100);
   const ids = (rows || []).map((r) => r.id);
   const { data: ans } = ids.length ? await supabase.from('partner_answers').select('send_id, talent_name, talent_role, talent_link').in('send_id', ids) : { data: [] };
@@ -194,7 +194,7 @@ router.get('/:id/sends', asyncHandler(async (req, res) => {
   const { data: posts } = postIds.length ? await supabase.from('collab_posts').select('id, city, event_date, requirement_type').in('id', postIds) : { data: [] };
   // Named fields only: the select is a request, not a promise, so nothing else of the post can ride out.
   const P = new Map((posts || []).map((p) => [p.id, { city: p.city, event_date: p.event_date, requirement_type: p.requirement_type }]));
-  return okRes(res, { sends: (rows || []).map((r) => ({ id: r.id, channel: r.channel, state: r.state, state_words: SEND_WORDS[r.state] || r.state, why: providerWords(r.why),
+  return okRes(res, { sends: (rows || []).map((r) => ({ id: r.id, channel: r.channel, state: r.state, state_words: stateWords(r.state, r.why), why: providerWords(r.why),
     lane_words: LANE_WORDS[r.channel] || r.channel, why_words: r.state === 'failed' ? failureWords(r.why) : providerWords(r.why), attempts: r.attempts || 0, can_retry: r.state === 'failed',
     sent_at: r.sent_at, created_at: r.created_at, call: P.get(r.post_id) || null,
     suggested: (ans || []).filter((a) => a.send_id === r.id).map((a) => ({ name: a.talent_name, role: a.talent_role, link: a.talent_link })) })) });
@@ -203,7 +203,7 @@ router.get('/:id/sends', asyncHandler(async (req, res) => {
 router.post('/:id/check', asyncHandler(async (req, res) => setState(req, res, { check_state: 'checked', checked_how: 'admin', checked_at: new Date().toISOString(), checked_by: who(req), blocked_at: null, blocked_reason: null })));
 router.post('/:id/block', asyncHandler(async (req, res) => {
   const reason = typeof (req.body || {}).reason === 'string' ? req.body.reason.trim().slice(0, 300) : '';
-  if (!reason) return errRes(res, 400, 'Write why this partner is blocked.');
+  if (!reason) return errRes(res, 400, 'Write why you are blocking this partner.');
   return setState(req, res, { check_state: 'blocked', blocked_at: new Date().toISOString(), blocked_reason: reason });
 }));
 router.post('/:id/unblock', asyncHandler(async (req, res) => setState(req, res, { check_state: 'unchecked', blocked_at: null, blocked_reason: null })));
@@ -212,9 +212,9 @@ router.post('/:id/exempt', asyncHandler(async (req, res) => {
   return setState(req, res, on ? { plan_state: 'exempt', exempt_by: who(req) } : { plan_state: 'free', exempt_by: null });
 }));
 router.post('/reports/:rid/handled', asyncHandler(async (req, res) => {
-  if (!UUID.test(req.params.rid)) return errRes(res, 404, 'No such report.');
+  if (!UUID.test(req.params.rid)) return errRes(res, 404, 'This report does not exist.');
   const { error } = await req.app.locals.supabase.from('partner_reports').update({ handled_at: new Date().toISOString(), handled_by: who(req) }).eq('id', req.params.rid);
-  if (error) return errRes(res, 500, 'Could not save.');
+  if (error) return errRes(res, 500, 'TDW could not save this. Please try again.');
   return okRes(res, {});
 }));
 

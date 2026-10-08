@@ -17,9 +17,16 @@ const { sendEmail } = require('./email');
 const calls = require('./calls');
 const { W } = require('./words');
 const seams = require('./seams');
+const wa = require('./wa');   // A2-3: the WhatsApp lane (the marketing line)
 const { hubOpen } = require('../hub/gate');   // CLB's Rule 1, one home (HUB-2b): a closed vendor's call is never sent
 
 const DUE = ['queued', 'held_cap', 'held_window', 'held_paused', 'held_no_key'];
+const LATE_MS = 72 * 3600e3;
+// A row an admin tried again is not a first send (0219: a 'retried' line). One bounded read, only for a row past 72 hours.
+async function everRetried(sb, id) {
+  try { const { data } = await sb.from('partner_send_log').select('id').eq('send_id', id).eq('kind', 'retried').limit(1); return !!(data && data.length); }
+  catch (_e) { return false; }
+}
 const IST_MS = 5.5 * 3600e3;
 const istHour = (now) => new Date(now.getTime() + IST_MS).getUTCHours();
 function next9amIST(now) { const d = new Date(now.getTime() + IST_MS); if (d.getUTCHours() >= 9) d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(9, 0, 0, 0); return new Date(d.getTime() - IST_MS); }
@@ -29,18 +36,19 @@ async function enqueue(sb, info, deps = {}) {
   const now = deps.now ? deps.now() : new Date();
   if (!info || !info.post_id || !info.vendor_id) return { made: 0, why: 'missing' };
   if (!(await hubOpen(sb, info.vendor_id))) return { made: 0, why: 'hub_closed' };
-  const { data: orgs } = await sb.from('partner_orgs').select('id, wants, cities, roles, pay_rule, send_state, paused_until, check_state, calls_email').neq('check_state', 'blocked');
+  const { data: orgs } = await sb.from('partner_orgs').select('id, wants, cities, roles, pay_rule, send_state, paused_until, check_state, calls_email, whatsapp_opt, whatsapp_phone, whatsapp_opt_at').neq('check_state', 'blocked');
   const ids = (orgs || []).map((o) => o.id);
   const { data: reps } = ids.length ? await sb.from('partner_reports').select('partner_id, vendor_id, handled_at').in('partner_id', ids) : { data: [] };
   const call = { city: info.city, roles: info.roles || [], pay_kind: info.pay_kind || null };
   const notBefore = info.first_look_until && new Date(info.first_look_until) > now ? new Date(info.first_look_until) : now;
   let made = 0;
   for (const o of orgs || []) {
-    if (!o.calls_email) continue;
+    const lane = wa.laneFor(o);   // A2-3: one lane per call, never both: WhatsApp for a partner that said yes, else email
+    if (!lane) continue;
     if (!matches(o, call, { hidden: hiddenByReports(o, reps || []), now }).ok) continue;
     const id = crypto.randomUUID(); const token = calls.tokenFor(id, deps.env);
     if (!token) return { made, why: 'no_secret' };
-    const { error } = await sb.from('partner_sends').insert({ id, partner_id: o.id, post_id: info.post_id, channel: 'email', state: 'queued',
+    const { error } = await sb.from('partner_sends').insert({ id, partner_id: o.id, post_id: info.post_id, channel: lane, state: 'queued',
       not_before: notBefore.toISOString(), token_hash: calls.tokenHash(token) });
     if (!error) made += 1;   // the UNIQUE (partner, post, channel) row refuses a second send of one call
   }
@@ -52,17 +60,18 @@ function callEmail({ org, shape, token }) {
   const lines = [
     `Hello ${org.name},`, '',
     `${shape.vendor.name}, a ${shape.vendor.trade} on The Dream Wedding, has posted a collab call.`, '',
-    `Needs: ${shape.needs}`,
-    `Where and when: ${shape.city}, ${shape.date_words}`,
-    `Pay: ${shape.pay_words}`,
-    ...(shape.note ? [`Note from the vendor: ${shape.note}`] : []),
-    ...(shape.vendor.instagram_url ? [`Their Instagram: ${shape.vendor.instagram_url}`] : []), '',
-    'To suggest someone, open this link:', calls.callUrl(token), '',
-    `Name each person and add a profile link. They show on the call as suggested by ${org.name}.`,
-    'The vendor contacts you, not your people.', '',
-    `You get this because ${org.name} asked for collab calls on The Dream Wedding.`,
-    `To stop these emails: ${calls.stopUrl(token)}`,
-    `To pause them for a week: ${calls.pauseUrl(token)}`, '',
+    `The vendor needs ${shape.needs}.`,
+    `The shoot is in ${shape.city} on ${shape.date_words}.`,
+    `The vendor offers this pay: ${shape.pay_words}.`,
+    ...(shape.note ? [`The vendor wrote this note: ${shape.note}`] : []),
+    ...(shape.vendor.instagram_url ? [`You can see the vendor's Instagram here: ${shape.vendor.instagram_url}`] : []), '',
+    'To suggest someone for this call, open this link:', calls.callUrl(token), '',
+    'For each person, write their name and a link to their profile.',
+    `The vendor will see them on the call as suggested by ${org.name}.`,
+    `If the vendor chooses someone, the vendor contacts ${org.name}, not the person.`, '',
+    `You are getting this email because ${org.name} asked The Dream Wedding to send it collab calls.`,
+    `To stop these emails, open this link: ${calls.stopUrl(token)}`,
+    `To pause these emails for one week, open this link: ${calls.pauseUrl(token)}`, '',
     'The Dream Wedding',
   ];
   return { subject, text: lines.join('\n'), headers: { 'List-Unsubscribe': `<${calls.stopUrl(token)}>` } };
@@ -70,7 +79,7 @@ function callEmail({ org, shape, token }) {
 
 async function drain(sb, deps = {}) {
   const now = deps.now ? deps.now() : new Date(); const env = deps.env || process.env;
-  const { data: rows } = await sb.from('partner_sends').select('id, partner_id, post_id, channel, state, why, not_before, attempts')
+  const { data: rows } = await sb.from('partner_sends').select('id, partner_id, post_id, channel, state, why, not_before, attempts, created_at')
     .in('state', DUE).lte('not_before', now.toISOString()).order('not_before', { ascending: true }).limit(200);
   const out = { sent: 0, held: 0, closed: 0, failed: 0 };
   const sentToday = new Map();
@@ -87,11 +96,12 @@ async function drain(sb, deps = {}) {
       if (error) console.warn('[partners] send log:', error.message || error);
     } catch (e) { console.warn('[partners] send log:', e && e.message); }
   };
+  let ready = null;   // A2-3: whether the WhatsApp lane is open, read once a pass
   for (const r of rows || []) {
-    if (r.channel !== 'email') continue;   // the WhatsApp route is A2-2's
+    if (r.channel !== 'email' && r.channel !== 'whatsapp') continue;
     const c = await calls.loadCall(sb, r.post_id);
     if (!c || !calls.isOpen(c.post, now)) { await set(r, { state: 'closed', why: W.callClosed }); out.closed += 1; continue; }
-    const { data: org } = await sb.from('partner_orgs').select('id, name, check_state, send_state, paused_until, calls_email, daily_cap').eq('id', r.partner_id).maybeSingle();
+    const { data: org } = await sb.from('partner_orgs').select('id, name, check_state, send_state, paused_until, calls_email, daily_cap, whatsapp_opt, whatsapp_phone, whatsapp_opt_at').eq('id', r.partner_id).maybeSingle();
     if (!org || org.check_state === 'blocked') { await set(r, { state: 'closed', why: W.blocked }); out.closed += 1; continue; }
     if (org.send_state === 'stopped') { await set(r, { state: 'closed', why: W.stopped }); out.closed += 1; continue; }
     if (org.send_state === 'paused' || (org.paused_until && new Date(org.paused_until) > now)) {
@@ -103,11 +113,44 @@ async function drain(sb, deps = {}) {
       sentToday.set(org.id, count || 0);
     }
     if (sentToday.get(org.id) >= (org.daily_cap || 10)) { await set(r, { state: 'held_cap', why: W.cap, not_before: next9amIST(now).toISOString() }); out.held += 1; continue; }
-    if (!org.calls_email) { await set(r, { state: 'closed', why: W.noEmail }); out.closed += 1; continue; }
+    // A2-3 · THE LANE. A WhatsApp row goes by WhatsApp only while the partner's yes stands and the lane is open (the
+    // registry and the switchboard row both say approved); otherwise it moves to email with its own log line, or closes
+    // when the partner has no email for calls. Never both lanes for one call.
+    if (r.channel === 'whatsapp') {
+      if (ready === null) { try { ready = await (deps.waReady || wa.waReady)(sb); } catch (_e) { ready = false; } }
+      if (!(ready && wa.saidYes(org))) {
+        if (!org.calls_email) { await set(r, { state: 'closed', why: W.noLane }); out.closed += 1; continue; }
+        const { error: le } = await sb.from('partner_sends').update({ channel: 'email', updated_at: now.toISOString() }).eq('id', r.id);
+        if (le) { console.warn('[partners] lane change:', le.message || le); continue; }
+        try { await sb.from('partner_send_log').insert({ send_id: r.id, kind: 'lane_changed', state: r.state, channel: 'email', attempts: r.attempts || 0, why: W.toEmail, at: now.toISOString() }); }
+        catch (e) { console.warn('[partners] send log:', e && e.message); }
+        r.channel = 'email';
+      }
+    }
+    if (r.channel === 'email' && !org.calls_email) { await set(r, { state: 'closed', why: W.noEmail }); out.closed += 1; continue; }
+    // A2-3 · THE 72-HOUR CHECK (the chair, 8 Oct 2026): a row made more than 72 hours before it could first be sent is closed
+    // and never sent. "Could first be sent" is this point: every gate above has passed, and for email the key is set. A row already tried (it has
+    // tries, or an admin pressed Try again) is not a first send and is not closed by age.
+    // For email, sending is possible only with the key; without it the row waits as before (email.js is the one writer of
+    // held_no_key) and is not closed by age while it waits.
+    const canSend = r.channel === 'whatsapp' || !!env.RESEND_API_KEY;
+    if (canSend && !(r.attempts > 0) && r.created_at && now.getTime() - new Date(r.created_at).getTime() > LATE_MS && !(await everRetried(sb, r.id))) {
+      await set(r, { state: 'closed', why: W.late }); out.closed += 1; continue;
+    }
     const token = calls.tokenFor(r.id, env);
-    const mail = callEmail({ org, shape: calls.callShape(c, now), token });
-    const res = await (deps.sendEmail || sendEmail)({ to: org.calls_email, ...mail }, { env, fetchImpl: deps.fetchImpl });
-    if (res.noKey) { await set(r, { state: 'held_no_key', why: W.noKey, not_before: new Date(now.getTime() + 15 * 60e3).toISOString() }); out.held += 1; continue; }
+    let res;
+    if (r.channel === 'whatsapp') {
+      try { const w = await wa.sendCall(sb, { org, shape: calls.callShape(c, now), token }, deps);
+        res = { ok: true, id: (w && w.result && (w.result.messages ? w.result.messages[0] && w.result.messages[0].id : w.result.id)) || null }; }
+      catch (e) {
+        if (e && e.code === 'opted_out') { await set(r, { state: 'closed', why: W.waStopped }); out.closed += 1; continue; }
+        res = { ok: false, error: `wa ${(e && e.code) || 'error'}: ${String((e && e.message) || '').replace(/\+?\d[\d\s-]{8,}\d/g, '[number]')}`.slice(0, 300) };
+      }
+    } else {
+      const mail = callEmail({ org, shape: calls.callShape(c, now), token });
+      res = await (deps.sendEmail || sendEmail)({ to: org.calls_email, ...mail }, { env, fetchImpl: deps.fetchImpl });
+      if (res.noKey) { await set(r, { state: 'held_no_key', why: W.noKey, not_before: new Date(now.getTime() + 15 * 60e3).toISOString() }); out.held += 1; continue; }
+    }
     if (!res.ok) {
       const tries = (r.attempts || 0) + 1;
       await set(r, tries >= 3 ? { state: 'failed', why: res.error, attempts: tries } : { state: 'queued', why: res.error, attempts: tries, not_before: new Date(now.getTime() + 15 * 60e3).toISOString() });

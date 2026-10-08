@@ -7,9 +7,9 @@ const KINDS = Object.freeze(['agency', 'fashion_house', 'brand', 'studio', 'plan
 
 function validateContact(b = {}, { partial = false } = {}) {
   const row = {};
-  if (!partial || b.name !== undefined) { const n = typeof b.name === 'string' ? b.name.trim() : ''; if (!n) return { ok: false, error: 'Write their name.' }; row.name = n.slice(0, 120); }
+  if (!partial || b.name !== undefined) { const n = typeof b.name === 'string' ? b.name.trim() : ''; if (!n) return { ok: false, error: "Write the contact's name." }; row.name = n.slice(0, 120); }
   if (!partial || b.kind !== undefined) { if (!KINDS.includes(b.kind)) return { ok: false, error: 'Choose what kind of contact this is.' }; row.kind = b.kind; }
-  if (!partial || b.how_we_know !== undefined) { const w = typeof b.how_we_know === 'string' ? b.how_we_know.trim() : ''; if (!w) return { ok: false, error: 'Write how we know them.' }; row.how_we_know = w.slice(0, 300); }
+  if (!partial || b.how_we_know !== undefined) { const w = typeof b.how_we_know === 'string' ? b.how_we_know.trim() : ''; if (!w) return { ok: false, error: 'Write how TDW knows this contact.' }; row.how_we_know = w.slice(0, 300); }
   if (b.instagram_handle !== undefined) {
     if (b.instagram_handle === null || String(b.instagram_handle).trim() === '') row.instagram_handle = null;
     else { const h = links.normalizeIgHandle(b.instagram_handle); if (!h) return { ok: false, error: links.WORDS.badHandle }; row.instagram_handle = h.toLowerCase(); }

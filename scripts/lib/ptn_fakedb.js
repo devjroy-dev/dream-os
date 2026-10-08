@@ -15,9 +15,12 @@ function fakeDb(tables = {}) {
       neq(c, v) { filters.push((r) => r[c] !== v); return api; },
       in(c, vs) { filters.push((r) => vs.includes(r[c])); return api; },
       ilike(c, v) { filters.push((r) => String(r[c]).toLowerCase() === String(v).toLowerCase()); return api; },
+      // PTN-A2-3: like() with %, for the marketing lane's two arms (b298's differential runs them on real bytes).
+      is(c, v) { filters.push((r) => (v === null ? r[c] == null : r[c] === v)); return api; },
+      like(c, v) { const re = new RegExp('^' + String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$'); filters.push((r) => r[c] != null && re.test(String(r[c]))); return api; },
       lte(c, v) { filters.push((r) => r[c] != null && String(r[c]) <= String(v)); return api; },
       gte(c, v) { filters.push((r) => r[c] != null && String(r[c]) >= String(v)); return api; },
-      order(c, o) { order = { c, asc: !o || o.ascending !== false }; return api; }, limit(n) { lim = n; return api; },
+      order(c, o) { if (!order) order = { c, asc: !o || o.ascending !== false }; return api; }, limit(n) { lim = n; return api; },
       insert(p) { mode = 'insert'; payload = p; return api; },
       update(p) { mode = 'update'; payload = p; return api; },
       upsert(p) { mode = 'upsert'; payload = p; return api; },

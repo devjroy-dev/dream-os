@@ -1,5 +1,7 @@
 'use strict';
 // scripts/b296_ptn_a2_1c_send_log_bench.js · CE-47 · PTN-A2-1c · rung b296 · the history of a send (0219), and F-44.410.
+// R-47.1 (the founder's rule, 8 Oct 2026), amended by label at PTN-A2-3 (r3's rewrite, carried): every pinned line a partner, vendor or admin reads now
+// carries the rewritten words. The old line and the new line are side by side in docs/handovers/TDW_CE47_PTN_A2_3.md.
 // §1 0219's TEXT: one transaction; RLS and the four grants inside it (e-273); a line refuses UPDATE; the revive function
 //    in 0211's form (LANGUAGE sql, schema-qualified, no search_path set, SECURITY INVOKER, service_role only); the log's
 //    states are 0218's states and the words' states; the fold (two nullable columns, three template rows born 'pending',
@@ -151,8 +153,10 @@ const linesOf = (db, id) => db.tables.partner_send_log.filter((l) => l.send_id =
   console.warn = (...a) => warned.push(a.join(' '));
   let threw = null; try { out = await sends.drain(db, { now: () => NOW, env: KEY, fetchImpl: fetchOk }); } catch (e) { threw = e; } finally { console.warn = warn; }
   ok(!threw && out.sent === 2 && db.tables.partner_sends.every((r) => r.state === 'sent'), '2.5 the log write THROWS: the drain does not stop, both sends go', threw ? threw.message : JSON.stringify(out));
-  db = world([send({ channel: 'whatsapp' })]); await sends.drain(db, { now: () => NOW, env: KEY, fetchImpl: fetchOk });
-  ok(db.tables.partner_send_log.length === 0 && db.tables.partner_sends[0].state === 'queued', '2.6 a WhatsApp row (the drain leaves it for A2-2) writes no line');
+  // Amended by label at PTN-A2-3: the drain now carries WhatsApp rows (A2-3). A WhatsApp row whose lane is not open moves
+  // to email with ONE 'lane_changed' line, then its drain line when it goes (b298 §4 holds the WhatsApp lane itself).
+  db = world([send({ channel: 'whatsapp' })]); await sends.drain(db, { now: () => NOW, env: KEY, fetchImpl: fetchOk, waReady: async () => false });
+  ok(db.tables.partner_send_log.map((l) => `${l.kind}/${l.channel}`).join(' ') === 'lane_changed/email drain/email' && db.tables.partner_sends[0].state === 'sent', '2.6 a WhatsApp row with no open lane: one lane_changed line, then it goes by email (amended at A2-3)', JSON.stringify(db.tables.partner_send_log.map((l) => l.kind)));
 
   sec('3  the log door');
   const express = require('express');
@@ -170,13 +174,13 @@ const linesOf = (db, id) => db.tables.partner_send_log.filter((l) => l.send_id =
   const none = await get(`/sends/${id}/log`, null);
   ok(none.code === 401 && none.body && !('lines' in none.body), '3.1 no token: 401, no lines (the door sits behind requireAdmin with every other)', JSON.stringify(none));
   const bad = await get('/sends/not-an-id/log', adminTok); const unknown = await get(`/sends/${crypto.randomUUID()}/log`, adminTok);
-  ok(bad.code === 404 && unknown.code === 404 && bad.body.error === queue.REVIVE.none && unknown.body.error === queue.REVIVE.none, '3.2 a bad id and an unknown id: 404 "No such send."');
+  ok(bad.code === 404 && unknown.code === 404 && bad.body.error === queue.REVIVE.none && unknown.body.error === queue.REVIVE.none, '3.2 a bad id and an unknown id: 404 "This call to a partner does not exist."');
   const lg = await get(`/sends/${id}/log`, adminTok);
   await new Promise((r) => server.close(r));
   const ls = (lg.body && lg.body.lines) || [];
   ok(lg.code === 200 && ls.map((l) => `${l.kind}/${l.state}`).join(' ') === 'drain/sent retried/queued drain/failed drain/queued', '3.3 newest first: sent, tried again, failed, refused', JSON.stringify(ls.map((l) => `${l.kind}/${l.state}`)));
-  ok(ls[0].kind_words === 'The sender' && ls[0].state_words === 'Sent' && ls[0].lane_words === 'Email' && ls[1].kind_words === 'Tried again' && ls[1].by === 'admin'
-    && ls[2].state_words === 'Could not be sent' && ls[2].why_words === 'Resend is still in test mode: it sends only to your own address until the domain is verified.' && ls[3].why_words === ls[2].why_words,
+  ok(ls[0].kind_words === 'TDW tried to send this call.' && ls[0].state_words === 'This call was sent.' && ls[0].lane_words === 'Email' && ls[1].kind_words === 'An admin pressed Try again.' && ls[1].by === 'admin'
+    && ls[2].state_words === 'This call could not be sent.' && ls[2].why_words === 'Resend is still in test mode. Until the domain is verified, Resend sends email only to your own address.' && ls[3].why_words === ls[2].why_words,
     '3.4 each line in words: what happened, the state, the lane, the plain reason, and who tried it again', JSON.stringify(ls.slice(0, 3)));
   const sc = scan(lg.body);
   ok(sc.email.length === 0 && sc.phone.length === 0 && /\(an address\)/.test(ls[2].resend_words) && /\(an address\)/.test(ls[1].why_words || ''),

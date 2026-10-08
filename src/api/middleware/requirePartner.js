@@ -6,22 +6,22 @@
 const { verifyPartnerSession, partnerTokenFrom } = require('../../lib/partners/partnerSession');
 const { membershipFor } = require('../../lib/partners/orgs');
 
-const BLOCKED = 'This partner account is blocked. Write to partners@thedreamwedding.in.';
+const BLOCKED = 'TDW has blocked this partner account. To ask why, write to partners@thedreamwedding.in.';
 
 module.exports = function requirePartner({ orgRequired = true } = {}) {
   return async function (req, res, next) {
     try {
       const s = verifyPartnerSession(partnerTokenFrom(req));
-      if (!s) return res.status(401).json({ ok: false, error: 'Please sign in again.', code: 'PARTNER_SIGNIN' });
+      if (!s) return res.status(401).json({ ok: false, error: 'Your sign-in has ended. Please sign in again.', code: 'PARTNER_SIGNIN' });
       const m = await membershipFor(req.app.locals.supabase, s.user_id);
       if (m && m.org.check_state === 'blocked') return res.status(403).json({ ok: false, error: BLOCKED, code: 'PARTNER_BLOCKED' });
-      if (orgRequired && !m) return res.status(409).json({ ok: false, error: 'Add your organisation first.', code: 'PARTNER_NO_ORG' });
+      if (orgRequired && !m) return res.status(409).json({ ok: false, error: 'Add your organisation before you continue.', code: 'PARTNER_NO_ORG' });
       req.partnerUser = { id: s.user_id };
       req.partner = m ? { id: m.org.id, role: m.role, org: m.org } : null;
       return next();
     } catch (e) {
       console.error('[partner] door error:', e.message);
-      return res.status(500).json({ ok: false, error: 'Something went wrong. Please try again.' });
+      return res.status(500).json({ ok: false, error: 'TDW could not finish this just now. Please try again.' });
     }
   };
 };

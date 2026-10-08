@@ -1,5 +1,7 @@
 'use strict';
 // scripts/b292_ptn_a2_calls_bench.js · CE-47 · PTN-A2-1 (re-based on a75c2bd) · rung b292 · calls to partners, the Hub org
+// R-47.1 (the founder's rule, 8 Oct 2026), amended by label at PTN-A2-3 (r3's rewrite, carried): every pinned line a partner, vendor or admin reads now
+// carries the rewritten words. The old line and the new line are side by side in docs/handovers/TDW_CE47_PTN_A2_3.md.
 // page, Contact, the mark.
 // §1 0218 as text: two tables, RLS and grants in-transaction; partner_answers has no phone or email column; the FK is
 //    NO ACTION (0197's shape CHECK makes SET NULL impossible). §2 the matcher. §3 the Hub gate, CLB's gate.js hubOpen as
@@ -128,17 +130,17 @@ const fakeDb = (t) => baseFakeDb({ ...t, admin_config: HUB(t && t.admin_config) 
   await drainWith(db, NOW, KEY, fetchOk); ok(db.tables.partner_sends[0].state === 'held_cap', '4.5 the daily cap reached: held till 9 am');
   db = mk({ calls_email: null }); await drainWith(db, NOW, KEY, fetchOk); ok(db.tables.partner_sends[0].state === 'closed', '4.6 no calls email: closed');
   fetched = 0; db = mk(); await drainWith(db, NOW, ENV, fetchOk);
-  ok(db.tables.partner_sends[0].state === 'held_no_key' && fetched === 0 && db.tables.partner_sends[0].why === 'RESEND_API_KEY is not set, so nothing was sent.', '4.7 NO RESEND_API_KEY: nothing sent, Resend never called, the row says why', JSON.stringify({ s: db.tables.partner_sends[0].state, fetched }));
+  ok(db.tables.partner_sends[0].state === 'held_no_key' && fetched === 0 && db.tables.partner_sends[0].why === 'Nothing was sent, because RESEND_API_KEY is not set in Railway.', '4.7 NO RESEND_API_KEY: nothing sent, Resend never called, the row says why', JSON.stringify({ s: db.tables.partner_sends[0].state, fetched }));
   fetched = 0; db = mk({}, {}, { state: 'held_no_key' }); await drainWith(db, NOW, KEY, fetchOk);
   ok(db.tables.partner_sends[0].state === 'sent' && db.tables.partner_sends[0].provider_ref === 'em_1' && fetched === 1, '4.8 once the key is set, a held row goes out by itself');
   db = mk(); await drainWith(db, NOW, KEY, fetchBad); ok(db.tables.partner_sends[0].state === 'queued' && db.tables.partner_sends[0].attempts === 1 && /resend 422/.test(db.tables.partner_sends[0].why), '4.9 a refused send: tried again later, with its reason');
   db = mk({}, {}, { attempts: 2 }); await drainWith(db, NOW, KEY, fetchBad); ok(db.tables.partner_sends[0].state === 'failed', '4.10 the third refusal: failed');
   let mail = null; db = mk(); await sends.drain(db, { now: () => NOW, env: KEY, sendEmail: async (m) => { mail = m; return { ok: true, id: 'x' }; } });
   ok(mail && mail.to === 'bookings@modelconnect.in' && mail.subject === 'Collab call: 2 models in Delhi NCR, 18 October 2026, Paid', '4.11 the subject, word for word', mail && mail.subject);
-  ok(mail && /To suggest someone, open this link:\nhttps:\/\/thedreamwedding\.in\/partner\/call\/[A-Za-z0-9_-]{32}/.test(mail.text) && /To stop these emails: https:\/\/thedreamwedding\.in\/partner\/call\/\S+\?do=stop/.test(mail.text) && /\?do=pause/.test(mail.text), '4.12 the link, the stop and the pause');
+  ok(mail && /To suggest someone for this call, open this link:\nhttps:\/\/thedreamwedding\.in\/partner\/call\/[A-Za-z0-9_-]{32}/.test(mail.text) && /To stop these emails, open this link: https:\/\/thedreamwedding\.in\/partner\/call\/\S+\?do=stop/.test(mail.text) && /\?do=pause/.test(mail.text), '4.12 the link, the stop and the pause');
   ok(mail && mail.headers['List-Unsubscribe'] && /\?do=stop>$/.test(mail.headers['List-Unsubscribe']), '4.13 List-Unsubscribe header');
   ok(mail && !/9811100007|aanya@mail\.com/.test(mail.text) && /\[number hidden\]/.test(mail.text) && /\[email hidden\]/.test(mail.text), '4.14 the vendor\'s phone and email never reach the partner (her note masked, rule K)', mail && mail.text);
-  ok(mail && /Pay: Paid, Rs 3,000 to Rs 5,000/.test(mail.text) && /Their Instagram: https:\/\/www\.instagram\.com\/aanya\.mua\//.test(mail.text), '4.15 pay in Rs with Indian grouping; her Instagram as a link');
+  ok(mail && /The vendor offers this pay: Paid, Rs 3,000 to Rs 5,000\./.test(mail.text) && /You can see the vendor's Instagram here: https:\/\/www\.instagram\.com\/aanya\.mua\//.test(mail.text), '4.15 pay in Rs with Indian grouping; her Instagram as a link');
 
   sec('5  suggest');
   const answers = require(R('src/lib/partners/answers'));
@@ -146,21 +148,21 @@ const fakeDb = (t) => baseFakeDb({ ...t, admin_config: HUB(t && t.admin_config) 
   const base = () => fakeDb({ partner_orgs: [org()], collab_posts: [post()], collab_post_items: [{ post_id: POST, requirement_type: 'model', needed: 2 }, { post_id: POST, requirement_type: 'stylist', needed: 1 }], vendors: [vendor], partner_answers: [] });
   const calls = []; const addPI = async (_sb, x) => { calls.push(x); const same = calls.filter((c) => c.name.toLowerCase() === x.name.toLowerCase()).length > 1; return { id: crypto.randomUUID(), existed: same }; };
   db = base();
-  ok((await answers.suggest(db, SEND, [{ name: 'Riya' }], { agreed: false, now: NOW })).error === 'Tick "These people have agreed to be suggested for this call" first.', '5.1 refused without the tick, in plain words');
-  ok((await answers.suggest(db, SEND, [{ name: 'riya@mail.com', role: 'model' }], { agreed: true, now: NOW })).error === 'Write only a name. No phone number or email.', '5.2 a name holding an email is refused');
-  ok((await answers.suggest(db, SEND, [{ name: 'Riya 98111 00007', role: 'model' }], { agreed: true, now: NOW })).error === 'Write only a name. No phone number or email.', '5.3 a name holding a phone is refused');
-  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'photography' }], { agreed: true, now: NOW })).error === 'Choose a role this call needs.', '5.4 a role the call does not need is refused');
-  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'model', link: 'javascript:alert(1)' }], { agreed: true, now: NOW })).error === 'Write the profile link, for example https://www.instagram.com/name', '5.5 a bad link is refused');
+  ok((await answers.suggest(db, SEND, [{ name: 'Riya' }], { agreed: false, now: NOW })).error === 'Tick the box "These people have agreed to be suggested for this call" before you send.', '5.1 refused without the tick, in plain words');
+  ok((await answers.suggest(db, SEND, [{ name: 'riya@mail.com', role: 'model' }], { agreed: true, now: NOW })).error === "Write only the person's name. Do not add a phone number or an email address.", '5.2 a name holding an email is refused');
+  ok((await answers.suggest(db, SEND, [{ name: 'Riya 98111 00007', role: 'model' }], { agreed: true, now: NOW })).error === "Write only the person's name. Do not add a phone number or an email address.", '5.3 a name holding a phone is refused');
+  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'photography' }], { agreed: true, now: NOW })).error === 'Choose one of the roles that this call needs.', '5.4 a role the call does not need is refused');
+  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'model', link: 'javascript:alert(1)' }], { agreed: true, now: NOW })).error === "Write a link to the person's profile, for example https://www.instagram.com/name", '5.5 a bad link is refused');
   ok((await answers.suggest(db, SEND, Array.from({ length: 11 }, (_, i) => ({ name: `P${i}`, role: 'model' })), { agreed: true, now: NOW })).error === 'You can suggest up to 10 people at a time.', '5.6 eleven at once is refused');
   const r5 = await answers.suggest(db, SEND, [{ name: 'Riya Sharma', role: 'model', link: 'instagram.com/riya' }, { name: 'Kabir', role: 'stylist' }], { agreed: true, now: NOW, deps: { addPartnerInterest: addPI } });
-  ok(r5.ok && r5.line === 'Sent. Aanya Makeup Studio sees them on the call.' && calls.length === 2 && calls[0].send_id === SEND.id && calls[0].partner_id === O1 && calls[0].post_id === POST, '5.7 each person goes through CLB\'s addPartnerInterest with the send', JSON.stringify(r5));
+  ok(r5.ok && r5.line === 'Your suggestions are sent. Aanya Makeup Studio can now see them on the call.' && calls.length === 2 && calls[0].send_id === SEND.id && calls[0].partner_id === O1 && calls[0].post_id === POST, '5.7 each person goes through CLB\'s addPartnerInterest with the send', JSON.stringify(r5));
   ok(db.tables.partner_answers.length === 2 && db.tables.partner_answers[0].talent_link === 'https://instagram.com/riya' && Object.keys(db.tables.partner_answers[0]).every((k) => !/phone|email/.test(k)), '5.8 one answer row each: name, role, link, no phone or email');
   await answers.suggest(db, SEND, [{ name: 'riya sharma', role: 'model' }], { agreed: true, now: NOW, deps: { addPartnerInterest: addPI } });
   ok(db.tables.partner_answers.length === 2, '5.9 the same person again is not doubled');
   db = base(); db.tables.collab_posts[0].event_date = '2026-10-01';
-  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'model' }], { agreed: true, now: NOW })).error === 'This call is closed or its date has passed.', '5.10 a past call is refused');
+  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'model' }], { agreed: true, now: NOW })).error === 'This call is no longer open, because the vendor closed it or its date has passed.', '5.10 a past call is refused');
   db = base(); db.tables.partner_orgs[0].check_state = 'blocked';
-  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'model' }], { agreed: true, now: NOW })).error === 'This partner account is blocked. Write to partners@thedreamwedding.in.', '5.11 a blocked partner cannot suggest');
+  ok((await answers.suggest(db, SEND, [{ name: 'Riya', role: 'model' }], { agreed: true, now: NOW })).error === 'TDW has blocked this partner account. To ask why, write to partners@thedreamwedding.in.', '5.11 a blocked partner cannot suggest');
 
   sec('6  the Hub org page');
   const hub = require(R('src/lib/partners/hubPage'));
@@ -273,12 +275,12 @@ const fakeDb = (t) => baseFakeDb({ ...t, admin_config: HUB(t && t.admin_config) 
 
   sec('12  forward makes her call');
   const fwd = require(R('src/lib/partners/forward'));
-  ok(fwd.validateRequest({ asked: true, vendor_id: V_TEST, role: 'a model', city: 'Delhi NCR', event_date: '2026-10-18', budget_from: 1, budget_to: 2, pay_kind: 'paid' }).error === 'Choose what she needs from the list.', '12.1 a TDW vendor\'s need must be on the list');
+  ok(fwd.validateRequest({ asked: true, vendor_id: V_TEST, role: 'a model', city: 'Delhi NCR', event_date: '2026-10-18', budget_from: 1, budget_to: 2, pay_kind: 'paid' }).error === 'Choose what the vendor needs from the list.', '12.1 a TDW vendor\'s need must be on the list');
   db = fakeDb({ vendors: [vendor], collab_posts: [], collab_post_items: [], forward_requests: [], forward_recipients: [], partner_contacts: [{ id: crypto.randomUUID(), name: 'MC', kind: 'agency', how_we_know: 'x', instagram_handle: 'mc.in' }], prospects: [] });
   const r12 = await callRoute(admin, 'post', '/forward', { admin: { name: 'Dev' }, body: { asked: true, vendor_id: V_TEST, role: 'model', city: 'Delhi NCR', event_date: '2099-10-18', budget_from: 3000, budget_to: 5000, pay_kind: 'paid', contact_ids: [db.tables.partner_contacts[0].id] }, app: { locals: { supabase: db } } });
   ok(r12.code === 200 && db.tables.collab_posts.length === 1 && db.tables.collab_posts[0].source === 'tdw_forward' && db.tables.forward_requests[0].post_id === db.tables.collab_posts[0].id, '12.2 her request becomes her own call (source tdw_forward), the request keeps its id', JSON.stringify(r12.body).slice(0, 200));
   const r12b = await callRoute(admin, 'post', '/forward', { admin: { name: 'Dev' }, body: { asked: true, vendor_id: V_TEST, role: 'model', city: 'Delhi NCR', event_date: '2020-01-01', budget_from: 1, budget_to: 2, pay_kind: 'paid', contact_ids: [db.tables.partner_contacts[0].id] }, app: { locals: { supabase: db } } });
-  ok(r12b.code === 400 && r12b.body.error === 'The date has passed. Choose a date ahead.', '12.3 a past date: refused in plain words, nothing made', JSON.stringify(r12b.body));
+  ok(r12b.code === 400 && r12b.body.error === 'This date has passed. Choose a date in the future.', '12.3 a past date: refused in plain words, nothing made', JSON.stringify(r12b.body));
 
   sec('13  the contract with CLB: 403 with NOT_OPEN, 400 for bad input, never a 500');
   const { NOT_OPEN } = require(R('src/lib/collab/interest'));
@@ -329,7 +331,7 @@ const fakeDb = (t) => baseFakeDb({ ...t, admin_config: HUB(t && t.admin_config) 
   const broken = db13(); const realFrom = broken.from.bind(broken);
   broken.from = (t) => { if (t === 'partner_orgs') throw new Error('connection reset'); return realFrom(t); };
   let b13; try { b13 = await callRoute(pub, 'post', '/call/:token/suggest', { params: { token: tok13 }, body: GOOD, app: { locals: { supabase: broken } } }); } catch (e) { b13 = { code: 'THREW ' + e.message }; }
-  ok(b13.code === 503 && b13.body.error === 'Could not save just now. Try again in a minute.' && !/connection reset/.test(JSON.stringify(b13.body)), '13.7 the database fails mid-suggestion: 503 in plain words, no stack, not a 500', JSON.stringify(b13));
+  ok(b13.code === 503 && b13.body.error === 'TDW could not save this just now. Please try again in a minute.' && !/connection reset/.test(JSON.stringify(b13.body)), '13.7 the database fails mid-suggestion: 503 in plain words, no stack, not a 500', JSON.stringify(b13));
 
   console.log(`\nb292: ${pass} passed, ${fail} failed${fail ? '\nFAILED: ' + failed.join(' | ') : ''}`);
   process.exit(fail ? 1 : 0);

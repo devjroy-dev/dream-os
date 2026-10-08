@@ -20,9 +20,9 @@ async function record(supabase, { partnerId, kind, refId, vendorId }) {
 }
 /** The admin's line, in plain words. */
 function adminLine(used, planState) {
-  if (planState === 'exempt') return `Connections: ${used}. Exempt from the plan.`;
+  if (planState === 'exempt') return `This partner has made ${used} connections. TDW does not charge this partner for connections.`;
   const free = Math.min(used, FREE_CONNECTIONS);
-  const plan = planState === 'active' ? 'Plan: Rs 2,999 a month.' : 'Plan: none yet. After the 3rd, Rs 2,999 a month.';
-  return `Connections: ${free} of ${FREE_CONNECTIONS} free used${used > FREE_CONNECTIONS ? `, ${used} in all` : ''}. ${plan}`;
+  const plan = planState === 'active' ? 'This partner pays for the plan, Rs 2,999 a month.' : 'This partner has no plan yet. After its 3rd connection, the plan costs Rs 2,999 a month.';
+  return `This partner has used ${free} of its ${FREE_CONNECTIONS} free connections${used > FREE_CONNECTIONS ? `, and ${used} connections in all` : ''}. ${plan}`;
 }
 module.exports = { FREE_CONNECTIONS, countFor, record, adminLine };

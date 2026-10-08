@@ -244,6 +244,22 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
     }
   }
 
+  // ── CE-47 · PTN-A2-3 · IS SHE A PARTNER THAT SAID YES TO CALLS ON WHATSAPP? (the owner's yes: the chair, 8 Oct 2026) ──
+  // The two arms' shape, one table over, reached only when neither matched. ABOVE the STOP arm for their reason: a
+  // partner's STOP must stop collab calls, never opt the number out of every line. The arm is PTN's
+  // (src/lib/partners/waInbound.js); this is a call, never a second writer. ONE bounded read for any other number,
+  // which then meets this file unchanged; any error in the arm falls through to today's behaviour.
+  if (!introMatched && !broadcastMatched) {
+    try {
+      const ptn = require('./partners/waInbound');
+      const pRow = await ptn.matchInboundPartner(supabase, phone);
+      if (pRow) {
+        const verdict = await ptn.applyPartnerInbound(supabase, { row: pRow, phone, text, sendWa: _sendWa, sendWaDeps: _deps });
+        if (!verdict.fallThrough) return verdict;
+      }
+    } catch (e) { console.warn('[prospects:partner-arm] fell through to today\'s lane:', e && e.message); }
+  }
+
   // ── STOP → opt out (cross-line), then send the ONE courtesy confirmation ──────────────────
   if (isStopWord(text)) {
     const prospect = await findOrCreateProspectByPhone(supabase, phone);

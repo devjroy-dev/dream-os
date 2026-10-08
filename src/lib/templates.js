@@ -1578,6 +1578,53 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── CE-47 · PTN-A2-3 · THE PARTNER LINES (filed by the founder, 8 Oct 2026; Meta approved all three as Utility) ──
+  // Sent from the MARKETING line (the chair's ruling with the founder's yes, 8 Oct 2026): a partner's reply reaches
+  // prospects.js, where PTN's arm (src/lib/partners/waInbound.js) answers it before the STOP arm. Bodies are the FILED
+  // text, byte for byte (the founder's screenshots, 8 Oct 2026). tdw_partner_call as filed reads "Tap View details to
+  // respond." (the founder's own edit). IDs: tdw_partner_call 1809457166864769, tdw_partner_picked 1144140224837871,
+  // tdw_collab_request_sent 1665884328396587. Their switchboard rows (0219) read Meta's word; PTN's sender also asks
+  // the row (wa.js waReady), so a pause or a rejection stops the WhatsApp lane by itself and calls go by email.
+  partner_call: {
+    key: 'partner_call',
+    name: 'tdw_partner_call',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'UTILITY',
+    variables: ['partner', 'vendor', 'needs', 'date', 'city'],
+    body:
+      'Hi {{1}}. {{2}} has raised a request for {{3}} for a shoot on {{4}} in {{5}}. Tap View details to respond. ' +
+      'Reply STOP CALLS to stop these messages, or PAUSE CALLS to pause them for a week.',
+    // The URL button as filed: "View details", Dynamic, base https://thedreamwedding.in/partner/call/, one suffix: the
+    // call's token. THE PARAMETER IS THE SUFFIX, NEVER THE FULL URL (review_request's lesson).
+    button: { type: 'url', index: 0, text: 'View details', base: 'https://thedreamwedding.in/partner/call/', variable: 'code' },
+    status: 'approved',
+  },
+  partner_picked: {
+    key: 'partner_picked',
+    name: 'tdw_partner_picked',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'UTILITY',
+    variables: ['vendor', 'person', 'date'],
+    body:
+      'Update on your suggestion: {{1}} wants to talk about {{2}} for the shoot on {{3}}. They will contact you directly. ' +
+      'TDW takes no fee and has no part in any fee.',
+    status: 'approved',
+  },
+  collab_request_sent: {
+    key: 'collab_request_sent',
+    name: 'tdw_collab_request_sent',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'UTILITY',
+    variables: ['needs', 'city', 'date', 'count'],
+    body:
+      'Your request for {{1}} in {{2}} on {{3}} has gone to {{4}} partners. When someone is suggested, you will see it ' +
+      'on your call in The Dream Wedding.',
+    status: 'approved',
+  },
+
 };
 
 // ── helpers ────────────────────────────────────────────────────────────────

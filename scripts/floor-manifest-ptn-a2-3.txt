@@ -1,0 +1,32 @@
+# scripts/floor-manifest-ptn-a2-3.txt
+# TDW CE-47 · PTN-A2-3 (dream-os, base dae04b0) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No migration (0219 is on main and applied), no Railway value required to
+# apply it (the marketing variables are the founder's walk, named in the handover).
+docs/TEMPLATES.md
+docs/handovers/TDW_CE47_PTN_A2_3.md
+scripts/b111_lcv15_lsp1b_bench.js
+scripts/b290_ptn_a1_server_bench.js
+scripts/b292_ptn_a2_calls_bench.js
+scripts/b295_ptn_a2_1b_queue_bench.js
+scripts/b296_ptn_a2_1c_send_log_bench.js
+scripts/b298_ptn_a2_3_whatsapp_bench.js
+scripts/floor-manifest-ptn-a2-3.txt
+scripts/lib/ptn_fakedb.js
+scripts/ptn_a2_3.sha256
+src/api/admin/partners.js
+src/api/middleware/requirePartner.js
+src/api/partner/index.js
+src/api/public/partnerPublic.js
+src/api/vendor/partnerContact.js
+src/lib/partners/answers.js
+src/lib/partners/connections.js
+src/lib/partners/contacts.js
+src/lib/partners/forward.js
+src/lib/partners/orgs.js
+src/lib/partners/queue.js
+src/lib/partners/sends.js
+src/lib/partners/wa.js
+src/lib/partners/waInbound.js
+src/lib/partners/words.js
+src/lib/prospects.js
+src/lib/templates.js

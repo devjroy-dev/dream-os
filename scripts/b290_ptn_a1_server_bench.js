@@ -1,5 +1,7 @@
 'use strict';
 // scripts/b290_ptn_a1_server_bench.js · CE-47 · PTN-A1 · rung b290 · the partner lane's server half.
+// R-47.1 (the founder's rule, 8 Oct 2026), amended by label at PTN-A2-3 (r3's rewrite, carried): every pinned line a partner, vendor or admin reads now
+// carries the rewritten words. The old line and the new line are side by side in docs/handovers/TDW_CE47_PTN_A2_3.md.
 // Holds: the two migrations (RLS, grants, no partner price column, "she asked" required); the link rule (handles through
 // the ONE normaliser, websites http(s) only, ready addresses); the partner session (its own secret; a circle credential
 // cannot pass); provisionRole 'partner' (name required when new; no vendors or couples row, ever); orgs (refusals in plain
@@ -175,7 +177,7 @@ if (MUT) {
 
   sec('7  contacts and Stopped');
   const contacts = require(R('src/lib/partners/contacts'));
-  ok(contacts.validateContact({ name: 'House of Vyas', kind: 'fashion_house' }).error === 'Write how we know them.', '7.1 "How we know them" is required');
+  ok(contacts.validateContact({ name: 'House of Vyas', kind: 'fashion_house' }).error === 'Write how TDW knows this contact.', '7.1 "How we know them" is required');
   ok(contacts.validateContact({ name: 'N', kind: 'stylist', how_we_know: 'x', website: 'data:x' }).ok === false, '7.2 a non-http website is refused');
   db = fakeDb({ prospects: [{ phone: '+919811100032', state: 'opted_out' }, { phone: '+919811100031', state: 'cold' }] });
   const st = await contacts.stoppedPhones(db, ['+919811100032', '+919811100031', null]);
@@ -198,7 +200,7 @@ if (MUT) {
   const c1 = await conns.record(db, { partnerId: 'o1', kind: 'pick', refId: 'x1', vendorId: 'v1' });
   const c1b = await conns.record(db, { partnerId: 'o1', kind: 'pick', refId: 'x1', vendorId: 'v1' });
   ok(c1.n === 1 && c1b.repeat === true && db.tables.partner_connections.length === 1, '9.1 one exchange is one connection, however often it is touched');
-  ok(conns.adminLine(2, 'free') === 'Connections: 2 of 3 free used. Plan: none yet. After the 3rd, Rs 2,999 a month.', '9.2 the admin line, word for word');
+  ok(conns.adminLine(2, 'free') === 'This partner has used 2 of its 3 free connections. This partner has no plan yet. After its 3rd connection, the plan costs Rs 2,999 a month.', '9.2 the admin line, word for word');
   const srcAll = fs.readdirSync(R('src/lib/partners')).map((f) => fs.readFileSync(R('src/lib/partners/' + f), 'utf8')).join('\n') + fs.readFileSync(R('src/api/admin/partners.js'), 'utf8');
   ok(!/razorpay|createSubscription|charge\(/i.test(srcAll.replace(/razorpay_subscription_id/g, '')), '9.3 nothing in A1 charges or reaches Razorpay');
 

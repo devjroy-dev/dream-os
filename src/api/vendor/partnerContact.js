@@ -36,12 +36,12 @@ router.post('/partner-contact/:interest_id', requireAuth, resolveVendor(), async
   if (!o || o.check_state === 'blocked') return errRes(res, 404, MISS);
   await conns.record(sb, { partnerId: o.id, kind: 'contact', refId: r.post_id, vendorId: req.vendor.id });
   const token = calls.tokenFor(r.send_id); const link = token ? calls.callUrl(token) : null;
-  const text = `Hello ${o.name}. I am writing about ${r.display_name}, whom you suggested for my collab call on The Dream Wedding.${link ? ` The call: ${link}` : ''}`;
+  const text = `Hello ${o.name}. I am writing about ${r.display_name}, whom you suggested for my collab call on The Dream Wedding.${link ? ` You can see the call here: ${link}` : ''}`;
   if (o.whatsapp_opt && o.whatsapp_phone && /^\+[0-9]{8,15}$/.test(o.whatsapp_phone)) {
     return okRes(res, { kind: 'whatsapp', href: `https://wa.me/${o.whatsapp_phone.slice(1)}?text=${encodeURIComponent(text)}`, partner: o.name });
   }
   if (o.calls_email) return okRes(res, { kind: 'email', href: `mailto:${o.calls_email}?subject=${encodeURIComponent(`About ${r.display_name}, for my collab call`)}&body=${encodeURIComponent(text)}`, partner: o.name });
-  return okRes(res, { kind: 'none', href: null, partner: o.name, line: `${o.name} has not given a way to reach it yet. TDW has told no one else.` });
+  return okRes(res, { kind: 'none', href: null, partner: o.name, line: `${o.name} has not yet given TDW a way to contact it. TDW has not shared your request with anyone else.` });
 }));
 
 router.post('/partner-report', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
@@ -52,6 +52,6 @@ router.post('/partner-report', requireAuth, resolveVendor(), asyncHandler(async 
   const note = typeof b.note === 'string' && b.note.trim() ? b.note.trim().slice(0, 500) : null;
   const { error } = await sb.from('partner_reports').insert({ partner_id: r.partner_id, item_kind: 'call_answer', item_id: r.id, vendor_id: req.vendor.id, reason: b.reason, note });
   if (error) return errRes(res, 500, 'Something went wrong. Please try again.');
-  return okRes(res, { line: 'Thank you. TDW will look at this.' });
+  return okRes(res, { line: 'Thank you. An admin at TDW will look at your report.' });
 }));
 module.exports = router;

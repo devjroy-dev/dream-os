@@ -1,5 +1,7 @@
 'use strict';
 // scripts/b295_ptn_a2_1b_queue_bench.js · CE-47 · PTN-A2-1b · rung b295 · waiting and sent, every partner; trying a row again.
+// R-47.1 (the founder's rule, 8 Oct 2026), amended by label at PTN-A2-3 (r3's rewrite, carried): every pinned line a partner, vendor or admin reads now
+// carries the rewritten words. The old line and the new line are side by side in docs/handovers/TDW_CE47_PTN_A2_3.md.
 // A2-1c (amended by label): the revive is 0219's one statement; the fake answers sb.rpc with its meaning; M1 mutates the
 // function's WHERE. §1 THE GUARD over real HTTP: both new doors sit behind requireAdmin with every other /admin/partners door; no token, a
 //    vendor's token and a partner's token are each refused; an admin's opens. §2 the order: "sends" is never read as a
@@ -117,7 +119,7 @@ const scan = (b) => { const s = JSON.stringify(b).replace(/[0-9a-f]{8}-[0-9a-f]{
 
   sec('2  the order: "sends" is never a partner id');
   const viaHttp = await call('GET', '/sends', adminTok);
-  ok(viaHttp.code === 200 && viaHttp.body.show === 'waiting' && Array.isArray(viaHttp.body.sends), '2.1 GET /sends is the list (not "No such partner.")', JSON.stringify(viaHttp.body).slice(0, 160));
+  ok(viaHttp.code === 200 && viaHttp.body.show === 'waiting' && Array.isArray(viaHttp.body.sends), '2.1 GET /sends is the list (not "This partner does not exist.")', JSON.stringify(viaHttp.body).slice(0, 160));
   const real = await call('GET', `/${O1}`, adminTok);
   ok(real.code === 200 && real.body.partner && real.body.partner.id === O1, '2.2 a real partner id still opens its partner', JSON.stringify(real.body).slice(0, 160));
   const notId = await call('GET', '/not-a-uuid', adminTok);
@@ -135,8 +137,8 @@ const scan = (b) => { const s = JSON.stringify(b).replace(/[0-9a-f]{8}-[0-9a-f]{
   ok(wa.channel === 'whatsapp' && wa.lane_words === 'WhatsApp' && wa.partner.name === 'Studio Noor' && w.sends[1].lane_words === 'Email', '3.2 the lane is a column: a WhatsApp row sits in the same list, in words');
   ok(w.sends[1].call && w.sends[1].call.who === 'Aanya Makeup Studio' && w.sends[1].call.what === '2 models' && w.sends[1].call.city === 'Delhi NCR' && /18 October 2026/.test(w.sends[1].call.date_words), '3.3 each row: the partner and the call (who, what, city, date)', JSON.stringify(w.sends[1].call));
   const f = await queue.listSends(db, { show: 'failed', now: NOW });
-  ok(f.sends.length === 1 && f.sends[0].state_words === 'Could not be sent' && f.sends[0].why_words === 'The sending domain is not verified in Resend yet.' && f.sends[0].resend_words === RESEND_DOMAIN && f.sends[0].can_retry === true && f.sends[0].attempts === 3,
-    '3.4 failed: "Could not be sent", the reason in plain words, Resend\'s own words beside it, tries made, can be tried again', JSON.stringify(f.sends[0]));
+  ok(f.sends.length === 1 && f.sends[0].state_words === 'This call could not be sent.' && f.sends[0].why_words === 'The sending domain is not verified in Resend yet.' && f.sends[0].resend_words === RESEND_DOMAIN && f.sends[0].can_retry === true && f.sends[0].attempts === 3,
+    '3.4 failed: "This call could not be sent.", the reason in plain words, Resend\'s own words beside it, tries made, can be tried again', JSON.stringify(f.sends[0]));
   ok((await queue.listSends(db, { show: 'sent' })).sends.length === 1 && (await queue.listSends(db, { show: 'all' })).sends.length === 5, '3.5 sent and all');
   const bad = await queue.listSends(db, { show: 'everything' });
   ok(bad.ok === false && bad.status === 400 && /waiting, failed, sent or all/.test(bad.error), '3.6 a show that is not one of the four: 400 in plain words');
@@ -211,11 +213,11 @@ const scan = (b) => { const s = JSON.stringify(b).replace(/[0-9a-f]{8}-[0-9a-f]{
   sec('8  plain words, against Resend\'s documented messages');
   const fw = words.failureWords;
   ok(fw(RESEND_DOMAIN) === 'The sending domain is not verified in Resend yet.', '8.1 the domain not verified');
-  ok(fw('resend 403: You can only send testing emails to your own email address (dev@x.in).') === 'Resend is still in test mode: it sends only to your own address until the domain is verified.', '8.2 test mode');
+  ok(fw('resend 403: You can only send testing emails to your own email address (dev@x.in).') === 'Resend is still in test mode. Until the domain is verified, Resend sends email only to your own address.', '8.2 test mode');
   ok(fw('resend 401: Missing API key in the authorization header.') === 'Resend refused the key. Check RESEND_API_KEY in Railway.' && fw('resend 403: API key is not active') === fw('resend 403: This API key is suspended'), '8.3 the key, in each of its forms');
-  ok(fw('resend 429: You have exceeded your daily email sending quota.') === 'Resend\'s sending limit for the day or month is used up.' && fw('resend 429: Too many requests. Please limit the number of requests per second.') === 'Too many emails at once. Resend asked to slow down.', '8.4 quota and rate');
-  ok(fw('bad address') === 'This partner\'s email for calls is not a valid address.' && fw('resend 503: API is temporarily unavailable') === 'Resend had a fault on its side.' && fw('resend unreachable: fetch failed') === 'Resend could not be reached.', '8.5 address, fault, unreachable');
-  ok(fw('resend 422: The request body is missing one or more required fields.') === 'Resend refused it.' && fw(null) === 'Resend refused it.', '8.6 anything else: "Resend refused it." (its own words kept beside)');
+  ok(fw('resend 429: You have exceeded your daily email sending quota.') === 'Resend\'s sending limit for the day or month is used up.' && fw('resend 429: Too many requests. Please limit the number of requests per second.') === 'TDW sent too many emails at once, and Resend asked it to slow down.', '8.4 quota and rate');
+  ok(fw('bad address') === 'This partner\'s email for calls is not a valid address.' && fw('resend 503: API is temporarily unavailable') === 'Resend had a fault on its side.' && fw('resend unreachable: fetch failed') === 'TDW could not reach Resend.', '8.5 address, fault, unreachable');
+  ok(fw('resend 422: The request body is missing one or more required fields.') === 'Resend refused this email.' && fw(null) === 'Resend refused this email.', '8.6 anything else: "Resend refused this email." (its own words kept beside)');
 
   sec('9  the per-partner door');
   db = world([send({ state: 'failed', why: RESEND_DOMAIN, attempts: 3 }), send({ channel: 'whatsapp', state: 'queued' })]);

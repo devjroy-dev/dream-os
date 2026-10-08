@@ -29,9 +29,9 @@ router.get('/request/:token', asyncHandler(async (req, res) => {
   const { data: r } = await supabase.from('forward_recipients').select('request_id').eq('token_hash', fwd.tokenHash(t)).maybeSingle();
   if (!r) return errRes(res, 404, 'This link does not work. Ask the person who sent it for a new one.');
   const { data: q } = await supabase.from('forward_requests').select('id, vendor_id, outside_handle, role, city, event_date, budget_from, budget_to, pay_kind, note').eq('id', r.request_id).maybeSingle();
-  if (!q) return errRes(res, 404, 'This request has ended.');
+  if (!q) return errRes(res, 404, 'This request is closed.');
   const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
-  if (q.event_date < today) return okRes(res, { ended: true, line: 'This request has ended. Its date has passed.' });
+  if (q.event_date < today) return okRes(res, { ended: true, line: 'This request is closed, because its date has passed.' });
   const { data: v } = q.vendor_id ? await supabase.from('vendors').select('business_name, category, instagram_handle').eq('id', q.vendor_id).maybeSingle() : { data: null };
   return okRes(res, { ended: false, request: fwd.requestPage({ face: fwd.vendorFace(v, q), request: q }) });
 }));

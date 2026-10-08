@@ -13,17 +13,17 @@ const { NOT_OPEN } = require('../collab/interest');        // CLB's sentence, sa
 const MAX = 10;
 const cleanName = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, 120);
 const WORDS = Object.freeze({
-  needAgree: 'Tick "These people have agreed to be suggested for this call" first.',
-  needOne: 'Write at least one name.',
+  needAgree: 'Tick the box "These people have agreed to be suggested for this call" before you send.',
+  needOne: 'Write the name of at least one person.',
   tooMany: `You can suggest up to ${MAX} people at a time.`,
-  badName: 'Write only a name. No phone number or email.',
-  badRole: 'Choose a role this call needs.',
-  badLink: 'Write the profile link, for example https://www.instagram.com/name',
-  closed: 'This call is closed or its date has passed.',
-  blocked: 'This partner account is blocked. Write to partners@thedreamwedding.in.',
-  done: (v) => `Sent. ${v} sees them on the call.`,
+  badName: "Write only the person's name. Do not add a phone number or an email address.",
+  badRole: 'Choose one of the roles that this call needs.',
+  badLink: "Write a link to the person's profile, for example https://www.instagram.com/name",
+  closed: 'This call is no longer open, because the vendor closed it or its date has passed.',
+  blocked: 'TDW has blocked this partner account. To ask why, write to partners@thedreamwedding.in.',
+  done: (v) => `Your suggestions are sent. ${v} can now see them on the call.`,
   notOpen: NOT_OPEN,
-  notSaved: 'Could not save just now. Try again in a minute.',
+  notSaved: 'TDW could not save this just now. Please try again in a minute.',
 });
 // THE CONTRACT (the chair, 7 Oct 2026): a suggestion on a call whose vendor does not have Collab Hub open answers 403 with
 // CLB's NOT_OPEN sentence and writes NO row; bad input answers 400; nothing a partner sends can make a 500. Every refusal
@@ -76,6 +76,6 @@ async function suggestInner(sb, send, people, { agreed, now = new Date(), deps =
 async function stopOrPause(sb, send, what, now = new Date()) {
   const patch = what === 'stop' ? { send_state: 'stopped' } : { send_state: 'active', paused_until: new Date(now.getTime() + 7 * 86400e3).toISOString() };
   await sb.from('partner_orgs').update({ ...patch, updated_at: now.toISOString() }).eq('id', send.partner_id);
-  return what === 'stop' ? 'Calls are stopped. To get them again, sign in and go to Settings.' : 'Calls are paused for a week.';
+  return what === 'stop' ? 'TDW will send you no more calls. To get calls again, sign in and turn them on in Settings.' : 'TDW will send you no calls for one week.';
 }
 module.exports = { MAX, WORDS, sendForToken, suggest, stopOrPause };
