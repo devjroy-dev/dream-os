@@ -30,6 +30,14 @@ if (!BIN) { console.log('b225 · NOT RUN: no Postgres server binaries here (init
 // never 0. A whole run here takes about 13 minutes.
 const LIVE = new Set();
 const CEILING_MS = Number(process.env.B225_CEILING_MS || 40 * 60 * 1000);
+// F-44.427 (turn 70): killed from OUTSIDE (a runner's timeout sends SIGTERM; a person sends SIGINT), the ceiling never
+// fires, so the same clean-up runs on those signals too: every Postgres it started is stopped and its folder removed.
+function stopAll(why, code) {
+  for (const d of LIVE) { try { cp.spawnSync(...(process.getuid && process.getuid() === 0 ? ['su', ['postgres', '-s', '/bin/sh', '-c', `'${BIN}/pg_ctl' -D '${d}' -m immediate stop`]] : ['/bin/sh', ['-c', `'${BIN}/pg_ctl' -D '${d}' -m immediate stop`]]), { timeout: 30000 }); } catch (_e) { /* gone */ } try { fs.rmSync(path.dirname(d), { recursive: true, force: true }); } catch (_e) { /* gone */ } }
+  console.log(`b225 · STOPPED: ${why}; every Postgres it started was stopped and its folder removed. Never green.`); process.exit(code);
+}
+process.on('SIGTERM', () => stopAll('it was sent SIGTERM', 1));
+process.on('SIGINT', () => stopAll('it was sent SIGINT', 1));
 setTimeout(() => {
   for (const d of LIVE) { try { cp.spawnSync(...(process.getuid && process.getuid() === 0 ? ['su', ['postgres', '-s', '/bin/sh', '-c', `'${BIN}/pg_ctl' -D '${d}' -m immediate stop`]] : ['/bin/sh', ['-c', `'${BIN}/pg_ctl' -D '${d}' -m immediate stop`]]), { timeout: 30000 }); } catch (_e) { /* gone */ } try { fs.rmSync(path.dirname(d), { recursive: true, force: true }); } catch (_e) { /* gone */ } }
   console.log(`b225 · STOPPED: over its own ${Math.round(CEILING_MS / 1000)}-second ceiling; every Postgres it started was stopped. A hang is not green.`); process.exit(1);

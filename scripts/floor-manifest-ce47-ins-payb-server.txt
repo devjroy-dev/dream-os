@@ -1,0 +1,12 @@
+# scripts/floor-manifest-ce47-ins-payb-server.txt
+# CE-47 · INS · PAY-A's two gaps (the package-binder resolution, the invoice read door, her one switch) + F-44.427 in b225 + R-47.1 · base dae04b0
+# No migration. No file deleted. Built to the door: every new door says "Coming soon" while the partner values are unset.
+docs/handovers/TDW_CE47_INS_PAYB_SERVER_HANDOVER.md
+scripts/b224_ins_paya_part_payments_bench.js
+scripts/b225_ins_paya_0201_postgres_bench.js
+scripts/b226_ins_paya_links_bench.js
+scripts/floor-manifest-ce47-ins-payb-server.txt
+src/api/vendor/solutions/paylinks.js
+src/lib/invoiceMessage.js
+src/lib/vendor/payLinks.js
+src/lib/vendor/schedules.js

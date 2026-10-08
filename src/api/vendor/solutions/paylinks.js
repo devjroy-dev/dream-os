@@ -18,6 +18,10 @@ router.post('/connect', ...door((req) => pl.connectStart(req.vendor.id, bearer(r
 router.post('/connect/finish', ...door((req) => pl.connectFinish(req.vendor.id, bearer(req), req.body || {}, deps(req))));
 router.post('/disconnect', ...door((req) => pl.disconnect(req.vendor.id, deps(req))));
 router.post('/links', ...door((req) => pl.makeLink(req.vendor.id, req.body || {}, deps(req))));
+// (c) one invoice as the room shows it when she taps it (its binder id from GET /api/v2/vendor/invoices/:vendorId).
+router.get('/invoices/:binderId', ...door((req) => pl.invoiceInfo(req.vendor.id, req.params.binderId, deps(req))));
+// her one switch: part payment on a link for the whole invoice (accept_partial only).
+router.patch('/settings', ...door((req) => pl.setSettings(req.vendor.id, req.body || {}, deps(req))));
 router.post('/refunds/:refundId/take-off', ...door((req) => pl.takeOffRefund(req.vendor.id, req.params.refundId, deps(req))));
 // Her two answers to "Received, check this invoice's paid amount" (BINDER_UNCERTAIN): each once per round, with who and when.
 router.post('/payments/:eventId/already-on', ...door((req) => pl.resolveUncertain(req.vendor.id, req.auth.user_id, req.params.eventId, 'already_on', deps(req))));

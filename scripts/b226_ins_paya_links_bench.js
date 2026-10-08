@@ -162,6 +162,26 @@ const stateOf = (url) => new URL(url).searchParams.get('state');
   ok(() => q && q.amount_text === 'Rs 5,000' && q2 && q2.question && q2.question.line === 'Rs 5,000 was received online. TDW could not tell if it is already counted on this invoice.' && q2.question.one === 'It is already on the invoice' && q2.question.two === 'Add it to the invoice',
     '4.10 the room sends the amount already written (Rs 5,000) and, for a payment it could not place, the line and both answers word for word', JSON.stringify(q2 && q2.question));
 
+  sec('4d  (b) a binder that a package invoice names is that package invoice; (c) the read door; her one switch');
+  f.T.invoices.push({ id: 'inv-pk', vendor_id: V, amount_total: 30000, amount_paid: 0, state: 'unpaid', binder_id: 'binder-pk' });
+  f.T.payment_schedules.push({ id: 'ln-pk1', invoice_id: 'inv-pk', vendor_id: V, milestone_label: 'Advance', amount_due: 10000, paid_amount: 2000, state: 'pending', ordinal: 1 },
+                             { id: 'ln-pk2', invoice_id: 'inv-pk', vendor_id: V, milestone_label: 'Balance', amount_due: 20000, paid_amount: null, state: 'pending', ordinal: 2 });
+  const viaBinder = await PL.makeLink(V, { invoiceId: 'binder-pk' }, D(f, rz, ON)); bodies.push(JSON.stringify(viaBinder.body));
+  const lkRow = f.T.vendor_pay_links.find((l) => l.invoice_id === 'inv-pk');
+  ok(() => viaBinder.status === 200 && lkRow && !lkRow.binder_id && viaBinder.body.link.amount === 30000 - 0,
+    '4.11 a link asked for with a package invoice\'s BINDER id is made on the PACKAGE invoice (its instalments), never on the binder alone', JSON.stringify(viaBinder.body));
+  const info = await PL.invoiceInfo(V, 'binder-pk', D(f, rz, ON)); const infoB = await PL.invoiceInfo(V, BINDER.id, D(f, rz, ON));
+  const infoW = await PL.invoiceInfo(W, 'binder-pk', D(f, rz, ON)); const infoX = await PL.invoiceInfo(V, 'nobody', D(f, rz, ON));
+  ok(() => info.body.kind === 'package' && info.body.invoice_id === 'inv-pk' && info.body.lines.length === 2 && info.body.lines[0].owed === 8000 && info.body.lines[0].owed_text === 'Rs 8,000'
+      && infoB.body.kind === 'binder' && infoW.status === 404 && infoX.status === 404 && infoX.body.error === 'TDW could not find that invoice.',
+    '4.12 the read door: a package invoice with its pending instalments and what each still owes; a binder with what it owes; another vendor\'s or no invoice: 404 in one plain sentence', JSON.stringify(info.body));
+  const set1 = await PL.setSettings(V, { accept_partial: true }, D(f, rz, ON)); const set2 = await PL.setSettings(V, { accept_partial: 'yes', thank_you: true }, D(f, rz, ON));
+  const row = f.T.vendor_pay_settings.find((r) => r.vendor_id === V);
+  ok(() => set1.status === 200 && row.accept_partial === true && set2.status === 400 && row.thank_you === undefined && Object.keys(set1.body.settings).join() === 'accept_partial',
+    '4.13 her one switch: accept_partial saved; anything else refused; thank_you and auto_link never written', JSON.stringify(row));
+  const offS = await PL.setSettings(V, { accept_partial: false }, D(f, rz, { ...ON, RAZORPAY_PARTNER_CLIENT_ID: '' }));
+  ok(() => offS.body.code === 'NOT_CONFIGURED', '4.14 with the partner values unset, the switch and the read door say Coming soon too');
+
   sec('4c  the sweep\'s minutes in src/cron.js');
   const CR = fs.readFileSync(path.join(ROOT, 'src/cron.js'), 'utf8');
   const expand = (f0) => { const out = new Set(); for (const part of f0.split(',')) { let [rng, step] = part.split('/'); step = step ? Number(step) : 1;
@@ -191,6 +211,11 @@ const stateOf = (url) => new URL(url).searchParams.get('state');
       ['a binder link for the whole binder, not what is owed', 'src/lib/vendor/payLinks.js', "  const owed = (Number(rec.amount) || 0) - (Number(rec.amount_received) || 0);", "  const owed = (Number(rec.amount) || 0);", '4.3'],
       ['her answer without the ownership check', 'src/lib/vendor/payLinks.js', "  if (!mine) return no(404, 'NOT_FOUND', UNCERTAIN.notFound);", "", '4.8'],
       ['the sweep moved onto PTN\'s drain minutes', 'src/cron.js', "cron.schedule('9,24,39,54 * * * *',", "cron.schedule('7,22,37,52 * * * *',", '4.9'],
+      ['a package invoice\'s binder linked as a binder', 'src/lib/vendor/payLinks.js', "  if (pkg) invoiceId = pkg;", "", '4.11'],
+      // The read door's vendor key is held twice (packageForBinder and the invoice read), so dropping one is not a fault;
+      // the mutation makes an invoice that is not found answer as if it were hers and empty.
+      ['an invoice that is not hers answered as an empty one', 'src/lib/vendor/payLinks.js', "  if (!rec) return no(404, 'NOT_FOUND', 'TDW could not find that invoice.');\n  const binderOwed", "  if (!rec) return ok({ kind: 'binder', owed: 0 });\n  const binderOwed", '4.12'],
+      ['the switch takes anything it is sent', 'src/lib/vendor/payLinks.js', "  if (!body || typeof body.accept_partial !== 'boolean') return no(400, 'BAD_SETTING', 'TDW did not receive a setting it can save.');\n", "", '4.13'],
       ['her setting ignored (always part payment)', 'src/lib/vendor/payLinks.js', "    acceptPartial = !!(st && st.accept_partial === true);", "    acceptPartial = true;", '4.5'],
     ];
     for (const [name, file, from, to, cell] of MUT) {

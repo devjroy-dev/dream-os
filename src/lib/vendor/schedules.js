@@ -177,9 +177,9 @@ async function markMilestonePaid(supabase, vendorId, milestoneId, amountPaid, re
   try {
     rec = await supabase.rpc('pay_record_milestone', { p_vendor: vendorId, p_milestone: milestoneId, p_amount: amountPaid, p_received: receivedOn || null });
   } catch (e) {
-    return { ok: false, error: 'The payment could not be recorded. Try again.', code: 'RPC_ERROR', detail: e && e.message };
+    return { ok: false, error: 'TDW could not record the payment. Please try again.', code: 'RPC_ERROR', detail: e && e.message };
   }
-  if (!rec || rec.error || !rec.data) return { ok: false, error: 'The payment could not be recorded. Try again.', code: 'RPC_ERROR', detail: rec && rec.error && rec.error.message };
+  if (!rec || rec.error || !rec.data) return { ok: false, error: 'TDW could not record the payment. Please try again.', code: 'RPC_ERROR', detail: rec && rec.error && rec.error.message };
   const out = rec.data;
   if (!out.ok) {
     const words = { NOT_PENDING: 'Milestone is already paid.', INVOICE_CANCELLED: 'Parent invoice is cancelled.', NO_LINE: 'Milestone not found.', NO_INVOICE: 'Parent invoice not found.', BAD_AMOUNT: 'amount_paid must be greater than zero.' };

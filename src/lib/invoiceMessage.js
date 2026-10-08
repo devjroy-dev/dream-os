@@ -40,7 +40,7 @@ function buildInvoiceMessage({ clientName, vendorDisplayName, invoiceNumber, des
   }
 
   // CE-47 INS PAY-A: when the vendor has made a payment link for this invoice (her own Razorpay), one plain line.
-  if (payLink && payLink.url && Number.isInteger(payLink.amount) && payLink.amount > 0) { parts.push(''); parts.push(`Pay Rs ${formatRs(payLink.amount)} online: ${payLink.url}`); }
+  if (payLink && payLink.url && Number.isInteger(payLink.amount) && payLink.amount > 0) { parts.push(''); parts.push(`You can pay Rs ${formatRs(payLink.amount)} online at this link: ${payLink.url}`); }
   parts.push('');
   parts.push('Thanks.');
   return parts.join('\n');

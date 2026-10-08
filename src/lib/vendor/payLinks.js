@@ -18,7 +18,7 @@ const { formatRs } = require('../format');
 const UNCERTAIN = {
   line: (rupees) => `Rs ${formatRs(rupees)} was received online. TDW could not tell if it is already counted on this invoice.`,
   one: 'It is already on the invoice', two: 'Add it to the invoice',
-  done: 'This payment has already been settled.', fail: 'Try again.', notFound: 'Payment not found.',
+  done: 'This payment has already been settled.', fail: 'Try again.', notFound: 'TDW could not find that payment.',
 };
 const ok = (body) => ({ status: 200, body: { ok: true, ...body } });
 const no = (status, code, error) => ({ status, body: { ok: false, code, error } });
@@ -60,7 +60,7 @@ async function connectStart(vendorId, bearer, deps) {
   if (!st.ok) return COMING();
   const { error } = await deps.supabase.from('vendor_pay_oauth_states').insert({ nonce: st.nonce, vendor_id: vendorId, session_id: sessionOf(bearer),
     expires_at: new Date(nowMs(deps) + rp.STATE_TTL_MS).toISOString() });
-  if (error) return no(500, 'STATE_NOT_STORED', 'Could not start. Try again.');
+  if (error) return no(500, 'STATE_NOT_STORED', 'TDW could not start the connection. Please try again.');
   const u = rp.authorizeUrl(st.state, env(deps));
   return ok({ url: u.url });
 }
@@ -69,18 +69,18 @@ async function connectStart(vendorId, bearer, deps) {
 async function connectFinish(vendorId, bearer, { code, state }, deps) {
   if (!on(deps)) return COMING();
   const r = rp.readState(state, { vendorId, sessionId: sessionOf(bearer), now: nowMs(deps) }, env(deps));
-  if (!r.ok) return no(400, r.code, 'This link to Razorpay has expired or was already used. Start again.');
+  if (!r.ok) return no(400, r.code, 'This Razorpay link has expired or has already been used. Please start again from this room.');
   const { data: spent } = await deps.supabase.from('vendor_pay_oauth_states').update({ spent_at: nowIso(deps) })
     .eq('nonce', r.nonce).eq('vendor_id', vendorId).eq('session_id', sessionOf(bearer)).is('spent_at', null).gt('expires_at', nowIso(deps))
     .select('nonce').maybeSingle();
-  if (!spent) return no(400, 'STATE_SPENT', 'This link to Razorpay has expired or was already used. Start again.');
+  if (!spent) return no(400, 'STATE_SPENT', 'This Razorpay link has expired or has already been used. Please start again from this room.');
   const ex = await rp.exchangeCode(code, { env: env(deps), fetch: deps.fetch });
-  if (!ex.ok) return no(502, ex.code, 'Razorpay did not confirm the connection. Try again.');
+  if (!ex.ok) return no(502, ex.code, 'Razorpay did not confirm the connection. Please try again.');
   const vault = deps.vault || require('./tokenVault');
   const sealed = vault.seal(JSON.stringify({ a: ex.accessToken, r: ex.refreshToken }));
   await deps.supabase.from('vendor_pay_accounts').update({ status: 'revoked', revoked_at: nowIso(deps) }).eq('vendor_id', vendorId).neq('status', 'revoked');
   const { error } = await deps.supabase.from('vendor_pay_accounts').insert({ vendor_id: vendorId, provider: 'razorpay', account_id: ex.accountId, token_ref: sealed, status: 'connected' });
-  if (error) return no(500, 'NOT_SAVED', 'The connection could not be saved. Try again.');
+  if (error) return no(500, 'NOT_SAVED', 'TDW could not save the connection. Please try again.');
   return ok({ account: { provider: 'razorpay', accountId: ex.accountId } });
 }
 
@@ -95,14 +95,19 @@ async function makeLink(vendorId, { invoiceId, milestoneId }, deps) {
   if (!on(deps)) return COMING();
   const s = deps.supabase;
   const acct = await liveAccount(s, vendorId);
-  if (!acct || acct.status !== 'connected') return no(400, 'NOT_CONNECTED', 'Connect your Razorpay account first.');
+  if (!acct || acct.status !== 'connected') return no(400, 'NOT_CONNECTED', 'Your Razorpay account is not connected yet. Please connect it in this room first.');
+  // (b) THE HAZARD (turn 71): the room lists her invoices as binders. A binder that a package invoice names
+  // (public.invoices.binder_id) IS that package invoice, resolved here before anything else, so its money always goes to
+  // its instalments and never to the binder alone.
+  const pkg = await packageForBinder(s, vendorId, invoiceId);
+  if (pkg) invoiceId = pkg;
   const { data: inv } = await s.from('invoices').select('id, amount_total, amount_paid, state').eq('id', invoiceId).eq('vendor_id', vendorId).maybeSingle();
   if (!inv) return makeBinderLink(vendorId, invoiceId, acct, deps);
   if (inv.state === 'cancelled' || inv.state === 'paid') return no(400, 'NOTHING_OWED', 'Nothing is owed on this invoice.');
   let owed, acceptPartial = false;
   if (milestoneId) {
     const { data: ln } = await s.from('payment_schedules').select('id, amount_due, paid_amount, state').eq('id', milestoneId).eq('vendor_id', vendorId).eq('invoice_id', invoiceId).maybeSingle();
-    if (!ln || ln.state !== 'pending') return no(400, 'NOTHING_OWED', 'Nothing is owed on this payment.');
+    if (!ln || ln.state !== 'pending') return no(400, 'NOTHING_OWED', 'Nothing is owed on this instalment.');
     owed = Number(ln.amount_due) - (Number(ln.paid_amount) || 0);
   } else {
     owed = Number(inv.amount_total) - (Number(inv.amount_paid) || 0);
@@ -111,17 +116,56 @@ async function makeLink(vendorId, { invoiceId, milestoneId }, deps) {
     const { data: st } = await s.from('vendor_pay_settings').select('accept_partial').eq('vendor_id', vendorId).maybeSingle();
     acceptPartial = !!(st && st.accept_partial === true);
   }
-  if (!Number.isInteger(owed) || owed <= 0) return no(400, 'NOTHING_OWED', 'Nothing is owed.');
+  if (!Number.isInteger(owed) || owed <= 0) return no(400, 'NOTHING_OWED', 'Nothing is owed on this invoice.');
   const vault = deps.vault || require('./tokenVault');
   const o = vault.open(acct.token_ref);
-  if (!o.ok) return no(400, 'RECONNECT', 'Connect your Razorpay account again.');
+  if (!o.ok) return no(400, 'RECONNECT', 'Razorpay needs your account to be connected again. Please connect it again in this room.');
   const token = JSON.parse(o.value).a;
   const { data: row, error } = await s.from('vendor_pay_links').insert({ vendor_id: vendorId, provider: 'razorpay', invoice_id: invoiceId, milestone_id: milestoneId || null, amount: owed, state: 'created' }).select('id').maybeSingle();
-  if (error || !row) return no(500, 'NOT_SAVED', 'The link could not be made. Try again.');
+  if (error || !row) return no(500, 'NOT_SAVED', 'TDW could not make the link. Please try again.');
   const made = await rp.createLink(token, { amountRupees: owed, description: 'Payment', referenceId: row.id, acceptPartial, notes: { tdw_link: row.id } }, { env: env(deps), fetch: deps.fetch });
-  if (!made.ok) { await s.from('vendor_pay_links').update({ state: 'cancelled' }).eq('id', row.id); return no(502, made.code, 'Razorpay did not make the link. Try again.'); }
+  if (!made.ok) { await s.from('vendor_pay_links').update({ state: 'cancelled' }).eq('id', row.id); return no(502, made.code, 'Razorpay did not make the link. Please try again.'); }
   await s.from('vendor_pay_links').update({ provider_link_id: made.linkId, short_url: made.shortUrl, updated_at: nowIso(deps) }).eq('id', row.id);
   return ok({ link: { id: row.id, amount: owed, shortUrl: made.shortUrl } });
+}
+
+async function packageForBinder(s, vendorId, binderId) {
+  const { data } = await s.from('invoices').select('id').eq('binder_id', binderId).eq('vendor_id', vendorId).maybeSingle();
+  return data ? data.id : null;
+}
+
+/** (c) One invoice, as the room shows it when she taps it: a package invoice with its pending instalments, or a binder. */
+async function invoiceInfo(vendorId, binderId, deps) {
+  if (!on(deps)) return COMING();
+  const s = deps.supabase;
+  const pkgId = await packageForBinder(s, vendorId, binderId);
+  if (pkgId) {
+    const { data: inv } = await s.from('invoices').select('id, amount_total, amount_paid, state').eq('id', pkgId).eq('vendor_id', vendorId).maybeSingle();
+    if (!inv) return no(404, 'NOT_FOUND', 'TDW could not find that invoice.');
+    const { data: ls } = await s.from('payment_schedules').select('id, milestone_label, amount_due, paid_amount, due_date, state, ordinal').eq('invoice_id', pkgId).eq('vendor_id', vendorId).order('ordinal');
+    const lines = (ls || []).filter((l) => l.state === 'pending').map((l) => ({ id: l.id, label: l.milestone_label, due_date: l.due_date,
+      owed: Number(l.amount_due) - (Number(l.paid_amount) || 0), owed_text: `Rs ${formatRs(Number(l.amount_due) - (Number(l.paid_amount) || 0))}` }));
+    const owed = Number(inv.amount_total) - (Number(inv.amount_paid) || 0);
+    return ok({ kind: 'package', invoice_id: inv.id, state: inv.state, owed, owed_text: `Rs ${formatRs(owed)}`, lines });
+  }
+  const bd = deps.binder || await (async () => { try { return await defaultBinderDeps(s, vendorId); } catch { return null; } })();
+  const rec = bd ? await bd.read(binderId).catch(() => null) : null;
+  if (!rec) return no(404, 'NOT_FOUND', 'TDW could not find that invoice.');
+  const binderOwed = (Number(rec.amount) || 0) - (Number(rec.amount_received) || 0);
+  return ok({ kind: 'binder', owed: binderOwed, owed_text: `Rs ${formatRs(binderOwed)}` });
+}
+
+/** Her one switch (ruling 7): part payment on a link for the WHOLE invoice. Only accept_partial is written; the other two
+ *  settings columns do nothing yet and are neither written nor drawn (turn 72). */
+async function setSettings(vendorId, body, deps) {
+  if (!on(deps)) return COMING();
+  if (!body || typeof body.accept_partial !== 'boolean') return no(400, 'BAD_SETTING', 'TDW did not receive a setting it can save.');
+  const s = deps.supabase;
+  const { data: have } = await s.from('vendor_pay_settings').select('vendor_id').eq('vendor_id', vendorId).maybeSingle();
+  const row = { accept_partial: body.accept_partial, updated_at: nowIso(deps) };
+  const w = have ? await s.from('vendor_pay_settings').update(row).eq('vendor_id', vendorId) : await s.from('vendor_pay_settings').insert({ vendor_id: vendorId, ...row });
+  if (w && w.error) return no(500, 'NOT_SAVED', 'TDW could not save the setting. Please try again.');
+  return ok({ settings: { accept_partial: body.accept_partial } });
 }
 
 /** (b) A link for a BINDER-ONLY invoice: the amount still owed on the binder, read exactly as the payments door reads it. */
@@ -129,17 +173,17 @@ async function makeBinderLink(vendorId, binderId, acct, deps) {
   const s = deps.supabase;
   const bd = deps.binder || await (async () => { try { return await defaultBinderDeps(s, vendorId); } catch { return null; } })();
   const rec = bd ? await bd.read(binderId).catch(() => null) : null;
-  if (!rec) return no(404, 'NOT_FOUND', 'Invoice not found.');
+  if (!rec) return no(404, 'NOT_FOUND', 'TDW could not find that invoice.');
   const owed = (Number(rec.amount) || 0) - (Number(rec.amount_received) || 0);
   if (!Number.isInteger(owed) || owed <= 0) return no(400, 'NOTHING_OWED', 'Nothing is owed on this invoice.');
   const { data: st } = await s.from('vendor_pay_settings').select('accept_partial').eq('vendor_id', vendorId).maybeSingle();
   const vault = deps.vault || require('./tokenVault');
   const o = vault.open(acct.token_ref);
-  if (!o.ok) return no(400, 'RECONNECT', 'Connect your Razorpay account again.');
+  if (!o.ok) return no(400, 'RECONNECT', 'Razorpay needs your account to be connected again. Please connect it again in this room.');
   const { data: row, error } = await s.from('vendor_pay_links').insert({ vendor_id: vendorId, provider: 'razorpay', binder_id: binderId, amount: owed, state: 'created' }).select('id').maybeSingle();
-  if (error || !row) return no(500, 'NOT_SAVED', 'The link could not be made. Try again.');
+  if (error || !row) return no(500, 'NOT_SAVED', 'TDW could not make the link. Please try again.');
   const made = await rp.createLink(JSON.parse(o.value).a, { amountRupees: owed, description: 'Payment', referenceId: row.id, acceptPartial: !!(st && st.accept_partial === true), notes: { tdw_link: row.id } }, { env: env(deps), fetch: deps.fetch });
-  if (!made.ok) { await s.from('vendor_pay_links').update({ state: 'cancelled' }).eq('id', row.id); return no(502, made.code, 'Razorpay did not make the link. Try again.'); }
+  if (!made.ok) { await s.from('vendor_pay_links').update({ state: 'cancelled' }).eq('id', row.id); return no(502, made.code, 'Razorpay did not make the link. Please try again.'); }
   await s.from('vendor_pay_links').update({ provider_link_id: made.linkId, short_url: made.shortUrl, updated_at: nowIso(deps) }).eq('id', row.id);
   return ok({ link: { id: row.id, amount: owed, shortUrl: made.shortUrl } });
 }
@@ -148,8 +192,8 @@ async function makeBinderLink(vendorId, binderId, acct, deps) {
 async function takeOffRefund(vendorId, refundId, deps) {
   if (!on(deps)) return COMING();
   const { data, error } = await deps.supabase.rpc('pay_take_off_refund', { p_vendor: vendorId, p_provider: 'razorpay', p_refund_id: refundId });
-  if (error || !data) return no(503, 'RPC_ERROR', 'The refund could not be taken off. Try again.');
-  if (!data.ok) return no(400, data.code, { ALREADY_TAKEN_OFF: 'This refund is already off the invoice.', INVOICE_CANCELLED: 'The invoice is cancelled.' }[data.code] || 'The refund could not be taken off.');
+  if (error || !data) return no(503, 'RPC_ERROR', 'TDW could not take the refund off the invoice. Please try again.');
+  if (!data.ok) return no(400, data.code, { ALREADY_TAKEN_OFF: 'This refund has already been taken off the invoice.', INVOICE_CANCELLED: 'This invoice is cancelled.' }[data.code] || 'TDW could not take the refund off the invoice.');
   if (deps.mirror) await deps.mirror(vendorId, data.invoice);
   return ok({ invoice: data.invoice });
 }
@@ -260,7 +304,7 @@ async function sweepBinderEvents(deps, limit = 50) {
 async function resolveUncertain(vendorId, userId, eventId, action, deps) {
   if (!on(deps)) return COMING();
   const a = action === 'already_on' ? 'already_on' : action === 'add' ? 'added' : null;
-  if (!a) return no(400, 'BAD_ACTION', 'Choose one of the two.');
+  if (!a) return no(400, 'BAD_ACTION', 'Please choose one of the two answers.');
   const { data: mine } = await deps.supabase.from('vendor_pay_events').select('id').eq('id', eventId).eq('vendor_id', vendorId).maybeSingle();
   if (!mine) return no(404, 'NOT_FOUND', UNCERTAIN.notFound);
   const r = await deps.supabase.rpc('pay_resolve_binder_event', { p_vendor: vendorId, p_event: eventId, p_action: a, p_user: userId });
@@ -271,4 +315,4 @@ async function resolveUncertain(vendorId, userId, eventId, action, deps) {
 }
 
 module.exports = { sessionOf, room, connectStart, connectFinish, disconnect, makeLink, takeOffRefund, recordEvent,
-  applyBinderEvent, sweepBinderEvents, resolveUncertain, UNCERTAIN };
+  applyBinderEvent, sweepBinderEvents, resolveUncertain, UNCERTAIN, invoiceInfo, setSettings };

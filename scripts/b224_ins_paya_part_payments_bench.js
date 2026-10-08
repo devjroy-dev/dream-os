@@ -138,7 +138,8 @@ const seed = () => ({
     sec('4  the old behaviour put back, each must turn its named cell red');
     const MUT = [
       // AMENDED BY LABEL (turn 40): the add now lives in 0201 (b225 mutates it there); here, the wiring's own faults.
-      ['a fallback to a JS add on an rpc error', 'src/lib/vendor/schedules.js', "    return { ok: false, error: 'The payment could not be recorded. Try again.', code: 'RPC_ERROR', detail: e && e.message };", "    await supabase.from('payment_schedules').update({ state: 'paid' }).eq('id', milestoneId).eq('vendor_id', vendorId); return { ok: true };", '2b.2'],
+      // AMENDED BY LABEL (R-47.1, CE-47 INS): the anchor follows the line's new words, "TDW could not record the payment."
+      ['a fallback to a JS add on an rpc error', 'src/lib/vendor/schedules.js', "    return { ok: false, error: 'TDW could not record the payment. Please try again.', code: 'RPC_ERROR', detail: e && e.message };", "    await supabase.from('payment_schedules').update({ state: 'paid' }).eq('id', milestoneId).eq('vendor_id', vendorId); return { ok: true };", '2b.2'],
       ['the reminder asks for the whole line again', 'src/lib/vendor/paymentReminders.js', 'composeMilestonePhrase(milestone.milestone_label, stillOwed)', 'composeMilestonePhrase(milestone.milestone_label, milestone.amount_due)', '3.1'],
       ['a fraction let through to the database', 'src/lib/vendor/schedules.js', "  if (!Number.isInteger(amt) || amt <= 0) return", "  if (!(amt > 0)) return", '2b.5'],
       ['the money written by this file again', 'src/lib/vendor/schedules.js', "    rec = await supabase.rpc('pay_record_milestone',", "    await supabase.from('invoices').update({ amount_paid: 0 }).eq('id', inv.id).eq('vendor_id', vendorId);\n    rec = await supabase.rpc('pay_record_milestone',", '2b.1'],
