@@ -70,11 +70,23 @@ function callEmail({ org, shape, token }) {
 
 async function drain(sb, deps = {}) {
   const now = deps.now ? deps.now() : new Date(); const env = deps.env || process.env;
-  const { data: rows } = await sb.from('partner_sends').select('id, partner_id, post_id, channel, state, not_before, attempts')
+  const { data: rows } = await sb.from('partner_sends').select('id, partner_id, post_id, channel, state, why, not_before, attempts')
     .in('state', DUE).lte('not_before', now.toISOString()).order('not_before', { ascending: true }).limit(200);
   const out = { sent: 0, held: 0, closed: 0, failed: 0 };
   const sentToday = new Map();
-  const set = async (r, patch) => { await sb.from('partner_sends').update({ ...patch, updated_at: now.toISOString() }).eq('id', r.id); };
+  // A2-1c: every change of state or reason is also one line in partner_send_log (0219). The line never blocks a send:
+  // a failed write is logged and the drain goes on. An unchanged row writes no line (a row held every pass stays one line).
+  const set = async (r, patch) => {
+    const was = { state: r.state, why: r.why || null, attempts: r.attempts || 0 };   // read before the update, whatever the client hands back
+    await sb.from('partner_sends').update({ ...patch, updated_at: now.toISOString() }).eq('id', r.id);
+    const state = patch.state || was.state; const why = patch.why === undefined ? was.why : (patch.why || null);
+    if (state === was.state && why === was.why) return;
+    try {
+      const { error } = await sb.from('partner_send_log').insert({ send_id: r.id, kind: 'drain', state, channel: r.channel || 'email',
+        attempts: patch.attempts === undefined ? was.attempts : patch.attempts, why: why == null ? null : String(why).slice(0, 300), at: now.toISOString() });
+      if (error) console.warn('[partners] send log:', error.message || error);
+    } catch (e) { console.warn('[partners] send log:', e && e.message); }
+  };
   for (const r of rows || []) {
     if (r.channel !== 'email') continue;   // the WhatsApp route is A2-2's
     const c = await calls.loadCall(sb, r.post_id);

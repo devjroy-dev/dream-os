@@ -1,0 +1,14 @@
+# scripts/floor-manifest-ptn-a2-1c.txt
+# TDW CE-47 · PTN-A2-1c server (dream-os, base bcdb364) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. One migration (0219, applied by hand in Supabase), no Railway value.
+db/migrations/0219_partner_send_log.sql
+docs/handovers/TDW_CE47_PTN_A2_1C.md
+scripts/b295_ptn_a2_1b_queue_bench.js
+scripts/b296_ptn_a2_1c_send_log_bench.js
+scripts/floor-manifest-ptn-a2-1c.txt
+scripts/lib/ptn_a2_1c_pg_proof.sh
+scripts/ptn_a2_1c.sha256
+src/api/admin/partners.js
+src/lib/partners/queue.js
+src/lib/partners/sends.js
+src/lib/partners/words.js

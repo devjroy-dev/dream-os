@@ -1,6 +1,7 @@
 'use strict';
 // scripts/b295_ptn_a2_1b_queue_bench.js · CE-47 · PTN-A2-1b · rung b295 · waiting and sent, every partner; trying a row again.
-// §1 THE GUARD over real HTTP: both new doors sit behind requireAdmin with every other /admin/partners door; no token, a
+// A2-1c (amended by label): the revive is 0219's one statement; the fake answers sb.rpc with its meaning; M1 mutates the
+// function's WHERE. §1 THE GUARD over real HTTP: both new doors sit behind requireAdmin with every other /admin/partners door; no token, a
 //    vendor's token and a partner's token are each refused; an admin's opens. §2 the order: "sends" is never read as a
 //    partner id, and a real id still opens its partner. §3 the list: waiting by default, newest first; failed, sent, all;
 //    a bad show refused; the lane is a column (a WhatsApp row reads "WhatsApp" in the same list); a failure in plain words
@@ -30,7 +31,8 @@ if (!process.env.B295_MUT_CHILD) guard.recoverOrRefuse(ROOT, 'b295');
   if (free < 512 * 1024 * 1024) { console.log(`b295: REFUSED. ${Math.round(free / 1048576)} MB free; a mutation series needs 512 MB (F-44.419).`); process.exit(3); }
 }
 const MUTS = [
-  { rel: 'src/lib/partners/queue.js', from: "    .eq('id', row.id).eq('state', 'failed').select('id');", to: "    .eq('id', row.id).select('id');", reddens: /FAIL  5\.1/ },
+  // A2-1c: the guard now lives in 0219's partner_send_revive; M1 takes "AND state = 'failed'" out of ITS WHERE.
+  { rel: 'db/migrations/0219_partner_send_log.sql', from: "     WHERE id = p_send AND state = 'failed'\n", to: "     WHERE id = p_send\n", reddens: /FAIL  5\.3/ },
   { rel: 'src/api/admin/partners.js', from: "router.get('/sends', asyncHandler(", to: "router.get('/sends-moved-away', asyncHandler(", reddens: /FAIL  2\.1/ },
   { rel: 'src/lib/partners/queue.js', from: "  if (!c || !calls.isOpen(c.post, now)) return { ok: false, status: 409, error: REVIVE.closed };\n", to: '', reddens: /FAIL  4\.4/ },
   { rel: 'src/lib/partners/words.js', from: "  [/domain is not verified/i, 'The sending domain is not verified in Resend yet.'],\n", to: '', reddens: /FAIL  8\.1/ },
@@ -60,8 +62,24 @@ const vendor = { id: V1, business_name: 'Aanya Makeup Studio', category: 'makeup
 const RESEND_DOMAIN = 'resend 403: The `thedreamwedding.in` domain is not verified. Please, add and verify your domain.';
 const send = (x = {}) => ({ id: crypto.randomUUID(), partner_id: O1, post_id: POST, channel: 'email', state: 'queued', why: null, attempts: 0, not_before: '2026-10-12T00:00:00.000Z',
   sent_at: null, created_at: '2026-10-12T01:00:00.000Z', token_hash: crypto.randomBytes(32).toString('hex'), ...x });
-const world = (sends, o = {}, p = {}) => fakeDb({ partner_orgs: [org(o), org({ id: O2, name: 'Studio Noor', calls_email: 'desk@noor.in', whatsapp_phone: '+919811100022' })],
-  collab_posts: [post(p)], collab_post_items: [{ post_id: POST, requirement_type: 'model', needed: 2 }], vendors: [vendor], partner_sends: sends, partner_answers: [], partner_reports: [], partner_connections: [] });
+// A2-1c: the revive is one statement in the database (0219's partner_send_revive). The fake answers sb.rpc with the
+// function's own meaning: move the row only WHERE id = p_send AND state = 'failed', write ONE log line from that
+// RETURNING, and return the id, or null when nothing moved. not_before takes the bench's clock (the database's now()).
+let CLOCK = null;
+function withRpc(db) {
+  db.rpc = async (name, args) => {
+    db.writes.push({ name: 'rpc:' + name, args });
+    if (name !== 'partner_send_revive') return { data: null, error: { message: `no function ${name}` } };
+    const r = (db.tables.partner_sends || []).find((x) => x.id === args.p_send && x.state === 'failed');
+    if (!r) return { data: null, error: null };
+    Object.assign(r, { state: 'queued', attempts: 0, not_before: (CLOCK || NOW).toISOString(), why: String(args.p_note).slice(0, 300) });
+    (db.tables.partner_send_log ||= []).push({ id: crypto.randomUUID(), send_id: r.id, at: (CLOCK || NOW).toISOString(), kind: 'retried', state: 'queued', channel: r.channel, attempts: 0, why: r.why, by_whom: String(args.p_by).slice(0, 120) });
+    return { data: r.id, error: null };
+  };
+  return db;
+}
+const world = (sends, o = {}, p = {}) => withRpc(fakeDb({ partner_orgs: [org(o), org({ id: O2, name: 'Studio Noor', calls_email: 'desk@noor.in', whatsapp_phone: '+919811100022' })],
+  collab_posts: [post(p)], collab_post_items: [{ post_id: POST, requirement_type: 'model', needed: 2 }], vendors: [vendor], partner_sends: sends, partner_answers: [], partner_reports: [], partner_connections: [], partner_send_log: [] }));
 const KEY = { RESEND_API_KEY: 're_test', PARTNER_SESSION_SECRET: process.env.PARTNER_SESSION_SECRET };
 const scan = (b) => { const s = JSON.stringify(b).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '');
   return { email: s.match(/[^\s@"'<>:/`]+@[^\s@"'<>`]+\.[a-z]{2,}/gi) || [], phone: (s.match(/\+?\d[\d\s-]{8,}\d/g) || []).filter((m) => m.replace(/\D/g, '').length >= 10) }; };
@@ -146,20 +164,24 @@ const scan = (b) => { const s = JSON.stringify(b).replace(/[0-9a-f]{8}-[0-9a-f]{
   db = world([send({ state: 'failed', why: RESEND_DOMAIN, attempts: 3 })]);
   const id5 = db.tables.partner_sends[0].id;
   const [a5, b5] = await Promise.all([queue.revive(db, id5, { by: 'Dev', now: NOW, env: KEY }), queue.revive(db, id5, { by: 'Swati', now: NOW, env: KEY })]);
-  const okCount = [a5, b5].filter((r) => r.ok).length; const upd = db.writes.filter((x) => x.name === 'partner_sends' && x.mode === 'update');
-  ok(okCount === 1 && [a5, b5].some((r) => r.status === 409 && r.error === queue.REVIVE.already) && upd.length === 2 && upd.filter((u) => u.n === 1).length === 1 && upd.filter((u) => u.n === 0).length === 1,
-    '5.1 both presses read "failed", both send the UPDATE; the WHERE lets exactly one move the row, the other is told "already tried again"', JSON.stringify({ okCount, n: upd.map((u) => u.n), a5, b5 }));
+  const okCount = [a5, b5].filter((r) => r.ok).length; const calls5 = db.writes.filter((x) => x.name === 'rpc:partner_send_revive');
+  const lines5 = db.tables.partner_send_log.filter((l) => l.send_id === id5);
+  ok(okCount === 1 && [a5, b5].some((r) => r.status === 409 && r.error === queue.REVIVE.already) && calls5.length === 2 && lines5.length === 1 && lines5[0].kind === 'retried'
+    && !db.writes.some((x) => x.name === 'partner_sends' && x.mode === 'update'),
+    '5.1 both presses read "failed" and both reach the ONE statement; exactly one moves the row and writes the one line, the other is told "already tried again" (the race itself: the Postgres proof)', JSON.stringify({ okCount, calls: calls5.length, lines: lines5.length, a5, b5 }));
   const r5 = db.tables.partner_sends[0];
   ok(r5.state === 'queued' && r5.attempts === 0 && r5.not_before === NOW.toISOString() && /^Tried again by (Dev|Swati) on 12 October 2026\. Last refusal: resend 403: The `thedreamwedding\.in` domain is not verified/.test(r5.why) && r5.why.length <= 300,
     '5.2 the row: queued, tries back to 0, next try now; why keeps who, when, and the last refusal (within its 300)', JSON.stringify(r5));
-  const src = fs.readFileSync(R('src/lib/partners/queue.js'), 'utf8');
-  ok((src.match(/\.from\('partner_sends'\)\s*\n?\s*\.update\(/g) || []).length === 1 && /\.update\(\{ state: 'queued'[^}]*\}\)\s*\n\s*\.eq\('id', row\.id\)\.eq\('state', 'failed'\)\.select\('id'\)/.test(src),
-    '5.3 the source: ONE update, its WHERE is id AND state = failed, RETURNING id (the statement b295\'s Postgres proof runs)');
+  const src = fs.readFileSync(R('src/lib/partners/queue.js'), 'utf8'); const mig = fs.readFileSync(R('db/migrations/0219_partner_send_log.sql'), 'utf8');
+  const fn = (mig.match(/CREATE OR REPLACE FUNCTION public\.partner_send_revive[\s\S]*?\$\$;/) || [''])[0];
+  ok((src.match(/sb\.rpc\('partner_send_revive'/g) || []).length === 1 && !/\.from\('partner_sends'\)\s*\n?\s*\.update\(/.test(src)
+    && /UPDATE public\.partner_sends[\s\S]*WHERE id = p_send AND state = 'failed'\s*\n\s*RETURNING id/.test(fn) && /INSERT INTO public\.partner_send_log[\s\S]*FROM moved/.test(fn),
+    '5.3 the source: queue.js sends ONE statement, 0219\'s partner_send_revive, whose WHERE is id AND state = failed and whose log line comes from the same RETURNING (amended at A2-1c)');
 
   sec('6  a revived row still meets 9 am to 8 pm and the daily cap (the real drain)');
   const fetchOk = async () => ({ ok: true, status: 200, json: async () => ({ id: 'em_1' }) });
   db = world([send({ state: 'failed', why: RESEND_DOMAIN, attempts: 3 })]);
-  await queue.revive(db, db.tables.partner_sends[0].id, { by: 'Dev', now: LATE, env: KEY });
+  CLOCK = LATE; await queue.revive(db, db.tables.partner_sends[0].id, { by: 'Dev', now: LATE, env: KEY }); CLOCK = null;
   await sends.drain(db, { now: () => LATE, env: KEY, fetchImpl: fetchOk });
   ok(db.tables.partner_sends[0].state === 'held_window' && db.tables.partner_sends[0].not_before === '2026-10-13T03:30:00.000Z', '6.1 revived at 10 pm IST: waits for 9 am', JSON.stringify(db.tables.partner_sends[0]));
   db = world([send({ state: 'failed', why: RESEND_DOMAIN, attempts: 3 })], { daily_cap: 1 });
@@ -179,10 +201,10 @@ const scan = (b) => { const s = JSON.stringify(b).replace(/[0-9a-f]{8}-[0-9a-f]{
   const failThrice = async (start) => { for (let k = 0; k < 3; k++) await sends.drain(db, { now: () => t(start + k * 16), env: KEY, fetchImpl: fetch403 }); };
   await failThrice(0);
   ok(row7.state === 'failed' && row7.attempts === 3, '7.1 three refusals: failed');
-  ok((await queue.revive(db, row7.id, { by: 'Dev', now: t(60), env: KEY })).ok && row7.state === 'queued', '7.2 revived');
+  CLOCK = t(60); ok((await queue.revive(db, row7.id, { by: 'Dev', now: t(60), env: KEY })).ok && row7.state === 'queued', '7.2 revived');
   await failThrice(61);
   ok(row7.state === 'failed' && row7.attempts === 3, '7.3 three more refusals: failed again');
-  ok((await queue.revive(db, row7.id, { by: 'Dev', now: t(120), env: KEY })).ok && row7.state === 'queued' && row7.attempts === 0, '7.4 revived again: a stopped row is never the end');
+  CLOCK = t(120); ok((await queue.revive(db, row7.id, { by: 'Dev', now: t(120), env: KEY })).ok && row7.state === 'queued' && row7.attempts === 0, '7.4 revived again: a stopped row is never the end'); CLOCK = null;
   await sends.drain(db, { now: () => t(121), env: KEY, fetchImpl: fetchOk });
   ok(row7.state === 'sent', '7.5 once the cause is fixed, it goes');
 

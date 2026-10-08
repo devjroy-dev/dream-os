@@ -13,7 +13,7 @@ const fwd = require('../../lib/partners/forward');
 const { hiddenByReports } = require('../../lib/partners/reports');
 const seams = require('../../lib/partners/seams');
 const hubPage = require('../../lib/partners/hubPage');
-const { W: CALL_WORDS, SEND_WORDS, LANE_WORDS, failureWords } = require('../../lib/partners/words');
+const { W: CALL_WORDS, SEND_WORDS, LANE_WORDS, failureWords, providerWords } = require('../../lib/partners/words');
 const queue = require('../../lib/partners/queue');   // A2-1b: every partner's sends, and the revive
 
 const router = express.Router();
@@ -152,6 +152,11 @@ router.get('/sends', asyncHandler(async (req, res) => {
   const out = await queue.listSends(req.app.locals.supabase, { show: String((req.query || {}).show || 'waiting') });
   return out.ok ? okRes(res, { show: out.show, sends: out.sends }) : errRes(res, out.status, out.error);
 }));
+router.get('/sends/:send_id/log', asyncHandler(async (req, res) => {   // A2-1c: one row's history (0219)
+  if (!UUID.test(String(req.params.send_id || ''))) return errRes(res, 404, queue.REVIVE.none);
+  const out = await queue.logFor(req.app.locals.supabase, req.params.send_id);
+  return out.ok ? okRes(res, { lines: out.lines }) : errRes(res, out.status, out.error);
+}));
 router.post('/sends/:send_id/retry', asyncHandler(async (req, res) => {
   if (!UUID.test(String(req.params.send_id || ''))) return errRes(res, 404, queue.REVIVE.none);
   const out = await queue.revive(req.app.locals.supabase, req.params.send_id, { by: who(req) });
@@ -189,8 +194,8 @@ router.get('/:id/sends', asyncHandler(async (req, res) => {
   const { data: posts } = postIds.length ? await supabase.from('collab_posts').select('id, city, event_date, requirement_type').in('id', postIds) : { data: [] };
   // Named fields only: the select is a request, not a promise, so nothing else of the post can ride out.
   const P = new Map((posts || []).map((p) => [p.id, { city: p.city, event_date: p.event_date, requirement_type: p.requirement_type }]));
-  return okRes(res, { sends: (rows || []).map((r) => ({ id: r.id, channel: r.channel, state: r.state, state_words: SEND_WORDS[r.state] || r.state, why: r.why,
-    lane_words: LANE_WORDS[r.channel] || r.channel, why_words: r.state === 'failed' ? failureWords(r.why) : (r.why || null), attempts: r.attempts || 0, can_retry: r.state === 'failed',
+  return okRes(res, { sends: (rows || []).map((r) => ({ id: r.id, channel: r.channel, state: r.state, state_words: SEND_WORDS[r.state] || r.state, why: providerWords(r.why),
+    lane_words: LANE_WORDS[r.channel] || r.channel, why_words: r.state === 'failed' ? failureWords(r.why) : providerWords(r.why), attempts: r.attempts || 0, can_retry: r.state === 'failed',
     sent_at: r.sent_at, created_at: r.created_at, call: P.get(r.post_id) || null,
     suggested: (ans || []).filter((a) => a.send_id === r.id).map((a) => ({ name: a.talent_name, role: a.talent_role, link: a.talent_link })) })) });
 }));

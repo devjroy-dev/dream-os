@@ -48,4 +48,12 @@ const FAIL = [
   [/^resend unreachable/i, 'Resend could not be reached.'],
 ];
 const failureWords = (raw) => { const s = String(raw || ''); for (const [re, w] of FAIL) if (re.test(s)) return w; return 'Resend refused it.'; };
-module.exports = { roleWord, needsLine, payLine, maskNote, plural, W, formatDateLong, SEND_WORDS, LANE_WORDS, failureWords };
+// F-44.410 (A2-1c): Resend's own words can carry an address. Its test-mode refusal names the account's own email ("You can
+// only send testing emails to your own email address (x@y.z)"), and a revive keeps the last refusal in why. So every why
+// that reaches a body goes through providerWords: an email-shaped run reads "an address", a run of ten or more digits
+// reads "a number". The row in the database keeps Resend's words as they came; only what is SHOWN is cut.
+const ADDR = /[^\s@()<>"'`,;]+@[^\s@()<>"'`,;]+\.[a-z]{2,}/gi;
+const NUM = /\+?\(?\d[\d\s().-]{8,}\d/g;
+const providerWords = (raw) => (raw == null || raw === '' ? null : String(raw).replace(ADDR, 'an address')
+  .replace(NUM, (m) => ((m.match(/\d/g) || []).length >= 10 ? 'a number' : m)).slice(0, 300));
+module.exports = { roleWord, needsLine, payLine, maskNote, plural, W, formatDateLong, SEND_WORDS, LANE_WORDS, failureWords, providerWords };
