@@ -3,7 +3,7 @@
 -- for the first vendor it finds, so it leaves NOTHING behind. It prints ONE row of eight true/false columns: every column
 -- should read true. Each right is asked one per call (F-44.366: a comma list answers true if ANY is held).
 BEGIN;
--- GUARD (the chair, turn 56): a rollback undoes rows, not an outside call. The repo's bytes show exactly two triggers on
+-- GUARD (the chair, turn 56; F-44.420 adds the two live names): a rollback undoes rows, not an outside call. The repo's bytes show exactly two triggers on
 -- the tables this check writes: invoices_set_updated_at (sets updated_at, calls nothing) and the vendors triggers, which
 -- this check never fires (it writes no vendor row). A trigger made outside the repo (a Supabase "Database Webhook" is a
 -- trigger calling supabase_functions.http_request) cannot be seen in the bytes, so the check looks for itself and STOPS
@@ -16,8 +16,8 @@ BEGIN
     FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE NOT t.tgisinternal AND n.nspname = 'public'
      AND c.relname IN ('invoices', 'payment_schedules', 'vendor_pay_accounts', 'vendor_pay_links', 'vendor_pay_events', 'vendor_pay_settings', 'vendor_pay_oauth_states', 'vendor_pay_event_answers')
-     AND t.tgname <> 'invoices_set_updated_at';
-  IF extra IS NOT NULL THEN RAISE EXCEPTION 'STOP: a trigger this check did not expect: %. Paste this line back; nothing was written.', extra; END IF;
+     AND t.tgname NOT IN ('invoices_set_updated_at', 'invoices_updated_at', 'payment_schedules_set_updated_at');   -- F-44.420: the two live names, read by the chair (set_updated_at only)
+  IF extra IS NOT NULL THEN RAISE EXCEPTION 'The check stopped before writing anything, because it found a trigger it did not expect: %. Copy this line and send it to the chair.', extra;  END IF;
 END $$;
 CREATE TEMP TABLE _r (k text, v jsonb) ON COMMIT DROP;
 DO $$

@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce47-ins-f44420-server.txt
+# CE-47 · INS · F-44.420: record the two live updated_at triggers (0203), and let the PAY-A checks' guard allow them · base bcdb364
+# No product file changes. No file deleted. OUT_OF_ORDER.json is WEB-4's (record 203).
+db/migrations/0203_record_updated_at_triggers.sql
+docs/handovers/PAYA_0201_SUPABASE_CHECK.sql
+docs/handovers/PAYA_0202_SUPABASE_CHECK.sql
+docs/handovers/TDW_CE47_INS_F44420_HANDOVER.md
+scripts/floor-manifest-ce47-ins-f44420-server.txt
