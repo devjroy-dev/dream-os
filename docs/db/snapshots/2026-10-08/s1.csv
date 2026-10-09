@@ -1,0 +1,621 @@
+rows_expected,table_name,constraint_name,constraint_type,definition
+616,admin_activity_log,admin_activity_log_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,admin_config,admin_config_pkey,PRIMARY KEY,PRIMARY KEY (key)
+616,assistance_forwards,assistance_forwards_target_kind_check,CHECK,"CHECK ((target_kind = ANY (ARRAY['vendor'::text, 'prospect'::text])))"
+616,assistance_forwards,assistance_forwards_target_matches,CHECK,CHECK ((((target_kind = 'vendor'::text) AND (vendor_id IS NOT NULL) AND (prospect_id IS NULL)) OR ((target_kind = 'prospect'::text) AND (prospect_id IS NOT NULL) AND (vendor_id IS NULL))))
+616,assistance_forwards,assistance_forwards_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,assistance_found_notices,assistance_found_notices_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['found_vendor'::text, 'found_outside'::text])))"
+616,assistance_found_notices,assistance_found_notices_status_check,CHECK,"CHECK ((status = ANY (ARRAY['queued'::text, 'dark'::text, 'sent'::text, 'sent_no_wamid'::text, 'delivered'::text, 'read'::text, 'failed'::text])))"
+616,assistance_found_notices,assistance_found_notices_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,assistance_request_items,assistance_request_items_budget_rs_check,CHECK,CHECK (((budget_rs IS NULL) OR (budget_rs >= 0)))
+616,assistance_request_items,assistance_request_items_forwarded_count_check,CHECK,CHECK ((forwarded_count >= 0))
+616,assistance_request_items,assistance_request_items_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,assistance_requests,assistance_requests_origin_check,CHECK,"CHECK ((origin = ANY (ARRAY['bride'::text, 'admin'::text, 'public'::text])))"
+616,assistance_requests,assistance_requests_phone_check,CHECK,CHECK ((phone ~ '^[0-9]{10}$'::text))
+616,assistance_requests,assistance_requests_status_check,CHECK,"CHECK ((status = ANY (ARRAY['open'::text, 'forwarded'::text, 'closed'::text])))"
+616,assistance_requests,assistance_requests_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,bill_drafts,bill_drafts_file_path_check,CHECK,CHECK ((file_path ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg|png|webp|pdf)$'::text))
+616,bill_drafts,bill_drafts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,billing_events,billing_events_provider_check,CHECK,"CHECK ((provider = ANY (ARRAY['razorpay'::text, 'revenuecat'::text])))"
+616,billing_events,billing_events_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,billing_events,billing_events_event_id_key,UNIQUE,UNIQUE (event_id)
+616,bride_pages,bride_pages_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,broadcast_recipients,broadcast_recipients_source_check,CHECK,"CHECK ((source = ANY (ARRAY['client'::text, 'wedding_couple'::text, 'wedding_consent'::text, 'booked_lead'::text])))"
+616,broadcast_recipients,broadcast_recipients_status_check,CHECK,"CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'sent_no_wamid'::text, 'delivered'::text, 'read'::text, 'failed'::text, 'refused_stopped'::text])))"
+616,broadcast_recipients,broadcast_recipients_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,broadcasts,broadcasts_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['couple'::text, 'referral'::text])))"
+616,broadcasts,broadcasts_recipient_count_check,CHECK,CHECK ((recipient_count >= 0))
+616,broadcasts,broadcasts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,budget_envelopes,budget_envelopes_amount_inr_check,CHECK,CHECK ((amount_inr >= 0))
+616,budget_envelopes,budget_envelopes_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,capabilities,capabilities_auto_on_needs_walk,CHECK,CHECK (((auto_on = false) OR (walk_ref IS NOT NULL)))
+616,capabilities,capabilities_key_grammar_check,CHECK,CHECK ((key ~ '^(template|perm|scope|flag)\.[a-z0-9_.]+$'::text))
+616,capabilities,capabilities_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['template'::text, 'permission'::text, 'scope'::text, 'flag'::text])))"
+616,capabilities,capabilities_status_check,CHECK,"CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'paused'::text, 'armed'::text, 'on'::text, 'off'::text])))"
+616,capabilities,capabilities_pkey,PRIMARY KEY,PRIMARY KEY (key)
+616,circle_activity,circle_activity_actor_role_check,CHECK,"CHECK ((actor_role = ANY (ARRAY['bride'::text, 'circle_member'::text, 'agent'::text])))"
+616,circle_activity,circle_activity_subject_type_check,CHECK,"CHECK (((subject_type IS NULL) OR (subject_type = ANY (ARRAY['muse_save'::text, 'circle_member'::text]))))"
+616,circle_activity,circle_activity_type_check,CHECK,"CHECK ((activity_type = ANY (ARRAY['joined'::text, 'save_added'::text, 'comment'::text, 'reaction'::text, 'removed'::text])))"
+616,circle_activity,circle_activity_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,circle_members,circle_members_role_check,CHECK,"CHECK ((role = ANY (ARRAY['partner'::text, 'family'::text, 'inner_circle'::text])))"
+616,circle_members,circle_members_status_check,CHECK,"CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'removed'::text])))"
+616,circle_members,circle_members_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,circle_poll_votes,circle_poll_votes_pkey,PRIMARY KEY,"PRIMARY KEY (poll_id, voter_user_id)"
+616,circle_polls,circle_polls_options_cardinality,CHECK,CHECK (((jsonb_typeof(options) = 'array'::text) AND ((jsonb_array_length(options) >= 2) AND (jsonb_array_length(options) <= 4))))
+616,circle_polls,circle_polls_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,circle_sessions,circle_sessions_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,clients,clients_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,collab_house_tokens,collab_house_tokens_platform_check,CHECK,"CHECK ((platform = ANY (ARRAY['instagram'::text, 'threads'::text])))"
+616,collab_house_tokens,collab_house_tokens_pkey,PRIMARY KEY,PRIMARY KEY (platform)
+616,collab_interest,collab_interest_how_check,CHECK,"CHECK ((how = ANY (ARRAY['comment'::text, 'reply'::text, 'message'::text])))"
+616,collab_interest,collab_interest_partner_shape,CHECK,CHECK ((((source = 'partner'::text) AND (partner_id IS NOT NULL) AND (send_id IS NOT NULL) AND (display_name IS NOT NULL) AND (join_link_sent = false)) OR ((source <> 'partner'::text) AND (platform IS NOT NULL) AND (how IS NOT NULL))))
+616,collab_interest,collab_interest_platform_check,CHECK,"CHECK ((platform = ANY (ARRAY['instagram'::text, 'threads'::text])))"
+616,collab_interest,collab_interest_source_check,CHECK,"CHECK ((source = ANY (ARRAY['instagram'::text, 'threads'::text, 'partner'::text])))"
+616,collab_interest,collab_interest_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,collab_post_items,collab_post_items_needed_check,CHECK,CHECK (((needed >= 1) AND (needed <= 20)))
+616,collab_post_items,collab_post_items_requirement_type_check,CHECK,"CHECK ((requirement_type = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text, 'model'::text, 'stylist'::text, 'studio'::text])))"
+616,collab_post_items,collab_post_items_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,collab_posts,collab_posts_budget_from_check,CHECK,CHECK (((budget_from IS NULL) OR (budget_from >= 0)))
+616,collab_posts,collab_posts_budget_to_check,CHECK,CHECK (((budget_to IS NULL) OR (budget_to >= 0)))
+616,collab_posts,collab_posts_details_check,CHECK,CHECK ((char_length(details) <= 200))
+616,collab_posts,collab_posts_event_type_check,CHECK,"CHECK ((event_type = ANY (ARRAY['wedding'::text, 'pre_wedding'::text, 'engagement'::text, 'editorial'::text, 'brand_shoot'::text, 'portrait'::text, 'other'::text])))"
+616,collab_posts,collab_posts_pay_kind_check,CHECK,"CHECK (((pay_kind IS NULL) OR (pay_kind = ANY (ARRAY['paid'::text, 'unpaid'::text, 'credit_only'::text]))))"
+616,collab_posts,collab_posts_payment_period_check,CHECK,"CHECK ((payment_period = ANY (ARRAY['per_day'::text, 'per_shoot'::text, 'total'::text, 'tbd'::text])))"
+616,collab_posts,collab_posts_requirement_type_check,CHECK,"CHECK ((requirement_type = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text, 'model'::text, 'stylist'::text, 'studio'::text])))"
+616,collab_posts,collab_posts_source_check,CHECK,"CHECK ((source = ANY (ARRAY['vendor'::text, 'tdw_forward'::text])))"
+616,collab_posts,collab_posts_state_check,CHECK,"CHECK ((state = ANY (ARRAY['open'::text, 'filled'::text, 'expired'::text, 'cancelled'::text])))"
+616,collab_posts,collab_posts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,collab_prospects,collab_prospects_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,collab_responses,collab_responses_state_check,CHECK,"CHECK ((state = ANY (ARRAY['interested'::text, 'accepted'::text, 'declined'::text, 'withdrawn'::text, 'passed'::text])))"
+616,collab_responses,collab_responses_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,collab_responses,collab_responses_post_id_responder_vendor_id_key,UNIQUE,"UNIQUE (post_id, responder_vendor_id)"
+616,collab_shares,collab_shares_account_check,CHECK,"CHECK ((account = ANY (ARRAY['house'::text, 'vendor'::text])))"
+616,collab_shares,collab_shares_platform_check,CHECK,"CHECK ((platform = ANY (ARRAY['instagram'::text, 'threads'::text])))"
+616,collab_shares,collab_shares_state_check,CHECK,"CHECK ((state = ANY (ARRAY['queued'::text, 'approved'::text, 'published'::text, 'rejected'::text, 'failed'::text])))"
+616,collab_shares,collab_shares_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,collab_shares,collab_shares_post_id_account_platform_key,UNIQUE,"UNIQUE (post_id, account, platform)"
+616,contract_profiles,contract_profiles_pkey,PRIMARY KEY,PRIMARY KEY (vendor_id)
+616,contract_sends,contract_sends_recipient_check,CHECK,"CHECK ((recipient = ANY (ARRAY['vendor'::text, 'client'::text])))"
+616,contract_sends,contract_sends_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,contract_signatures,contract_signatures_channel_check,CHECK,"CHECK ((channel = ANY (ARRAY['otp'::text, 'paper'::text])))"
+616,contract_signatures,contract_signatures_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,contract_signatures,contract_signatures_sign_token_key,UNIQUE,UNIQUE (sign_token)
+616,contracts,contracts_deposit_pct_check,CHECK,CHECK (((deposit_pct IS NULL) OR ((deposit_pct > (0)::numeric) AND (deposit_pct <= (100)::numeric))))
+616,contracts,contracts_state_check,CHECK,"CHECK ((state = ANY (ARRAY['draft'::text, 'sent'::text, 'signed'::text, 'cancelled'::text])))"
+616,contracts,contracts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,conversations,conversations_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['vendor_self'::text, 'couple_thread'::text, 'couple_self'::text, 'circle_thread'::text, 'network'::text, 'prospect_marketing'::text, 'meridian_self'::text])))"
+616,conversations,conversations_owner_xor,CHECK,CHECK ((((((vendor_id IS NOT NULL))::integer + ((couple_id IS NOT NULL))::integer) + ((prospect_id IS NOT NULL))::integer) = 1))
+616,conversations,conversations_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couple_ai_usage,couple_ai_usage_cost_basis_check,CHECK,"CHECK ((cost_basis = ANY (ARRAY['metered'::text, 'estimated'::text, 'unpriced'::text])))"
+616,couple_ai_usage,couple_ai_usage_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['turn'::text, 'fanout'::text, 'onboarding'::text, 'search'::text, 'tagging'::text])))"
+616,couple_ai_usage,couple_ai_usage_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couple_bookings,couple_bookings_amount_advance_check,CHECK,CHECK (((amount_advance IS NULL) OR (amount_advance >= 0)))
+616,couple_bookings,couple_bookings_amount_total_check,CHECK,CHECK (((amount_total IS NULL) OR (amount_total >= 0)))
+616,couple_bookings,couple_bookings_category_check,CHECK,"CHECK ((category = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text])))"
+616,couple_bookings,couple_bookings_state_check,CHECK,"CHECK ((state = ANY (ARRAY['booked'::text, 'advance_paid'::text, 'paid'::text])))"
+616,couple_bookings,couple_bookings_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couple_enquiries,couple_enquiries_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couple_receipts,couple_receipts_amount_check,CHECK,CHECK (((amount IS NULL) OR (amount >= 0)))
+616,couple_receipts,couple_receipts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couple_state,couple_state_pkey,PRIMARY KEY,PRIMARY KEY (couple_id)
+616,couple_tasks,couple_tasks_status_check,CHECK,"CHECK ((status = ANY (ARRAY['pending'::text, 'done'::text])))"
+616,couple_tasks,couple_tasks_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couples,couples_tier_check,CHECK,"CHECK ((tier = ANY (ARRAY['basic'::text, 'gold'::text, 'platinum'::text])))"
+616,couples,couples_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couples,couples_user_id_unique,UNIQUE,UNIQUE (user_id)
+616,couture_appointments,couture_appointments_state_check,CHECK,"CHECK ((state = ANY (ARRAY['booked'::text, 'confirmed'::text, 'completed'::text, 'cancelled'::text, 'no_show'::text])))"
+616,couture_appointments,couture_appointments_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couture_availability,couture_availability_state_check,CHECK,"CHECK ((state = ANY (ARRAY['open'::text, 'booked'::text, 'blocked'::text])))"
+616,couture_availability,couture_availability_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,couture_availability,couture_availability_vendor_id_slot_at_key,UNIQUE,"UNIQUE (vendor_id, slot_at)"
+616,crew_confirmations,crew_confirmations_status_check,CHECK,"CHECK ((status = ANY (ARRAY['pending'::text, 'confirmed'::text, 'declined'::text])))"
+616,crew_confirmations,crew_confirmations_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,crew_confirmations,crew_confirmations_event_id_member_id_key,UNIQUE,"UNIQUE (event_id, member_id)"
+616,date_checks,date_checks_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,demo_claim_requests,demo_claim_requests_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,demo_leads,demo_leads_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,demo_vendors,demo_vendors_state_check,CHECK,"CHECK ((state = ANY (ARRAY['legacy'::text, 'built'::text, 'invited'::text, 'opened'::text, 'engaged'::text, 'claimed'::text, 'expired'::text, 'removed'::text])))"
+616,demo_vendors,demo_vendors_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,demo_vendors,demo_vendors_ig_handle_key,UNIQUE,UNIQUE (ig_handle)
+616,discover_heroes,discover_heroes_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,engagements,engagements_category_check,CHECK,"CHECK ((category = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text])))"
+616,engagements,engagements_source_check,CHECK,"CHECK ((source = ANY (ARRAY['discover_enquiry'::text, 'signal'::text, 'direct'::text])))"
+616,engagements,engagements_status_check,CHECK,"CHECK ((status = ANY (ARRAY['enquiry'::text, 'proposal'::text, 'thread'::text, 'booked'::text, 'completed'::text, 'closed'::text])))"
+616,engagements,engagements_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,engagements,engagements_couple_vendor_uidx,UNIQUE,"UNIQUE (couple_id, vendor_id)"
+616,enquiry_taps,enquiry_taps_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,events,events_blocked_slot_check,CHECK,CHECK (((kind <> 'blocked'::text) OR (slot IS NOT NULL)))
+616,events,events_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['shoot'::text, 'call'::text, 'meeting'::text, 'task'::text, 'reminder'::text, 'recce'::text, 'fitting'::text, 'trial'::text, 'family'::text, 'ceremony'::text, 'social'::text, 'blocked'::text, 'other'::text, 'shop'::text])))"
+616,events,events_owner_xor,CHECK,CHECK (((vendor_id IS NULL) <> (couple_id IS NULL)))
+616,events,events_slot_check,CHECK,"CHECK ((slot = ANY (ARRAY['morning'::text, 'noon'::text, 'evening'::text, 'full_day'::text])))"
+616,events,events_state_check,CHECK,"CHECK ((state = ANY (ARRAY['upcoming'::text, 'done'::text, 'cancelled'::text])))"
+616,events,events_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,exchange_requests,exchange_requests_ask_count_check,CHECK,CHECK (((ask_count >= 1) AND (ask_count <= 20)))
+616,exchange_requests,exchange_requests_ask_kind_check,CHECK,"CHECK ((ask_kind = ANY (ARRAY['post'::text, 'reel'::text, 'story'::text])))"
+616,exchange_requests,exchange_requests_dates,CHECK,CHECK ((date_to >= date_from))
+616,exchange_requests,exchange_requests_not_self,CHECK,CHECK ((vendor_id <> influencer_vendor_id))
+616,exchange_requests,exchange_requests_state_check,CHECK,"CHECK ((state = ANY (ARRAY['sent'::text, 'accepted'::text, 'declined'::text, 'withdrawn'::text, 'completed'::text])))"
+616,exchange_requests,exchange_requests_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,expenses,expenses_amount_check,CHECK,CHECK ((amount > 0))
+616,expenses,expenses_category_check,CHECK,"CHECK ((category = ANY (ARRAY['travel'::text, 'equipment'::text, 'assistant'::text, 'studio'::text, 'marketing'::text, 'software'::text, 'food'::text, 'printing'::text, 'commission'::text, 'shoot'::text, 'inventory'::text, 'other'::text])))"
+616,expenses,expenses_gst_amount_check,CHECK,CHECK (((gst_amount IS NULL) OR (gst_amount >= 0)))
+616,expenses,expenses_gst_rate_check,CHECK,CHECK (((gst_rate IS NULL) OR ((gst_rate >= (0)::numeric) AND (gst_rate <= (28)::numeric))))
+616,expenses,expenses_source_check,CHECK,"CHECK (((source IS NULL) OR (source = ANY (ARRAY['manual'::text, 'bill'::text]))))"
+616,expenses,expenses_supplier_gstin_check,CHECK,CHECK (((supplier_gstin IS NULL) OR (supplier_gstin ~ '^[0-9]{2}[A-Z0-9]{13}$'::text)))
+616,expenses,expenses_taxable_value_check,CHECK,CHECK (((taxable_value IS NULL) OR (taxable_value >= 0)))
+616,expenses,expenses_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,exploring_photos,exploring_photos_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,failed_turns,failed_turns_state_check,CHECK,"CHECK ((state = ANY (ARRAY['dead'::text, 'replayed'::text, 'discarded'::text])))"
+616,failed_turns,failed_turns_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,forward_recipients,forward_recipients_channel_check,CHECK,"CHECK ((channel = ANY (ARRAY['hand'::text, 'whatsapp'::text])))"
+616,forward_recipients,forward_recipients_token_hash_check,CHECK,CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+616,forward_recipients,forward_recipients_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,forward_recipients,forward_recipients_request_id_contact_id_key,UNIQUE,"UNIQUE (request_id, contact_id)"
+616,forward_recipients,forward_recipients_token_hash_key,UNIQUE,UNIQUE (token_hash)
+616,forward_requests,forward_requests_asked_check,CHECK,CHECK ((asked = true))
+616,forward_requests,forward_requests_budget_from_check,CHECK,CHECK ((budget_from >= 0))
+616,forward_requests,forward_requests_check,CHECK,CHECK ((budget_to >= budget_from))
+616,forward_requests,forward_requests_check1,CHECK,CHECK (((vendor_id IS NOT NULL) OR ((outside_handle IS NOT NULL) AND (outside_phone IS NOT NULL))))
+616,forward_requests,forward_requests_city_check,CHECK,CHECK (((char_length(btrim(city)) >= 1) AND (char_length(btrim(city)) <= 60)))
+616,forward_requests,forward_requests_note_check,CHECK,CHECK (((note IS NULL) OR (char_length(note) <= 300)))
+616,forward_requests,forward_requests_outside_handle_check,CHECK,"CHECK (((outside_handle IS NULL) OR (outside_handle ~ '^[A-Za-z0-9._]{1,30}$'::text)))"
+616,forward_requests,forward_requests_outside_phone_check,CHECK,"CHECK (((outside_phone IS NULL) OR (outside_phone ~ '^\+[0-9]{8,15}$'::text)))"
+616,forward_requests,forward_requests_pay_kind_check,CHECK,"CHECK ((pay_kind = ANY (ARRAY['paid'::text, 'credit_only'::text])))"
+616,forward_requests,forward_requests_role_check,CHECK,CHECK (((char_length(btrim(role)) >= 1) AND (char_length(btrim(role)) <= 40)))
+616,forward_requests,forward_requests_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,gear_items,gear_items_city_check,CHECK,CHECK (((char_length(btrim(city)) >= 2) AND (char_length(btrim(city)) <= 60)))
+616,gear_items,gear_items_item_check,CHECK,CHECK (((char_length(btrim(item)) >= 2) AND (char_length(btrim(item)) <= 80)))
+616,gear_items,gear_items_note_check,CHECK,CHECK (((note IS NULL) OR (char_length(note) <= 300)))
+616,gear_items,gear_items_price_per_day_rs_check,CHECK,CHECK (((price_per_day_rs >= 0) AND (price_per_day_rs <= 10000000)))
+616,gear_items,gear_items_state_check,CHECK,"CHECK ((state = ANY (ARRAY['listed'::text, 'withdrawn'::text])))"
+616,gear_items,gear_items_value_rs_check,CHECK,CHECK (((value_rs > 0) AND (value_rs <= 100000000)))
+616,gear_items,gear_items_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,gear_requests,gear_requests_check,CHECK,CHECK ((date_to >= date_from))
+616,gear_requests,gear_requests_check1,CHECK,CHECK (((date_to - date_from) <= 60))
+616,gear_requests,gear_requests_check2,CHECK,CHECK ((owner_vendor_id <> borrower_vendor_id))
+616,gear_requests,gear_requests_note_check,CHECK,CHECK (((note IS NULL) OR (char_length(note) <= 300)))
+616,gear_requests,gear_requests_state_check,CHECK,"CHECK ((state = ANY (ARRAY['requested'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))"
+616,gear_requests,gear_requests_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,hot_dates,hot_dates_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,hub_credits,hub_credits_kind,CHECK,CHECK (((call_id IS NOT NULL) OR ((shoot_name IS NOT NULL) AND (city IS NOT NULL) AND (month IS NOT NULL))))
+616,hub_credits,hub_credits_month_check,CHECK,CHECK (((month IS NULL) OR (EXTRACT(day FROM month) = (1)::numeric)))
+616,hub_credits,hub_credits_not_self,CHECK,CHECK ((giver_profile_id <> person_profile_id))
+616,hub_credits,hub_credits_shoot_name_check,CHECK,CHECK (((shoot_name IS NULL) OR ((char_length(btrim(shoot_name)) >= 1) AND (char_length(btrim(shoot_name)) <= 80))))
+616,hub_credits,hub_credits_state_check,CHECK,"CHECK ((state = ANY (ARRAY['offered'::text, 'yes'::text, 'no'::text, 'taken_back'::text])))"
+616,hub_credits,hub_credits_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,hub_profiles,hub_profiles_check_state_check,CHECK,"CHECK ((check_state = ANY (ARRAY['unchecked'::text, 'checked'::text])))"
+616,hub_profiles,hub_profiles_display_name_check,CHECK,CHECK (((char_length(btrim(display_name)) >= 1) AND (char_length(btrim(display_name)) <= 120)))
+616,hub_profiles,hub_profiles_handle_check,CHECK,"CHECK ((handle ~ '^[a-z0-9._]{1,30}$'::text))"
+616,hub_profiles,hub_profiles_instagram_handle_check,CHECK,"CHECK (((instagram_handle IS NULL) OR (instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'::text)))"
+616,hub_profiles,hub_profiles_one_owner,CHECK,CHECK ((((owner_kind = 'vendor'::text) AND (vendor_id IS NOT NULL) AND (org_id IS NULL) AND (user_id IS NULL)) OR ((owner_kind = 'org'::text) AND (org_id IS NOT NULL) AND (vendor_id IS NULL) AND (user_id IS NULL)) OR ((owner_kind = 'person'::text) AND (user_id IS NOT NULL) AND (vendor_id IS NULL) AND (org_id IS NULL))))
+616,hub_profiles,hub_profiles_open_to_check,CHECK,"CHECK ((open_to <@ ARRAY['paid'::text, 'barter'::text, 'credit_only'::text]))"
+616,hub_profiles,hub_profiles_owner_kind_check,CHECK,"CHECK ((owner_kind = ANY (ARRAY['vendor'::text, 'org'::text, 'person'::text])))"
+616,hub_profiles,hub_profiles_website_check,CHECK,CHECK (((website IS NULL) OR (website ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+616,hub_profiles,hub_profiles_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,hub_profiles,hub_profiles_org_id_key,UNIQUE,UNIQUE (org_id)
+616,hub_profiles,hub_profiles_user_id_key,UNIQUE,UNIQUE (user_id)
+616,hub_profiles,hub_profiles_vendor_id_key,UNIQUE,UNIQUE (vendor_id)
+616,image_throttle_log,image_throttle_log_engine_check,CHECK,"CHECK ((engine = ANY (ARRAY['vendor'::text, 'bride'::text])))"
+616,image_throttle_log,image_throttle_log_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,influencer_reach_snapshots,influencer_reach_snapshots_engagement_rate_check,CHECK,CHECK ((engagement_rate >= (0)::numeric))
+616,influencer_reach_snapshots,influencer_reach_snapshots_follower_count_check,CHECK,CHECK ((follower_count >= 0))
+616,influencer_reach_snapshots,influencer_reach_snapshots_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,instagram_briefs,instagram_briefs_status_check,CHECK,"CHECK ((status = ANY (ARRAY['live'::text, 'error'::text])))"
+616,instagram_briefs,instagram_briefs_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,instagram_briefs,uq_instagram_briefs_vendor_week,UNIQUE,"UNIQUE (vendor_id, week_start)"
+616,introductions,introductions_status_check,CHECK,"CHECK ((status = ANY (ARRAY['staged'::text, 'declined'::text, 'queued'::text, 'dark'::text, 'sent'::text, 'sent_no_wamid'::text, 'delivered'::text, 'read'::text, 'failed'::text])))"
+616,introductions,introductions_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,invite_codes,invite_codes_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['dreamer'::text, 'maker'::text])))"
+616,invite_codes,invite_codes_pkey,PRIMARY KEY,PRIMARY KEY (code)
+616,invoices,invoices_amount_advance_check,CHECK,CHECK (((amount_advance IS NULL) OR (amount_advance >= 0)))
+616,invoices,invoices_amount_paid_check,CHECK,CHECK ((amount_paid >= 0))
+616,invoices,invoices_amount_total_check,CHECK,CHECK ((amount_total >= 0))
+616,invoices,invoices_gst_amount_check,CHECK,CHECK (((gst_amount IS NULL) OR (gst_amount >= 0)))
+616,invoices,invoices_gst_rate_check,CHECK,CHECK (((gst_rate IS NULL) OR ((gst_rate >= (0)::numeric) AND (gst_rate <= (28)::numeric))))
+616,invoices,invoices_state_check,CHECK,"CHECK ((state = ANY (ARRAY['unpaid'::text, 'advance_paid'::text, 'paid'::text, 'cancelled'::text])))"
+616,invoices,invoices_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,invoices,invoices_vendor_number_unique,UNIQUE,"UNIQUE (vendor_id, invoice_number)"
+616,issued_papers,issued_papers_check,CHECK,CHECK (((period_from IS NULL) OR (period_to IS NULL) OR (period_from <= period_to)))
+616,issued_papers,issued_papers_check_code_check,CHECK,CHECK ((check_code ~ '^TDW-[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$'::text))
+616,issued_papers,issued_papers_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['certificate'::text, 'id_card'::text, 'statement'::text, 'ca_pack'::text])))"
+616,issued_papers,issued_papers_purpose_check,CHECK,"CHECK (((purpose IS NULL) OR (purpose = ANY (ARRAY['bank'::text, 'landlord'::text, 'visa'::text, 'other'::text]))))"
+616,issued_papers,issued_papers_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,issued_papers,issued_papers_check_code_key,UNIQUE,UNIQUE (check_code)
+616,landing_slides,landing_slides_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,lead_alerts,lead_alerts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,lead_packages,lead_packages_schedule_check,CHECK,CHECK ((jsonb_typeof(schedule) = 'array'::text))
+616,lead_packages,lead_packages_snapshot_check,CHECK,CHECK ((jsonb_typeof(snapshot) = 'object'::text))
+616,lead_packages,lead_packages_total_check,CHECK,CHECK (((total IS NULL) OR (total > 0)))
+616,lead_packages,lead_packages_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,lead_referrals,lead_referrals_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,leads,leads_consent_text_version_check,CHECK,CHECK (((consent_text_version IS NULL) OR ((char_length(consent_text_version) >= 1) AND (char_length(consent_text_version) <= 32))))
+616,leads,leads_wedding_date_precision_check,CHECK,"CHECK ((wedding_date_precision = ANY (ARRAY['day'::text, 'month'::text, 'year'::text])))"
+616,leads,leads_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,look_hearts_daily,look_hearts_daily_hearts_check,CHECK,CHECK ((hearts >= 0))
+616,look_hearts_daily,look_hearts_daily_pkey,PRIMARY KEY,"PRIMARY KEY (look_id, day)"
+616,messages,messages_cost_inr_check,CHECK,CHECK (((cost_inr IS NULL) OR (cost_inr >= (0)::numeric)))
+616,messages,messages_cost_usd_check,CHECK,CHECK (((cost_usd IS NULL) OR (cost_usd >= (0)::numeric)))
+616,messages,messages_input_tokens_check,CHECK,CHECK (((input_tokens IS NULL) OR (input_tokens >= 0)))
+616,messages,messages_output_tokens_check,CHECK,CHECK (((output_tokens IS NULL) OR (output_tokens >= 0)))
+616,messages,messages_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,muse_pool,muse_pool_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,muse_saves,muse_saves_saved_by_role_check,CHECK,"CHECK ((saved_by_role = ANY (ARRAY['bride'::text, 'circle_member'::text])))"
+616,muse_saves,muse_saves_source_type_check,CHECK,"CHECK ((source_type = ANY (ARRAY['image'::text, 'link'::text, 'vendor'::text])))"
+616,muse_saves,muse_saves_surface_check,CHECK,"CHECK ((surface = ANY (ARRAY['muse'::text, 'moments'::text])))"
+616,muse_saves,muse_saves_vendor_required_for_vendor_type,CHECK,CHECK (((source_type <> 'vendor'::text) OR (vendor_id IS NOT NULL)))
+616,muse_saves,muse_saves_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,notes,notes_owner_xor,CHECK,CHECK (((vendor_id IS NULL) <> (couple_id IS NULL)))
+616,notes,notes_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,nudge_optout,nudge_optout_lane_check,CHECK,"CHECK ((lane = ANY (ARRAY['bride'::text, 'vendor'::text, 'couple'::text])))"
+616,nudge_optout,nudge_optout_source_check,CHECK,"CHECK ((source = ANY (ARRAY['inbound_stop_mornings'::text, 'inbound_stop_messages'::text, 'admin'::text, 'other'::text])))"
+616,nudge_optout,nudge_optout_state_check,CHECK,"CHECK ((state = ANY (ARRAY['opted_out'::text, 'resumed'::text])))"
+616,nudge_optout,nudge_optout_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,nudge_optout,nudge_optout_phone_lane_key,UNIQUE,"UNIQUE (phone, lane)"
+616,otp_sessions,otp_sessions_purpose_check,CHECK,"CHECK ((purpose = ANY (ARRAY['login'::text, 'reset'::text, 'demo_enquiry'::text, 'circle_join'::text, 'demo_claim'::text])))"
+616,otp_sessions,otp_sessions_pkey,PRIMARY KEY,PRIMARY KEY (phone)
+616,owner_notes,owner_notes_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_answers,partner_answers_agreed_check,CHECK,CHECK ((agreed = true))
+616,partner_answers,partner_answers_talent_link_check,CHECK,CHECK (((talent_link IS NULL) OR (talent_link ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+616,partner_answers,partner_answers_talent_name_check,CHECK,"CHECK ((((char_length(btrim(talent_name)) >= 1) AND (char_length(btrim(talent_name)) <= 120)) AND (talent_name !~ '@'::text) AND (talent_name !~ '[0-9]{10,}'::text)))"
+616,partner_answers,partner_answers_talent_role_check,CHECK,CHECK (((talent_role IS NULL) OR (char_length(talent_role) <= 40)))
+616,partner_answers,partner_answers_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_connections,partner_connections_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['pick'::text, 'contact'::text])))"
+616,partner_connections,partner_connections_n_check,CHECK,CHECK ((n >= 1))
+616,partner_connections,partner_connections_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_connections,partner_connections_partner_id_ref_id_key,UNIQUE,"UNIQUE (partner_id, ref_id)"
+616,partner_contacts,partner_contacts_how_we_know_check,CHECK,CHECK (((char_length(btrim(how_we_know)) >= 1) AND (char_length(btrim(how_we_know)) <= 300)))
+616,partner_contacts,partner_contacts_instagram_handle_check,CHECK,"CHECK (((instagram_handle IS NULL) OR (instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'::text)))"
+616,partner_contacts,partner_contacts_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['agency'::text, 'fashion_house'::text, 'brand'::text, 'studio'::text, 'planner'::text, 'stylist'::text, 'model'::text, 'influencer'::text, 'other'::text])))"
+616,partner_contacts,partner_contacts_name_check,CHECK,CHECK (((char_length(btrim(name)) >= 1) AND (char_length(btrim(name)) <= 120)))
+616,partner_contacts,partner_contacts_phone_check,CHECK,"CHECK (((phone IS NULL) OR (phone ~ '^\+[0-9]{8,15}$'::text)))"
+616,partner_contacts,partner_contacts_website_check,CHECK,CHECK (((website IS NULL) OR (website ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+616,partner_contacts,partner_contacts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_members,partner_members_role_check,CHECK,"CHECK ((role = ANY (ARRAY['owner'::text, 'member'::text])))"
+616,partner_members,partner_members_pkey,PRIMARY KEY,"PRIMARY KEY (partner_id, user_id)"
+616,partner_orgs,partner_orgs_calls_email_check,CHECK,CHECK (((calls_email IS NULL) OR (calls_email ~* '^[^\s@]+@[^\s@]+\.[^\s@]+$'::text)))
+616,partner_orgs,partner_orgs_check_state_check,CHECK,"CHECK ((check_state = ANY (ARRAY['unchecked'::text, 'checked'::text, 'blocked'::text])))"
+616,partner_orgs,partner_orgs_checked_how_check,CHECK,"CHECK (((checked_how IS NULL) OR (checked_how = ANY (ARRAY['admin'::text, 'instagram_tick'::text]))))"
+616,partner_orgs,partner_orgs_daily_cap_check,CHECK,CHECK (((daily_cap >= 1) AND (daily_cap <= 50)))
+616,partner_orgs,partner_orgs_instagram_handle_check,CHECK,"CHECK ((instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'::text))"
+616,partner_orgs,partner_orgs_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['talent_agency'::text, 'model_agency'::text, 'fashion_house'::text, 'studio'::text, 'brand'::text, 'wedding_planner'::text, 'other'::text])))"
+616,partner_orgs,partner_orgs_name_check,CHECK,CHECK (((char_length(btrim(name)) >= 1) AND (char_length(btrim(name)) <= 120)))
+616,partner_orgs,partner_orgs_pay_rule_check,CHECK,"CHECK ((pay_rule = ANY (ARRAY['paid_only'::text, 'paid_and_credit'::text])))"
+616,partner_orgs,partner_orgs_plan_state_check,CHECK,"CHECK ((plan_state = ANY (ARRAY['free'::text, 'active'::text, 'lapsed'::text, 'exempt'::text])))"
+616,partner_orgs,partner_orgs_send_state_check,CHECK,"CHECK ((send_state = ANY (ARRAY['active'::text, 'paused'::text, 'stopped'::text])))"
+616,partner_orgs,partner_orgs_wants_check,CHECK,"CHECK ((wants <@ ARRAY['calls'::text, 'briefs'::text, 'requirements'::text]))"
+616,partner_orgs,partner_orgs_website_check,CHECK,CHECK (((website IS NULL) OR (website ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+616,partner_orgs,partner_orgs_whatsapp_opt_words_check,CHECK,CHECK (((whatsapp_opt_words IS NULL) OR (char_length(whatsapp_opt_words) <= 300)))
+616,partner_orgs,partner_orgs_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_reports,partner_reports_item_kind_check,CHECK,"CHECK ((item_kind = ANY (ARRAY['partner'::text, 'call_answer'::text, 'brief'::text, 'requirement'::text])))"
+616,partner_reports,partner_reports_note_check,CHECK,CHECK (((note IS NULL) OR (char_length(note) <= 500)))
+616,partner_reports,partner_reports_reason_check,CHECK,"CHECK ((reason = ANY (ARRAY['fake'::text, 'asked_for_money'::text, 'unsafe_or_rude'::text, 'other'::text])))"
+616,partner_reports,partner_reports_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_send_log,partner_send_log_attempts_check,CHECK,CHECK ((attempts >= 0))
+616,partner_send_log,partner_send_log_by_whom_check,CHECK,CHECK (((by_whom IS NULL) OR (char_length(by_whom) <= 120)))
+616,partner_send_log,partner_send_log_channel_check,CHECK,"CHECK ((channel = ANY (ARRAY['email'::text, 'whatsapp'::text])))"
+616,partner_send_log,partner_send_log_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['drain'::text, 'retried'::text, 'lane_changed'::text])))"
+616,partner_send_log,partner_send_log_state_check,CHECK,"CHECK ((state = ANY (ARRAY['queued'::text, 'sent'::text, 'held_cap'::text, 'held_window'::text, 'held_paused'::text, 'held_no_key'::text, 'failed'::text, 'closed'::text])))"
+616,partner_send_log,partner_send_log_why_check,CHECK,CHECK (((why IS NULL) OR (char_length(why) <= 300)))
+616,partner_send_log,partner_send_log_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_sends,partner_sends_attempts_check,CHECK,CHECK ((attempts >= 0))
+616,partner_sends,partner_sends_channel_check,CHECK,"CHECK ((channel = ANY (ARRAY['email'::text, 'whatsapp'::text])))"
+616,partner_sends,partner_sends_state_check,CHECK,"CHECK ((state = ANY (ARRAY['queued'::text, 'sent'::text, 'held_cap'::text, 'held_window'::text, 'held_paused'::text, 'held_no_key'::text, 'failed'::text, 'closed'::text])))"
+616,partner_sends,partner_sends_token_hash_check,CHECK,CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+616,partner_sends,partner_sends_why_check,CHECK,CHECK (((why IS NULL) OR (char_length(why) <= 300)))
+616,partner_sends,partner_sends_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,partner_sends,partner_sends_partner_id_post_id_channel_key,UNIQUE,"UNIQUE (partner_id, post_id, channel)"
+616,partner_sends,partner_sends_token_hash_key,UNIQUE,UNIQUE (token_hash)
+616,payment_reminder_settings,payment_reminder_settings_pkey,PRIMARY KEY,PRIMARY KEY (vendor_id)
+616,payment_reminders,payment_reminders_amount_check,CHECK,CHECK ((amount_due > 0))
+616,payment_reminders,payment_reminders_kind_check,CHECK,CHECK ((kind = ANY (ARRAY['due_3d'::text])))
+616,payment_reminders,payment_reminders_source_check,CHECK,"CHECK ((source = ANY (ARRAY['vendor_tap'::text, 'nightly'::text])))"
+616,payment_reminders,payment_reminders_status_check,CHECK,"CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'read'::text, 'failed'::text])))"
+616,payment_reminders,payment_reminders_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,payment_schedules,payment_schedules_amount_due_check,CHECK,CHECK ((amount_due > 0))
+616,payment_schedules,payment_schedules_pct_check,CHECK,CHECK (((pct > (0)::numeric) AND (pct <= (100)::numeric)))
+616,payment_schedules,payment_schedules_state_check,CHECK,"CHECK ((state = ANY (ARRAY['pending'::text, 'paid'::text, 'waived'::text])))"
+616,payment_schedules,payment_schedules_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,payment_schedules,payment_schedules_invoice_id_ordinal_key,UNIQUE,"UNIQUE (invoice_id, ordinal)"
+616,pending_couple_drafts,pending_couple_drafts_state_check,CHECK,"CHECK ((state = ANY (ARRAY['staged'::text, 'approved'::text, 'sent'::text, 'refused'::text, 'expired'::text])))"
+616,pending_couple_drafts,pending_couple_drafts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,pending_event_proposals,pending_event_proposals_resolution_check,CHECK,"CHECK ((resolution = ANY (ARRAY['save_all'::text, 'save_selected'::text, 'cancel'::text])))"
+616,pending_event_proposals,pending_event_proposals_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,pending_lead_pings,pending_lead_pings_source_check,CHECK,"CHECK ((source = ANY (ARRAY['bride_message'::text, 'vendor_create_lead'::text])))"
+616,pending_lead_pings,pending_lead_pings_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,pending_money_acts,pending_money_acts_act_check,CHECK,"CHECK ((act = ANY (ARRAY['booking_confirmed'::text, 'advance_paid'::text, 'milestone_paid'::text])))"
+616,pending_money_acts,pending_money_acts_lane_check,CHECK,"CHECK ((lane = ANY (ARRAY['pwa'::text, 'whatsapp'::text])))"
+616,pending_money_acts,pending_money_acts_state_check,CHECK,"CHECK ((state = ANY (ARRAY['staged'::text, 'confirmed'::text, 'declined'::text, 'expired'::text, 'applied'::text])))"
+616,pending_money_acts,pending_money_acts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,prospects,prospects_consent_source_check,CHECK,"CHECK (((consent_source IS NULL) OR (consent_source = ANY (ARRAY['instagram_dm'::text, 'whatsapp'::text, 'other'::text, 'founder_attested'::text]))))"
+616,prospects,prospects_source_check,CHECK,"CHECK ((source = ANY (ARRAY['sheet'::text, 'manual'::text, 'other'::text])))"
+616,prospects,prospects_state_check,CHECK,"CHECK ((state = ANY (ARRAY['cold'::text, 'templated'::text, 'replied'::text, 'in_session'::text, 'converted'::text, 'opted_out'::text, 'expired'::text, 'discarded'::text])))"
+616,prospects,prospects_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,prospects,prospects_phone_key,UNIQUE,UNIQUE (phone)
+616,referral_alerts,referral_alerts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,reviews_asked,reviews_asked_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,reviews_asked,reviews_asked_couple_key,UNIQUE,UNIQUE (couple_id)
+616,search_console_daily,search_console_daily_clicks_check,CHECK,CHECK ((clicks >= 0))
+616,search_console_daily,search_console_daily_impressions_check,CHECK,CHECK ((impressions >= 0))
+616,search_console_daily,search_console_daily_pkey,PRIMARY KEY,"PRIMARY KEY (vendor_id, day)"
+616,search_console_queries,search_console_queries_clicks_check,CHECK,CHECK ((clicks >= 0))
+616,search_console_queries,search_console_queries_impressions_check,CHECK,CHECK ((impressions >= 0))
+616,search_console_queries,search_console_queries_pkey,PRIMARY KEY,"PRIMARY KEY (vendor_id, window_end, query)"
+616,shop_items,shop_items_check,CHECK,CHECK (((kind <> 'voucher'::text) OR (valid_months IS NOT NULL)))
+616,shop_items,shop_items_check1,CHECK,CHECK (((kind <> 'workshop'::text) OR ((starts_at IS NOT NULL) AND (seats_total IS NOT NULL) AND (online OR (place IS NOT NULL)))))
+616,shop_items,shop_items_check2,CHECK,CHECK (((kind <> 'booking'::text) OR (occasion IS NOT NULL)))
+616,shop_items,shop_items_check3,CHECK,CHECK (((ends_at IS NULL) OR (starts_at IS NULL) OR (ends_at > starts_at)))
+616,shop_items,shop_items_class_dates_check,CHECK,CHECK ((cardinality(class_dates) <= 12))
+616,shop_items,shop_items_class_link_check,CHECK,"CHECK (((class_link IS NULL) OR (((char_length(class_link) >= 11) AND (char_length(class_link) <= 508)) AND (class_link ~ '^https://[^\s<>""'']+$'::text))))"
+616,shop_items,shop_items_hours_check,CHECK,CHECK (((hours IS NULL) OR ((hours >= 1) AND (hours <= 24))))
+616,shop_items,shop_items_includes_check,CHECK,CHECK ((cardinality(includes) <= 6))
+616,shop_items,shop_items_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['voucher'::text, 'workshop'::text, 'class'::text, 'booking'::text])))"
+616,shop_items,shop_items_lead_days_check,CHECK,CHECK (((lead_days IS NULL) OR ((lead_days >= 0) AND (lead_days <= 365))))
+616,shop_items,shop_items_name_check,CHECK,CHECK (((char_length(name) >= 1) AND (char_length(name) <= 60)))
+616,shop_items,shop_items_occasion_check,CHECK,"CHECK (((occasion IS NULL) OR (occasion = ANY (ARRAY['party'::text, 'engagement'::text, 'pre_wedding'::text, 'other'::text]))))"
+616,shop_items,shop_items_photo_url_check,CHECK,CHECK (((photo_url IS NULL) OR (photo_url ~ '^https://'::text)))
+616,shop_items,shop_items_place_check,CHECK,CHECK (((place IS NULL) OR ((char_length(place) >= 1) AND (char_length(place) <= 80))))
+616,shop_items,shop_items_price_check,CHECK,CHECK (((price >= 1) AND (price <= 10000000)))
+616,shop_items,shop_items_seats_total_check,CHECK,CHECK (((seats_total IS NULL) OR ((seats_total >= 1) AND (seats_total <= 1000))))
+616,shop_items,shop_items_slug_check,CHECK,"CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,59}$'::text))"
+616,shop_items,shop_items_valid_months_check,CHECK,CHECK (((valid_months IS NULL) OR ((valid_months >= 1) AND (valid_months <= 60))))
+616,shop_items,shop_items_voucher_for_check,CHECK,CHECK (((voucher_for IS NULL) OR ((char_length(voucher_for) >= 1) AND (char_length(voucher_for) <= 60))))
+616,shop_items,shop_items_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,shop_orders,shop_orders_amount_check,CHECK,CHECK (((amount >= 1) AND (amount <= 200000000)))
+616,shop_orders,shop_orders_buyer_name_check,CHECK,CHECK (((char_length(buyer_name) >= 1) AND (char_length(buyer_name) <= 40)))
+616,shop_orders,shop_orders_buyer_phone_check,CHECK,"CHECK ((buyer_phone ~ '^\+[0-9]{8,16}$'::text))"
+616,shop_orders,shop_orders_check,CHECK,CHECK (((state <> 'paid'::text) OR ((paid_at IS NOT NULL) AND (paid_by IS NOT NULL))))
+616,shop_orders,shop_orders_paid_by_check,CHECK,"CHECK (((paid_by IS NULL) OR (paid_by = ANY (ARRAY['vendor'::text, 'link'::text]))))"
+616,shop_orders,shop_orders_payment_ref_check,CHECK,CHECK (((payment_ref IS NULL) OR ((char_length(payment_ref) >= 1) AND (char_length(payment_ref) <= 80))))
+616,shop_orders,shop_orders_qty_check,CHECK,CHECK (((qty >= 1) AND (qty <= 20)))
+616,shop_orders,shop_orders_state_check,CHECK,"CHECK ((state = ANY (ARRAY['asked'::text, 'paid'::text, 'cancelled'::text])))"
+616,shop_orders,shop_orders_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,shop_vouchers,shop_vouchers_code_check,CHECK,CHECK ((code ~ '^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$'::text))
+616,shop_vouchers,shop_vouchers_redeemed_note_check,CHECK,CHECK (((redeemed_note IS NULL) OR ((char_length(redeemed_note) >= 1) AND (char_length(redeemed_note) <= 120))))
+616,shop_vouchers,shop_vouchers_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,site_visit_salt,site_visit_salt_salt_check,CHECK,CHECK ((octet_length(salt) = 32))
+616,site_visit_salt,site_visit_salt_pkey,PRIMARY KEY,PRIMARY KEY (day)
+616,site_visit_seen,site_visit_seen_digest_check,CHECK,CHECK ((octet_length(digest) = 32))
+616,site_visit_seen,site_visit_seen_pkey,PRIMARY KEY,"PRIMARY KEY (day, digest)"
+616,site_visits_daily,site_visits_daily_check,CHECK,CHECK (((page = 'look'::text) = (look_id IS NOT NULL)))
+616,site_visits_daily,site_visits_daily_page_check,CHECK,"CHECK ((page = ANY (ARRAY['home'::text, 'look'::text, 'collection'::text, 'journal'::text, 'page'::text])))"
+616,site_visits_daily,site_visits_daily_source_check,CHECK,"CHECK ((source = ANY (ARRAY['google'::text, 'instagram'::text, 'facebook'::text, 'whatsapp'::text, 'direct'::text, 'other'::text])))"
+616,site_visits_daily,site_visits_daily_uniques_check,CHECK,CHECK ((uniques >= 0))
+616,site_visits_daily,site_visits_daily_views_check,CHECK,CHECK ((views >= 0))
+616,site_visits_daily,site_visits_daily_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,spotlight,spotlight_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,taste_quiz_images,taste_quiz_images_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,tds_ledger,tds_ledger_gross_amount_check,CHECK,CHECK ((gross_amount > 0))
+616,tds_ledger,tds_ledger_net_received_check,CHECK,CHECK ((net_received > 0))
+616,tds_ledger,tds_ledger_tds_amount_check,CHECK,CHECK ((tds_amount >= 0))
+616,tds_ledger,tds_ledger_tds_rate_check,CHECK,CHECK (((tds_rate >= (0)::numeric) AND (tds_rate <= (30)::numeric)))
+616,tds_ledger,tds_ledger_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,team_members,team_members_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,team_messages,team_messages_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,team_payments,team_payments_amount_inr_check,CHECK,CHECK ((amount_inr > 0))
+616,team_payments,team_payments_state_check,CHECK,"CHECK ((state = ANY (ARRAY['owed'::text, 'paid'::text, 'cancelled'::text])))"
+616,team_payments,team_payments_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,team_tasks,team_tasks_priority_check,CHECK,"CHECK ((priority = ANY (ARRAY['low'::text, 'normal'::text, 'high'::text, 'urgent'::text])))"
+616,team_tasks,team_tasks_state_check,CHECK,"CHECK ((state = ANY (ARRAY['open'::text, 'in_progress'::text, 'done'::text, 'cancelled'::text])))"
+616,team_tasks,team_tasks_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,users,users_pronouns_check,CHECK,"CHECK ((pronouns = ANY (ARRAY['she'::text, 'he'::text])))"
+616,users,users_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,users,users_phone_key,UNIQUE,UNIQUE (phone)
+616,vendor_activity_log,vendor_activity_log_surface_check,CHECK,"CHECK ((surface = ANY (ARRAY['whatsapp'::text, 'pwa'::text])))"
+616,vendor_activity_log,vendor_activity_log_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_ad_connections,vendor_ad_connections_ad_account_id_check,CHECK,CHECK (((ad_account_id IS NULL) OR (ad_account_id ~ '^act_[0-9]+$'::text)))
+616,vendor_ad_connections,vendor_ad_connections_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_ad_connections,vendor_ad_connections_vendor_id_key,UNIQUE,UNIQUE (vendor_id)
+616,vendor_ads,vendor_ads_ad_account_id_check,CHECK,CHECK ((ad_account_id ~ '^act_[0-9]+$'::text))
+616,vendor_ads,vendor_ads_daily_budget_minor_check,CHECK,CHECK ((daily_budget_minor > 0))
+616,vendor_ads,vendor_ads_days_check,CHECK,CHECK (((days >= 1) AND (days <= 30)))
+616,vendor_ads,vendor_ads_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['boost'::text, 'lead'::text])))"
+616,vendor_ads,vendor_ads_status_check,CHECK,"CHECK ((status = ANY (ARRAY['draft'::text, 'running'::text, 'paused'::text, 'ended'::text, 'refused'::text])))"
+616,vendor_ads,vendor_ads_total_minor_check,CHECK,CHECK (((total_minor IS NULL) OR (total_minor > 0)))
+616,vendor_ads,vendor_ads_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_ads,vendor_ads_ad_id_key,UNIQUE,UNIQUE (ad_id)
+616,vendor_collection_looks,vendor_collection_looks_pkey,PRIMARY KEY,"PRIMARY KEY (collection_id, look_id)"
+616,vendor_collections,vendor_collections_description_check,CHECK,CHECK (((description IS NULL) OR (char_length(description) <= 200)))
+616,vendor_collections,vendor_collections_name_check,CHECK,CHECK (((char_length(name) >= 1) AND (char_length(name) <= 40)))
+616,vendor_collections,vendor_collections_slug_check,CHECK,"CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))"
+616,vendor_collections,vendor_collections_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_discover_requests,vendor_discover_requests_state_check,CHECK,"CHECK ((state = ANY (ARRAY['requested'::text, 'under_review'::text, 'approved'::text, 'denied'::text, 'revoked'::text])))"
+616,vendor_discover_requests,vendor_discover_requests_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_domains,vendor_domains_check,CHECK,CHECK ((price_paise >= cost_paise))
+616,vendor_domains,vendor_domains_cost_paise_check,CHECK,CHECK ((cost_paise > 0))
+616,vendor_domains,vendor_domains_gst_pct_check,CHECK,CHECK (((gst_pct >= 0) AND (gst_pct <= 100)))
+616,vendor_domains,vendor_domains_registrar_check,CHECK,"CHECK ((registrar = ANY (ARRAY['resellerclub'::text, 'vercel'::text])))"
+616,vendor_domains,vendor_domains_retries_check,CHECK,CHECK ((retries >= 0))
+616,vendor_domains,vendor_domains_status_check,CHECK,"CHECK ((status = ANY (ARRAY['paying'::text, 'registering'::text, 'wiring'::text, 'live'::text, 'expired'::text, 'error'::text, 'refund_due'::text, 'refunded'::text])))"
+616,vendor_domains,vendor_domains_years_check,CHECK,CHECK (((years >= 1) AND (years <= 10)))
+616,vendor_domains,vendor_domains_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_domains,vendor_domains_domain_key,UNIQUE,UNIQUE (domain)
+616,vendor_domains,vendor_domains_razorpay_link_id_key,UNIQUE,UNIQUE (razorpay_link_id)
+616,vendor_domains,vendor_domains_razorpay_payment_id_key,UNIQUE,UNIQUE (razorpay_payment_id)
+616,vendor_domains,vendor_domains_registrar_order_id_key,UNIQUE,UNIQUE (registrar_order_id)
+616,vendor_feature_choices,vendor_feature_choices_choice_check,CHECK,"CHECK ((choice = ANY (ARRAY['on'::text, 'off'::text])))"
+616,vendor_feature_choices,vendor_feature_choices_pkey,PRIMARY KEY,"PRIMARY KEY (vendor_id, feature_key)"
+616,vendor_featured_submissions,vendor_featured_submissions_slot_kind_check,CHECK,"CHECK ((slot_kind = ANY (ARRAY['discover_top'::text, 'spotlight'::text, 'blind_swipe_priority'::text, 'newsletter'::text])))"
+616,vendor_featured_submissions,vendor_featured_submissions_state_check,CHECK,"CHECK ((state = ANY (ARRAY['submitted'::text, 'under_review'::text, 'approved'::text, 'rejected'::text, 'live'::text, 'expired'::text, 'refunded'::text])))"
+616,vendor_featured_submissions,vendor_featured_submissions_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_first_builds,vendor_first_builds_state_check,CHECK,"CHECK ((state = ANY (ARRAY['running'::text, 'done'::text, 'failed'::text])))"
+616,vendor_first_builds,vendor_first_builds_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_google_connections,vendor_google_connections_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_google_connections,vendor_google_connections_vendor_id_key,UNIQUE,UNIQUE (vendor_id)
+616,vendor_ig_connections,vendor_ig_connections_dm_state_check,CHECK,"CHECK ((dm_state = ANY (ARRAY['off'::text, 'on'::text])))"
+616,vendor_ig_connections,vendor_ig_connections_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_ig_connections,vendor_ig_connections_vendor_id_key,UNIQUE,UNIQUE (vendor_id)
+616,vendor_insurance_settings,vendor_insurance_settings_pkey,PRIMARY KEY,PRIMARY KEY (vendor_id)
+616,vendor_look_photos,vendor_look_photos_alt_check,CHECK,CHECK (((alt IS NULL) OR ((char_length(alt) >= 1) AND (char_length(alt) <= 125))))
+616,vendor_look_photos,vendor_look_photos_approval_state_check,CHECK,"CHECK ((approval_state = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))"
+616,vendor_look_photos,vendor_look_photos_caption_check,CHECK,CHECK (((caption IS NULL) OR ((char_length(caption) >= 1) AND (char_length(caption) <= 60))))
+616,vendor_look_photos,vendor_look_photos_focal_landscape_x_check,CHECK,CHECK (((focal_landscape_x >= (0)::numeric) AND (focal_landscape_x <= (100)::numeric)))
+616,vendor_look_photos,vendor_look_photos_focal_landscape_y_check,CHECK,CHECK (((focal_landscape_y >= (0)::numeric) AND (focal_landscape_y <= (100)::numeric)))
+616,vendor_look_photos,vendor_look_photos_focal_portrait_x_check,CHECK,CHECK (((focal_portrait_x >= (0)::numeric) AND (focal_portrait_x <= (100)::numeric)))
+616,vendor_look_photos,vendor_look_photos_focal_portrait_y_check,CHECK,CHECK (((focal_portrait_y >= (0)::numeric) AND (focal_portrait_y <= (100)::numeric)))
+616,vendor_look_photos,vendor_look_photos_height_check,CHECK,CHECK (((height IS NULL) OR (height > 0)))
+616,vendor_look_photos,vendor_look_photos_image_url_check,CHECK,CHECK ((image_url ~ '^https://'::text))
+616,vendor_look_photos,vendor_look_photos_rejection_reason_check,CHECK,CHECK (((rejection_reason IS NULL) OR ((char_length(rejection_reason) >= 1) AND (char_length(rejection_reason) <= 200))))
+616,vendor_look_photos,vendor_look_photos_source_check,CHECK,"CHECK ((source = ANY (ARRAY['upload'::text, 'instagram'::text])))"
+616,vendor_look_photos,vendor_look_photos_width_check,CHECK,CHECK (((width IS NULL) OR (width > 0)))
+616,vendor_look_photos,vendor_look_photos_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_looks,vendor_looks_category_check,CHECK,CHECK (((category IS NULL) OR ((char_length(category) >= 1) AND (char_length(category) <= 24))))
+616,vendor_looks,vendor_looks_check,CHECK,CHECK (((status = 'draft'::text) OR (published_at IS NOT NULL)))
+616,vendor_looks,vendor_looks_credits_check,CHECK,CHECK (((jsonb_typeof(credits) = 'array'::text) AND (jsonb_array_length(credits) <= 8)))
+616,vendor_looks,vendor_looks_description_check,CHECK,CHECK (((description IS NULL) OR (char_length(description) <= 600)))
+616,vendor_looks,vendor_looks_from_price_rupees_check,CHECK,CHECK (((from_price_rupees IS NULL) OR (from_price_rupees > 0)))
+616,vendor_looks,vendor_looks_from_price_text_check,CHECK,CHECK (((from_price_text IS NULL) OR ((char_length(from_price_text) >= 1) AND (char_length(from_price_text) <= 32))))
+616,vendor_looks,vendor_looks_ig_media_id_check,CHECK,CHECK (((ig_media_id IS NULL) OR ((char_length(ig_media_id) >= 1) AND (char_length(ig_media_id) <= 64))))
+616,vendor_looks,vendor_looks_included_check,CHECK,CHECK (((jsonb_typeof(included) = 'array'::text) AND (jsonb_array_length(included) <= 12)))
+616,vendor_looks,vendor_looks_related_ids_check,CHECK,CHECK ((cardinality(related_ids) <= 4))
+616,vendor_looks,vendor_looks_seo_description_check,CHECK,CHECK (((seo_description IS NULL) OR ((char_length(seo_description) >= 1) AND (char_length(seo_description) <= 160))))
+616,vendor_looks,vendor_looks_seo_title_check,CHECK,CHECK (((seo_title IS NULL) OR ((char_length(seo_title) >= 1) AND (char_length(seo_title) <= 70))))
+616,vendor_looks,vendor_looks_slug_check,CHECK,"CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))"
+616,vendor_looks,vendor_looks_source_check,CHECK,"CHECK ((source = ANY (ARRAY['manual'::text, 'phone'::text, 'instagram'::text])))"
+616,vendor_looks,vendor_looks_status_check,CHECK,"CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text])))"
+616,vendor_looks,vendor_looks_title_check,CHECK,CHECK (((char_length(title) >= 1) AND (char_length(title) <= 60)))
+616,vendor_looks,vendor_looks_videos_check,CHECK,CHECK (((jsonb_typeof(videos) = 'array'::text) AND (jsonb_array_length(videos) <= 4)))
+616,vendor_looks,vendor_looks_year_label_check,CHECK,CHECK (((year_label IS NULL) OR ((char_length(year_label) >= 1) AND (char_length(year_label) <= 12))))
+616,vendor_looks,vendor_looks_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_packages,vendor_packages_days_pairing,CHECK,CHECK (((delivery_basis = 'days'::text) = (delivery_days IS NOT NULL)))
+616,vendor_packages,vendor_packages_delivery_basis_check,CHECK,"CHECK ((delivery_basis = ANY (ARRAY['on_the_day'::text, 'days'::text, 'handover'::text])))"
+616,vendor_packages,vendor_packages_delivery_days_check,CHECK,CHECK (((delivery_days IS NULL) OR ((delivery_days >= 1) AND (delivery_days <= 365))))
+616,vendor_packages,vendor_packages_deposit_pct_check,CHECK,CHECK (((deposit_pct >= 1) AND (deposit_pct <= 99)))
+616,vendor_packages,vendor_packages_line_items_check,CHECK,CHECK ((jsonb_typeof(line_items) = 'array'::text))
+616,vendor_packages,vendor_packages_middle_pct_check,CHECK,CHECK (((middle_pct >= 1) AND (middle_pct <= 98)))
+616,vendor_packages,vendor_packages_name_check,CHECK,CHECK ((char_length(btrim(name)) > 0))
+616,vendor_packages,vendor_packages_remainder_positive,CHECK,"CHECK (((deposit_pct +
+CASE
+    WHEN middle_enabled THEN middle_pct
+    ELSE 0
+END) < 100))"
+616,vendor_packages,vendor_packages_total_check,CHECK,CHECK (((total IS NULL) OR (total > 0)))
+616,vendor_packages,vendor_packages_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_pay_accounts,vendor_pay_accounts_provider_check,CHECK,"CHECK ((provider = ANY (ARRAY['razorpay'::text, 'cashfree'::text])))"
+616,vendor_pay_accounts,vendor_pay_accounts_status_check,CHECK,"CHECK ((status = ANY (ARRAY['connected'::text, 'needs_attention'::text, 'revoked'::text])))"
+616,vendor_pay_accounts,vendor_pay_accounts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_pay_event_answers,vendor_pay_event_answers_action_check,CHECK,"CHECK ((action = ANY (ARRAY['already_on'::text, 'added'::text])))"
+616,vendor_pay_event_answers,vendor_pay_event_answers_round_check,CHECK,CHECK ((round >= 1))
+616,vendor_pay_event_answers,vendor_pay_event_answers_pkey,PRIMARY KEY,"PRIMARY KEY (event_id, round)"
+616,vendor_pay_events,vendor_pay_events_amount_check,CHECK,CHECK ((amount >= 0))
+616,vendor_pay_events,vendor_pay_events_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['paid'::text, 'part_paid'::text, 'failed'::text, 'refunded'::text])))"
+616,vendor_pay_events,vendor_pay_events_not_applied_reason_check,CHECK,"CHECK (((not_applied_reason IS NULL) OR (not_applied_reason = ANY (ARRAY['NOT_PENDING'::text, 'INVOICE_CANCELLED'::text, 'NO_INVOICE'::text, 'NO_LINE'::text, 'BINDER_PENDING'::text, 'BINDER_UNCERTAIN'::text]))))"
+616,vendor_pay_events,vendor_pay_events_provider_check,CHECK,"CHECK ((provider = ANY (ARRAY['razorpay'::text, 'cashfree'::text])))"
+616,vendor_pay_events,vendor_pay_events_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_pay_events,vendor_pay_events_provider_provider_payment_id_kind_key,UNIQUE,"UNIQUE (provider, provider_payment_id, kind)"
+616,vendor_pay_links,vendor_pay_links_amount_check,CHECK,CHECK ((amount > 0))
+616,vendor_pay_links,vendor_pay_links_one_home,CHECK,"CHECK ((num_nonnulls(invoice_id, binder_id) = 1))"
+616,vendor_pay_links,vendor_pay_links_provider_check,CHECK,"CHECK ((provider = ANY (ARRAY['razorpay'::text, 'cashfree'::text])))"
+616,vendor_pay_links,vendor_pay_links_state_check,CHECK,"CHECK ((state = ANY (ARRAY['created'::text, 'sent'::text, 'part_paid'::text, 'paid'::text, 'failed'::text, 'expired'::text, 'cancelled'::text])))"
+616,vendor_pay_links,vendor_pay_links_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_pay_oauth_states,vendor_pay_oauth_states_nonce_check,CHECK,CHECK (((length(nonce) >= 16) AND (length(nonce) <= 128)))
+616,vendor_pay_oauth_states,vendor_pay_oauth_states_pkey,PRIMARY KEY,PRIMARY KEY (nonce)
+616,vendor_pay_settings,vendor_pay_settings_pkey,PRIMARY KEY,PRIMARY KEY (vendor_id)
+616,vendor_policies,vendor_policies_cover_amount_check,CHECK,CHECK ((cover_amount > 0))
+616,vendor_policies,vendor_policies_doc_mime_check,CHECK,"CHECK (((doc_mime IS NULL) OR (doc_mime = ANY (ARRAY['application/pdf'::text, 'image/jpeg'::text, 'image/png'::text, 'image/webp'::text, 'image/heic'::text]))))"
+616,vendor_policies,vendor_policies_insurer_check,CHECK,CHECK (((length(btrim(insurer)) >= 1) AND (length(btrim(insurer)) <= 120)))
+616,vendor_policies,vendor_policies_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['equipment'::text, 'public_liability'::text, 'professional_indemnity'::text, 'goods_in_transit'::text, 'shop_and_stock'::text, 'jewellers_block'::text, 'personal_accident'::text, 'event_cancellation'::text, 'other'::text])))"
+616,vendor_policies,vendor_policies_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_portfolio,vendor_portfolio_approval_state_check,CHECK,"CHECK ((approval_state = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))"
+616,vendor_portfolio,vendor_portfolio_source_check,CHECK,"CHECK ((source = ANY (ARRAY['upload'::text, 'instagram'::text])))"
+616,vendor_portfolio,vendor_portfolio_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_roster,vendor_roster_source_check,CHECK,"CHECK ((source = ANY (ARRAY['collab_accepted'::text, 'manual'::text])))"
+616,vendor_roster,vendor_roster_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_seal,vendor_seal_days_nonneg,CHECK,CHECK (((delivery_days IS NULL) OR (delivery_days >= 0)))
+616,vendor_seal,vendor_seal_weddings_nonneg,CHECK,CHECK ((weddings >= 0))
+616,vendor_seal,vendor_seal_pkey,PRIMARY KEY,PRIMARY KEY (vendor_id)
+616,vendor_site_drafts,vendor_site_drafts_pages_check,CHECK,CHECK (((pages IS NULL) OR ((jsonb_typeof(pages) = 'array'::text) AND (jsonb_array_length(pages) <= 12))))
+616,vendor_site_drafts,vendor_site_drafts_sections_check,CHECK,CHECK (((sections IS NULL) OR ((jsonb_typeof(sections) = 'array'::text) AND (jsonb_array_length(sections) <= 40) AND (pg_column_size(sections) <= 262144))))
+616,vendor_site_drafts,vendor_site_drafts_settings_check,CHECK,CHECK (((jsonb_typeof(settings) = 'object'::text) AND (pg_column_size(settings) <= 65536)))
+616,vendor_site_drafts,vendor_site_drafts_pkey,PRIMARY KEY,PRIMARY KEY (vendor_id)
+616,vendor_site_faq,vendor_site_faq_answer_check,CHECK,CHECK (((char_length(answer) >= 1) AND (char_length(answer) <= 600)))
+616,vendor_site_faq,vendor_site_faq_question_check,CHECK,CHECK (((char_length(question) >= 1) AND (char_length(question) <= 120)))
+616,vendor_site_faq,vendor_site_faq_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_site_pages,vendor_site_pages_slug_check,CHECK,"CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))"
+616,vendor_site_pages,vendor_site_pages_title_check,CHECK,CHECK (((char_length(title) >= 1) AND (char_length(title) <= 40)))
+616,vendor_site_pages,vendor_site_pages_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_site_sections,vendor_site_sections_body_check,CHECK,CHECK (((jsonb_typeof(body) = 'object'::text) AND (pg_column_size(body) <= 16384)))
+616,vendor_site_sections,vendor_site_sections_eyebrow_check,CHECK,CHECK (((eyebrow IS NULL) OR ((char_length(eyebrow) >= 1) AND (char_length(eyebrow) <= 32))))
+616,vendor_site_sections,vendor_site_sections_heading_check,CHECK,CHECK (((heading IS NULL) OR ((char_length(heading) >= 1) AND (char_length(heading) <= 60))))
+616,vendor_site_sections,vendor_site_sections_key_check,CHECK,"CHECK ((key ~ '^(cover|looks|collections|band|reviews|pricing|studio|journal|faq|enquire|shop|custom-[a-z0-9-]{1,40})$'::text))"
+616,vendor_site_sections,vendor_site_sections_variant_check,CHECK,"CHECK ((variant ~ '^[a-z0-9-]{1,24}$'::text))"
+616,vendor_site_sections,vendor_site_sections_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_sites,vendor_sites_button_style_check,CHECK,"CHECK (((button_style IS NULL) OR (button_style ~ '^[a-z_]{1,24}$'::text)))"
+616,vendor_sites,vendor_sites_copy_check,CHECK,CHECK (((jsonb_typeof(copy) = 'object'::text) AND (pg_column_size(copy) <= 32768)))
+616,vendor_sites,vendor_sites_corners_check,CHECK,"CHECK (((corners IS NULL) OR (corners ~ '^[a-z_]{1,24}$'::text)))"
+616,vendor_sites,vendor_sites_cover_check,CHECK,CHECK (((jsonb_typeof(cover) = 'array'::text) AND (jsonb_array_length(cover) <= 3)))
+616,vendor_sites,vendor_sites_cover_mode_check,CHECK,"CHECK (((cover_mode IS NULL) OR (cover_mode = ANY (ARRAY['slideshow'::text, 'still'::text, 'film'::text]))))"
+616,vendor_sites,vendor_sites_font_pair_check,CHECK,"CHECK (((font_pair IS NULL) OR (font_pair = ANY (ARRAY['bodoni_inter_tight'::text, 'cormorant_manrope'::text, 'italiana_jost'::text, 'marcellus_mulish'::text, 'fraunces_jakarta'::text, 'instrument_serif_sans'::text, 'gilda_figtree'::text, 'cormorant_figtree'::text]))))"
+616,vendor_sites,vendor_sites_look_check,CHECK,"CHECK (((look IS NULL) OR (look = ANY (ARRAY['quiet'::text, 'bloom'::text, 'atelier'::text]))))"
+616,vendor_sites,vendor_sites_monogram_check,CHECK,CHECK (((monogram IS NULL) OR ((char_length(monogram) >= 1) AND (char_length(monogram) <= 3))))
+616,vendor_sites,vendor_sites_motion_check,CHECK,"CHECK (((motion IS NULL) OR (motion = ANY (ARRAY['calm'::text, 'lively'::text, 'cinematic'::text]))))"
+616,vendor_sites,vendor_sites_palette_custom_check,CHECK,CHECK (((jsonb_typeof(palette_custom) = 'object'::text) AND (pg_column_size(palette_custom) <= 2048)))
+616,vendor_sites,vendor_sites_palette_id_check,CHECK,"CHECK (((palette_id IS NULL) OR (palette_id ~ '^[a-z]{1,16}\.[a-z]{1,16}$'::text)))"
+616,vendor_sites,vendor_sites_site_name_check,CHECK,CHECK (((site_name IS NULL) OR ((char_length(site_name) >= 1) AND (char_length(site_name) <= 40))))
+616,vendor_sites,vendor_sites_style_check,CHECK,"CHECK (((style IS NULL) OR (style = ANY (ARRAY['couture'::text, 'noir'::text, 'heritage'::text, 'aurora'::text, 'gallery'::text, 'riviera'::text]))))"
+616,vendor_sites,vendor_sites_styles_picked_check,CHECK,"CHECK (((styles_picked <@ ARRAY['couture'::text, 'noir'::text, 'heritage'::text, 'aurora'::text, 'gallery'::text, 'riviera'::text]) AND (cardinality(styles_picked) <= 6)))"
+616,vendor_sites,vendor_sites_texture_check,CHECK,"CHECK (((texture IS NULL) OR (texture ~ '^[a-z_]{1,24}$'::text)))"
+616,vendor_sites,vendor_sites_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_sites,vendor_sites_vendor_id_key,UNIQUE,UNIQUE (vendor_id)
+616,vendor_state,vendor_state_pkey,PRIMARY KEY,PRIMARY KEY (vendor_id)
+616,vendor_stories,vendor_stories_slug_check,CHECK,"CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))"
+616,vendor_stories,vendor_stories_title_check,CHECK,CHECK (((char_length(title) >= 1) AND (char_length(title) <= 120)))
+616,vendor_stories,vendor_stories_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_stories,vendor_stories_vendor_id_slug_key,UNIQUE,"UNIQUE (vendor_id, slug)"
+616,vendor_testimonial_requests,vendor_testimonial_requests_check,CHECK,CHECK (((used_at IS NULL) OR (phone IS NULL)))
+616,vendor_testimonial_requests,vendor_testimonial_requests_origin_check,CHECK,"CHECK ((origin = ANY (ARRAY['vendor'::text, 'after_delivery'::text])))"
+616,vendor_testimonial_requests,vendor_testimonial_requests_person_name_check,CHECK,CHECK (((char_length(person_name) >= 1) AND (char_length(person_name) <= 80)))
+616,vendor_testimonial_requests,vendor_testimonial_requests_phone_check,CHECK,"CHECK (((phone IS NULL) OR (phone ~ '^\+[0-9]{8,15}$'::text)))"
+616,vendor_testimonial_requests,vendor_testimonial_requests_sent_via_check,CHECK,"CHECK (((sent_via IS NULL) OR (sent_via = ANY (ARRAY['whatsapp_template'::text, 'copied'::text]))))"
+616,vendor_testimonial_requests,vendor_testimonial_requests_token_hash_check,CHECK,CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+616,vendor_testimonial_requests,vendor_testimonial_requests_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_testimonial_requests,vendor_testimonial_requests_token_hash_key,UNIQUE,UNIQUE (token_hash)
+616,vendor_testimonials,vendor_testimonials_approved_has_time,CHECK,CHECK (((state <> 'approved'::text) OR (approved_at IS NOT NULL)))
+616,vendor_testimonials,vendor_testimonials_author_check,CHECK,CHECK (((char_length(author) >= 1) AND (char_length(author) <= 80)))
+616,vendor_testimonials,vendor_testimonials_body_check,CHECK,CHECK (((char_length(body) >= 1) AND (char_length(body) <= 600)))
+616,vendor_testimonials,vendor_testimonials_event_month_check,CHECK,CHECK (((event_month IS NULL) OR (EXTRACT(day FROM event_month) = (1)::numeric)))
+616,vendor_testimonials,vendor_testimonials_occasion_check,CHECK,CHECK (((occasion IS NULL) OR ((char_length(occasion) >= 1) AND (char_length(occasion) <= 40))))
+616,vendor_testimonials,vendor_testimonials_place_check,CHECK,CHECK (((place IS NULL) OR ((char_length(place) >= 1) AND (char_length(place) <= 40))))
+616,vendor_testimonials,vendor_testimonials_state_check,CHECK,"CHECK ((state = ANY (ARRAY['pending'::text, 'approved'::text, 'hidden'::text])))"
+616,vendor_testimonials,vendor_testimonials_video_duration_s_check,CHECK,CHECK (((video_duration_s IS NULL) OR ((video_duration_s >= 1) AND (video_duration_s <= 600))))
+616,vendor_testimonials,vendor_testimonials_video_title_check,CHECK,CHECK (((video_title IS NULL) OR ((char_length(video_title) >= 1) AND (char_length(video_title) <= 60))))
+616,vendor_testimonials,vendor_testimonials_video_url_check,CHECK,CHECK (((video_url IS NULL) OR (video_url ~ '^https://'::text)))
+616,vendor_testimonials,vendor_testimonials_words_or_video,CHECK,CHECK (((body IS NOT NULL) OR (video_url IS NOT NULL)))
+616,vendor_testimonials,vendor_testimonials_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_wa_events,vendor_wa_events_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['inbound'::text, 'history'::text, 'contacts'::text, 'echo'::text, 'account_update'::text, 'quality_update'::text])))"
+616,vendor_wa_events,vendor_wa_events_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_wabas,vendor_wabas_connect_way_check,CHECK,"CHECK ((connect_way = ANY (ARRAY['shared'::text, 'moved'::text])))"
+616,vendor_wabas,vendor_wabas_status_check,CHECK,"CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'suspended'::text, 'migrated_out'::text, 'removed'::text])))"
+616,vendor_wabas,vendor_wabas_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendor_wabas,vendor_wabas_phone_number_id_key,UNIQUE,UNIQUE (phone_number_id)
+616,vendor_wabas,vendor_wabas_vendor_id_key,UNIQUE,UNIQUE (vendor_id)
+616,vendor_wabas,vendor_wabas_waba_id_key,UNIQUE,UNIQUE (waba_id)
+616,vendors,vendors_billing_status_check,CHECK,"CHECK ((billing_status = ANY (ARRAY['none'::text, 'active'::text, 'pending'::text, 'halted'::text, 'cancelled'::text])))"
+616,vendors,vendors_discover_request_state_check,CHECK,"CHECK ((discover_request_state = ANY (ARRAY['not_requested'::text, 'requested'::text, 'under_review'::text, 'approved'::text, 'denied'::text, 'revoked'::text])))"
+616,vendors,vendors_enquiry_routing_check,CHECK,"CHECK ((enquiry_routing = ANY (ARRAY['tdw'::text, 'own_number'::text, 'own_waba'::text])))"
+616,vendors,vendors_rate_range_check,CHECK,CHECK (((rate_min IS NULL) OR (rate_max IS NULL) OR (rate_min <= rate_max)))
+616,vendors,vendors_reply_quiet_minutes_check,CHECK,"CHECK ((reply_quiet_minutes = ANY (ARRAY[60, 120, 240, 480])))"
+616,vendors,vendors_seo_description_len_check,CHECK,CHECK (((seo_description IS NULL) OR ((char_length(seo_description) >= 1) AND (char_length(seo_description) <= 200))))
+616,vendors,vendors_seo_title_len_check,CHECK,CHECK (((seo_title IS NULL) OR ((char_length(seo_title) >= 1) AND (char_length(seo_title) <= 70))))
+616,vendors,vendors_service_area_token,CHECK,"CHECK (((service_area IS NULL) OR (service_area = ANY (ARRAY['pan_india'::text, 'worldwide'::text, 'select_cities'::text]))))"
+616,vendors,vendors_service_cities_pairing,CHECK,"CHECK ((((service_area = 'select_cities'::text) AND (service_cities IS NOT NULL) AND (array_length(service_cities, 1) >= 1)) OR ((service_area IS DISTINCT FROM 'select_cities'::text) AND (service_cities IS NULL))))"
+616,vendors,vendors_tier_check,CHECK,"CHECK ((tier = ANY (ARRAY['basic'::text, 'essential'::text, 'signature'::text, 'prestige'::text])))"
+616,vendors,vendors_wa_eliza_state_check,CHECK,"CHECK (((wa_eliza_state IS NULL) OR (wa_eliza_state = ANY (ARRAY['on'::text, 'off'::text]))))"
+616,vendors,vendors_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,vendors,vendors_routing_handle_key,UNIQUE,UNIQUE (routing_handle)
+616,waitlist_signups,waitlist_signups_kind_check,CHECK,"CHECK ((kind = ANY (ARRAY['dreamer'::text, 'maker'::text])))"
+616,waitlist_signups,waitlist_signups_status_check,CHECK,"CHECK ((status = ANY (ARRAY['new'::text, 'contacted'::text, 'invited'::text, 'ignored'::text])))"
+616,waitlist_signups,waitlist_signups_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,website_chat_tokens,website_chat_tokens_page_title_check,CHECK,CHECK (((page_title IS NULL) OR (char_length(page_title) <= 80)))
+616,website_chat_tokens,website_chat_tokens_phone_check,CHECK,"CHECK ((phone ~ '^\+[0-9]{8,16}$'::text))"
+616,website_chat_tokens,website_chat_tokens_token_hash_check,CHECK,CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+616,website_chat_tokens,website_chat_tokens_pkey,PRIMARY KEY,PRIMARY KEY (token_hash)
+616,wedding_credits,wedding_credits_role_check,CHECK,"CHECK ((role = ANY (ARRAY['shot_by'::text, 'makeup'::text, 'hair'::text, 'decor'::text, 'mehendi'::text, 'planner'::text, 'styled_by'::text, 'wearing'::text, 'model'::text, 'venue'::text])))"
+616,wedding_credits,wedding_credits_status_check,CHECK,"CHECK ((status = ANY (ARRAY['tagged'::text, 'claimed'::text, 'declined'::text])))"
+616,wedding_credits,wedding_credits_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,wedding_credits,wedding_credits_claim_token_key,UNIQUE,UNIQUE (claim_token)
+616,wedding_photos,wedding_photos_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,weddings,weddings_visibility_check,CHECK,"CHECK ((visibility = ANY (ARRAY['draft'::text, 'published'::text])))"
+616,weddings,weddings_wedding_date_pair_check,CHECK,CHECK (((wedding_date IS NULL) = (wedding_date_precision IS NULL)))
+616,weddings,weddings_wedding_date_precision_check,CHECK,"CHECK ((wedding_date_precision = ANY (ARRAY['day'::text, 'month'::text, 'year'::text])))"
+616,weddings,weddings_pkey,PRIMARY KEY,PRIMARY KEY (id)
+616,weddings,weddings_owner_slug_key,UNIQUE,"UNIQUE (owner_vendor_id, slug)"

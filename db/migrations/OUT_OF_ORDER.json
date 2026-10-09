@@ -24,100 +24,10 @@
   ],
   "register": [
     {
-      "number": 183,
-      "note": "**CE-46 · ELZ-3 · THE PRICE SWITCH** — `vendors.price_share_enabled` boolean NOT NULL DEFAULT false (her switch, \"Share approximate prices in chat\", beside `date_check_enabled` from `0140`). Alters one existing table; creates no table. Numbered `0183` by the chair and landed AFTER `0184` (G6-4 cut B, `ig_deletion_purge`), so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 30 September 2026).",
-      "stale_for": "`public.vendors`",
-      "state": "OWED — the snapshot does not carry `vendors.price_share_enabled`; `0183` and this file are its witnesses until the next PAIR regen."
-    },
-    {
-      "number": 204,
-      "note": "**CE-47 · OFF-A1 · THE OFF-SEASON SHOP** — creates `shop_items`, `shop_orders`, `shop_vouchers` (RLS on, service_role only); widens `vendor_site_sections.key` and `events.kind` by `'shop'`; seeds `flag.off_shop` 'off'. Numbered `0204` from the chair's OFF range (0204-0207) and landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 6 October 2026).",
-      "stale_for": "`public.shop_items`, `public.shop_orders`, `public.shop_vouchers`, `public.vendor_site_sections`, `public.events`",
-      "state": "OWED — the snapshot does not carry the three tables or the two widened CHECKs; `0204` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 196,
-      "note": "**CE-47 · CLB-1 · COLLAB HUB v2** — creates `collab_interest`, `collab_prospects`, `collab_shares`; alters `collab_posts`; seeds rows in `capabilities`. Numbered `0196` from CLB's range. Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
-      "stale_for": "`public.collab_interest`, `public.collab_prospects`, `public.collab_shares`, `public.collab_posts`, `public.capabilities`",
-      "state": "OWED — the snapshot does not carry the three tables or the new `collab_posts` columns; `0196` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 200,
-      "note": "**CE-47 · INS-A · THE INSURANCE ROOM** — creates `vendor_insurance_settings` and `vendor_policies`. Numbered `0200` from INS's range. Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
-      "stale_for": "`public.vendor_insurance_settings`, `public.vendor_policies`",
-      "state": "OWED — the snapshot does not carry the two tables; `0200` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 208,
-      "note": "**CE-47 · PRO · P1 · GST ON EXPENSES AND INVOICES** — alters `expenses` and `invoices` (the GST columns). Numbered `0208` from PRO's range (0208-0211). Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
-      "stale_for": "`public.expenses`, `public.invoices`",
-      "state": "OWED — the snapshot does not carry the GST columns; `0208` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 209,
-      "note": "**CE-47 · PRO · P1 · BUSINESS PAPERS** — creates `issued_papers` (one row per paper issued, its check code, figures frozen at issue). Numbered `0209` from PRO's range. Landed AFTER `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair asked for this record, 6 October 2026; written by WEB-4, cut 16).",
-      "stale_for": "`public.issued_papers`",
-      "state": "OWED — the snapshot does not carry the table; `0209` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 205,
-      "note": "**CE-47 · OFF-A1b · THE CLASS LINK** — `shop_items.class_link` text, https only (length 11 to 508 checked apart from the pattern, since Postgres caps a repetition count at 255). Alters one existing table; creates no table. Numbered `0205` from the chair's OFF range (0204-0207) and lands after `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3).",
-      "stale_for": "`public.shop_items`",
-      "state": "OWED — the snapshot does not carry `shop_items.class_link`; `0205` and this file are its witnesses until the next PAIR regen."
-    },
-    {
-      "number": 195,
-      "note": "**CE-47 · WEB-4 cut 16 · BASIC'S ONE FREE STYLE** — `vendor_sites.style_changed_at` timestamptz (Basic's 30-day style clock, started at Publish when the published style changes); `vendor_portfolio.source` and `vendor_look_photos.source` text NOT NULL DEFAULT 'upload', CHECK upload | instagram (cut 17's columns, as the chair ruled). Alters three existing tables; creates no table. Numbered `0195` from WEB-4's range (0194-0195) and lands LAST in server train 3, after `0212` and `0214`, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 6 October 2026).",
-      "stale_for": "`public.vendor_sites`, `public.vendor_portfolio`, `public.vendor_look_photos`",
-      "state": "OWED — the snapshot does not carry the three columns; `0195` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 197,
-      "note": "**CE-47 · CLB-2a · THE COLLAB ROLE LIST, PARTNER ROWS ON A CALL, AND CALLS SENT BY TDW** — widens `collab_posts.requirement_type` and `collab_post_items.requirement_type` to the collab role list (the eleven plus model, stylist, studio); adds `collab_post_items.needed`; `collab_posts.source`, `asked_at`, `budget_from`, `budget_to`; `collab_interest.source`, `partner_id`, `send_id`, `role`, `link`, `agreed_at`, `platform` and `how` made nullable, the `collab_interest_partner_shape` CHECK and the `collab_interest_partner_once` unique index; creates `collab_house_tokens` (RLS on, service_role only). Numbered `0197` from CLB's range and lands in server train 4, after `0212`, `0214`, `0216` and `0217`, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 6 October 2026; written by WEB-4 from the file's header and body).",
-      "stale_for": "`public.collab_posts`, `public.collab_post_items`, `public.collab_interest`, `public.collab_house_tokens`",
-      "state": "OWED — the snapshot does not carry the widened CHECKs, the new columns, the partner index or `collab_house_tokens`; `0197` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 198,
-      "note": "**CE-47 · CLB · HUB-1 · HUB PROFILES AND CREDITS** — creates `hub_profiles` and `hub_credits`. Additive; alters no existing table. Numbered `0198` from CLB's range and lands in server train 7, after `0216`, `0217` and `0220` are applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 7 October 2026; written by WEB-4, the register's one writer, from the chair's description of `0198_hub_profiles_credits.sql`).",
-      "stale_for": "`public.hub_profiles`, `public.hub_credits`",
-      "state": "OWED — the snapshot does not carry the two tables; `0198` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 211,
-      "note": "**CE-47 · PRO · P2 · GEAR SHARING AND BILL DRAFTS** — creates `gear_items`, `gear_requests` and `bill_drafts` (RLS on; SELECT, INSERT, UPDATE, DELETE to service_role) and one function, `pro_gear_accept(uuid, uuid)` (SECURITY INVOKER; EXECUTE revoked from PUBLIC, anon and authenticated, granted to service_role alone). Additive: alters no existing table (the new tables only reference `vendors` and `expenses`). Numbered `0211` from PRO's range (0208-0211) and lands in server train 8, after `0216`, `0217` and `0220` are applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 7 October 2026; written by WEB-4, the register's one writer, from 0211's bytes, sha256 80cca6b6…, with PRO's draft as input).",
-      "stale_for": "`public.gear_items`, `public.gear_requests`, `public.bill_drafts`",
-      "state": "OWED — the snapshot does not carry the three tables or `pro_gear_accept`; `0211` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 218,
-      "note": "**CE-47 · PTN · A2-1 · PARTNER CALLS** — creates `partner_sends` and `partner_answers` (RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the same transaction) and adds the foreign key `collab_interest_partner_fk` on `collab_interest`, the partner link `0197` left without one. Numbered `0218` from PTN's range (0216-0219) and lands in server train 11, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 7 October 2026; written by WEB-4, the register's one writer).",
-      "stale_for": "`public.partner_sends`, `public.partner_answers`, `public.collab_interest`",
-      "state": "OWED — the snapshot does not carry the two tables or `collab_interest_partner_fk`; `0218` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 201,
-      "note": "**CE-47 · INS · PAY-A · PAYMENT LINKS** — creates `vendor_pay_accounts`, `vendor_pay_links`, `vendor_pay_events` and `vendor_pay_settings` (each: RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the transaction) and three functions, `pay_record_milestone`, `pay_settle_invoice` and `pay_record_invoice` (no SECURITY clause, so invoker rights; EXECUTE revoked from PUBLIC, anon and authenticated, granted to service_role alone). Alters no existing table's shape (the functions write rows in `invoices` and `payment_schedules`). Numbered `0201` from INS's range and lands in server train 12, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0201's bytes, sha256 18dbb3f0…).",
-      "stale_for": "`public.vendor_pay_accounts`, `public.vendor_pay_links`, `public.vendor_pay_events`, `public.vendor_pay_settings`",
-      "state": "OWED — the snapshot does not carry the four tables or the three functions; `0201` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 202,
-      "note": "**CE-47 · INS · PAY-A · CONNECT STATES, REFUNDS AND BINDER PAYMENTS** — creates `vendor_pay_oauth_states` and `vendor_pay_event_answers` (each: RLS on; the four service_role grants in the transaction); alters three of `0201`'s tables: `vendor_pay_links` gains `binder_id`, its `invoice_id` drops NOT NULL and the CHECK `vendor_pay_links_one_home` is added; `vendor_pay_events` gains `binder_id`, `claimed_at` and `binder_base_received`, and its CHECK `vendor_pay_events_not_applied_reason_check` is dropped and re-added by name; `vendor_pay_settings` gains `accept_partial` boolean NOT NULL DEFAULT false. Seven functions (`pay_sweep_oauth_states`, `pay_take_off_refund`, `pay_hold_binder_payment`, `pay_claim_binder_event`, `pay_keep_binder_base`, `pay_finish_binder_event`, `pay_resolve_binder_event`; invoker rights; EXECUTE to service_role alone). Numbered `0202` from INS's range and lands in server train 12, after `0201` and below the applied ladder tip, so it fills a hole (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4 from 0202's bytes, sha256 0419d5e5…).",
-      "stale_for": "`public.vendor_pay_oauth_states`, `public.vendor_pay_event_answers`, `public.vendor_pay_links`, `public.vendor_pay_events`, `public.vendor_pay_settings`",
-      "state": "OWED — the snapshot does not carry the two tables, the three tables' new columns and CHECKs, or the seven functions; `0202` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 219,
-      "note": "**CE-47 · PTN · A2-1c · THE HISTORY OF A SEND** — creates `partner_send_log`, append-only (RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the transaction; its rows are removed only by the cascade from `partner_sends`), with the trigger `partner_send_log_no_update` and its function `partner_send_log_append_only` (refuses every UPDATE; EXECUTE revoked from PUBLIC, anon and authenticated); the function `partner_send_revive(uuid, text, text)` (one statement: the guarded UPDATE of `partner_sends` and its log line; invoker rights; EXECUTE to service_role alone). Alters `partner_orgs`: adds `whatsapp_opt_at` timestamptz NULL and `whatsapp_opt_words` text NULL (CHECK at most 300 characters). Seeds three `capabilities` rows, `template.tdw_partner_call`, `template.tdw_partner_picked` and `template.tdw_collab_request_sent`, born 'pending' (rows only; no shape change). Numbered `0219` from PTN's range (0216-0219) and lands in server train 13, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0219's bytes, sha256 adf13f68…).",
-      "stale_for": "`public.partner_send_log`, `public.partner_orgs`",
-      "state": "OWED — the snapshot does not carry `partner_send_log` or the two `partner_orgs` columns; `0219` and this file are their witnesses until the next PAIR regen."
-    },
-    {
-      "number": 203,
-      "note": "**CE-47 · INS · F-44.420 · TWO LIVE TRIGGERS WRITTEN INTO THE REPO** — `CREATE OR REPLACE TRIGGER invoices_updated_at` on `invoices` and `payment_schedules_set_updated_at` on `payment_schedules`, each BEFORE UPDATE, FOR EACH ROW, EXECUTE FUNCTION `set_updated_at()` (`0001`, unchanged); drops `invoices_set_updated_at` (`0008`), the repo's old name for the invoices trigger, which the live database does not carry. On the live database it changes nothing; on a database built from the repo it leaves one trigger per table, as live. No table, column, grant or policy changes. Numbered `0203` from INS's range and lands in server train 14, after `0220` is applied, so it fills a hole below the applied ladder tip (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0203's bytes, sha256 770bc39f…).",
-      "stale_for": "none: the snapshot carries no triggers",
-      "state": "NOTHING OWED: removed with the others at the next PAIR regen"
+      "number": 210,
+      "note": "**CE-47 · PRO · P3 · BRAND COLLABORATIONS AND THE TREND ROOM** — creates `pro_brands`, `pro_pitches`, `pro_kits` and `pro_trend_briefs` (each: RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the transaction) and the function `pro_pitch_record` (the only way a pitch row is added; it takes the vendor's lock and refuses a pitch over the limits; no SECURITY clause, so invoker rights; EXECUTE revoked from PUBLIC, anon and authenticated, granted to service_role alone). Alters no existing table's shape. Numbered `0210` from PRO's range (0208-0211) and lands in server train 16, after the PAIR regen of 8 October 2026 was taken at ladder `0220`, so it fills a hole below the applied ladder tip and the snapshot does not carry it (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0210's bytes, sha256 2615ae76…).",
+      "stale_for": "`public.pro_brands`, `public.pro_pitches`, `public.pro_kits`, `public.pro_trend_briefs`",
+      "state": "OWED — the snapshot of 8 October 2026 does not carry the four tables or `pro_pitch_record`; `0210` and this file are their witnesses until the next PAIR regen."
     }
   ]
 }

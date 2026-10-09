@@ -1,85 +1,22 @@
 # docs/db/PUBLIC_SCHEMA.md — the `public` schema, WITNESSED PROD SNAPSHOT
 
-**Snapshot taken:** 2026-09-17, founder-run in the Supabase SQL editor, output handed back as CSV and formatted by script. **101 tables, 1142 columns.**
-**Applied ladder tip at snapshot:** `0168` — stated in the header so this file's staleness is a readable fact, never archaeology. The prior snapshot (2026-09-09, 91 tables, tip `0154`) went **14 migrations stale** before this regen measured it.
-**⏳ STALE BY TWO MIGRATIONS AS OF 20 SEPTEMBER 2026, stated here rather than left to archaeology.**
-This file's ladder tip is `0168`. Since it was taken, **`0169_pending_money_acts.sql`** added
-`public.pending_money_acts` (12 columns, one partial UNIQUE index, RLS on) and **`0170`** was applied
-in production on 20 September, changing no column but enabling row level security on all 102 tables
-and revoking `anon` and `authenticated` throughout the schema. So this document describes **101 of
-the schema's 102 tables**, it does not describe `pending_money_acts` at all, and nothing in it should
-be read as a statement about privileges or RLS. Columns for the other 101 tables are unaffected. The
-two migrations are the witness until the founder regenerates this file. (CE-44, SEC-1.)
-
-**AND STALE BY A THIRD SINCE 24 SEPTEMBER 2026: `0171_own_number.sql`** (CE-45 G6-1, applied by the founder
-2026-09-24) created `public.vendor_wabas` (14 columns; UNIQUE on vendor_id, waba_id and phone_number_id) and
-`public.vendor_wa_events` (5 columns; one index), RLS enabled on both in the same transaction; added
-`vendors.enquiry_routing text NOT NULL DEFAULT 'tdw'` (CHECK in 'tdw', 'own_number', 'own_waba') and
-`vendors.enquiry_phone text`; and inserted five `public.capabilities` rows (`flag.own_number` and one per tier,
-all 'off'). None of that is described below; 0171 is its witness until the snapshot is regenerated. This note
-should have landed with 0171 itself (SRV_1b) and did not: e-107, corrected in FE_2.
-
-**AND 0172 (`0172_own_number_grants.sql`, CE-45 G6-1, F-44.168):** grants only, no shape change: `service_role` gains
-SELECT, INSERT, UPDATE and DELETE on `vendor_wabas` and `vendor_wa_events` (anon and authenticated are not granted).
-Note for every reader (F-44.169): on this project a table created by `postgres` in public reaches `service_role` with only
-TRUNCATE, REFERENCES, TRIGGER and MAINTAIN, so each table-creating migration grants it in its own file (A-45.8, b128).
-
-**AND 0173 (`0173_ig_dm.sql`, CE-45 IGD-1 cut 2a-i), once the founder applies it:** alters only, creates no table (so A-45.8
-grants nothing; `service_role`'s table grants on all three were witnessed by G6-1's census of 25 September 2026). It adds
-`conversations.channel text NOT NULL DEFAULT 'whatsapp'` (CHECK `conversations_channel_check`: 'whatsapp' or 'instagram') and
-`conversations.counterparty_ig_id text`, with the partial UNIQUE index `conversations_vendor_ig_thread_uidx` on
-(vendor_id, counterparty_ig_id) WHERE kind = 'couple_thread' AND counterparty_ig_id IS NOT NULL; `leads.counterparty_ig_id text`,
-with the partial UNIQUE index `leads_vendor_ig_uidx` on (vendor_id, counterparty_ig_id) WHERE counterparty_ig_id IS NOT NULL; and
-`vendors.reply_quiet_minutes integer NOT NULL DEFAULT 120` (CHECK `vendors_reply_quiet_minutes_check`: 60, 120, 240 or 480).
-None of that is described below; 0173 is its witness until the snapshot is regenerated. Its rehearsal on a throwaway Postgres is
-`scripts/lib/b119r_0173_rehearse.sh` (A-45.8).
-
-**AND 0180 (`0180_own_number_business_token.sql`, CE-46 G6-3 cut three, F-44.224), once the founder applies it:** alters only,
-creates no table (A-45.8 grants nothing; RLS on since 0171; 0172's service_role grants cover it). It adds
-`vendor_wabas.business_token text`: her business integration system user token from the Embedded Signup code exchange, stored
-SEALED by `src/lib/vendor/tokenVault.js` (AES-256-GCM, `v1.<iv>.<tag>.<ct>`), opened only by `src/lib/ownNumber/token.js`. No expiry
-column (F-a2 (c)). None of it is described below; 0180 is its witness until the snapshot is regenerated.
-
-**AND 0182 (`0182_own_number_removed.sql`, CE-46 G6-4, the room's Remove), once the founder applies it:** alters only, creates no
-table (A-45.8 grants nothing; RLS on since 0171; 0172's service_role grants cover it). `vendor_wabas.status`'s CHECK
-(`vendor_wabas_status_check`) admits `'removed'` beside 0171's four, and it adds `vendor_wabas.removed_at timestamptz`. A removed row
-is kept, its `business_token` null; `paused_reason` reads `removed:vendor`, then `removed:partner_removed` once Meta's PARTNER_REMOVED
-arrives (shared way). None of it is described below; 0182 is its witness until the snapshot is regenerated.
-
-**AND 0184 (`0184_ig_deletion_purge.sql`, CE-46 G6-4, F-44.247), once the founder applies it:** creates
-no table and alters none. It adds one function, `public.ig_deletion_purge(p_vendor_id uuid) RETURNS jsonb` (EXECUTE for
-service_role only), which Meta's Instagram data-deletion callback calls: in one transaction it deletes that vendor's
-`conversations` with channel 'instagram' and their `messages`, nulls `leads.counterparty_ig_id` on her leads, and deletes her
-`vendor_ig_connections` row. 0184 is its witness.
-
-**AND 0174 (`0174_ig_dm_switch.sql`, CE-45 IGD-1 cut 2a-ii), once the founder applies it:** alters `public.vendor_ig_connections`
-only, creates no table: `messages_granted_at timestamptz` (the messages permission proved on her token), `dm_state text NOT NULL
-DEFAULT 'off'` (CHECK `vendor_ig_connections_dm_state_check`: 'off' or 'on'; "paused" and "waiting" are derived, never stored),
-`dm_consented_at timestamptz` and `dm_subscribed_at timestamptz`. None of it is described below; 0174 is its witness until the
-snapshot is regenerated. Its rehearsal is `scripts/lib/b119br_0174_rehearse.sh` (A-45.8).
-
-**AND 0177 (`0177_ads.sql`, CE-46 ADS-1 cut 1), once the founder applies it:** creates `public.vendor_ad_connections` (18 columns;
-UNIQUE vendor_id; `access_token` a secret column read only by `src/lib/ads/connection.js`; `ad_account_id` NULL while she has none,
-CHECK '^act_[0-9]+$' when set) and `public.vendor_ads` (23 columns; UNIQUE ad_id; `settings jsonb` every setting she confirmed,
-`total_minor`, kind 'boost'|'lead', status 'draft'|'running'|'paused'|'ended'|'refused'; index (vendor_id, created_at DESC)), RLS on
-both in the same transaction, and grants `service_role` SELECT, INSERT, UPDATE, DELETE on both in the same file (A-45.8); inserts one
-`public.capabilities` row, `flag.ads` 'off'. None of it is described below; 0177 is its witness until the snapshot is regenerated.
-Its rehearsal is `scripts/lib/b144r_0177_rehearse.sh`. (The header carries no notes for 0175 and 0176; named here, not written by
-this cut.)
-
-**Repo tip at authoring:** `713340a` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
-**Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0168` across 152 files, and it is not contiguous: **16 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
+**Snapshot taken:** 2026-10-08, founder-run in the Supabase SQL editor, output handed back as CSV and formatted by script. **157 tables, 1839 columns.**
+**Applied ladder tip at snapshot:** `0220` — stated in the header so this file's staleness is a readable fact, never archaeology. The prior snapshot (2026-09-17, 101 tables, tip `0168`) went **45 migrations stale** before this regen measured it.
+**Repo tip at authoring:** `5058d8c` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
+**Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0220` across 197 files, and it is not contiguous: **23 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`, `0181`, `0186`, `0199`, `0206`, `0207`, `0213`, `0215`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
 **⏳ HOW TO TELL WHETHER THIS DOCUMENT IS STILL TRUE.** If `db/migrations/` holds any file newer than the ladder tip named above, **this document is STALE for any table those migrations touch — the migration is the witness until regen.** Check the directory before you cite a column from this file. F-09.185 is what happens otherwise: a committed handover asserted `public.messages` at 18 columns on this document's word, while `0105` had made it 20 and the document said nothing.
 
-**⚠ THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF IN THE REGISTER BELOW (F-SW.3, ruled CE-32).** "Newer than the ladder tip" is an ARITHMETIC test, and this estate holds 16 reserved-but-empty numbers *below* its tip (listed above). A migration filling one of them lands AFTER the tip in time and BEFORE it in number, so it does not trip the check and this document goes on answering confidently about a table it no longer describes. **The standing cure is that such a migration adds a record to `db/migrations/OUT_OF_ORDER.json` in the same delivery, naming itself and the tables it touches — NOT a hand-edited line here. This header is GENERATED, and a hand-edit to it is deleted by the next regen without warning.** **A reader who checks only the arithmetic will be wrong; read this list too.**
+**⚠ THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF IN THE REGISTER BELOW (F-SW.3, ruled CE-32).** "Newer than the ladder tip" is an ARITHMETIC test, and this estate holds 23 reserved-but-empty numbers *below* its tip (listed above). A migration filling one of them lands AFTER the tip in time and BEFORE it in number, so it does not trip the check and this document goes on answering confidently about a table it no longer describes. **The standing cure is that such a migration adds a record to `db/migrations/OUT_OF_ORDER.json` in the same delivery, naming itself and the tables it touches — NOT a hand-edited line here. This header is GENERATED, and a hand-edit to it is deleted by the next regen without warning.** **A reader who checks only the arithmetic will be wrong; read this list too.**
 
-_No out-of-order migration is outstanding at this snapshot._
+| out-of-order migration | tables it makes this document STALE for | state |
+|---|---|---|
+| `0210_pro_brands_trends.sql` (**CE-47 · PRO · P3 · BRAND COLLABORATIONS AND THE TREND ROOM** — creates `pro_brands`, `pro_pitches`, `pro_kits` and `pro_trend_briefs` (each: RLS on; SELECT, INSERT, UPDATE, DELETE to service_role, in the transaction) and the function `pro_pitch_record` (the only way a pitch row is added; it takes the vendor's lock and refuses a pitch over the limits; no SECURITY clause, so invoker rights; EXECUTE revoked from PUBLIC, anon and authenticated, granted to service_role alone). Alters no existing table's shape. Numbered `0210` from PRO's range (0208-0211) and lands in server train 16, after the PAIR regen of 8 October 2026 was taken at ladder `0220`, so it fills a hole below the applied ladder tip and the snapshot does not carry it (F-SW.3; the chair ruled the record, 8 October 2026; written by WEB-4, the register's one writer, from 0210's bytes, sha256 2615ae76…).) | `public.pro_brands`, `public.pro_pitches`, `public.pro_kits`, `public.pro_trend_briefs` | OWED — the snapshot of 8 October 2026 does not carry the four tables or `pro_pitch_record`; `0210` and this file are their witnesses until the next PAIR regen. |
 
 **Project:** `nvzkbagqxbysoeszxent` (PRODUCTION). **Role: NOT WITNESSED** — the executor did not see this run's editor chrome and names that rather than assert it.
 **Generated by:** the PAIR — `db/queries/public_schema_dump.sql` (founder-run in the SQL editor) piped through `db/queries/format_public_schema.js` (formatter + cap guard). **Re-running the SQL alone does NOT regenerate this file; both halves of the pipe must run.**
 **NEVER HAND-EDIT.** A hand-edited snapshot is prose again, and prose is what this file exists to kill.
 
-**THE GUARD PASSES.** The dump's self-computing `tables_expected` read **101**; the result carried **101** rows. Equal ⇒ the editor's row cap did not truncate this snapshot (F-04.29's disease, made self-detecting). The guard was re-run mechanically at format time, not eyeballed — a capped CSV exits nonzero without writing.
+**THE GUARD PASSES.** The dump's self-computing `tables_expected` read **157**; the result carried **157** rows. Equal ⇒ the editor's row cap did not truncate this snapshot (F-04.29's disease, made self-detecting). The guard was re-run mechanically at format time, not eyeballed — a capped CSV exits nonzero without writing.
 
 **THE NEAR-MISS THIS HEADER EXISTS TO PREVENT.** At CE-63 an opt-out migration was nearly drafted against a snapshot that predated `prospects` — the very table the opt-out gate reads. The doc looked complete; only the ladder tip, printed above, made its staleness visible. A reference that is silently twenty migrations behind does not announce itself: it answers confidently and wrongly.
 
@@ -89,7 +26,7 @@ _No out-of-order migration is outstanding at this snapshot._
 
 **WHERE THE TYPE COMES FROM.** Name, nullability and default are `information_schema.columns`. **The type is `format_type(a.atttypid, a.atttypmod)` from `pg_catalog`** (CE-32) — because `information_schema` renders every array as the bare word `ARRAY` and carries the element type nowhere, so five columns on this plane witnessed as `ARRAY` for the whole life of this document and a reader could not tell `text[]` from `uuid[]` without guessing. `format_type` prints what the database itself would print. It also carries modifiers `information_schema` drops, so a type here may be fuller than a reader remembers — `numeric(p,s)` rather than `numeric`. That is the fix working, not drift.
 
-**Ordinal gaps are not errors.** A hole is a dropped column's fingerprint. In this snapshot 8 tables carry one — `clients` skips ordinal 12 of 13; `couple_tasks` skips ordinal 5 of 10; `events` skips ordinal 13 of 19; `expenses` skips ordinal 12 of 13; `invoices` skips ordinal 18 of 23; `leads` skips ordinal 19 of 30; `vendor_portfolio` skips ordinal 9 of 15; `vendors` skips ordinals 35, 36, 37, 38, 39, 40, 41, 42 of 64. A gap is not an absence, and this list is derived from the rows below on every regen rather than remembered.
+**Ordinal gaps are not errors.** A hole is a dropped column's fingerprint. In this snapshot 8 tables carry one — `clients` skips ordinal 12 of 13; `couple_tasks` skips ordinal 5 of 10; `events` skips ordinal 13 of 19; `expenses` skips ordinal 12 of 21; `invoices` skips ordinal 18 of 25; `leads` skips ordinal 19 of 33; `vendor_portfolio` skips ordinal 9 of 16; `vendors` skips ordinals 35, 36, 37, 38, 39, 40, 41, 42 of 71. A gap is not an absence, and this list is derived from the rows below on every regen rather than remembered.
 
 ---
 
@@ -178,6 +115,18 @@ _No out-of-order migration is outstanding at this snapshot._
 15. notify_error_code text
 16. notify_error_title text
 17. notify_sent_at timestamp with time zone
+```
+
+## public.bill_drafts  ·  7 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. file_path text NOT NULL
+4. fields jsonb NOT NULL default '{}'::jsonb
+5. expense_id uuid
+6. created_at timestamp with time zone NOT NULL default now()
+7. confirmed_at timestamp with time zone
 ```
 
 ## public.billing_events  ·  12 columns
@@ -359,7 +308,38 @@ _No out-of-order migration is outstanding at this snapshot._
 13. deleted_at timestamp with time zone
 ```
 
-## public.collab_post_items  ·  7 columns
+## public.collab_house_tokens  ·  4 columns
+
+```
+1. platform text NOT NULL
+2. token text NOT NULL
+3. refreshed_at timestamp with time zone NOT NULL default now()
+4. expires_at timestamp with time zone
+```
+
+## public.collab_interest  ·  17 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. post_id uuid NOT NULL
+3. share_id uuid
+4. platform text
+5. how text
+6. external_user_id text
+7. display_name text
+8. body text
+9. vendor_id uuid
+10. join_link_sent boolean NOT NULL default false
+11. created_at timestamp with time zone NOT NULL default now()
+12. source text NOT NULL default 'instagram'::text
+13. partner_id uuid
+14. send_id uuid
+15. role text
+16. link text
+17. agreed_at timestamp with time zone
+```
+
+## public.collab_post_items  ·  8 columns
 
 ```
 1. id uuid NOT NULL default gen_random_uuid()
@@ -369,9 +349,10 @@ _No out-of-order migration is outstanding at this snapshot._
 5. note text
 6. filled_by_response_id uuid
 7. created_at timestamp with time zone NOT NULL default now()
+8. needed integer NOT NULL default 1
 ```
 
-## public.collab_posts  ·  15 columns
+## public.collab_posts  ·  21 columns
 
 ```
 1. id uuid NOT NULL default gen_random_uuid()
@@ -389,6 +370,26 @@ _No out-of-order migration is outstanding at this snapshot._
 13. created_at timestamp with time zone NOT NULL default now()
 14. updated_at timestamp with time zone NOT NULL default now()
 15. first_look_until timestamp with time zone
+16. pay_kind text
+17. reference_urls jsonb NOT NULL default '[]'::jsonb
+18. source text NOT NULL default 'vendor'::text
+19. asked_at timestamp with time zone
+20. budget_from integer
+21. budget_to integer
+```
+
+## public.collab_prospects  ·  9 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. name text NOT NULL
+3. craft text
+4. city text
+5. instagram_handle text
+6. threads_handle text
+7. source text
+8. opted_out boolean NOT NULL default false
+9. created_at timestamp with time zone NOT NULL default now()
 ```
 
 ## public.collab_responses  ·  9 columns
@@ -403,6 +404,27 @@ _No out-of-order migration is outstanding at this snapshot._
 7. created_at timestamp with time zone NOT NULL default now()
 8. updated_at timestamp with time zone NOT NULL default now()
 9. item_id uuid
+```
+
+## public.collab_shares  ·  16 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. post_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. account text NOT NULL
+5. platform text NOT NULL
+6. state text NOT NULL default 'queued'::text
+7. caption text
+8. hashtags jsonb NOT NULL default '[]'::jsonb
+9. image_url text
+10. media_id text
+11. permalink text
+12. error text
+13. decided_by text
+14. decided_at timestamp with time zone
+15. published_at timestamp with time zone
+16. created_at timestamp with time zone NOT NULL default now()
 ```
 
 ## public.contract_profiles  ·  4 columns
@@ -478,7 +500,7 @@ _No out-of-order migration is outstanding at this snapshot._
 22. lead_package_id uuid
 ```
 
-## public.conversations  ·  12 columns
+## public.conversations  ·  15 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -493,6 +515,9 @@ _No out-of-order migration is outstanding at this snapshot._
 10. updated_at timestamp with time zone NOT NULL default now()
 11. couple_id uuid
 12. prospect_id uuid
+13. channel text NOT NULL default 'whatsapp'::text
+14. counterparty_ig_id text
+15. ig_stopped_at timestamp with time zone
 ```
 
 ## public.couple_ai_usage  ·  14 columns
@@ -813,7 +838,7 @@ _No out-of-order migration is outstanding at this snapshot._
 16. completed_at timestamp with time zone
 ```
 
-## public.expenses  ·  12 columns
+## public.expenses  ·  20 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -828,6 +853,14 @@ _No out-of-order migration is outstanding at this snapshot._
 10. created_at timestamp with time zone NOT NULL default now()
 11. updated_at timestamp with time zone NOT NULL default now()
 13. deleted_at timestamp with time zone
+14. taxable_value integer
+15. gst_rate numeric(5,2)
+16. gst_amount integer
+17. supplier_name text
+18. supplier_gstin text
+19. bill_number text
+20. bill_file_url text
+21. source text
 ```
 
 ## public.exploring_photos  ·  8 columns
@@ -855,6 +888,70 @@ _No out-of-order migration is outstanding at this snapshot._
 7. created_at timestamp with time zone NOT NULL default now()
 ```
 
+## public.forward_recipients  ·  9 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. request_id uuid NOT NULL
+3. contact_id uuid NOT NULL
+4. token_hash text NOT NULL
+5. channel text NOT NULL default 'hand'::text
+6. sent_at timestamp with time zone
+7. sent_by text
+8. replied_at timestamp with time zone
+9. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.forward_requests  ·  15 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid
+3. outside_handle text
+4. outside_phone text
+5. role text NOT NULL
+6. city text NOT NULL
+7. event_date date NOT NULL
+8. budget_from integer NOT NULL
+9. budget_to integer NOT NULL
+10. pay_kind text NOT NULL
+11. note text
+12. asked boolean NOT NULL
+13. post_id uuid
+14. created_by text
+15. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.gear_items  ·  10 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. item text NOT NULL
+4. value_rs integer NOT NULL
+5. price_per_day_rs integer NOT NULL
+6. city text NOT NULL
+7. note text
+8. state text NOT NULL default 'listed'::text
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.gear_requests  ·  10 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. item_id uuid NOT NULL
+3. owner_vendor_id uuid NOT NULL
+4. borrower_vendor_id uuid NOT NULL
+5. date_from date NOT NULL
+6. date_to date NOT NULL
+7. note text
+8. state text NOT NULL default 'requested'::text
+9. created_at timestamp with time zone NOT NULL default now()
+10. decided_at timestamp with time zone
+```
+
 ## public.hot_dates  ·  9 columns
 
 ```
@@ -867,6 +964,44 @@ _No out-of-order migration is outstanding at this snapshot._
 7. intensity text NOT NULL default 'high'::text
 8. active boolean NOT NULL default true
 9. source text NOT NULL default 'admin'::text
+```
+
+## public.hub_credits  ·  12 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. call_id uuid
+3. shoot_name text
+4. city text
+5. month date
+6. giver_profile_id uuid NOT NULL
+7. person_profile_id uuid NOT NULL
+8. state text NOT NULL default 'offered'::text
+9. offered_at timestamp with time zone NOT NULL default now()
+10. decided_at timestamp with time zone
+11. taken_back_at timestamp with time zone
+12. taken_back_by uuid
+```
+
+## public.hub_profiles  ·  16 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. owner_kind text NOT NULL
+3. vendor_id uuid
+4. org_id uuid
+5. user_id uuid
+6. handle text NOT NULL
+7. display_name text NOT NULL
+8. roles text[] NOT NULL default '{}'::text[]
+9. city text
+10. open_to text[] NOT NULL default '{}'::text[]
+11. instagram_handle text
+12. website text
+13. work_urls jsonb NOT NULL default '[]'::jsonb
+14. check_state text NOT NULL default 'unchecked'::text
+15. created_at timestamp with time zone NOT NULL default now()
+16. updated_at timestamp with time zone NOT NULL default now()
 ```
 
 ## public.image_throttle_log  ·  5 columns
@@ -941,7 +1076,7 @@ _No out-of-order migration is outstanding at this snapshot._
 9. intended_phone text
 ```
 
-## public.invoices  ·  22 columns
+## public.invoices  ·  24 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -966,6 +1101,23 @@ _No out-of-order migration is outstanding at this snapshot._
 21. has_schedule boolean NOT NULL default false
 22. binder_id uuid
 23. lead_package_id uuid
+24. gst_rate numeric(5,2)
+25. gst_amount integer
+```
+
+## public.issued_papers  ·  10 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. period_from date
+5. period_to date
+6. purpose text
+7. figures jsonb NOT NULL default '{}'::jsonb
+8. check_code text NOT NULL
+9. issued_at timestamp with time zone NOT NULL default now()
+10. withdrawn_at timestamp with time zone
 ```
 
 ## public.landing_slides  ·  8 columns
@@ -1027,7 +1179,7 @@ _No out-of-order migration is outstanding at this snapshot._
 7. created_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.leads  ·  29 columns
+## public.leads  ·  32 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -1059,6 +1211,18 @@ _No out-of-order migration is outstanding at this snapshot._
 28. draft_meta jsonb
 29. wedding_id uuid
 30. binder_id uuid
+31. counterparty_ig_id text
+32. consent_at timestamp with time zone
+33. consent_text_version text
+```
+
+## public.look_hearts_daily  ·  4 columns
+
+```
+1. vendor_id uuid NOT NULL
+2. look_id uuid NOT NULL
+3. day date NOT NULL
+4. hearts integer NOT NULL default 0
 ```
 
 ## public.messages  ·  20 columns
@@ -1164,6 +1328,144 @@ _No out-of-order migration is outstanding at this snapshot._
 5. created_at timestamp with time zone NOT NULL default now()
 ```
 
+## public.partner_answers  ·  8 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. send_id uuid NOT NULL
+3. interest_id uuid
+4. talent_name text NOT NULL
+5. talent_role text
+6. talent_link text
+7. agreed boolean NOT NULL
+8. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.partner_connections  ·  7 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. partner_id uuid NOT NULL
+3. kind text NOT NULL
+4. ref_id uuid NOT NULL
+5. vendor_id uuid NOT NULL
+6. n integer NOT NULL
+7. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.partner_contacts  ·  11 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. name text NOT NULL
+3. kind text NOT NULL
+4. instagram_handle text
+5. website text
+6. phone text
+7. how_we_know text NOT NULL
+8. knows_tdw boolean NOT NULL default false
+9. added_by text
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.partner_members  ·  5 columns
+
+```
+1. partner_id uuid NOT NULL
+2. user_id uuid NOT NULL
+3. role text NOT NULL default 'member'::text
+4. added_by uuid
+5. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.partner_orgs  ·  35 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. name text NOT NULL
+3. kind text NOT NULL
+4. instagram_handle text NOT NULL
+5. website text
+6. cities text[] NOT NULL default '{}'::text[]
+7. roles text[] NOT NULL default '{}'::text[]
+8. pay_rule text NOT NULL default 'paid_and_credit'::text
+9. wants text[] NOT NULL default '{}'::text[]
+10. calls_email text
+11. whatsapp_opt boolean NOT NULL default false
+12. whatsapp_phone text
+13. daily_cap integer NOT NULL default 10
+14. send_state text NOT NULL default 'active'::text
+15. paused_until timestamp with time zone
+16. check_state text NOT NULL default 'unchecked'::text
+17. checked_how text
+18. checked_at timestamp with time zone
+19. checked_by text
+20. blocked_at timestamp with time zone
+21. blocked_reason text
+22. ig_user_id text
+23. ig_username_proved text
+24. ig_proved_at timestamp with time zone
+25. ig_verified_seen boolean
+26. ig_verified_read_at timestamp with time zone
+27. plan_state text NOT NULL default 'free'::text
+28. exempt_by text
+29. razorpay_subscription_id text
+30. legal_name text
+31. gstin text
+32. created_at timestamp with time zone NOT NULL default now()
+33. updated_at timestamp with time zone NOT NULL default now()
+34. whatsapp_opt_at timestamp with time zone
+35. whatsapp_opt_words text
+```
+
+## public.partner_reports  ·  10 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. partner_id uuid NOT NULL
+3. item_kind text NOT NULL
+4. item_id uuid
+5. vendor_id uuid NOT NULL
+6. reason text NOT NULL
+7. note text
+8. created_at timestamp with time zone NOT NULL default now()
+9. handled_at timestamp with time zone
+10. handled_by text
+```
+
+## public.partner_send_log  ·  9 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. send_id uuid NOT NULL
+3. at timestamp with time zone NOT NULL default now()
+4. kind text NOT NULL
+5. state text NOT NULL
+6. channel text NOT NULL
+7. attempts integer NOT NULL default 0
+8. why text
+9. by_whom text
+```
+
+## public.partner_sends  ·  13 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. partner_id uuid NOT NULL
+3. post_id uuid NOT NULL
+4. channel text NOT NULL default 'email'::text
+5. state text NOT NULL default 'queued'::text
+6. not_before timestamp with time zone NOT NULL default now()
+7. token_hash text NOT NULL
+8. why text
+9. provider_ref text
+10. attempts integer NOT NULL default 0
+11. sent_at timestamp with time zone
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()
+```
+
 ## public.payment_reminder_settings  ·  3 columns
 
 ```
@@ -1255,6 +1557,21 @@ _No out-of-order migration is outstanding at this snapshot._
 9. acknowledged_at timestamp with time zone
 ```
 
+## public.pending_money_acts  ·  10 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. act text NOT NULL
+4. request jsonb NOT NULL
+5. lane text NOT NULL
+6. state text NOT NULL default 'staged'::text
+7. outcome jsonb
+8. created_at timestamp with time zone NOT NULL default now()
+9. resolved_at timestamp with time zone
+10. expires_at timestamp with time zone NOT NULL default (now() + '00:15:00'::interval)
+```
+
 ## public.prospects  ·  19 columns
 
 ```
@@ -1325,6 +1642,100 @@ _No out-of-order migration is outstanding at this snapshot._
 4. impressions integer NOT NULL default 0
 5. clicks integer NOT NULL default 0
 6. pulled_at timestamp with time zone NOT NULL default now()
+```
+
+## public.shop_items  ·  26 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. name text NOT NULL
+5. slug text NOT NULL
+6. photo_url text
+7. price integer NOT NULL
+8. includes text[] NOT NULL default '{}'::text[]
+9. shown boolean NOT NULL default true
+10. position integer NOT NULL default 0
+11. voucher_for text
+12. valid_months integer
+13. starts_at timestamp with time zone
+14. ends_at timestamp with time zone
+15. place text
+16. online boolean NOT NULL default false
+17. seats_total integer
+18. class_dates date[] NOT NULL default '{}'::date[]
+19. occasion text
+20. hours integer
+21. lead_days integer
+22. event_id uuid
+23. created_at timestamp with time zone NOT NULL default now()
+24. updated_at timestamp with time zone NOT NULL default now()
+25. deleted_at timestamp with time zone
+26. class_link text
+```
+
+## public.shop_orders  ·  17 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. item_id uuid NOT NULL
+4. buyer_name text NOT NULL
+5. buyer_phone text NOT NULL
+6. qty integer NOT NULL default 1
+7. amount integer NOT NULL
+8. wanted_date date
+9. state text NOT NULL default 'asked'::text
+10. hold_until timestamp with time zone
+11. paid_at timestamp with time zone
+12. paid_by text
+13. payment_ref text
+14. lead_id uuid
+15. event_id uuid
+16. created_at timestamp with time zone NOT NULL default now()
+17. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.shop_vouchers  ·  9 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. order_id uuid NOT NULL
+4. item_id uuid NOT NULL
+5. code text NOT NULL
+6. valid_until date NOT NULL
+7. redeemed_at timestamp with time zone
+8. redeemed_note text
+9. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.site_visit_salt  ·  2 columns
+
+```
+1. day date NOT NULL
+2. salt bytea NOT NULL
+```
+
+## public.site_visit_seen  ·  2 columns
+
+```
+1. day date NOT NULL
+2. digest bytea NOT NULL
+```
+
+## public.site_visits_daily  ·  8 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. day date NOT NULL
+4. page text NOT NULL
+5. look_id uuid
+6. source text NOT NULL
+7. views integer NOT NULL default 0
+8. uniques integer NOT NULL default 0
 ```
 
 ## public.spotlight  ·  9 columns
@@ -1470,6 +1881,80 @@ _No out-of-order migration is outstanding at this snapshot._
 8. created_at timestamp with time zone NOT NULL default now()
 ```
 
+## public.vendor_ad_connections  ·  18 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. fb_user_id text
+4. access_token text
+5. token_expires_at timestamp with time zone
+6. granted_scopes text[] NOT NULL default '{}'::text[]
+7. ad_account_id text
+8. ad_account_name text
+9. currency text
+10. page_id text
+11. page_name text
+12. ig_user_id text
+13. pending_state_nonce text
+14. pending_state_at timestamp with time zone
+15. consented_at timestamp with time zone
+16. connected_at timestamp with time zone
+17. created_at timestamp with time zone NOT NULL default now()
+18. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_ads  ·  23 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. ad_account_id text NOT NULL
+5. source_media_id text
+6. campaign_id text
+7. adset_id text
+8. creative_id text
+9. ad_id text
+10. daily_budget_minor bigint NOT NULL
+11. currency text NOT NULL
+12. days integer NOT NULL
+13. settings jsonb NOT NULL default '{}'::jsonb
+14. total_minor bigint
+15. status text NOT NULL default 'draft'::text
+16. refused_reason text
+17. started_at timestamp with time zone
+18. ends_at timestamp with time zone
+19. ended_at timestamp with time zone
+20. last_insights jsonb
+21. last_insights_at timestamp with time zone
+22. created_at timestamp with time zone NOT NULL default now()
+23. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_collection_looks  ·  3 columns
+
+```
+1. collection_id uuid NOT NULL
+2. look_id uuid NOT NULL
+3. position integer NOT NULL default 0
+```
+
+## public.vendor_collections  ·  10 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. name text NOT NULL
+4. slug text NOT NULL
+5. description text
+6. cover_photo_id uuid
+7. position integer NOT NULL default 0
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()
+10. deleted_at timestamp with time zone
+```
+
 ## public.vendor_discover_requests  ·  7 columns
 
 ```
@@ -1480,6 +1965,53 @@ _No out-of-order migration is outstanding at this snapshot._
 5. decided_by_admin text
 6. decided_at timestamp with time zone
 7. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_domains  ·  32 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. domain text NOT NULL
+4. registrar text NOT NULL default 'resellerclub'::text
+5. status text NOT NULL default 'paying'::text
+6. cost_paise integer NOT NULL
+7. gst_pct integer NOT NULL default 18
+8. price_paise integer NOT NULL
+9. years integer NOT NULL default 1
+10. razorpay_link_id text
+11. razorpay_link_url text
+12. razorpay_payment_id text
+13. paid_at timestamp with time zone
+14. registrant jsonb NOT NULL default '{}'::jsonb
+15. registrar_customer_id text
+16. registrar_contact_id text
+17. registrar_order_id text
+18. registered_at timestamp with time zone
+19. expires_at timestamp with time zone
+20. auto_renew boolean NOT NULL default false
+21. vercel_domain_added_at timestamp with time zone
+22. dns_verified_at timestamp with time zone
+23. ssl_issued_at timestamp with time zone
+24. live_at timestamp with time zone
+25. forward_email text
+26. last_error text
+27. retries integer NOT NULL default 0
+28. refund_due_at timestamp with time zone
+29. refunded_at timestamp with time zone
+30. created_at timestamp with time zone NOT NULL default now()
+31. updated_at timestamp with time zone NOT NULL default now()
+32. deleted_at timestamp with time zone
+```
+
+## public.vendor_feature_choices  ·  5 columns
+
+```
+1. vendor_id uuid NOT NULL
+2. feature_key text NOT NULL
+3. choice text NOT NULL
+4. chosen_at timestamp with time zone NOT NULL default now()
+5. chosen_by text
 ```
 
 ## public.vendor_featured_submissions  ·  18 columns
@@ -1505,6 +2037,18 @@ _No out-of-order migration is outstanding at this snapshot._
 18. updated_at timestamp with time zone NOT NULL default now()
 ```
 
+## public.vendor_first_builds  ·  7 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. state text NOT NULL default 'running'::text
+4. steps jsonb NOT NULL default '[]'::jsonb
+5. started_at timestamp with time zone NOT NULL default now()
+6. updated_at timestamp with time zone NOT NULL default now()
+7. finished_at timestamp with time zone
+```
+
 ## public.vendor_google_connections  ·  13 columns
 
 ```
@@ -1523,7 +2067,7 @@ _No out-of-order migration is outstanding at this snapshot._
 13. updated_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.vendor_ig_connections  ·  13 columns
+## public.vendor_ig_connections  ·  18 columns
 
 ```
 1. id uuid NOT NULL default gen_random_uuid()
@@ -1539,6 +2083,75 @@ _No out-of-order migration is outstanding at this snapshot._
 11. updated_at timestamp with time zone NOT NULL default now()
 12. ig_username text
 13. insights_granted_at timestamp with time zone
+14. messages_granted_at timestamp with time zone
+15. dm_state text NOT NULL default 'off'::text
+16. dm_consented_at timestamp with time zone
+17. dm_subscribed_at timestamp with time zone
+18. ig_account_id text
+```
+
+## public.vendor_insurance_settings  ·  3 columns
+
+```
+1. vendor_id uuid NOT NULL
+2. show_mark boolean NOT NULL default false
+3. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_look_photos  ·  20 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. look_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. image_url text NOT NULL
+5. width integer
+6. height integer
+7. focal_portrait_x numeric(5,2) NOT NULL default 50
+8. focal_portrait_y numeric(5,2) NOT NULL default 50
+9. focal_landscape_x numeric(5,2) NOT NULL default 50
+10. focal_landscape_y numeric(5,2) NOT NULL default 50
+11. caption text
+12. alt text
+13. position integer NOT NULL default 0
+14. approval_state text NOT NULL default 'pending'::text
+15. created_at timestamp with time zone NOT NULL default now()
+16. updated_at timestamp with time zone NOT NULL default now()
+17. deleted_at timestamp with time zone
+18. rejection_reason text
+19. reviewed_at timestamp with time zone
+20. source text NOT NULL default 'upload'::text
+```
+
+## public.vendor_looks  ·  26 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. title text NOT NULL
+4. slug text NOT NULL
+5. status text NOT NULL default 'draft'::text
+6. published_at timestamp with time zone
+7. category text
+8. year_label text
+9. description text
+10. included jsonb NOT NULL default '[]'::jsonb
+11. from_price_text text
+12. from_price_rupees integer
+13. package_id uuid
+14. credits jsonb NOT NULL default '[]'::jsonb
+15. videos jsonb NOT NULL default '[]'::jsonb
+16. related_ids uuid[] NOT NULL default '{}'::uuid[]
+17. new_mark boolean NOT NULL default true
+18. seo_title text
+19. seo_description text
+20. share_photo_id uuid
+21. source text NOT NULL default 'manual'::text
+22. ig_media_id text
+23. position integer NOT NULL default 0
+24. created_at timestamp with time zone NOT NULL default now()
+25. updated_at timestamp with time zone NOT NULL default now()
+26. deleted_at timestamp with time zone
 ```
 
 ## public.vendor_packages  ·  16 columns
@@ -1562,7 +2175,109 @@ _No out-of-order migration is outstanding at this snapshot._
 16. deleted_at timestamp with time zone
 ```
 
-## public.vendor_portfolio  ·  14 columns
+## public.vendor_pay_accounts  ·  8 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. provider text NOT NULL
+4. account_id text NOT NULL
+5. token_ref text
+6. status text NOT NULL default 'connected'::text
+7. connected_at timestamp with time zone NOT NULL default now()
+8. revoked_at timestamp with time zone
+```
+
+## public.vendor_pay_event_answers  ·  5 columns
+
+```
+1. event_id uuid NOT NULL
+2. round integer NOT NULL
+3. action text NOT NULL
+4. answered_by uuid NOT NULL
+5. answered_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_pay_events  ·  16 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. provider text NOT NULL
+4. provider_payment_id text NOT NULL
+5. kind text NOT NULL
+6. link_id uuid
+7. milestone_id uuid
+8. invoice_id uuid
+9. amount integer NOT NULL
+10. method text
+11. at timestamp with time zone NOT NULL default now()
+12. applied boolean NOT NULL default true
+13. not_applied_reason text
+14. binder_id uuid
+15. claimed_at timestamp with time zone
+16. binder_base_received integer
+```
+
+## public.vendor_pay_links  ·  13 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. provider text NOT NULL
+4. provider_link_id text
+5. short_url text
+6. invoice_id uuid
+7. milestone_id uuid
+8. amount integer NOT NULL
+9. state text NOT NULL default 'created'::text
+10. sent_at timestamp with time zone
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. binder_id uuid
+```
+
+## public.vendor_pay_oauth_states  ·  6 columns
+
+```
+1. nonce text NOT NULL
+2. vendor_id uuid NOT NULL
+3. session_id text NOT NULL
+4. expires_at timestamp with time zone NOT NULL
+5. spent_at timestamp with time zone
+6. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_pay_settings  ·  5 columns
+
+```
+1. vendor_id uuid NOT NULL
+2. auto_link boolean NOT NULL default false
+3. thank_you boolean NOT NULL default false
+4. updated_at timestamp with time zone NOT NULL default now()
+5. accept_partial boolean NOT NULL default false
+```
+
+## public.vendor_policies  ·  14 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. insurer text NOT NULL
+5. cover_amount integer NOT NULL
+6. ends_on date NOT NULL
+7. doc_path text
+8. doc_mime text
+9. confirmed_at timestamp with time zone
+10. reminded_30_on date
+11. reminded_7_on date
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()
+14. deleted_at timestamp with time zone
+```
+
+## public.vendor_portfolio  ·  15 columns
 
 ```
 1. id uuid NOT NULL default gen_random_uuid()
@@ -1579,6 +2294,7 @@ _No out-of-order migration is outstanding at this snapshot._
 13. reviewed_at timestamp with time zone
 14. rejection_reason text
 15. position integer NOT NULL default 0
+16. source text NOT NULL default 'upload'::text
 ```
 
 ## public.vendor_roster  ·  8 columns
@@ -1603,6 +2319,95 @@ _No out-of-order migration is outstanding at this snapshot._
 4. computed_at timestamp with time zone NOT NULL default now()
 ```
 
+## public.vendor_site_drafts  ·  6 columns
+
+```
+1. vendor_id uuid NOT NULL
+2. settings jsonb NOT NULL default '{}'::jsonb
+3. sections jsonb
+4. pages jsonb
+5. created_at timestamp with time zone NOT NULL default now()
+6. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_site_faq  ·  8 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. question text NOT NULL
+4. answer text NOT NULL
+5. position integer NOT NULL default 0
+6. created_at timestamp with time zone NOT NULL default now()
+7. updated_at timestamp with time zone NOT NULL default now()
+8. deleted_at timestamp with time zone
+```
+
+## public.vendor_site_pages  ·  9 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. slug text NOT NULL
+4. title text NOT NULL
+5. position integer NOT NULL default 0
+6. shown boolean NOT NULL default true
+7. created_at timestamp with time zone NOT NULL default now()
+8. updated_at timestamp with time zone NOT NULL default now()
+9. deleted_at timestamp with time zone
+```
+
+## public.vendor_site_sections  ·  13 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. page_id uuid
+4. key text NOT NULL
+5. variant text NOT NULL default 'default'::text
+6. shown boolean NOT NULL default true
+7. position integer NOT NULL default 0
+8. eyebrow text
+9. heading text
+10. body jsonb NOT NULL default '{}'::jsonb
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. deleted_at timestamp with time zone
+```
+
+## public.vendor_sites  ·  28 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. look text
+4. look_options jsonb NOT NULL default '{}'::jsonb
+5. pages jsonb NOT NULL default '[]'::jsonb
+6. sections jsonb NOT NULL default '{}'::jsonb
+7. seo jsonb NOT NULL default '{}'::jsonb
+8. credit_shown boolean NOT NULL default true
+9. published_at timestamp with time zone
+10. unpublished_at timestamp with time zone
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. style text
+14. styles_picked text[] NOT NULL default '{}'::text[]
+15. palette_id text
+16. palette_custom jsonb NOT NULL default '{}'::jsonb
+17. palette_resolved jsonb
+18. font_pair text
+19. motion text
+20. corners text
+21. texture text
+22. button_style text
+23. cover_mode text
+24. cover jsonb NOT NULL default '[]'::jsonb
+25. monogram text
+26. site_name text
+27. copy jsonb NOT NULL default '{}'::jsonb
+28. style_changed_at timestamp with time zone
+```
+
 ## public.vendor_state  ·  7 columns
 
 ```
@@ -1615,7 +2420,97 @@ _No out-of-order migration is outstanding at this snapshot._
 7. updated_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.vendors  ·  56 columns
+## public.vendor_stories  ·  10 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. title text NOT NULL
+4. slug text NOT NULL
+5. body text NOT NULL default ''::text
+6. cover_url text
+7. published_at timestamp with time zone
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()
+10. deleted_at timestamp with time zone
+```
+
+## public.vendor_testimonial_requests  ·  13 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. client_id uuid
+4. person_name text NOT NULL
+5. phone text
+6. token_hash text NOT NULL
+7. origin text NOT NULL
+8. sent_via text
+9. sent_at timestamp with time zone
+10. expires_at timestamp with time zone NOT NULL default (now() + '30 days'::interval)
+11. used_at timestamp with time zone
+12. revoked_at timestamp with time zone
+13. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_testimonials  ·  21 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. author text NOT NULL
+4. body text
+5. wedding_when text
+6. consented_at timestamp with time zone NOT NULL
+7. position integer NOT NULL default 0
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()
+10. deleted_at timestamp with time zone
+11. request_id uuid
+12. occasion text
+13. event_month date
+14. place text
+15. state text NOT NULL default 'pending'::text
+16. approved_at timestamp with time zone
+17. hidden_at timestamp with time zone
+18. submitted_at timestamp with time zone
+19. video_url text
+20. video_duration_s integer
+21. video_title text
+```
+
+## public.vendor_wa_events  ·  5 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. payload jsonb NOT NULL
+5. received_at timestamp with time zone NOT NULL default now()
+```
+
+## public.vendor_wabas  ·  16 columns
+
+```
+1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. business_id text NOT NULL
+4. waba_id text NOT NULL
+5. phone_number_id text NOT NULL
+6. display_number text NOT NULL
+7. connect_way text NOT NULL
+8. status text NOT NULL default 'pending'::text
+9. quality_rating text
+10. tier text
+11. paused_reason text
+12. sync_started_at timestamp with time zone
+13. created_at timestamp with time zone NOT NULL default now()
+14. updated_at timestamp with time zone NOT NULL default now()
+15. business_token text
+16. removed_at timestamp with time zone
+```
+
+## public.vendors  ·  63 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -1674,6 +2569,13 @@ _No out-of-order migration is outstanding at this snapshot._
 62. seo_title text
 63. seo_description text
 64. exchange_discoverable boolean NOT NULL default false
+65. enquiry_routing text NOT NULL default 'tdw'::text
+66. enquiry_phone text
+67. reply_quiet_minutes integer NOT NULL default 120
+68. price_share_enabled boolean NOT NULL default false
+69. layout_v2 boolean NOT NULL default false
+70. wa_eliza_state text
+71. wa_eliza_consented_at timestamp with time zone
 ```
 
 ## public.waitlist_signups  ·  9 columns
@@ -1688,6 +2590,18 @@ _No out-of-order migration is outstanding at this snapshot._
 7. notes text
 8. created_at timestamp with time zone NOT NULL default now()
 9. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.website_chat_tokens  ·  7 columns
+
+```
+1. token_hash text NOT NULL
+2. vendor_id uuid NOT NULL
+3. phone text NOT NULL
+4. conversation_id uuid NOT NULL
+5. page_title text
+6. created_at timestamp with time zone NOT NULL default now()
+7. expires_at timestamp with time zone NOT NULL default (now() + '24:00:00'::interval)
 ```
 
 ## public.wedding_credits  ·  10 columns
@@ -1746,14 +2660,14 @@ _No out-of-order migration is outstanding at this snapshot._
 
 # CONSTRAINTS ADDENDUM — what the `public` schema REFUSES
 
-**Snapshot taken:** 2026-09-17, founder-run in the Supabase SQL editor, output handed back verbatim.
-**Applied ladder tip at snapshot:** `0168`. **Repo tip at authoring:** `713340a`.
+**Snapshot taken:** 2026-10-08, founder-run in the Supabase SQL editor, output handed back verbatim.
+**Applied ladder tip at snapshot:** `0220`. **Repo tip at authoring:** `5058d8c`.
 **⏳ STALENESS CHECK — same law as the column snapshot above.** If `db/migrations/` holds any file newer than the ladder tip named here, **this addendum is STALE for any table those migrations touch.** A constraint is exactly as capable of going quietly out of date as a column: `0123` rewrote both `collab` `requirement_type` CHECKs, and a reader citing a pre-`0123` addendum would have offered a vendor a category the database now refuses.
 **Project / role:** `nvzkbagqxbysoeszxent` / `main` (PRODUCTION), role `postgres`.
 **Generated by:** `db/queries/append_constraints_to_public_schema.js` from `db/queries/public_constraints_dump.sql`'s three sections. **Regenerate on demand by re-running both.**
 **NEVER HAND-EDIT.** The generator refuses a capped result and refuses a result set without its guard column; hand-editing routes around both.
 
-**THE GUARD PASSED, ALL THREE SECTIONS.** §1 **273/273** · §2 **164/164** · §3 **359/359**. Rows returned == `rows_expected` ⇒ the editor's row cap did not truncate. (F-04.29's disease, made self-detecting. These counts are the facts the sections exist to establish, so they cannot be asserted in advance — the database computes them. The engine twin carried a hardcoded *"confirm 25 rows"* until CE-32 retired it for the same reason.)
+**THE GUARD PASSED, ALL THREE SECTIONS.** §1 **616/616** · §2 **251/251** · §3 **503/503**. Rows returned == `rows_expected` ⇒ the editor's row cap did not truncate. (F-04.29's disease, made self-detecting. These counts are the facts the sections exist to establish, so they cannot be asserted in advance — the database computes them. The engine twin carried a hardcoded *"confirm 25 rows"* until CE-32 retired it for the same reason.)
 
 **WHY THIS ADDENDUM EXISTS.** The column snapshot above answers *"what columns exist, of what type."* It is drawn from `information_schema.columns`, which yields name, type, nullability and default — **and nothing else.** It does not answer ***"what values are legal."*** That file's own scope note names the gap: `events.kind`'s CHECK, `events.slot`'s CHECK and `0075`'s UNIQUE partial index were **real and invisible** there. The occupancy checker rides on all three. *Founder-run SQL is written ONLY against witnessed lists — and a constraint is a fact about the schema exactly as much as a column is.*
 
@@ -1763,7 +2677,7 @@ _No out-of-order migration is outstanding at this snapshot._
 
 ---
 
-## §1 — CHECK / UNIQUE / PRIMARY KEY  ·  273 constraints
+## §1 — CHECK / UNIQUE / PRIMARY KEY  ·  616 constraints
 
 ### public.admin_activity_log
 
@@ -1822,6 +2736,15 @@ _No out-of-order migration is outstanding at this snapshot._
 [CHECK] assistance_requests_status_check
     CHECK ((status = ANY (ARRAY['open'::text, 'forwarded'::text, 'closed'::text])))
 [PRIMARY KEY] assistance_requests_pkey
+    PRIMARY KEY (id)
+```
+
+### public.bill_drafts
+
+```
+[CHECK] bill_drafts_file_path_check
+    CHECK ((file_path ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg\|png\|webp\|pdf)$'::text))
+[PRIMARY KEY] bill_drafts_pkey
     PRIMARY KEY (id)
 ```
 
@@ -1943,11 +2866,37 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (id)
 ```
 
+### public.collab_house_tokens
+
+```
+[CHECK] collab_house_tokens_platform_check
+    CHECK ((platform = ANY (ARRAY['instagram'::text, 'threads'::text])))
+[PRIMARY KEY] collab_house_tokens_pkey
+    PRIMARY KEY (platform)
+```
+
+### public.collab_interest
+
+```
+[CHECK] collab_interest_how_check
+    CHECK ((how = ANY (ARRAY['comment'::text, 'reply'::text, 'message'::text])))
+[CHECK] collab_interest_partner_shape
+    CHECK ((((source = 'partner'::text) AND (partner_id IS NOT NULL) AND (send_id IS NOT NULL) AND (display_name IS NOT NULL) AND (join_link_sent = false)) OR ((source <> 'partner'::text) AND (platform IS NOT NULL) AND (how IS NOT NULL))))
+[CHECK] collab_interest_platform_check
+    CHECK ((platform = ANY (ARRAY['instagram'::text, 'threads'::text])))
+[CHECK] collab_interest_source_check
+    CHECK ((source = ANY (ARRAY['instagram'::text, 'threads'::text, 'partner'::text])))
+[PRIMARY KEY] collab_interest_pkey
+    PRIMARY KEY (id)
+```
+
 ### public.collab_post_items
 
 ```
+[CHECK] collab_post_items_needed_check
+    CHECK (((needed >= 1) AND (needed <= 20)))
 [CHECK] collab_post_items_requirement_type_check
-    CHECK ((requirement_type = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text])))
+    CHECK ((requirement_type = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text, 'model'::text, 'stylist'::text, 'studio'::text])))
 [PRIMARY KEY] collab_post_items_pkey
     PRIMARY KEY (id)
 ```
@@ -1955,17 +2904,32 @@ _No out-of-order migration is outstanding at this snapshot._
 ### public.collab_posts
 
 ```
+[CHECK] collab_posts_budget_from_check
+    CHECK (((budget_from IS NULL) OR (budget_from >= 0)))
+[CHECK] collab_posts_budget_to_check
+    CHECK (((budget_to IS NULL) OR (budget_to >= 0)))
 [CHECK] collab_posts_details_check
     CHECK ((char_length(details) <= 200))
 [CHECK] collab_posts_event_type_check
     CHECK ((event_type = ANY (ARRAY['wedding'::text, 'pre_wedding'::text, 'engagement'::text, 'editorial'::text, 'brand_shoot'::text, 'portrait'::text, 'other'::text])))
+[CHECK] collab_posts_pay_kind_check
+    CHECK (((pay_kind IS NULL) OR (pay_kind = ANY (ARRAY['paid'::text, 'unpaid'::text, 'credit_only'::text]))))
 [CHECK] collab_posts_payment_period_check
     CHECK ((payment_period = ANY (ARRAY['per_day'::text, 'per_shoot'::text, 'total'::text, 'tbd'::text])))
 [CHECK] collab_posts_requirement_type_check
-    CHECK ((requirement_type = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text])))
+    CHECK ((requirement_type = ANY (ARRAY['planning'::text, 'designer'::text, 'photography'::text, 'makeup'::text, 'hairstylist'::text, 'jewellery'::text, 'decor'::text, 'venue_catering'::text, 'performer'::text, 'content_creator'::text, 'other'::text, 'model'::text, 'stylist'::text, 'studio'::text])))
+[CHECK] collab_posts_source_check
+    CHECK ((source = ANY (ARRAY['vendor'::text, 'tdw_forward'::text])))
 [CHECK] collab_posts_state_check
     CHECK ((state = ANY (ARRAY['open'::text, 'filled'::text, 'expired'::text, 'cancelled'::text])))
 [PRIMARY KEY] collab_posts_pkey
+    PRIMARY KEY (id)
+```
+
+### public.collab_prospects
+
+```
+[PRIMARY KEY] collab_prospects_pkey
     PRIMARY KEY (id)
 ```
 
@@ -1978,6 +2942,21 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (id)
 [UNIQUE] collab_responses_post_id_responder_vendor_id_key
     UNIQUE (post_id, responder_vendor_id)
+```
+
+### public.collab_shares
+
+```
+[CHECK] collab_shares_account_check
+    CHECK ((account = ANY (ARRAY['house'::text, 'vendor'::text])))
+[CHECK] collab_shares_platform_check
+    CHECK ((platform = ANY (ARRAY['instagram'::text, 'threads'::text])))
+[CHECK] collab_shares_state_check
+    CHECK ((state = ANY (ARRAY['queued'::text, 'approved'::text, 'published'::text, 'rejected'::text, 'failed'::text])))
+[PRIMARY KEY] collab_shares_pkey
+    PRIMARY KEY (id)
+[UNIQUE] collab_shares_post_id_account_platform_key
+    UNIQUE (post_id, account, platform)
 ```
 
 ### public.contract_profiles
@@ -2196,7 +3175,7 @@ _No out-of-order migration is outstanding at this snapshot._
 [CHECK] events_blocked_slot_check
     CHECK (((kind <> 'blocked'::text) OR (slot IS NOT NULL)))
 [CHECK] events_kind_check
-    CHECK ((kind = ANY (ARRAY['shoot'::text, 'call'::text, 'meeting'::text, 'task'::text, 'reminder'::text, 'recce'::text, 'fitting'::text, 'trial'::text, 'family'::text, 'ceremony'::text, 'social'::text, 'blocked'::text, 'other'::text])))
+    CHECK ((kind = ANY (ARRAY['shoot'::text, 'call'::text, 'meeting'::text, 'task'::text, 'reminder'::text, 'recce'::text, 'fitting'::text, 'trial'::text, 'family'::text, 'ceremony'::text, 'social'::text, 'blocked'::text, 'other'::text, 'shop'::text])))
 [CHECK] events_owner_xor
     CHECK (((vendor_id IS NULL) <> (couple_id IS NULL)))
 [CHECK] events_slot_check
@@ -2231,6 +3210,16 @@ _No out-of-order migration is outstanding at this snapshot._
     CHECK ((amount > 0))
 [CHECK] expenses_category_check
     CHECK ((category = ANY (ARRAY['travel'::text, 'equipment'::text, 'assistant'::text, 'studio'::text, 'marketing'::text, 'software'::text, 'food'::text, 'printing'::text, 'commission'::text, 'shoot'::text, 'inventory'::text, 'other'::text])))
+[CHECK] expenses_gst_amount_check
+    CHECK (((gst_amount IS NULL) OR (gst_amount >= 0)))
+[CHECK] expenses_gst_rate_check
+    CHECK (((gst_rate IS NULL) OR ((gst_rate >= (0)::numeric) AND (gst_rate <= (28)::numeric))))
+[CHECK] expenses_source_check
+    CHECK (((source IS NULL) OR (source = ANY (ARRAY['manual'::text, 'bill'::text]))))
+[CHECK] expenses_supplier_gstin_check
+    CHECK (((supplier_gstin IS NULL) OR (supplier_gstin ~ '^[0-9]{2}[A-Z0-9]{13}$'::text)))
+[CHECK] expenses_taxable_value_check
+    CHECK (((taxable_value IS NULL) OR (taxable_value >= 0)))
 [PRIMARY KEY] expenses_pkey
     PRIMARY KEY (id)
 ```
@@ -2251,11 +3240,135 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (id)
 ```
 
+### public.forward_recipients
+
+```
+[CHECK] forward_recipients_channel_check
+    CHECK ((channel = ANY (ARRAY['hand'::text, 'whatsapp'::text])))
+[CHECK] forward_recipients_token_hash_check
+    CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+[PRIMARY KEY] forward_recipients_pkey
+    PRIMARY KEY (id)
+[UNIQUE] forward_recipients_request_id_contact_id_key
+    UNIQUE (request_id, contact_id)
+[UNIQUE] forward_recipients_token_hash_key
+    UNIQUE (token_hash)
+```
+
+### public.forward_requests
+
+```
+[CHECK] forward_requests_asked_check
+    CHECK ((asked = true))
+[CHECK] forward_requests_budget_from_check
+    CHECK ((budget_from >= 0))
+[CHECK] forward_requests_check
+    CHECK ((budget_to >= budget_from))
+[CHECK] forward_requests_check1
+    CHECK (((vendor_id IS NOT NULL) OR ((outside_handle IS NOT NULL) AND (outside_phone IS NOT NULL))))
+[CHECK] forward_requests_city_check
+    CHECK (((char_length(btrim(city)) >= 1) AND (char_length(btrim(city)) <= 60)))
+[CHECK] forward_requests_note_check
+    CHECK (((note IS NULL) OR (char_length(note) <= 300)))
+[CHECK] forward_requests_outside_handle_check
+    CHECK (((outside_handle IS NULL) OR (outside_handle ~ '^[A-Za-z0-9._]{1,30}$'::text)))
+[CHECK] forward_requests_outside_phone_check
+    CHECK (((outside_phone IS NULL) OR (outside_phone ~ '^\+[0-9]{8,15}$'::text)))
+[CHECK] forward_requests_pay_kind_check
+    CHECK ((pay_kind = ANY (ARRAY['paid'::text, 'credit_only'::text])))
+[CHECK] forward_requests_role_check
+    CHECK (((char_length(btrim(role)) >= 1) AND (char_length(btrim(role)) <= 40)))
+[PRIMARY KEY] forward_requests_pkey
+    PRIMARY KEY (id)
+```
+
+### public.gear_items
+
+```
+[CHECK] gear_items_city_check
+    CHECK (((char_length(btrim(city)) >= 2) AND (char_length(btrim(city)) <= 60)))
+[CHECK] gear_items_item_check
+    CHECK (((char_length(btrim(item)) >= 2) AND (char_length(btrim(item)) <= 80)))
+[CHECK] gear_items_note_check
+    CHECK (((note IS NULL) OR (char_length(note) <= 300)))
+[CHECK] gear_items_price_per_day_rs_check
+    CHECK (((price_per_day_rs >= 0) AND (price_per_day_rs <= 10000000)))
+[CHECK] gear_items_state_check
+    CHECK ((state = ANY (ARRAY['listed'::text, 'withdrawn'::text])))
+[CHECK] gear_items_value_rs_check
+    CHECK (((value_rs > 0) AND (value_rs <= 100000000)))
+[PRIMARY KEY] gear_items_pkey
+    PRIMARY KEY (id)
+```
+
+### public.gear_requests
+
+```
+[CHECK] gear_requests_check
+    CHECK ((date_to >= date_from))
+[CHECK] gear_requests_check1
+    CHECK (((date_to - date_from) <= 60))
+[CHECK] gear_requests_check2
+    CHECK ((owner_vendor_id <> borrower_vendor_id))
+[CHECK] gear_requests_note_check
+    CHECK (((note IS NULL) OR (char_length(note) <= 300)))
+[CHECK] gear_requests_state_check
+    CHECK ((state = ANY (ARRAY['requested'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])))
+[PRIMARY KEY] gear_requests_pkey
+    PRIMARY KEY (id)
+```
+
 ### public.hot_dates
 
 ```
 [PRIMARY KEY] hot_dates_pkey
     PRIMARY KEY (id)
+```
+
+### public.hub_credits
+
+```
+[CHECK] hub_credits_kind
+    CHECK (((call_id IS NOT NULL) OR ((shoot_name IS NOT NULL) AND (city IS NOT NULL) AND (month IS NOT NULL))))
+[CHECK] hub_credits_month_check
+    CHECK (((month IS NULL) OR (EXTRACT(day FROM month) = (1)::numeric)))
+[CHECK] hub_credits_not_self
+    CHECK ((giver_profile_id <> person_profile_id))
+[CHECK] hub_credits_shoot_name_check
+    CHECK (((shoot_name IS NULL) OR ((char_length(btrim(shoot_name)) >= 1) AND (char_length(btrim(shoot_name)) <= 80))))
+[CHECK] hub_credits_state_check
+    CHECK ((state = ANY (ARRAY['offered'::text, 'yes'::text, 'no'::text, 'taken_back'::text])))
+[PRIMARY KEY] hub_credits_pkey
+    PRIMARY KEY (id)
+```
+
+### public.hub_profiles
+
+```
+[CHECK] hub_profiles_check_state_check
+    CHECK ((check_state = ANY (ARRAY['unchecked'::text, 'checked'::text])))
+[CHECK] hub_profiles_display_name_check
+    CHECK (((char_length(btrim(display_name)) >= 1) AND (char_length(btrim(display_name)) <= 120)))
+[CHECK] hub_profiles_handle_check
+    CHECK ((handle ~ '^[a-z0-9._]{1,30}$'::text))
+[CHECK] hub_profiles_instagram_handle_check
+    CHECK (((instagram_handle IS NULL) OR (instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'::text)))
+[CHECK] hub_profiles_one_owner
+    CHECK ((((owner_kind = 'vendor'::text) AND (vendor_id IS NOT NULL) AND (org_id IS NULL) AND (user_id IS NULL)) OR ((owner_kind = 'org'::text) AND (org_id IS NOT NULL) AND (vendor_id IS NULL) AND (user_id IS NULL)) OR ((owner_kind = 'person'::text) AND (user_id IS NOT NULL) AND (vendor_id IS NULL) AND (org_id IS NULL))))
+[CHECK] hub_profiles_open_to_check
+    CHECK ((open_to <@ ARRAY['paid'::text, 'barter'::text, 'credit_only'::text]))
+[CHECK] hub_profiles_owner_kind_check
+    CHECK ((owner_kind = ANY (ARRAY['vendor'::text, 'org'::text, 'person'::text])))
+[CHECK] hub_profiles_website_check
+    CHECK (((website IS NULL) OR (website ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+[PRIMARY KEY] hub_profiles_pkey
+    PRIMARY KEY (id)
+[UNIQUE] hub_profiles_org_id_key
+    UNIQUE (org_id)
+[UNIQUE] hub_profiles_user_id_key
+    UNIQUE (user_id)
+[UNIQUE] hub_profiles_vendor_id_key
+    UNIQUE (vendor_id)
 ```
 
 ### public.image_throttle_log
@@ -2316,12 +3429,33 @@ _No out-of-order migration is outstanding at this snapshot._
     CHECK ((amount_paid >= 0))
 [CHECK] invoices_amount_total_check
     CHECK ((amount_total >= 0))
+[CHECK] invoices_gst_amount_check
+    CHECK (((gst_amount IS NULL) OR (gst_amount >= 0)))
+[CHECK] invoices_gst_rate_check
+    CHECK (((gst_rate IS NULL) OR ((gst_rate >= (0)::numeric) AND (gst_rate <= (28)::numeric))))
 [CHECK] invoices_state_check
     CHECK ((state = ANY (ARRAY['unpaid'::text, 'advance_paid'::text, 'paid'::text, 'cancelled'::text])))
 [PRIMARY KEY] invoices_pkey
     PRIMARY KEY (id)
 [UNIQUE] invoices_vendor_number_unique
     UNIQUE (vendor_id, invoice_number)
+```
+
+### public.issued_papers
+
+```
+[CHECK] issued_papers_check
+    CHECK (((period_from IS NULL) OR (period_to IS NULL) OR (period_from <= period_to)))
+[CHECK] issued_papers_check_code_check
+    CHECK ((check_code ~ '^TDW-[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$'::text))
+[CHECK] issued_papers_kind_check
+    CHECK ((kind = ANY (ARRAY['certificate'::text, 'id_card'::text, 'statement'::text, 'ca_pack'::text])))
+[CHECK] issued_papers_purpose_check
+    CHECK (((purpose IS NULL) OR (purpose = ANY (ARRAY['bank'::text, 'landlord'::text, 'visa'::text, 'other'::text]))))
+[PRIMARY KEY] issued_papers_pkey
+    PRIMARY KEY (id)
+[UNIQUE] issued_papers_check_code_key
+    UNIQUE (check_code)
 ```
 
 ### public.landing_slides
@@ -2361,10 +3495,21 @@ _No out-of-order migration is outstanding at this snapshot._
 ### public.leads
 
 ```
+[CHECK] leads_consent_text_version_check
+    CHECK (((consent_text_version IS NULL) OR ((char_length(consent_text_version) >= 1) AND (char_length(consent_text_version) <= 32))))
 [CHECK] leads_wedding_date_precision_check
     CHECK ((wedding_date_precision = ANY (ARRAY['day'::text, 'month'::text, 'year'::text])))
 [PRIMARY KEY] leads_pkey
     PRIMARY KEY (id)
+```
+
+### public.look_hearts_daily
+
+```
+[CHECK] look_hearts_daily_hearts_check
+    CHECK ((hearts >= 0))
+[PRIMARY KEY] look_hearts_daily_pkey
+    PRIMARY KEY (look_id, day)
 ```
 
 ### public.messages
@@ -2444,6 +3589,148 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (id)
 ```
 
+### public.partner_answers
+
+```
+[CHECK] partner_answers_agreed_check
+    CHECK ((agreed = true))
+[CHECK] partner_answers_talent_link_check
+    CHECK (((talent_link IS NULL) OR (talent_link ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+[CHECK] partner_answers_talent_name_check
+    CHECK ((((char_length(btrim(talent_name)) >= 1) AND (char_length(btrim(talent_name)) <= 120)) AND (talent_name !~ '@'::text) AND (talent_name !~ '[0-9]{10,}'::text)))
+[CHECK] partner_answers_talent_role_check
+    CHECK (((talent_role IS NULL) OR (char_length(talent_role) <= 40)))
+[PRIMARY KEY] partner_answers_pkey
+    PRIMARY KEY (id)
+```
+
+### public.partner_connections
+
+```
+[CHECK] partner_connections_kind_check
+    CHECK ((kind = ANY (ARRAY['pick'::text, 'contact'::text])))
+[CHECK] partner_connections_n_check
+    CHECK ((n >= 1))
+[PRIMARY KEY] partner_connections_pkey
+    PRIMARY KEY (id)
+[UNIQUE] partner_connections_partner_id_ref_id_key
+    UNIQUE (partner_id, ref_id)
+```
+
+### public.partner_contacts
+
+```
+[CHECK] partner_contacts_how_we_know_check
+    CHECK (((char_length(btrim(how_we_know)) >= 1) AND (char_length(btrim(how_we_know)) <= 300)))
+[CHECK] partner_contacts_instagram_handle_check
+    CHECK (((instagram_handle IS NULL) OR (instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'::text)))
+[CHECK] partner_contacts_kind_check
+    CHECK ((kind = ANY (ARRAY['agency'::text, 'fashion_house'::text, 'brand'::text, 'studio'::text, 'planner'::text, 'stylist'::text, 'model'::text, 'influencer'::text, 'other'::text])))
+[CHECK] partner_contacts_name_check
+    CHECK (((char_length(btrim(name)) >= 1) AND (char_length(btrim(name)) <= 120)))
+[CHECK] partner_contacts_phone_check
+    CHECK (((phone IS NULL) OR (phone ~ '^\+[0-9]{8,15}$'::text)))
+[CHECK] partner_contacts_website_check
+    CHECK (((website IS NULL) OR (website ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+[PRIMARY KEY] partner_contacts_pkey
+    PRIMARY KEY (id)
+```
+
+### public.partner_members
+
+```
+[CHECK] partner_members_role_check
+    CHECK ((role = ANY (ARRAY['owner'::text, 'member'::text])))
+[PRIMARY KEY] partner_members_pkey
+    PRIMARY KEY (partner_id, user_id)
+```
+
+### public.partner_orgs
+
+```
+[CHECK] partner_orgs_calls_email_check
+    CHECK (((calls_email IS NULL) OR (calls_email ~* '^[^\s@]+@[^\s@]+\.[^\s@]+$'::text)))
+[CHECK] partner_orgs_check_state_check
+    CHECK ((check_state = ANY (ARRAY['unchecked'::text, 'checked'::text, 'blocked'::text])))
+[CHECK] partner_orgs_checked_how_check
+    CHECK (((checked_how IS NULL) OR (checked_how = ANY (ARRAY['admin'::text, 'instagram_tick'::text]))))
+[CHECK] partner_orgs_daily_cap_check
+    CHECK (((daily_cap >= 1) AND (daily_cap <= 50)))
+[CHECK] partner_orgs_instagram_handle_check
+    CHECK ((instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'::text))
+[CHECK] partner_orgs_kind_check
+    CHECK ((kind = ANY (ARRAY['talent_agency'::text, 'model_agency'::text, 'fashion_house'::text, 'studio'::text, 'brand'::text, 'wedding_planner'::text, 'other'::text])))
+[CHECK] partner_orgs_name_check
+    CHECK (((char_length(btrim(name)) >= 1) AND (char_length(btrim(name)) <= 120)))
+[CHECK] partner_orgs_pay_rule_check
+    CHECK ((pay_rule = ANY (ARRAY['paid_only'::text, 'paid_and_credit'::text])))
+[CHECK] partner_orgs_plan_state_check
+    CHECK ((plan_state = ANY (ARRAY['free'::text, 'active'::text, 'lapsed'::text, 'exempt'::text])))
+[CHECK] partner_orgs_send_state_check
+    CHECK ((send_state = ANY (ARRAY['active'::text, 'paused'::text, 'stopped'::text])))
+[CHECK] partner_orgs_wants_check
+    CHECK ((wants <@ ARRAY['calls'::text, 'briefs'::text, 'requirements'::text]))
+[CHECK] partner_orgs_website_check
+    CHECK (((website IS NULL) OR (website ~* '^https?://[^\s/$.?#][^\s]*$'::text)))
+[CHECK] partner_orgs_whatsapp_opt_words_check
+    CHECK (((whatsapp_opt_words IS NULL) OR (char_length(whatsapp_opt_words) <= 300)))
+[PRIMARY KEY] partner_orgs_pkey
+    PRIMARY KEY (id)
+```
+
+### public.partner_reports
+
+```
+[CHECK] partner_reports_item_kind_check
+    CHECK ((item_kind = ANY (ARRAY['partner'::text, 'call_answer'::text, 'brief'::text, 'requirement'::text])))
+[CHECK] partner_reports_note_check
+    CHECK (((note IS NULL) OR (char_length(note) <= 500)))
+[CHECK] partner_reports_reason_check
+    CHECK ((reason = ANY (ARRAY['fake'::text, 'asked_for_money'::text, 'unsafe_or_rude'::text, 'other'::text])))
+[PRIMARY KEY] partner_reports_pkey
+    PRIMARY KEY (id)
+```
+
+### public.partner_send_log
+
+```
+[CHECK] partner_send_log_attempts_check
+    CHECK ((attempts >= 0))
+[CHECK] partner_send_log_by_whom_check
+    CHECK (((by_whom IS NULL) OR (char_length(by_whom) <= 120)))
+[CHECK] partner_send_log_channel_check
+    CHECK ((channel = ANY (ARRAY['email'::text, 'whatsapp'::text])))
+[CHECK] partner_send_log_kind_check
+    CHECK ((kind = ANY (ARRAY['drain'::text, 'retried'::text, 'lane_changed'::text])))
+[CHECK] partner_send_log_state_check
+    CHECK ((state = ANY (ARRAY['queued'::text, 'sent'::text, 'held_cap'::text, 'held_window'::text, 'held_paused'::text, 'held_no_key'::text, 'failed'::text, 'closed'::text])))
+[CHECK] partner_send_log_why_check
+    CHECK (((why IS NULL) OR (char_length(why) <= 300)))
+[PRIMARY KEY] partner_send_log_pkey
+    PRIMARY KEY (id)
+```
+
+### public.partner_sends
+
+```
+[CHECK] partner_sends_attempts_check
+    CHECK ((attempts >= 0))
+[CHECK] partner_sends_channel_check
+    CHECK ((channel = ANY (ARRAY['email'::text, 'whatsapp'::text])))
+[CHECK] partner_sends_state_check
+    CHECK ((state = ANY (ARRAY['queued'::text, 'sent'::text, 'held_cap'::text, 'held_window'::text, 'held_paused'::text, 'held_no_key'::text, 'failed'::text, 'closed'::text])))
+[CHECK] partner_sends_token_hash_check
+    CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+[CHECK] partner_sends_why_check
+    CHECK (((why IS NULL) OR (char_length(why) <= 300)))
+[PRIMARY KEY] partner_sends_pkey
+    PRIMARY KEY (id)
+[UNIQUE] partner_sends_partner_id_post_id_channel_key
+    UNIQUE (partner_id, post_id, channel)
+[UNIQUE] partner_sends_token_hash_key
+    UNIQUE (token_hash)
+```
+
 ### public.payment_reminder_settings
 
 ```
@@ -2508,6 +3795,19 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (id)
 ```
 
+### public.pending_money_acts
+
+```
+[CHECK] pending_money_acts_act_check
+    CHECK ((act = ANY (ARRAY['booking_confirmed'::text, 'advance_paid'::text, 'milestone_paid'::text])))
+[CHECK] pending_money_acts_lane_check
+    CHECK ((lane = ANY (ARRAY['pwa'::text, 'whatsapp'::text])))
+[CHECK] pending_money_acts_state_check
+    CHECK ((state = ANY (ARRAY['staged'::text, 'confirmed'::text, 'declined'::text, 'expired'::text, 'applied'::text])))
+[PRIMARY KEY] pending_money_acts_pkey
+    PRIMARY KEY (id)
+```
+
 ### public.prospects
 
 ```
@@ -2559,6 +3859,120 @@ _No out-of-order migration is outstanding at this snapshot._
     CHECK ((impressions >= 0))
 [PRIMARY KEY] search_console_queries_pkey
     PRIMARY KEY (vendor_id, window_end, query)
+```
+
+### public.shop_items
+
+```
+[CHECK] shop_items_check
+    CHECK (((kind <> 'voucher'::text) OR (valid_months IS NOT NULL)))
+[CHECK] shop_items_check1
+    CHECK (((kind <> 'workshop'::text) OR ((starts_at IS NOT NULL) AND (seats_total IS NOT NULL) AND (online OR (place IS NOT NULL)))))
+[CHECK] shop_items_check2
+    CHECK (((kind <> 'booking'::text) OR (occasion IS NOT NULL)))
+[CHECK] shop_items_check3
+    CHECK (((ends_at IS NULL) OR (starts_at IS NULL) OR (ends_at > starts_at)))
+[CHECK] shop_items_class_dates_check
+    CHECK ((cardinality(class_dates) <= 12))
+[CHECK] shop_items_class_link_check
+    CHECK (((class_link IS NULL) OR (((char_length(class_link) >= 11) AND (char_length(class_link) <= 508)) AND (class_link ~ '^https://[^\s<>"'']+$'::text))))
+[CHECK] shop_items_hours_check
+    CHECK (((hours IS NULL) OR ((hours >= 1) AND (hours <= 24))))
+[CHECK] shop_items_includes_check
+    CHECK ((cardinality(includes) <= 6))
+[CHECK] shop_items_kind_check
+    CHECK ((kind = ANY (ARRAY['voucher'::text, 'workshop'::text, 'class'::text, 'booking'::text])))
+[CHECK] shop_items_lead_days_check
+    CHECK (((lead_days IS NULL) OR ((lead_days >= 0) AND (lead_days <= 365))))
+[CHECK] shop_items_name_check
+    CHECK (((char_length(name) >= 1) AND (char_length(name) <= 60)))
+[CHECK] shop_items_occasion_check
+    CHECK (((occasion IS NULL) OR (occasion = ANY (ARRAY['party'::text, 'engagement'::text, 'pre_wedding'::text, 'other'::text]))))
+[CHECK] shop_items_photo_url_check
+    CHECK (((photo_url IS NULL) OR (photo_url ~ '^https://'::text)))
+[CHECK] shop_items_place_check
+    CHECK (((place IS NULL) OR ((char_length(place) >= 1) AND (char_length(place) <= 80))))
+[CHECK] shop_items_price_check
+    CHECK (((price >= 1) AND (price <= 10000000)))
+[CHECK] shop_items_seats_total_check
+    CHECK (((seats_total IS NULL) OR ((seats_total >= 1) AND (seats_total <= 1000))))
+[CHECK] shop_items_slug_check
+    CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,59}$'::text))
+[CHECK] shop_items_valid_months_check
+    CHECK (((valid_months IS NULL) OR ((valid_months >= 1) AND (valid_months <= 60))))
+[CHECK] shop_items_voucher_for_check
+    CHECK (((voucher_for IS NULL) OR ((char_length(voucher_for) >= 1) AND (char_length(voucher_for) <= 60))))
+[PRIMARY KEY] shop_items_pkey
+    PRIMARY KEY (id)
+```
+
+### public.shop_orders
+
+```
+[CHECK] shop_orders_amount_check
+    CHECK (((amount >= 1) AND (amount <= 200000000)))
+[CHECK] shop_orders_buyer_name_check
+    CHECK (((char_length(buyer_name) >= 1) AND (char_length(buyer_name) <= 40)))
+[CHECK] shop_orders_buyer_phone_check
+    CHECK ((buyer_phone ~ '^\+[0-9]{8,16}$'::text))
+[CHECK] shop_orders_check
+    CHECK (((state <> 'paid'::text) OR ((paid_at IS NOT NULL) AND (paid_by IS NOT NULL))))
+[CHECK] shop_orders_paid_by_check
+    CHECK (((paid_by IS NULL) OR (paid_by = ANY (ARRAY['vendor'::text, 'link'::text]))))
+[CHECK] shop_orders_payment_ref_check
+    CHECK (((payment_ref IS NULL) OR ((char_length(payment_ref) >= 1) AND (char_length(payment_ref) <= 80))))
+[CHECK] shop_orders_qty_check
+    CHECK (((qty >= 1) AND (qty <= 20)))
+[CHECK] shop_orders_state_check
+    CHECK ((state = ANY (ARRAY['asked'::text, 'paid'::text, 'cancelled'::text])))
+[PRIMARY KEY] shop_orders_pkey
+    PRIMARY KEY (id)
+```
+
+### public.shop_vouchers
+
+```
+[CHECK] shop_vouchers_code_check
+    CHECK ((code ~ '^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$'::text))
+[CHECK] shop_vouchers_redeemed_note_check
+    CHECK (((redeemed_note IS NULL) OR ((char_length(redeemed_note) >= 1) AND (char_length(redeemed_note) <= 120))))
+[PRIMARY KEY] shop_vouchers_pkey
+    PRIMARY KEY (id)
+```
+
+### public.site_visit_salt
+
+```
+[CHECK] site_visit_salt_salt_check
+    CHECK ((octet_length(salt) = 32))
+[PRIMARY KEY] site_visit_salt_pkey
+    PRIMARY KEY (day)
+```
+
+### public.site_visit_seen
+
+```
+[CHECK] site_visit_seen_digest_check
+    CHECK ((octet_length(digest) = 32))
+[PRIMARY KEY] site_visit_seen_pkey
+    PRIMARY KEY (day, digest)
+```
+
+### public.site_visits_daily
+
+```
+[CHECK] site_visits_daily_check
+    CHECK (((page = 'look'::text) = (look_id IS NOT NULL)))
+[CHECK] site_visits_daily_page_check
+    CHECK ((page = ANY (ARRAY['home'::text, 'look'::text, 'collection'::text, 'journal'::text, 'page'::text])))
+[CHECK] site_visits_daily_source_check
+    CHECK ((source = ANY (ARRAY['google'::text, 'instagram'::text, 'facebook'::text, 'whatsapp'::text, 'direct'::text, 'other'::text])))
+[CHECK] site_visits_daily_uniques_check
+    CHECK ((uniques >= 0))
+[CHECK] site_visits_daily_views_check
+    CHECK ((views >= 0))
+[PRIMARY KEY] site_visits_daily_pkey
+    PRIMARY KEY (id)
 ```
 
 ### public.spotlight
@@ -2646,6 +4060,58 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (id)
 ```
 
+### public.vendor_ad_connections
+
+```
+[CHECK] vendor_ad_connections_ad_account_id_check
+    CHECK (((ad_account_id IS NULL) OR (ad_account_id ~ '^act_[0-9]+$'::text)))
+[PRIMARY KEY] vendor_ad_connections_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_ad_connections_vendor_id_key
+    UNIQUE (vendor_id)
+```
+
+### public.vendor_ads
+
+```
+[CHECK] vendor_ads_ad_account_id_check
+    CHECK ((ad_account_id ~ '^act_[0-9]+$'::text))
+[CHECK] vendor_ads_daily_budget_minor_check
+    CHECK ((daily_budget_minor > 0))
+[CHECK] vendor_ads_days_check
+    CHECK (((days >= 1) AND (days <= 30)))
+[CHECK] vendor_ads_kind_check
+    CHECK ((kind = ANY (ARRAY['boost'::text, 'lead'::text])))
+[CHECK] vendor_ads_status_check
+    CHECK ((status = ANY (ARRAY['draft'::text, 'running'::text, 'paused'::text, 'ended'::text, 'refused'::text])))
+[CHECK] vendor_ads_total_minor_check
+    CHECK (((total_minor IS NULL) OR (total_minor > 0)))
+[PRIMARY KEY] vendor_ads_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_ads_ad_id_key
+    UNIQUE (ad_id)
+```
+
+### public.vendor_collection_looks
+
+```
+[PRIMARY KEY] vendor_collection_looks_pkey
+    PRIMARY KEY (collection_id, look_id)
+```
+
+### public.vendor_collections
+
+```
+[CHECK] vendor_collections_description_check
+    CHECK (((description IS NULL) OR (char_length(description) <= 200)))
+[CHECK] vendor_collections_name_check
+    CHECK (((char_length(name) >= 1) AND (char_length(name) <= 40)))
+[CHECK] vendor_collections_slug_check
+    CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))
+[PRIMARY KEY] vendor_collections_pkey
+    PRIMARY KEY (id)
+```
+
 ### public.vendor_discover_requests
 
 ```
@@ -2653,6 +4119,44 @@ _No out-of-order migration is outstanding at this snapshot._
     CHECK ((state = ANY (ARRAY['requested'::text, 'under_review'::text, 'approved'::text, 'denied'::text, 'revoked'::text])))
 [PRIMARY KEY] vendor_discover_requests_pkey
     PRIMARY KEY (id)
+```
+
+### public.vendor_domains
+
+```
+[CHECK] vendor_domains_check
+    CHECK ((price_paise >= cost_paise))
+[CHECK] vendor_domains_cost_paise_check
+    CHECK ((cost_paise > 0))
+[CHECK] vendor_domains_gst_pct_check
+    CHECK (((gst_pct >= 0) AND (gst_pct <= 100)))
+[CHECK] vendor_domains_registrar_check
+    CHECK ((registrar = ANY (ARRAY['resellerclub'::text, 'vercel'::text])))
+[CHECK] vendor_domains_retries_check
+    CHECK ((retries >= 0))
+[CHECK] vendor_domains_status_check
+    CHECK ((status = ANY (ARRAY['paying'::text, 'registering'::text, 'wiring'::text, 'live'::text, 'expired'::text, 'error'::text, 'refund_due'::text, 'refunded'::text])))
+[CHECK] vendor_domains_years_check
+    CHECK (((years >= 1) AND (years <= 10)))
+[PRIMARY KEY] vendor_domains_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_domains_domain_key
+    UNIQUE (domain)
+[UNIQUE] vendor_domains_razorpay_link_id_key
+    UNIQUE (razorpay_link_id)
+[UNIQUE] vendor_domains_razorpay_payment_id_key
+    UNIQUE (razorpay_payment_id)
+[UNIQUE] vendor_domains_registrar_order_id_key
+    UNIQUE (registrar_order_id)
+```
+
+### public.vendor_feature_choices
+
+```
+[CHECK] vendor_feature_choices_choice_check
+    CHECK ((choice = ANY (ARRAY['on'::text, 'off'::text])))
+[PRIMARY KEY] vendor_feature_choices_pkey
+    PRIMARY KEY (vendor_id, feature_key)
 ```
 
 ### public.vendor_featured_submissions
@@ -2663,6 +4167,15 @@ _No out-of-order migration is outstanding at this snapshot._
 [CHECK] vendor_featured_submissions_state_check
     CHECK ((state = ANY (ARRAY['submitted'::text, 'under_review'::text, 'approved'::text, 'rejected'::text, 'live'::text, 'expired'::text, 'refunded'::text])))
 [PRIMARY KEY] vendor_featured_submissions_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_first_builds
+
+```
+[CHECK] vendor_first_builds_state_check
+    CHECK ((state = ANY (ARRAY['running'::text, 'done'::text, 'failed'::text])))
+[PRIMARY KEY] vendor_first_builds_pkey
     PRIMARY KEY (id)
 ```
 
@@ -2678,10 +4191,91 @@ _No out-of-order migration is outstanding at this snapshot._
 ### public.vendor_ig_connections
 
 ```
+[CHECK] vendor_ig_connections_dm_state_check
+    CHECK ((dm_state = ANY (ARRAY['off'::text, 'on'::text])))
 [PRIMARY KEY] vendor_ig_connections_pkey
     PRIMARY KEY (id)
 [UNIQUE] vendor_ig_connections_vendor_id_key
     UNIQUE (vendor_id)
+```
+
+### public.vendor_insurance_settings
+
+```
+[PRIMARY KEY] vendor_insurance_settings_pkey
+    PRIMARY KEY (vendor_id)
+```
+
+### public.vendor_look_photos
+
+```
+[CHECK] vendor_look_photos_alt_check
+    CHECK (((alt IS NULL) OR ((char_length(alt) >= 1) AND (char_length(alt) <= 125))))
+[CHECK] vendor_look_photos_approval_state_check
+    CHECK ((approval_state = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))
+[CHECK] vendor_look_photos_caption_check
+    CHECK (((caption IS NULL) OR ((char_length(caption) >= 1) AND (char_length(caption) <= 60))))
+[CHECK] vendor_look_photos_focal_landscape_x_check
+    CHECK (((focal_landscape_x >= (0)::numeric) AND (focal_landscape_x <= (100)::numeric)))
+[CHECK] vendor_look_photos_focal_landscape_y_check
+    CHECK (((focal_landscape_y >= (0)::numeric) AND (focal_landscape_y <= (100)::numeric)))
+[CHECK] vendor_look_photos_focal_portrait_x_check
+    CHECK (((focal_portrait_x >= (0)::numeric) AND (focal_portrait_x <= (100)::numeric)))
+[CHECK] vendor_look_photos_focal_portrait_y_check
+    CHECK (((focal_portrait_y >= (0)::numeric) AND (focal_portrait_y <= (100)::numeric)))
+[CHECK] vendor_look_photos_height_check
+    CHECK (((height IS NULL) OR (height > 0)))
+[CHECK] vendor_look_photos_image_url_check
+    CHECK ((image_url ~ '^https://'::text))
+[CHECK] vendor_look_photos_rejection_reason_check
+    CHECK (((rejection_reason IS NULL) OR ((char_length(rejection_reason) >= 1) AND (char_length(rejection_reason) <= 200))))
+[CHECK] vendor_look_photos_source_check
+    CHECK ((source = ANY (ARRAY['upload'::text, 'instagram'::text])))
+[CHECK] vendor_look_photos_width_check
+    CHECK (((width IS NULL) OR (width > 0)))
+[PRIMARY KEY] vendor_look_photos_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_looks
+
+```
+[CHECK] vendor_looks_category_check
+    CHECK (((category IS NULL) OR ((char_length(category) >= 1) AND (char_length(category) <= 24))))
+[CHECK] vendor_looks_check
+    CHECK (((status = 'draft'::text) OR (published_at IS NOT NULL)))
+[CHECK] vendor_looks_credits_check
+    CHECK (((jsonb_typeof(credits) = 'array'::text) AND (jsonb_array_length(credits) <= 8)))
+[CHECK] vendor_looks_description_check
+    CHECK (((description IS NULL) OR (char_length(description) <= 600)))
+[CHECK] vendor_looks_from_price_rupees_check
+    CHECK (((from_price_rupees IS NULL) OR (from_price_rupees > 0)))
+[CHECK] vendor_looks_from_price_text_check
+    CHECK (((from_price_text IS NULL) OR ((char_length(from_price_text) >= 1) AND (char_length(from_price_text) <= 32))))
+[CHECK] vendor_looks_ig_media_id_check
+    CHECK (((ig_media_id IS NULL) OR ((char_length(ig_media_id) >= 1) AND (char_length(ig_media_id) <= 64))))
+[CHECK] vendor_looks_included_check
+    CHECK (((jsonb_typeof(included) = 'array'::text) AND (jsonb_array_length(included) <= 12)))
+[CHECK] vendor_looks_related_ids_check
+    CHECK ((cardinality(related_ids) <= 4))
+[CHECK] vendor_looks_seo_description_check
+    CHECK (((seo_description IS NULL) OR ((char_length(seo_description) >= 1) AND (char_length(seo_description) <= 160))))
+[CHECK] vendor_looks_seo_title_check
+    CHECK (((seo_title IS NULL) OR ((char_length(seo_title) >= 1) AND (char_length(seo_title) <= 70))))
+[CHECK] vendor_looks_slug_check
+    CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))
+[CHECK] vendor_looks_source_check
+    CHECK ((source = ANY (ARRAY['manual'::text, 'phone'::text, 'instagram'::text])))
+[CHECK] vendor_looks_status_check
+    CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text])))
+[CHECK] vendor_looks_title_check
+    CHECK (((char_length(title) >= 1) AND (char_length(title) <= 60)))
+[CHECK] vendor_looks_videos_check
+    CHECK (((jsonb_typeof(videos) = 'array'::text) AND (jsonb_array_length(videos) <= 4)))
+[CHECK] vendor_looks_year_label_check
+    CHECK (((year_label IS NULL) OR ((char_length(year_label) >= 1) AND (char_length(year_label) <= 12))))
+[PRIMARY KEY] vendor_looks_pkey
+    PRIMARY KEY (id)
 ```
 
 ### public.vendor_packages
@@ -2709,11 +4303,98 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (id)
 ```
 
+### public.vendor_pay_accounts
+
+```
+[CHECK] vendor_pay_accounts_provider_check
+    CHECK ((provider = ANY (ARRAY['razorpay'::text, 'cashfree'::text])))
+[CHECK] vendor_pay_accounts_status_check
+    CHECK ((status = ANY (ARRAY['connected'::text, 'needs_attention'::text, 'revoked'::text])))
+[PRIMARY KEY] vendor_pay_accounts_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_pay_event_answers
+
+```
+[CHECK] vendor_pay_event_answers_action_check
+    CHECK ((action = ANY (ARRAY['already_on'::text, 'added'::text])))
+[CHECK] vendor_pay_event_answers_round_check
+    CHECK ((round >= 1))
+[PRIMARY KEY] vendor_pay_event_answers_pkey
+    PRIMARY KEY (event_id, round)
+```
+
+### public.vendor_pay_events
+
+```
+[CHECK] vendor_pay_events_amount_check
+    CHECK ((amount >= 0))
+[CHECK] vendor_pay_events_kind_check
+    CHECK ((kind = ANY (ARRAY['paid'::text, 'part_paid'::text, 'failed'::text, 'refunded'::text])))
+[CHECK] vendor_pay_events_not_applied_reason_check
+    CHECK (((not_applied_reason IS NULL) OR (not_applied_reason = ANY (ARRAY['NOT_PENDING'::text, 'INVOICE_CANCELLED'::text, 'NO_INVOICE'::text, 'NO_LINE'::text, 'BINDER_PENDING'::text, 'BINDER_UNCERTAIN'::text]))))
+[CHECK] vendor_pay_events_provider_check
+    CHECK ((provider = ANY (ARRAY['razorpay'::text, 'cashfree'::text])))
+[PRIMARY KEY] vendor_pay_events_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_pay_events_provider_provider_payment_id_kind_key
+    UNIQUE (provider, provider_payment_id, kind)
+```
+
+### public.vendor_pay_links
+
+```
+[CHECK] vendor_pay_links_amount_check
+    CHECK ((amount > 0))
+[CHECK] vendor_pay_links_one_home
+    CHECK ((num_nonnulls(invoice_id, binder_id) = 1))
+[CHECK] vendor_pay_links_provider_check
+    CHECK ((provider = ANY (ARRAY['razorpay'::text, 'cashfree'::text])))
+[CHECK] vendor_pay_links_state_check
+    CHECK ((state = ANY (ARRAY['created'::text, 'sent'::text, 'part_paid'::text, 'paid'::text, 'failed'::text, 'expired'::text, 'cancelled'::text])))
+[PRIMARY KEY] vendor_pay_links_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_pay_oauth_states
+
+```
+[CHECK] vendor_pay_oauth_states_nonce_check
+    CHECK (((length(nonce) >= 16) AND (length(nonce) <= 128)))
+[PRIMARY KEY] vendor_pay_oauth_states_pkey
+    PRIMARY KEY (nonce)
+```
+
+### public.vendor_pay_settings
+
+```
+[PRIMARY KEY] vendor_pay_settings_pkey
+    PRIMARY KEY (vendor_id)
+```
+
+### public.vendor_policies
+
+```
+[CHECK] vendor_policies_cover_amount_check
+    CHECK ((cover_amount > 0))
+[CHECK] vendor_policies_doc_mime_check
+    CHECK (((doc_mime IS NULL) OR (doc_mime = ANY (ARRAY['application/pdf'::text, 'image/jpeg'::text, 'image/png'::text, 'image/webp'::text, 'image/heic'::text]))))
+[CHECK] vendor_policies_insurer_check
+    CHECK (((length(btrim(insurer)) >= 1) AND (length(btrim(insurer)) <= 120)))
+[CHECK] vendor_policies_kind_check
+    CHECK ((kind = ANY (ARRAY['equipment'::text, 'public_liability'::text, 'professional_indemnity'::text, 'goods_in_transit'::text, 'shop_and_stock'::text, 'jewellers_block'::text, 'personal_accident'::text, 'event_cancellation'::text, 'other'::text])))
+[PRIMARY KEY] vendor_policies_pkey
+    PRIMARY KEY (id)
+```
+
 ### public.vendor_portfolio
 
 ```
 [CHECK] vendor_portfolio_approval_state_check
     CHECK ((approval_state = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))
+[CHECK] vendor_portfolio_source_check
+    CHECK ((source = ANY (ARRAY['upload'::text, 'instagram'::text])))
 [PRIMARY KEY] vendor_portfolio_pkey
     PRIMARY KEY (id)
 ```
@@ -2738,11 +4419,191 @@ _No out-of-order migration is outstanding at this snapshot._
     PRIMARY KEY (vendor_id)
 ```
 
+### public.vendor_site_drafts
+
+```
+[CHECK] vendor_site_drafts_pages_check
+    CHECK (((pages IS NULL) OR ((jsonb_typeof(pages) = 'array'::text) AND (jsonb_array_length(pages) <= 12))))
+[CHECK] vendor_site_drafts_sections_check
+    CHECK (((sections IS NULL) OR ((jsonb_typeof(sections) = 'array'::text) AND (jsonb_array_length(sections) <= 40) AND (pg_column_size(sections) <= 262144))))
+[CHECK] vendor_site_drafts_settings_check
+    CHECK (((jsonb_typeof(settings) = 'object'::text) AND (pg_column_size(settings) <= 65536)))
+[PRIMARY KEY] vendor_site_drafts_pkey
+    PRIMARY KEY (vendor_id)
+```
+
+### public.vendor_site_faq
+
+```
+[CHECK] vendor_site_faq_answer_check
+    CHECK (((char_length(answer) >= 1) AND (char_length(answer) <= 600)))
+[CHECK] vendor_site_faq_question_check
+    CHECK (((char_length(question) >= 1) AND (char_length(question) <= 120)))
+[PRIMARY KEY] vendor_site_faq_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_site_pages
+
+```
+[CHECK] vendor_site_pages_slug_check
+    CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))
+[CHECK] vendor_site_pages_title_check
+    CHECK (((char_length(title) >= 1) AND (char_length(title) <= 40)))
+[PRIMARY KEY] vendor_site_pages_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_site_sections
+
+```
+[CHECK] vendor_site_sections_body_check
+    CHECK (((jsonb_typeof(body) = 'object'::text) AND (pg_column_size(body) <= 16384)))
+[CHECK] vendor_site_sections_eyebrow_check
+    CHECK (((eyebrow IS NULL) OR ((char_length(eyebrow) >= 1) AND (char_length(eyebrow) <= 32))))
+[CHECK] vendor_site_sections_heading_check
+    CHECK (((heading IS NULL) OR ((char_length(heading) >= 1) AND (char_length(heading) <= 60))))
+[CHECK] vendor_site_sections_key_check
+    CHECK ((key ~ '^(cover\|looks\|collections\|band\|reviews\|pricing\|studio\|journal\|faq\|enquire\|shop\|custom-[a-z0-9-]{1,40})$'::text))
+[CHECK] vendor_site_sections_variant_check
+    CHECK ((variant ~ '^[a-z0-9-]{1,24}$'::text))
+[PRIMARY KEY] vendor_site_sections_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_sites
+
+```
+[CHECK] vendor_sites_button_style_check
+    CHECK (((button_style IS NULL) OR (button_style ~ '^[a-z_]{1,24}$'::text)))
+[CHECK] vendor_sites_copy_check
+    CHECK (((jsonb_typeof(copy) = 'object'::text) AND (pg_column_size(copy) <= 32768)))
+[CHECK] vendor_sites_corners_check
+    CHECK (((corners IS NULL) OR (corners ~ '^[a-z_]{1,24}$'::text)))
+[CHECK] vendor_sites_cover_check
+    CHECK (((jsonb_typeof(cover) = 'array'::text) AND (jsonb_array_length(cover) <= 3)))
+[CHECK] vendor_sites_cover_mode_check
+    CHECK (((cover_mode IS NULL) OR (cover_mode = ANY (ARRAY['slideshow'::text, 'still'::text, 'film'::text]))))
+[CHECK] vendor_sites_font_pair_check
+    CHECK (((font_pair IS NULL) OR (font_pair = ANY (ARRAY['bodoni_inter_tight'::text, 'cormorant_manrope'::text, 'italiana_jost'::text, 'marcellus_mulish'::text, 'fraunces_jakarta'::text, 'instrument_serif_sans'::text, 'gilda_figtree'::text, 'cormorant_figtree'::text]))))
+[CHECK] vendor_sites_look_check
+    CHECK (((look IS NULL) OR (look = ANY (ARRAY['quiet'::text, 'bloom'::text, 'atelier'::text]))))
+[CHECK] vendor_sites_monogram_check
+    CHECK (((monogram IS NULL) OR ((char_length(monogram) >= 1) AND (char_length(monogram) <= 3))))
+[CHECK] vendor_sites_motion_check
+    CHECK (((motion IS NULL) OR (motion = ANY (ARRAY['calm'::text, 'lively'::text, 'cinematic'::text]))))
+[CHECK] vendor_sites_palette_custom_check
+    CHECK (((jsonb_typeof(palette_custom) = 'object'::text) AND (pg_column_size(palette_custom) <= 2048)))
+[CHECK] vendor_sites_palette_id_check
+    CHECK (((palette_id IS NULL) OR (palette_id ~ '^[a-z]{1,16}\.[a-z]{1,16}$'::text)))
+[CHECK] vendor_sites_site_name_check
+    CHECK (((site_name IS NULL) OR ((char_length(site_name) >= 1) AND (char_length(site_name) <= 40))))
+[CHECK] vendor_sites_style_check
+    CHECK (((style IS NULL) OR (style = ANY (ARRAY['couture'::text, 'noir'::text, 'heritage'::text, 'aurora'::text, 'gallery'::text, 'riviera'::text]))))
+[CHECK] vendor_sites_styles_picked_check
+    CHECK (((styles_picked <@ ARRAY['couture'::text, 'noir'::text, 'heritage'::text, 'aurora'::text, 'gallery'::text, 'riviera'::text]) AND (cardinality(styles_picked) <= 6)))
+[CHECK] vendor_sites_texture_check
+    CHECK (((texture IS NULL) OR (texture ~ '^[a-z_]{1,24}$'::text)))
+[PRIMARY KEY] vendor_sites_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_sites_vendor_id_key
+    UNIQUE (vendor_id)
+```
+
 ### public.vendor_state
 
 ```
 [PRIMARY KEY] vendor_state_pkey
     PRIMARY KEY (vendor_id)
+```
+
+### public.vendor_stories
+
+```
+[CHECK] vendor_stories_slug_check
+    CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{0,79}$'::text))
+[CHECK] vendor_stories_title_check
+    CHECK (((char_length(title) >= 1) AND (char_length(title) <= 120)))
+[PRIMARY KEY] vendor_stories_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_stories_vendor_id_slug_key
+    UNIQUE (vendor_id, slug)
+```
+
+### public.vendor_testimonial_requests
+
+```
+[CHECK] vendor_testimonial_requests_check
+    CHECK (((used_at IS NULL) OR (phone IS NULL)))
+[CHECK] vendor_testimonial_requests_origin_check
+    CHECK ((origin = ANY (ARRAY['vendor'::text, 'after_delivery'::text])))
+[CHECK] vendor_testimonial_requests_person_name_check
+    CHECK (((char_length(person_name) >= 1) AND (char_length(person_name) <= 80)))
+[CHECK] vendor_testimonial_requests_phone_check
+    CHECK (((phone IS NULL) OR (phone ~ '^\+[0-9]{8,15}$'::text)))
+[CHECK] vendor_testimonial_requests_sent_via_check
+    CHECK (((sent_via IS NULL) OR (sent_via = ANY (ARRAY['whatsapp_template'::text, 'copied'::text]))))
+[CHECK] vendor_testimonial_requests_token_hash_check
+    CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+[PRIMARY KEY] vendor_testimonial_requests_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_testimonial_requests_token_hash_key
+    UNIQUE (token_hash)
+```
+
+### public.vendor_testimonials
+
+```
+[CHECK] vendor_testimonials_approved_has_time
+    CHECK (((state <> 'approved'::text) OR (approved_at IS NOT NULL)))
+[CHECK] vendor_testimonials_author_check
+    CHECK (((char_length(author) >= 1) AND (char_length(author) <= 80)))
+[CHECK] vendor_testimonials_body_check
+    CHECK (((char_length(body) >= 1) AND (char_length(body) <= 600)))
+[CHECK] vendor_testimonials_event_month_check
+    CHECK (((event_month IS NULL) OR (EXTRACT(day FROM event_month) = (1)::numeric)))
+[CHECK] vendor_testimonials_occasion_check
+    CHECK (((occasion IS NULL) OR ((char_length(occasion) >= 1) AND (char_length(occasion) <= 40))))
+[CHECK] vendor_testimonials_place_check
+    CHECK (((place IS NULL) OR ((char_length(place) >= 1) AND (char_length(place) <= 40))))
+[CHECK] vendor_testimonials_state_check
+    CHECK ((state = ANY (ARRAY['pending'::text, 'approved'::text, 'hidden'::text])))
+[CHECK] vendor_testimonials_video_duration_s_check
+    CHECK (((video_duration_s IS NULL) OR ((video_duration_s >= 1) AND (video_duration_s <= 600))))
+[CHECK] vendor_testimonials_video_title_check
+    CHECK (((video_title IS NULL) OR ((char_length(video_title) >= 1) AND (char_length(video_title) <= 60))))
+[CHECK] vendor_testimonials_video_url_check
+    CHECK (((video_url IS NULL) OR (video_url ~ '^https://'::text)))
+[CHECK] vendor_testimonials_words_or_video
+    CHECK (((body IS NOT NULL) OR (video_url IS NOT NULL)))
+[PRIMARY KEY] vendor_testimonials_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_wa_events
+
+```
+[CHECK] vendor_wa_events_kind_check
+    CHECK ((kind = ANY (ARRAY['inbound'::text, 'history'::text, 'contacts'::text, 'echo'::text, 'account_update'::text, 'quality_update'::text])))
+[PRIMARY KEY] vendor_wa_events_pkey
+    PRIMARY KEY (id)
+```
+
+### public.vendor_wabas
+
+```
+[CHECK] vendor_wabas_connect_way_check
+    CHECK ((connect_way = ANY (ARRAY['shared'::text, 'moved'::text])))
+[CHECK] vendor_wabas_status_check
+    CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'suspended'::text, 'migrated_out'::text, 'removed'::text])))
+[PRIMARY KEY] vendor_wabas_pkey
+    PRIMARY KEY (id)
+[UNIQUE] vendor_wabas_phone_number_id_key
+    UNIQUE (phone_number_id)
+[UNIQUE] vendor_wabas_vendor_id_key
+    UNIQUE (vendor_id)
+[UNIQUE] vendor_wabas_waba_id_key
+    UNIQUE (waba_id)
 ```
 
 ### public.vendors
@@ -2752,8 +4613,12 @@ _No out-of-order migration is outstanding at this snapshot._
     CHECK ((billing_status = ANY (ARRAY['none'::text, 'active'::text, 'pending'::text, 'halted'::text, 'cancelled'::text])))
 [CHECK] vendors_discover_request_state_check
     CHECK ((discover_request_state = ANY (ARRAY['not_requested'::text, 'requested'::text, 'under_review'::text, 'approved'::text, 'denied'::text, 'revoked'::text])))
+[CHECK] vendors_enquiry_routing_check
+    CHECK ((enquiry_routing = ANY (ARRAY['tdw'::text, 'own_number'::text, 'own_waba'::text])))
 [CHECK] vendors_rate_range_check
     CHECK (((rate_min IS NULL) OR (rate_max IS NULL) OR (rate_min <= rate_max)))
+[CHECK] vendors_reply_quiet_minutes_check
+    CHECK ((reply_quiet_minutes = ANY (ARRAY[60, 120, 240, 480])))
 [CHECK] vendors_seo_description_len_check
     CHECK (((seo_description IS NULL) OR ((char_length(seo_description) >= 1) AND (char_length(seo_description) <= 200))))
 [CHECK] vendors_seo_title_len_check
@@ -2764,6 +4629,8 @@ _No out-of-order migration is outstanding at this snapshot._
     CHECK ((((service_area = 'select_cities'::text) AND (service_cities IS NOT NULL) AND (array_length(service_cities, 1) >= 1)) OR ((service_area IS DISTINCT FROM 'select_cities'::text) AND (service_cities IS NULL))))
 [CHECK] vendors_tier_check
     CHECK ((tier = ANY (ARRAY['basic'::text, 'essential'::text, 'signature'::text, 'prestige'::text])))
+[CHECK] vendors_wa_eliza_state_check
+    CHECK (((wa_eliza_state IS NULL) OR (wa_eliza_state = ANY (ARRAY['on'::text, 'off'::text]))))
 [PRIMARY KEY] vendors_pkey
     PRIMARY KEY (id)
 [UNIQUE] vendors_routing_handle_key
@@ -2779,6 +4646,19 @@ _No out-of-order migration is outstanding at this snapshot._
     CHECK ((status = ANY (ARRAY['new'::text, 'contacted'::text, 'invited'::text, 'ignored'::text])))
 [PRIMARY KEY] waitlist_signups_pkey
     PRIMARY KEY (id)
+```
+
+### public.website_chat_tokens
+
+```
+[CHECK] website_chat_tokens_page_title_check
+    CHECK (((page_title IS NULL) OR (char_length(page_title) <= 80)))
+[CHECK] website_chat_tokens_phone_check
+    CHECK ((phone ~ '^\+[0-9]{8,16}$'::text))
+[CHECK] website_chat_tokens_token_hash_check
+    CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+[PRIMARY KEY] website_chat_tokens_pkey
+    PRIMARY KEY (token_hash)
 ```
 
 ### public.wedding_credits
@@ -2818,7 +4698,7 @@ _No out-of-order migration is outstanding at this snapshot._
 
 ---
 
-## §2 — FOREIGN KEYS  ·  164 constraints
+## §2 — FOREIGN KEYS  ·  251 constraints
 
 ### public.assistance_forwards
 
@@ -2852,6 +4732,15 @@ assistance_request_items_request_id_fkey
 ```
 assistance_requests_couple_id_fkey
     FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE SET NULL
+```
+
+### public.bill_drafts
+
+```
+bill_drafts_expense_id_fkey
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE SET NULL
+bill_drafts_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
 ### public.billing_events
@@ -2953,6 +4842,19 @@ clients_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
+### public.collab_interest
+
+```
+collab_interest_partner_fk
+    FOREIGN KEY (partner_id) REFERENCES partner_orgs(id)
+collab_interest_post_id_fkey
+    FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+collab_interest_share_id_fkey
+    FOREIGN KEY (share_id) REFERENCES collab_shares(id) ON DELETE SET NULL
+collab_interest_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+```
+
 ### public.collab_post_items
 
 ```
@@ -2978,6 +4880,15 @@ collab_responses_post_id_fkey
     FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
 collab_responses_responder_vendor_id_fkey
     FOREIGN KEY (responder_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.collab_shares
+
+```
+collab_shares_post_id_fkey
+    FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+collab_shares_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
 ### public.contract_profiles
@@ -3181,6 +5092,64 @@ expenses_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
+### public.forward_recipients
+
+```
+forward_recipients_contact_id_fkey
+    FOREIGN KEY (contact_id) REFERENCES partner_contacts(id) ON DELETE CASCADE
+forward_recipients_request_id_fkey
+    FOREIGN KEY (request_id) REFERENCES forward_requests(id) ON DELETE CASCADE
+```
+
+### public.forward_requests
+
+```
+forward_requests_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+```
+
+### public.gear_items
+
+```
+gear_items_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.gear_requests
+
+```
+gear_requests_borrower_vendor_id_fkey
+    FOREIGN KEY (borrower_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+gear_requests_item_id_fkey
+    FOREIGN KEY (item_id) REFERENCES gear_items(id) ON DELETE CASCADE
+gear_requests_owner_vendor_id_fkey
+    FOREIGN KEY (owner_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.hub_credits
+
+```
+hub_credits_call_id_fkey
+    FOREIGN KEY (call_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+hub_credits_giver_profile_id_fkey
+    FOREIGN KEY (giver_profile_id) REFERENCES hub_profiles(id) ON DELETE CASCADE
+hub_credits_person_profile_id_fkey
+    FOREIGN KEY (person_profile_id) REFERENCES hub_profiles(id) ON DELETE CASCADE
+hub_credits_taken_back_by_fkey
+    FOREIGN KEY (taken_back_by) REFERENCES hub_profiles(id) ON DELETE SET NULL
+```
+
+### public.hub_profiles
+
+```
+hub_profiles_org_id_fkey
+    FOREIGN KEY (org_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+hub_profiles_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+hub_profiles_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
 ### public.influencer_reach_snapshots
 
 ```
@@ -3219,6 +5188,13 @@ invoices_lead_id_fkey
 invoices_lead_package_id_fkey
     FOREIGN KEY (lead_package_id) REFERENCES lead_packages(id) ON DELETE SET NULL
 invoices_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.issued_papers
+
+```
+issued_papers_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
@@ -3268,6 +5244,15 @@ leads_wedding_id_fkey
     FOREIGN KEY (wedding_id) REFERENCES weddings(id) ON DELETE SET NULL
 ```
 
+### public.look_hearts_daily
+
+```
+look_hearts_daily_look_id_fkey
+    FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+look_hearts_daily_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
 ### public.messages
 
 ```
@@ -3302,6 +5287,60 @@ notes_vendor_id_fkey
 ```
 owner_notes_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.partner_answers
+
+```
+partner_answers_interest_id_fkey
+    FOREIGN KEY (interest_id) REFERENCES collab_interest(id) ON DELETE SET NULL
+partner_answers_send_id_fkey
+    FOREIGN KEY (send_id) REFERENCES partner_sends(id) ON DELETE CASCADE
+```
+
+### public.partner_connections
+
+```
+partner_connections_partner_id_fkey
+    FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+partner_connections_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.partner_members
+
+```
+partner_members_added_by_fkey
+    FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
+partner_members_partner_id_fkey
+    FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+partner_members_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+```
+
+### public.partner_reports
+
+```
+partner_reports_partner_id_fkey
+    FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+partner_reports_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.partner_send_log
+
+```
+partner_send_log_send_id_fkey
+    FOREIGN KEY (send_id) REFERENCES partner_sends(id) ON DELETE CASCADE
+```
+
+### public.partner_sends
+
+```
+partner_sends_partner_id_fkey
+    FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+partner_sends_post_id_fkey
+    FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
 ```
 
 ### public.payment_reminder_settings
@@ -3356,6 +5395,13 @@ pending_lead_pings_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
+### public.pending_money_acts
+
+```
+pending_money_acts_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
 ### public.referral_alerts
 
 ```
@@ -3387,6 +5433,48 @@ search_console_daily_vendor_id_fkey
 
 ```
 search_console_queries_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.shop_items
+
+```
+shop_items_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+shop_items_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.shop_orders
+
+```
+shop_orders_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+shop_orders_item_id_fkey
+    FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
+shop_orders_lead_id_fkey
+    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+shop_orders_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.shop_vouchers
+
+```
+shop_vouchers_item_id_fkey
+    FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
+shop_vouchers_order_id_fkey
+    FOREIGN KEY (order_id) REFERENCES shop_orders(id) ON DELETE CASCADE
+shop_vouchers_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.site_visits_daily
+
+```
+site_visits_daily_look_id_fkey
+    FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+site_visits_daily_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
@@ -3457,10 +5545,58 @@ vendor_activity_log_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
+### public.vendor_ad_connections
+
+```
+vendor_ad_connections_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_ads
+
+```
+vendor_ads_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_collection_looks
+
+```
+vendor_collection_looks_collection_id_fkey
+    FOREIGN KEY (collection_id) REFERENCES vendor_collections(id) ON DELETE CASCADE
+vendor_collection_looks_look_id_fkey
+    FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+```
+
+### public.vendor_collections
+
+```
+vendor_collections_cover_photo_id_fkey
+    FOREIGN KEY (cover_photo_id) REFERENCES vendor_look_photos(id) ON DELETE SET NULL
+vendor_collections_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
 ### public.vendor_discover_requests
 
 ```
 vendor_discover_requests_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_domains
+
+```
+vendor_domains_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_feature_choices
+
+```
+vendor_feature_choices_feature_key_fkey
+    FOREIGN KEY (feature_key) REFERENCES capabilities(key)
+vendor_feature_choices_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
@@ -3470,6 +5606,13 @@ vendor_discover_requests_vendor_id_fkey
 vendor_featured_submissions_hero_image_id_fkey
     FOREIGN KEY (hero_image_id) REFERENCES vendor_portfolio(id) ON DELETE SET NULL
 vendor_featured_submissions_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_first_builds
+
+```
+vendor_first_builds_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
@@ -3487,10 +5630,86 @@ vendor_ig_connections_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
+### public.vendor_insurance_settings
+
+```
+vendor_insurance_settings_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_look_photos
+
+```
+vendor_look_photos_look_id_fkey
+    FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+vendor_look_photos_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_looks
+
+```
+vendor_looks_package_id_fkey
+    FOREIGN KEY (package_id) REFERENCES vendor_packages(id) ON DELETE SET NULL
+vendor_looks_share_photo_fk
+    FOREIGN KEY (share_photo_id) REFERENCES vendor_look_photos(id) ON DELETE SET NULL
+vendor_looks_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
 ### public.vendor_packages
 
 ```
 vendor_packages_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_pay_accounts
+
+```
+vendor_pay_accounts_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_pay_event_answers
+
+```
+vendor_pay_event_answers_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES vendor_pay_events(id) ON DELETE CASCADE
+```
+
+### public.vendor_pay_events
+
+```
+vendor_pay_events_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_pay_links
+
+```
+vendor_pay_links_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_pay_oauth_states
+
+```
+vendor_pay_oauth_states_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_pay_settings
+
+```
+vendor_pay_settings_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_policies
+
+```
+vendor_policies_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
@@ -3517,10 +5736,86 @@ vendor_seal_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
+### public.vendor_site_drafts
+
+```
+vendor_site_drafts_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_site_faq
+
+```
+vendor_site_faq_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_site_pages
+
+```
+vendor_site_pages_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_site_sections
+
+```
+vendor_site_sections_page_id_fkey
+    FOREIGN KEY (page_id) REFERENCES vendor_site_pages(id) ON DELETE CASCADE
+vendor_site_sections_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_sites
+
+```
+vendor_sites_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
 ### public.vendor_state
 
 ```
 vendor_state_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_stories
+
+```
+vendor_stories_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_testimonial_requests
+
+```
+vendor_testimonial_requests_client_id_fkey
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+vendor_testimonial_requests_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_testimonials
+
+```
+vendor_testimonials_request_id_fkey
+    FOREIGN KEY (request_id) REFERENCES vendor_testimonial_requests(id) ON DELETE SET NULL
+vendor_testimonials_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_wa_events
+
+```
+vendor_wa_events_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
+### public.vendor_wabas
+
+```
+vendor_wabas_vendor_id_fkey
     FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
@@ -3529,6 +5824,15 @@ vendor_state_vendor_id_fkey
 ```
 vendors_user_id_fkey
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+```
+
+### public.website_chat_tokens
+
+```
+website_chat_tokens_conversation_id_fkey
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+website_chat_tokens_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 ```
 
 ### public.wedding_credits
@@ -3560,7 +5864,7 @@ weddings_owner_vendor_id_fkey
 
 ---
 
-## §3 — INDEXES  ·  359 indexes
+## §3 — INDEXES  ·  503 indexes
 
 ### public.admin_activity_log
 
@@ -3628,6 +5932,17 @@ idx_assistance_requests_status_created
     CREATE INDEX idx_assistance_requests_status_created ON public.assistance_requests USING btree (status, created_at DESC)
 uq_assistance_requests_notify_wamid
     CREATE UNIQUE INDEX uq_assistance_requests_notify_wamid ON public.assistance_requests USING btree (notify_wamid) WHERE (notify_wamid IS NOT NULL)
+```
+
+### public.bill_drafts
+
+```
+bill_drafts_pkey
+    CREATE UNIQUE INDEX bill_drafts_pkey ON public.bill_drafts USING btree (id)
+bill_drafts_unconfirmed_idx
+    CREATE INDEX bill_drafts_unconfirmed_idx ON public.bill_drafts USING btree (created_at) WHERE (confirmed_at IS NULL)
+bill_drafts_vendor_idx
+    CREATE INDEX bill_drafts_vendor_idx ON public.bill_drafts USING btree (vendor_id, created_at DESC)
 ```
 
 ### public.billing_events
@@ -3766,6 +6081,24 @@ clients_vendor_phone_unique
     CREATE UNIQUE INDEX clients_vendor_phone_unique ON public.clients USING btree (vendor_id, phone) WHERE ((phone IS NOT NULL) AND (deleted_at IS NULL))
 ```
 
+### public.collab_house_tokens
+
+```
+collab_house_tokens_pkey
+    CREATE UNIQUE INDEX collab_house_tokens_pkey ON public.collab_house_tokens USING btree (platform)
+```
+
+### public.collab_interest
+
+```
+collab_interest_partner_once
+    CREATE UNIQUE INDEX collab_interest_partner_once ON public.collab_interest USING btree (send_id, lower(display_name)) WHERE (source = 'partner'::text)
+collab_interest_pkey
+    CREATE UNIQUE INDEX collab_interest_pkey ON public.collab_interest USING btree (id)
+collab_interest_post_idx
+    CREATE INDEX collab_interest_post_idx ON public.collab_interest USING btree (post_id, created_at DESC)
+```
+
 ### public.collab_post_items
 
 ```
@@ -3790,6 +6123,13 @@ collab_posts_vendor_id_idx
     CREATE INDEX collab_posts_vendor_id_idx ON public.collab_posts USING btree (vendor_id, created_at DESC)
 ```
 
+### public.collab_prospects
+
+```
+collab_prospects_pkey
+    CREATE UNIQUE INDEX collab_prospects_pkey ON public.collab_prospects USING btree (id)
+```
+
 ### public.collab_responses
 
 ```
@@ -3801,6 +6141,17 @@ collab_responses_post_id_responder_vendor_id_key
     CREATE UNIQUE INDEX collab_responses_post_id_responder_vendor_id_key ON public.collab_responses USING btree (post_id, responder_vendor_id)
 collab_responses_responder_idx
     CREATE INDEX collab_responses_responder_idx ON public.collab_responses USING btree (responder_vendor_id, created_at DESC)
+```
+
+### public.collab_shares
+
+```
+collab_shares_pkey
+    CREATE UNIQUE INDEX collab_shares_pkey ON public.collab_shares USING btree (id)
+collab_shares_post_id_account_platform_key
+    CREATE UNIQUE INDEX collab_shares_post_id_account_platform_key ON public.collab_shares USING btree (post_id, account, platform)
+collab_shares_state_idx
+    CREATE INDEX collab_shares_state_idx ON public.collab_shares USING btree (state, created_at DESC)
 ```
 
 ### public.contract_profiles
@@ -3872,6 +6223,8 @@ conversations_state_idx
     CREATE INDEX conversations_state_idx ON public.conversations USING btree (state)
 conversations_vendor_id_idx
     CREATE INDEX conversations_vendor_id_idx ON public.conversations USING btree (vendor_id)
+conversations_vendor_ig_thread_uidx
+    CREATE UNIQUE INDEX conversations_vendor_ig_thread_uidx ON public.conversations USING btree (vendor_id, counterparty_ig_id) WHERE ((kind = 'couple_thread'::text) AND (counterparty_ig_id IS NOT NULL))
 ```
 
 ### public.couple_ai_usage
@@ -4154,6 +6507,52 @@ failed_turns_state_idx
     CREATE INDEX failed_turns_state_idx ON public.failed_turns USING btree (state)
 ```
 
+### public.forward_recipients
+
+```
+forward_recipients_pkey
+    CREATE UNIQUE INDEX forward_recipients_pkey ON public.forward_recipients USING btree (id)
+forward_recipients_request_id_contact_id_key
+    CREATE UNIQUE INDEX forward_recipients_request_id_contact_id_key ON public.forward_recipients USING btree (request_id, contact_id)
+forward_recipients_token_hash_key
+    CREATE UNIQUE INDEX forward_recipients_token_hash_key ON public.forward_recipients USING btree (token_hash)
+```
+
+### public.forward_requests
+
+```
+forward_requests_created_idx
+    CREATE INDEX forward_requests_created_idx ON public.forward_requests USING btree (created_at DESC)
+forward_requests_outside_phone_idx
+    CREATE INDEX forward_requests_outside_phone_idx ON public.forward_requests USING btree (outside_phone) WHERE (outside_phone IS NOT NULL)
+forward_requests_pkey
+    CREATE UNIQUE INDEX forward_requests_pkey ON public.forward_requests USING btree (id)
+```
+
+### public.gear_items
+
+```
+gear_items_city_idx
+    CREATE INDEX gear_items_city_idx ON public.gear_items USING btree (lower(city), state)
+gear_items_pkey
+    CREATE UNIQUE INDEX gear_items_pkey ON public.gear_items USING btree (id)
+gear_items_vendor_idx
+    CREATE INDEX gear_items_vendor_idx ON public.gear_items USING btree (vendor_id, created_at DESC)
+```
+
+### public.gear_requests
+
+```
+gear_requests_borrower_idx
+    CREATE INDEX gear_requests_borrower_idx ON public.gear_requests USING btree (borrower_vendor_id, created_at DESC)
+gear_requests_item_idx
+    CREATE INDEX gear_requests_item_idx ON public.gear_requests USING btree (item_id, state, date_from)
+gear_requests_owner_idx
+    CREATE INDEX gear_requests_owner_idx ON public.gear_requests USING btree (owner_vendor_id, created_at DESC)
+gear_requests_pkey
+    CREATE UNIQUE INDEX gear_requests_pkey ON public.gear_requests USING btree (id)
+```
+
 ### public.hot_dates
 
 ```
@@ -4161,6 +6560,38 @@ hot_dates_pkey
     CREATE UNIQUE INDEX hot_dates_pkey ON public.hot_dates USING btree (id)
 idx_hot_dates_date
     CREATE INDEX idx_hot_dates_date ON public.hot_dates USING btree (date)
+```
+
+### public.hub_credits
+
+```
+hub_credits_call_once
+    CREATE UNIQUE INDEX hub_credits_call_once ON public.hub_credits USING btree (call_id, person_profile_id) WHERE (call_id IS NOT NULL)
+hub_credits_giver_idx
+    CREATE INDEX hub_credits_giver_idx ON public.hub_credits USING btree (giver_profile_id, state, offered_at DESC)
+hub_credits_person_idx
+    CREATE INDEX hub_credits_person_idx ON public.hub_credits USING btree (person_profile_id, state)
+hub_credits_pkey
+    CREATE UNIQUE INDEX hub_credits_pkey ON public.hub_credits USING btree (id)
+hub_credits_shoot_once
+    CREATE UNIQUE INDEX hub_credits_shoot_once ON public.hub_credits USING btree (giver_profile_id, person_profile_id, lower(shoot_name), month) WHERE (call_id IS NULL)
+```
+
+### public.hub_profiles
+
+```
+hub_profiles_city_idx
+    CREATE INDEX hub_profiles_city_idx ON public.hub_profiles USING btree (lower(city))
+hub_profiles_handle_once
+    CREATE UNIQUE INDEX hub_profiles_handle_once ON public.hub_profiles USING btree (lower(handle))
+hub_profiles_org_id_key
+    CREATE UNIQUE INDEX hub_profiles_org_id_key ON public.hub_profiles USING btree (org_id)
+hub_profiles_pkey
+    CREATE UNIQUE INDEX hub_profiles_pkey ON public.hub_profiles USING btree (id)
+hub_profiles_user_id_key
+    CREATE UNIQUE INDEX hub_profiles_user_id_key ON public.hub_profiles USING btree (user_id)
+hub_profiles_vendor_id_key
+    CREATE UNIQUE INDEX hub_profiles_vendor_id_key ON public.hub_profiles USING btree (vendor_id)
 ```
 
 ### public.image_throttle_log
@@ -4245,6 +6676,17 @@ uq_invoices_lead_package
     CREATE UNIQUE INDEX uq_invoices_lead_package ON public.invoices USING btree (lead_package_id) WHERE ((lead_package_id IS NOT NULL) AND (deleted_at IS NULL))
 ```
 
+### public.issued_papers
+
+```
+issued_papers_check_code_key
+    CREATE UNIQUE INDEX issued_papers_check_code_key ON public.issued_papers USING btree (check_code)
+issued_papers_pkey
+    CREATE UNIQUE INDEX issued_papers_pkey ON public.issued_papers USING btree (id)
+issued_papers_vendor_idx
+    CREATE INDEX issued_papers_vendor_idx ON public.issued_papers USING btree (vendor_id, issued_at DESC)
+```
+
 ### public.landing_slides
 
 ```
@@ -4310,10 +6752,19 @@ leads_state_idx
     CREATE INDEX leads_state_idx ON public.leads USING btree (state)
 leads_vendor_id_idx
     CREATE INDEX leads_vendor_id_idx ON public.leads USING btree (vendor_id)
+leads_vendor_ig_uidx
+    CREATE UNIQUE INDEX leads_vendor_ig_uidx ON public.leads USING btree (vendor_id, counterparty_ig_id) WHERE (counterparty_ig_id IS NOT NULL)
 leads_wedding_date_idx
     CREATE INDEX leads_wedding_date_idx ON public.leads USING btree (wedding_date)
 uq_leads_binder_id
     CREATE UNIQUE INDEX uq_leads_binder_id ON public.leads USING btree (binder_id) WHERE (binder_id IS NOT NULL)
+```
+
+### public.look_hearts_daily
+
+```
+look_hearts_daily_pkey
+    CREATE UNIQUE INDEX look_hearts_daily_pkey ON public.look_hearts_daily USING btree (look_id, day)
 ```
 
 ### public.messages
@@ -4405,6 +6856,84 @@ owner_notes_vendor_recent_idx
     CREATE INDEX owner_notes_vendor_recent_idx ON public.owner_notes USING btree (vendor_id, created_at DESC)
 ```
 
+### public.partner_answers
+
+```
+partner_answers_pkey
+    CREATE UNIQUE INDEX partner_answers_pkey ON public.partner_answers USING btree (id)
+partner_answers_send_idx
+    CREATE INDEX partner_answers_send_idx ON public.partner_answers USING btree (send_id)
+```
+
+### public.partner_connections
+
+```
+partner_connections_partner_id_ref_id_key
+    CREATE UNIQUE INDEX partner_connections_partner_id_ref_id_key ON public.partner_connections USING btree (partner_id, ref_id)
+partner_connections_pkey
+    CREATE UNIQUE INDEX partner_connections_pkey ON public.partner_connections USING btree (id)
+```
+
+### public.partner_contacts
+
+```
+partner_contacts_pkey
+    CREATE UNIQUE INDEX partner_contacts_pkey ON public.partner_contacts USING btree (id)
+```
+
+### public.partner_members
+
+```
+partner_members_pkey
+    CREATE UNIQUE INDEX partner_members_pkey ON public.partner_members USING btree (partner_id, user_id)
+partner_members_user_idx
+    CREATE INDEX partner_members_user_idx ON public.partner_members USING btree (user_id)
+```
+
+### public.partner_orgs
+
+```
+partner_orgs_check_idx
+    CREATE INDEX partner_orgs_check_idx ON public.partner_orgs USING btree (check_state, created_at DESC)
+partner_orgs_handle_uq
+    CREATE UNIQUE INDEX partner_orgs_handle_uq ON public.partner_orgs USING btree (lower(instagram_handle))
+partner_orgs_pkey
+    CREATE UNIQUE INDEX partner_orgs_pkey ON public.partner_orgs USING btree (id)
+```
+
+### public.partner_reports
+
+```
+partner_reports_partner_idx
+    CREATE INDEX partner_reports_partner_idx ON public.partner_reports USING btree (partner_id, created_at DESC)
+partner_reports_pkey
+    CREATE UNIQUE INDEX partner_reports_pkey ON public.partner_reports USING btree (id)
+```
+
+### public.partner_send_log
+
+```
+partner_send_log_pkey
+    CREATE UNIQUE INDEX partner_send_log_pkey ON public.partner_send_log USING btree (id)
+partner_send_log_send_idx
+    CREATE INDEX partner_send_log_send_idx ON public.partner_send_log USING btree (send_id, at DESC)
+```
+
+### public.partner_sends
+
+```
+partner_sends_due_idx
+    CREATE INDEX partner_sends_due_idx ON public.partner_sends USING btree (state, not_before)
+partner_sends_partner_id_post_id_channel_key
+    CREATE UNIQUE INDEX partner_sends_partner_id_post_id_channel_key ON public.partner_sends USING btree (partner_id, post_id, channel)
+partner_sends_partner_idx
+    CREATE INDEX partner_sends_partner_idx ON public.partner_sends USING btree (partner_id, created_at DESC)
+partner_sends_pkey
+    CREATE UNIQUE INDEX partner_sends_pkey ON public.partner_sends USING btree (id)
+partner_sends_token_hash_key
+    CREATE UNIQUE INDEX partner_sends_token_hash_key ON public.partner_sends USING btree (token_hash)
+```
+
 ### public.payment_reminder_settings
 
 ```
@@ -4471,6 +7000,15 @@ pending_lead_pings_pkey
     CREATE UNIQUE INDEX pending_lead_pings_pkey ON public.pending_lead_pings USING btree (id)
 ```
 
+### public.pending_money_acts
+
+```
+pending_money_acts_pkey
+    CREATE UNIQUE INDEX pending_money_acts_pkey ON public.pending_money_acts USING btree (id)
+uq_pending_money_acts_vendor_open
+    CREATE UNIQUE INDEX uq_pending_money_acts_vendor_open ON public.pending_money_acts USING btree (vendor_id) WHERE (resolved_at IS NULL)
+```
+
 ### public.prospects
 
 ```
@@ -4526,6 +7064,62 @@ search_console_daily_pkey
 ```
 search_console_queries_pkey
     CREATE UNIQUE INDEX search_console_queries_pkey ON public.search_console_queries USING btree (vendor_id, window_end, query)
+```
+
+### public.shop_items
+
+```
+shop_items_pkey
+    CREATE UNIQUE INDEX shop_items_pkey ON public.shop_items USING btree (id)
+shop_items_slug_uidx
+    CREATE UNIQUE INDEX shop_items_slug_uidx ON public.shop_items USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)
+shop_items_vendor_idx
+    CREATE INDEX shop_items_vendor_idx ON public.shop_items USING btree (vendor_id, "position") WHERE (deleted_at IS NULL)
+```
+
+### public.shop_orders
+
+```
+shop_orders_item_idx
+    CREATE INDEX shop_orders_item_idx ON public.shop_orders USING btree (item_id, state)
+shop_orders_pkey
+    CREATE UNIQUE INDEX shop_orders_pkey ON public.shop_orders USING btree (id)
+shop_orders_vendor_idx
+    CREATE INDEX shop_orders_vendor_idx ON public.shop_orders USING btree (vendor_id, created_at DESC)
+```
+
+### public.shop_vouchers
+
+```
+shop_vouchers_code_uidx
+    CREATE UNIQUE INDEX shop_vouchers_code_uidx ON public.shop_vouchers USING btree (vendor_id, code)
+shop_vouchers_order_uidx
+    CREATE UNIQUE INDEX shop_vouchers_order_uidx ON public.shop_vouchers USING btree (order_id)
+shop_vouchers_pkey
+    CREATE UNIQUE INDEX shop_vouchers_pkey ON public.shop_vouchers USING btree (id)
+```
+
+### public.site_visit_salt
+
+```
+site_visit_salt_pkey
+    CREATE UNIQUE INDEX site_visit_salt_pkey ON public.site_visit_salt USING btree (day)
+```
+
+### public.site_visit_seen
+
+```
+site_visit_seen_pkey
+    CREATE UNIQUE INDEX site_visit_seen_pkey ON public.site_visit_seen USING btree (day, digest)
+```
+
+### public.site_visits_daily
+
+```
+site_visits_daily_pkey
+    CREATE UNIQUE INDEX site_visits_daily_pkey ON public.site_visits_daily USING btree (id)
+site_visits_daily_uidx
+    CREATE UNIQUE INDEX site_visits_daily_uidx ON public.site_visits_daily USING btree (vendor_id, day, page, COALESCE(look_id, '00000000-0000-0000-0000-000000000000'::uuid), source)
 ```
 
 ### public.spotlight
@@ -4619,6 +7213,42 @@ vendor_activity_log_vendor_recent_idx
     CREATE INDEX vendor_activity_log_vendor_recent_idx ON public.vendor_activity_log USING btree (vendor_id, created_at DESC)
 ```
 
+### public.vendor_ad_connections
+
+```
+vendor_ad_connections_pkey
+    CREATE UNIQUE INDEX vendor_ad_connections_pkey ON public.vendor_ad_connections USING btree (id)
+vendor_ad_connections_vendor_id_key
+    CREATE UNIQUE INDEX vendor_ad_connections_vendor_id_key ON public.vendor_ad_connections USING btree (vendor_id)
+```
+
+### public.vendor_ads
+
+```
+vendor_ads_ad_id_key
+    CREATE UNIQUE INDEX vendor_ads_ad_id_key ON public.vendor_ads USING btree (ad_id)
+vendor_ads_pkey
+    CREATE UNIQUE INDEX vendor_ads_pkey ON public.vendor_ads USING btree (id)
+vendor_ads_vendor_created_idx
+    CREATE INDEX vendor_ads_vendor_created_idx ON public.vendor_ads USING btree (vendor_id, created_at DESC)
+```
+
+### public.vendor_collection_looks
+
+```
+vendor_collection_looks_pkey
+    CREATE UNIQUE INDEX vendor_collection_looks_pkey ON public.vendor_collection_looks USING btree (collection_id, look_id)
+```
+
+### public.vendor_collections
+
+```
+vendor_collections_pkey
+    CREATE UNIQUE INDEX vendor_collections_pkey ON public.vendor_collections USING btree (id)
+vendor_collections_slug_uidx
+    CREATE UNIQUE INDEX vendor_collections_slug_uidx ON public.vendor_collections USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)
+```
+
 ### public.vendor_discover_requests
 
 ```
@@ -4630,6 +7260,32 @@ vendor_discover_requests_vendor_idx
     CREATE INDEX vendor_discover_requests_vendor_idx ON public.vendor_discover_requests USING btree (vendor_id, created_at DESC)
 ```
 
+### public.vendor_domains
+
+```
+vendor_domains_domain_key
+    CREATE UNIQUE INDEX vendor_domains_domain_key ON public.vendor_domains USING btree (domain)
+vendor_domains_pkey
+    CREATE UNIQUE INDEX vendor_domains_pkey ON public.vendor_domains USING btree (id)
+vendor_domains_razorpay_link_id_key
+    CREATE UNIQUE INDEX vendor_domains_razorpay_link_id_key ON public.vendor_domains USING btree (razorpay_link_id)
+vendor_domains_razorpay_payment_id_key
+    CREATE UNIQUE INDEX vendor_domains_razorpay_payment_id_key ON public.vendor_domains USING btree (razorpay_payment_id)
+vendor_domains_registrar_order_id_key
+    CREATE UNIQUE INDEX vendor_domains_registrar_order_id_key ON public.vendor_domains USING btree (registrar_order_id)
+vendor_domains_status_idx
+    CREATE INDEX vendor_domains_status_idx ON public.vendor_domains USING btree (status) WHERE (deleted_at IS NULL)
+vendor_domains_vendor_idx
+    CREATE INDEX vendor_domains_vendor_idx ON public.vendor_domains USING btree (vendor_id) WHERE (deleted_at IS NULL)
+```
+
+### public.vendor_feature_choices
+
+```
+vendor_feature_choices_pkey
+    CREATE UNIQUE INDEX vendor_feature_choices_pkey ON public.vendor_feature_choices USING btree (vendor_id, feature_key)
+```
+
 ### public.vendor_featured_submissions
 
 ```
@@ -4639,6 +7295,17 @@ vendor_featured_submissions_pkey
     CREATE UNIQUE INDEX vendor_featured_submissions_pkey ON public.vendor_featured_submissions USING btree (id)
 vendor_featured_submissions_vendor_idx
     CREATE INDEX vendor_featured_submissions_vendor_idx ON public.vendor_featured_submissions USING btree (vendor_id, created_at DESC)
+```
+
+### public.vendor_first_builds
+
+```
+vendor_first_builds_one_running
+    CREATE UNIQUE INDEX vendor_first_builds_one_running ON public.vendor_first_builds USING btree (vendor_id) WHERE (state = 'running'::text)
+vendor_first_builds_pkey
+    CREATE UNIQUE INDEX vendor_first_builds_pkey ON public.vendor_first_builds USING btree (id)
+vendor_first_builds_vendor
+    CREATE INDEX vendor_first_builds_vendor ON public.vendor_first_builds USING btree (vendor_id, started_at DESC)
 ```
 
 ### public.vendor_google_connections
@@ -4655,10 +7322,39 @@ vendor_google_connections_vendor_id_key
 ### public.vendor_ig_connections
 
 ```
+vendor_ig_connections_ig_account_id_uidx
+    CREATE UNIQUE INDEX vendor_ig_connections_ig_account_id_uidx ON public.vendor_ig_connections USING btree (ig_account_id) WHERE (ig_account_id IS NOT NULL)
 vendor_ig_connections_pkey
     CREATE UNIQUE INDEX vendor_ig_connections_pkey ON public.vendor_ig_connections USING btree (id)
 vendor_ig_connections_vendor_id_key
     CREATE UNIQUE INDEX vendor_ig_connections_vendor_id_key ON public.vendor_ig_connections USING btree (vendor_id)
+```
+
+### public.vendor_insurance_settings
+
+```
+vendor_insurance_settings_pkey
+    CREATE UNIQUE INDEX vendor_insurance_settings_pkey ON public.vendor_insurance_settings USING btree (vendor_id)
+```
+
+### public.vendor_look_photos
+
+```
+vendor_look_photos_look_idx
+    CREATE INDEX vendor_look_photos_look_idx ON public.vendor_look_photos USING btree (look_id, "position") WHERE (deleted_at IS NULL)
+vendor_look_photos_pkey
+    CREATE UNIQUE INDEX vendor_look_photos_pkey ON public.vendor_look_photos USING btree (id)
+```
+
+### public.vendor_looks
+
+```
+vendor_looks_pkey
+    CREATE UNIQUE INDEX vendor_looks_pkey ON public.vendor_looks USING btree (id)
+vendor_looks_published_idx
+    CREATE INDEX vendor_looks_published_idx ON public.vendor_looks USING btree (vendor_id, "position") WHERE ((status = 'published'::text) AND (deleted_at IS NULL))
+vendor_looks_slug_uidx
+    CREATE UNIQUE INDEX vendor_looks_slug_uidx ON public.vendor_looks USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)
 ```
 
 ### public.vendor_packages
@@ -4672,6 +7368,73 @@ vendor_packages_pkey
     CREATE UNIQUE INDEX vendor_packages_pkey ON public.vendor_packages USING btree (id)
 vendor_packages_vendor_idx
     CREATE INDEX vendor_packages_vendor_idx ON public.vendor_packages USING btree (vendor_id) WHERE (deleted_at IS NULL)
+```
+
+### public.vendor_pay_accounts
+
+```
+vendor_pay_accounts_one_live
+    CREATE UNIQUE INDEX vendor_pay_accounts_one_live ON public.vendor_pay_accounts USING btree (vendor_id) WHERE (status <> 'revoked'::text)
+vendor_pay_accounts_pkey
+    CREATE UNIQUE INDEX vendor_pay_accounts_pkey ON public.vendor_pay_accounts USING btree (id)
+vendor_pay_accounts_provider_account
+    CREATE UNIQUE INDEX vendor_pay_accounts_provider_account ON public.vendor_pay_accounts USING btree (provider, account_id) WHERE (status <> 'revoked'::text)
+```
+
+### public.vendor_pay_event_answers
+
+```
+vendor_pay_event_answers_pkey
+    CREATE UNIQUE INDEX vendor_pay_event_answers_pkey ON public.vendor_pay_event_answers USING btree (event_id, round)
+```
+
+### public.vendor_pay_events
+
+```
+vendor_pay_events_binder_pending
+    CREATE INDEX vendor_pay_events_binder_pending ON public.vendor_pay_events USING btree (binder_id) WHERE (applied = false)
+vendor_pay_events_pkey
+    CREATE UNIQUE INDEX vendor_pay_events_pkey ON public.vendor_pay_events USING btree (id)
+vendor_pay_events_provider_provider_payment_id_kind_key
+    CREATE UNIQUE INDEX vendor_pay_events_provider_provider_payment_id_kind_key ON public.vendor_pay_events USING btree (provider, provider_payment_id, kind)
+vendor_pay_events_vendor_idx
+    CREATE INDEX vendor_pay_events_vendor_idx ON public.vendor_pay_events USING btree (vendor_id, at DESC)
+```
+
+### public.vendor_pay_links
+
+```
+vendor_pay_links_pkey
+    CREATE UNIQUE INDEX vendor_pay_links_pkey ON public.vendor_pay_links USING btree (id)
+vendor_pay_links_vendor_idx
+    CREATE INDEX vendor_pay_links_vendor_idx ON public.vendor_pay_links USING btree (vendor_id, created_at DESC)
+```
+
+### public.vendor_pay_oauth_states
+
+```
+vendor_pay_oauth_states_old
+    CREATE INDEX vendor_pay_oauth_states_old ON public.vendor_pay_oauth_states USING btree (expires_at)
+vendor_pay_oauth_states_pkey
+    CREATE UNIQUE INDEX vendor_pay_oauth_states_pkey ON public.vendor_pay_oauth_states USING btree (nonce)
+```
+
+### public.vendor_pay_settings
+
+```
+vendor_pay_settings_pkey
+    CREATE UNIQUE INDEX vendor_pay_settings_pkey ON public.vendor_pay_settings USING btree (vendor_id)
+```
+
+### public.vendor_policies
+
+```
+vendor_policies_ends_idx
+    CREATE INDEX vendor_policies_ends_idx ON public.vendor_policies USING btree (ends_on) WHERE ((deleted_at IS NULL) AND (confirmed_at IS NOT NULL))
+vendor_policies_pkey
+    CREATE UNIQUE INDEX vendor_policies_pkey ON public.vendor_policies USING btree (id)
+vendor_policies_vendor_idx
+    CREATE INDEX vendor_policies_vendor_idx ON public.vendor_policies USING btree (vendor_id) WHERE (deleted_at IS NULL)
 ```
 
 ### public.vendor_portfolio
@@ -4707,11 +7470,111 @@ vendor_seal_pkey
     CREATE UNIQUE INDEX vendor_seal_pkey ON public.vendor_seal USING btree (vendor_id)
 ```
 
+### public.vendor_site_drafts
+
+```
+vendor_site_drafts_pkey
+    CREATE UNIQUE INDEX vendor_site_drafts_pkey ON public.vendor_site_drafts USING btree (vendor_id)
+```
+
+### public.vendor_site_faq
+
+```
+vendor_site_faq_pkey
+    CREATE UNIQUE INDEX vendor_site_faq_pkey ON public.vendor_site_faq USING btree (id)
+vendor_site_faq_vendor_idx
+    CREATE INDEX vendor_site_faq_vendor_idx ON public.vendor_site_faq USING btree (vendor_id, "position") WHERE (deleted_at IS NULL)
+```
+
+### public.vendor_site_pages
+
+```
+vendor_site_pages_pkey
+    CREATE UNIQUE INDEX vendor_site_pages_pkey ON public.vendor_site_pages USING btree (id)
+vendor_site_pages_slug_uidx
+    CREATE UNIQUE INDEX vendor_site_pages_slug_uidx ON public.vendor_site_pages USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)
+```
+
+### public.vendor_site_sections
+
+```
+vendor_site_sections_home_key_uidx
+    CREATE UNIQUE INDEX vendor_site_sections_home_key_uidx ON public.vendor_site_sections USING btree (vendor_id, key) WHERE ((page_id IS NULL) AND (deleted_at IS NULL))
+vendor_site_sections_page_key_uidx
+    CREATE UNIQUE INDEX vendor_site_sections_page_key_uidx ON public.vendor_site_sections USING btree (page_id, key) WHERE ((page_id IS NOT NULL) AND (deleted_at IS NULL))
+vendor_site_sections_pkey
+    CREATE UNIQUE INDEX vendor_site_sections_pkey ON public.vendor_site_sections USING btree (id)
+```
+
+### public.vendor_sites
+
+```
+vendor_sites_pkey
+    CREATE UNIQUE INDEX vendor_sites_pkey ON public.vendor_sites USING btree (id)
+vendor_sites_vendor_id_key
+    CREATE UNIQUE INDEX vendor_sites_vendor_id_key ON public.vendor_sites USING btree (vendor_id)
+```
+
 ### public.vendor_state
 
 ```
 vendor_state_pkey
     CREATE UNIQUE INDEX vendor_state_pkey ON public.vendor_state USING btree (vendor_id)
+```
+
+### public.vendor_stories
+
+```
+vendor_stories_pkey
+    CREATE UNIQUE INDEX vendor_stories_pkey ON public.vendor_stories USING btree (id)
+vendor_stories_vendor_id_slug_key
+    CREATE UNIQUE INDEX vendor_stories_vendor_id_slug_key ON public.vendor_stories USING btree (vendor_id, slug)
+vendor_stories_vendor_idx
+    CREATE INDEX vendor_stories_vendor_idx ON public.vendor_stories USING btree (vendor_id) WHERE (deleted_at IS NULL)
+```
+
+### public.vendor_testimonial_requests
+
+```
+vendor_testimonial_requests_phone_sweep_idx
+    CREATE INDEX vendor_testimonial_requests_phone_sweep_idx ON public.vendor_testimonial_requests USING btree (expires_at) WHERE (phone IS NOT NULL)
+vendor_testimonial_requests_pkey
+    CREATE UNIQUE INDEX vendor_testimonial_requests_pkey ON public.vendor_testimonial_requests USING btree (id)
+vendor_testimonial_requests_token_hash_key
+    CREATE UNIQUE INDEX vendor_testimonial_requests_token_hash_key ON public.vendor_testimonial_requests USING btree (token_hash)
+vendor_testimonial_requests_vendor_idx
+    CREATE INDEX vendor_testimonial_requests_vendor_idx ON public.vendor_testimonial_requests USING btree (vendor_id, created_at DESC)
+```
+
+### public.vendor_testimonials
+
+```
+vendor_testimonials_pkey
+    CREATE UNIQUE INDEX vendor_testimonials_pkey ON public.vendor_testimonials USING btree (id)
+vendor_testimonials_vendor_idx
+    CREATE INDEX vendor_testimonials_vendor_idx ON public.vendor_testimonials USING btree (vendor_id) WHERE (deleted_at IS NULL)
+```
+
+### public.vendor_wa_events
+
+```
+vendor_wa_events_pkey
+    CREATE UNIQUE INDEX vendor_wa_events_pkey ON public.vendor_wa_events USING btree (id)
+vendor_wa_events_vendor_kind_idx
+    CREATE INDEX vendor_wa_events_vendor_kind_idx ON public.vendor_wa_events USING btree (vendor_id, kind, received_at)
+```
+
+### public.vendor_wabas
+
+```
+vendor_wabas_phone_number_id_key
+    CREATE UNIQUE INDEX vendor_wabas_phone_number_id_key ON public.vendor_wabas USING btree (phone_number_id)
+vendor_wabas_pkey
+    CREATE UNIQUE INDEX vendor_wabas_pkey ON public.vendor_wabas USING btree (id)
+vendor_wabas_vendor_id_key
+    CREATE UNIQUE INDEX vendor_wabas_vendor_id_key ON public.vendor_wabas USING btree (vendor_id)
+vendor_wabas_waba_id_key
+    CREATE UNIQUE INDEX vendor_wabas_waba_id_key ON public.vendor_wabas USING btree (waba_id)
 ```
 
 ### public.vendors
@@ -4742,6 +7605,15 @@ waitlist_signups_new_recent_idx
     CREATE INDEX waitlist_signups_new_recent_idx ON public.waitlist_signups USING btree (created_at DESC) WHERE (status = 'new'::text)
 waitlist_signups_pkey
     CREATE UNIQUE INDEX waitlist_signups_pkey ON public.waitlist_signups USING btree (id)
+```
+
+### public.website_chat_tokens
+
+```
+website_chat_tokens_expires_idx
+    CREATE INDEX website_chat_tokens_expires_idx ON public.website_chat_tokens USING btree (expires_at)
+website_chat_tokens_pkey
+    CREATE UNIQUE INDEX website_chat_tokens_pkey ON public.website_chat_tokens USING btree (token_hash)
 ```
 
 ### public.wedding_credits

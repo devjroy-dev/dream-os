@@ -1,4 +1,5 @@
 'use strict';
+const __docCols = (doc, t) => { const m = doc.match(new RegExp('## public\\.' + t + ' [^\\n]*\\n\\n```\\n([\\s\\S]*?)```')); return m ? m[1].split('\n').map((l) => (l.match(/^\d+\.\s+(\w+)\s/) || [])[1]).filter(Boolean) : []; };   // AMENDED BY LABEL, WEB-4 cut 29
 // scripts/b150_g64_remove_number_bench.js · CE-46 · G6-4 · THE ROOM FINISHED · RUNG b150 (dream-os half).
 // "Remove this number" as ruled 28 September 2026: F-a (a) Meta first, then the row; a refusal changes nothing and keeps the token;
 // 190, 404 or not-subscribed count as already gone. F-c the shared way's finish line until PARTNER_REMOVED. F-d reconnect in place.
@@ -125,7 +126,7 @@ const p252 = {
   ok(/ADD COLUMN IF NOT EXISTS removed_at timestamptz/.test(body) && /RAISE EXCEPTION/.test(body), '1.9 0182 adds removed_at and refuses the whole transaction unless exactly one status CHECK remains');
   ok(!/CREATE TABLE|DELETE FROM|DROP TABLE|DROP COLUMN/i.test(body), '1.10 0182 creates no table and drops or deletes nothing (the REVERT is commented)');
   const doc = read('docs/db/PUBLIC_SCHEMA.md');
-  ok(/0182/.test(doc) && /removed_at/.test(doc), '1.11 PUBLIC_SCHEMA.md\u2019s staleness note names 0182 and its column (e-107\u2019s lesson)');
+  /* AMENDED BY LABEL, CE-47 WEB-4 cut 29 (the PAIR regen, ladder 0220): the snapshot now CARRIES 0182's column */ ok(__docCols(doc, 'vendor_wabas').includes('removed_at'), '1.11 PUBLIC_SCHEMA.md carries 0182\u2019s column, vendor_wabas.removed_at (the staleness note retired by the regen)');
 
   // RE-PINNED BY LABEL · CE-46 F-44.252 (ruled 30 Sept 2026, (a) amended): the shared way no longer unsubscribes at Remove (that
   // silenced PARTNER_REMOVED); her sealed token is kept for the 7-day unsubscribe (§10). Was: one DELETE, token nulled.

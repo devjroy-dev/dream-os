@@ -1,4 +1,5 @@
 'use strict';
+const __docCols = (doc, t) => { const m = doc.match(new RegExp('## public\\.' + t + ' [^\\n]*\\n\\n```\\n([\\s\\S]*?)```')); return m ? m[1].split('\n').map((l) => (l.match(/^\d+\.\s+(\w+)\s/) || [])[1]).filter(Boolean) : []; };   // AMENDED BY LABEL, WEB-4 cut 29
 // scripts/b230_ce47_off_a1_shop_bench.js · CE-47 · OFF-A1 · THE OFF-SEASON SHOP'S RUNG.
 // Drives src/lib/shop/shop.js and gate.js against an in-memory double (scripts/lib/b230_fake_sb.js), reads 0204 and the wiring,
 // and runs production-code mutations in memory (Module._compile on a mutated copy of shop.js; no file is ever written).
@@ -100,7 +101,7 @@ async function suite(S, label) {
   ok(() => /events_kind_check[\s\S]*'other', 'shop'\]/.test(code), "1.3 events.kind widened by 'shop' (fork (a))");
   ok(() => /\('flag\.off_shop', 'flag', 'off'\)/.test(code) && (code.match(/INSERT INTO/g) || []).length === 1 && !/\bUPDATE public\.|\bDELETE FROM\b/.test(code), "1.4 flag.off_shop seeded 'off'; no existing row written");
   ok(() => code.includes(`code ~ '^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$'`) && S.CODE_RE.source === '^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$', '1.5 the code CHECK and the library pattern are the same bytes');
-  ok(() => { const o = JSON.parse(read('db/migrations/OUT_OF_ORDER.json')); return o.register.some((r) => r.number === 204); }, '1.6 the out-of-order register carries 0204 (it lands below 0212 and 0214)');
+  /* AMENDED BY LABEL, CE-47 WEB-4 cut 29: 0204's record was PAID by the PAIR regen of 8 October 2026 (ladder 0220) and removed, as ruled */ ok(() => { const o = JSON.parse(read('db/migrations/OUT_OF_ORDER.json')); const d = read('docs/db/PUBLIC_SCHEMA.md'); return !o.register.some((r) => r.number === 204) && ['shop_items', 'shop_orders', 'shop_vouchers'].every((t) => __docCols(d, t).length > 0); }, '1.6 0204 is paid: its record removed by the regen; the snapshot carries shop_items, shop_orders and shop_vouchers');
 
   sec('2  an item, field by field');
   const c = (b) => S.checkItem(b, NOW);

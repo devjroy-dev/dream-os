@@ -1,4 +1,5 @@
 'use strict';
+const __docCols = (doc, t) => { const m = doc.match(new RegExp('## public\\.' + t + ' [^\\n]*\\n\\n```\\n([\\s\\S]*?)```')); return m ? m[1].split('\n').map((l) => (l.match(/^\d+\.\s+(\w+)\s/) || [])[1]).filter(Boolean) : []; };   // AMENDED BY LABEL, WEB-4 cut 29
 // scripts/b141_g63_business_token_bench.js · CE-46 · G6-3 · CUT THREE · RUNG b141.
 // (a) F-44.224, the token cure (ruled 28 September 2026: F-a1 (a) tokenVault, F-a2 (c) no expiry column, F-a3 (a) re-exchange in
 //     place, F-a4 null on GONE, F-a5 T-c removed and the token masked). (b) F-44.196's vendor limb (F-b1).
@@ -155,7 +156,7 @@ async function runConnect(db, { vaultApi, fetchCalls = [] } = {}) {
     ok(R.r.outcome === 'sent' && R.ensured.length === 1 && R.turns.length === 1, '6.3 THE CONTROL: a returning bride (a users row, no vendors row) keeps her turn; couples remain couples'); }
 
   sec('7  the migration\u2019s witness and the schema note');
-  ok(/0180/.test(read('docs/db/PUBLIC_SCHEMA.md')) && /business_token/.test(read('docs/db/PUBLIC_SCHEMA.md')), '7.1 PUBLIC_SCHEMA.md\u2019s staleness note names 0180 and its column (e-107\u2019s lesson)');
+  /* AMENDED BY LABEL, CE-47 WEB-4 cut 29 (the PAIR regen, ladder 0220): the snapshot now CARRIES 0180's column */ ok(__docCols(read('docs/db/PUBLIC_SCHEMA.md'), 'vendor_wabas').includes('business_token'), '7.1 PUBLIC_SCHEMA.md carries 0180\u2019s column, vendor_wabas.business_token (the staleness note retired by the regen)');
 
   sec('8  mutations of production code (each must turn its cell red; restored byte for byte)');
   const mutate = async (rel, pairs, probe) => {

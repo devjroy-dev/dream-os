@@ -1,0 +1,252 @@
+rows_expected,table_name,constraint_name,definition
+251,assistance_forwards,assistance_forwards_item_id_fkey,FOREIGN KEY (item_id) REFERENCES assistance_request_items(id) ON DELETE CASCADE
+251,assistance_forwards,assistance_forwards_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,assistance_forwards,assistance_forwards_prospect_id_fkey,FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE SET NULL
+251,assistance_forwards,assistance_forwards_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,assistance_found_notices,assistance_found_notices_forward_id_fkey,FOREIGN KEY (forward_id) REFERENCES assistance_forwards(id) ON DELETE CASCADE
+251,assistance_request_items,assistance_request_items_request_id_fkey,FOREIGN KEY (request_id) REFERENCES assistance_requests(id) ON DELETE CASCADE
+251,assistance_requests,assistance_requests_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE SET NULL
+251,bill_drafts,bill_drafts_expense_id_fkey,FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE SET NULL
+251,bill_drafts,bill_drafts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,billing_events,billing_events_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,bride_pages,bride_pages_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,bride_pages,bride_pages_user_id_fkey,FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+251,broadcast_recipients,broadcast_recipients_broadcast_id_fkey,FOREIGN KEY (broadcast_id) REFERENCES broadcasts(id) ON DELETE CASCADE
+251,broadcast_recipients,broadcast_recipients_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,broadcasts,broadcasts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,budget_envelopes,budget_envelopes_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,circle_activity,circle_activity_actor_user_id_fkey,FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+251,circle_activity,circle_activity_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,circle_activity,circle_activity_session_id_fkey,FOREIGN KEY (session_id) REFERENCES circle_sessions(id) ON DELETE SET NULL
+251,circle_members,circle_members_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,circle_poll_votes,circle_poll_votes_poll_id_fkey,FOREIGN KEY (poll_id) REFERENCES circle_polls(id) ON DELETE CASCADE
+251,circle_poll_votes,circle_poll_votes_voter_user_id_fkey,FOREIGN KEY (voter_user_id) REFERENCES users(id) ON DELETE CASCADE
+251,circle_polls,circle_polls_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,circle_polls,circle_polls_created_by_user_id_fkey,FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+251,circle_polls,circle_polls_linked_event_id_fkey,FOREIGN KEY (linked_event_id) REFERENCES events(id) ON DELETE SET NULL
+251,circle_polls,circle_polls_thread_id_fkey,FOREIGN KEY (thread_id) REFERENCES conversations(id) ON DELETE SET NULL
+251,circle_sessions,circle_sessions_circle_member_id_fkey,FOREIGN KEY (circle_member_id) REFERENCES circle_members(id) ON DELETE CASCADE
+251,circle_sessions,circle_sessions_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,circle_sessions,circle_sessions_summary_message_id_fk,FOREIGN KEY (summary_message_id) REFERENCES messages(id) ON DELETE SET NULL
+251,clients,clients_user_id_fkey,FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+251,clients,clients_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,collab_interest,collab_interest_partner_fk,FOREIGN KEY (partner_id) REFERENCES partner_orgs(id)
+251,collab_interest,collab_interest_post_id_fkey,FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+251,collab_interest,collab_interest_share_id_fkey,FOREIGN KEY (share_id) REFERENCES collab_shares(id) ON DELETE SET NULL
+251,collab_interest,collab_interest_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,collab_post_items,collab_post_items_filled_by_response_id_fkey,FOREIGN KEY (filled_by_response_id) REFERENCES collab_responses(id) ON DELETE SET NULL
+251,collab_post_items,collab_post_items_post_id_fkey,FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+251,collab_posts,collab_posts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,collab_responses,collab_responses_item_id_fkey,FOREIGN KEY (item_id) REFERENCES collab_post_items(id) ON DELETE SET NULL
+251,collab_responses,collab_responses_post_id_fkey,FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+251,collab_responses,collab_responses_responder_vendor_id_fkey,FOREIGN KEY (responder_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,collab_shares,collab_shares_post_id_fkey,FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+251,collab_shares,collab_shares_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,contract_profiles,contract_profiles_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,contract_sends,contract_sends_contract_id_fkey,FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE
+251,contract_sends,contract_sends_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,contract_signatures,contract_signatures_contract_id_fkey,FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE
+251,contract_signatures,contract_signatures_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,contracts,contracts_client_id_fkey,FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+251,contracts,contracts_event_id_fkey,FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+251,contracts,contracts_invoice_id_fkey,FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
+251,contracts,contracts_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,contracts,contracts_lead_package_id_fkey,FOREIGN KEY (lead_package_id) REFERENCES lead_packages(id) ON DELETE SET NULL
+251,contracts,contracts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,conversations,conversations_counterparty_user_id_fkey,FOREIGN KEY (counterparty_user_id) REFERENCES users(id) ON DELETE CASCADE
+251,conversations,conversations_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,conversations,conversations_prospect_id_fkey,FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
+251,conversations,conversations_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,couple_ai_usage,couple_ai_usage_circle_member_id_fkey,FOREIGN KEY (circle_member_id) REFERENCES circle_members(id) ON DELETE SET NULL
+251,couple_ai_usage,couple_ai_usage_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,couple_bookings,couple_bookings_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,couple_bookings,couple_bookings_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,couple_enquiries,couple_enquiries_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,couple_enquiries,couple_enquiries_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,couple_receipts,couple_receipts_booking_id_fkey,FOREIGN KEY (booking_id) REFERENCES couple_bookings(id) ON DELETE SET NULL
+251,couple_receipts,couple_receipts_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,couple_receipts,couple_receipts_envelope_id_fkey,FOREIGN KEY (envelope_id) REFERENCES budget_envelopes(id) ON DELETE SET NULL
+251,couple_state,couple_state_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,couple_tasks,couple_tasks_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,couples,couples_user_id_fkey,FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+251,couture_appointments,couture_appointments_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE SET NULL
+251,couture_appointments,couture_appointments_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,couture_availability,couture_availability_booked_by_appointment_id_fkey,FOREIGN KEY (booked_by_appointment_id) REFERENCES couture_appointments(id) ON DELETE SET NULL
+251,couture_availability,couture_availability_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,crew_confirmations,crew_confirmations_event_id_fkey,FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+251,crew_confirmations,crew_confirmations_member_id_fkey,FOREIGN KEY (member_id) REFERENCES team_members(id) ON DELETE CASCADE
+251,date_checks,date_checks_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,demo_leads,demo_leads_demo_vendor_id_fkey,FOREIGN KEY (demo_vendor_id) REFERENCES demo_vendors(id) ON DELETE CASCADE
+251,engagements,engagements_couple_booking_id_fkey,FOREIGN KEY (couple_booking_id) REFERENCES couple_bookings(id) ON DELETE SET NULL
+251,engagements,engagements_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,engagements,engagements_enquiry_id_fkey,FOREIGN KEY (enquiry_id) REFERENCES couple_enquiries(id) ON DELETE SET NULL
+251,engagements,engagements_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,engagements,engagements_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,events,events_assigned_circle_member_id_fkey,FOREIGN KEY (assigned_circle_member_id) REFERENCES circle_members(id) ON DELETE SET NULL
+251,events,events_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,events,events_linked_lead_id_fkey,FOREIGN KEY (linked_lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,events,events_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,exchange_requests,exchange_requests_influencer_vendor_id_fkey,FOREIGN KEY (influencer_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,exchange_requests,exchange_requests_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,expenses,expenses_linked_lead_id_fkey,FOREIGN KEY (linked_lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,expenses,expenses_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,forward_recipients,forward_recipients_contact_id_fkey,FOREIGN KEY (contact_id) REFERENCES partner_contacts(id) ON DELETE CASCADE
+251,forward_recipients,forward_recipients_request_id_fkey,FOREIGN KEY (request_id) REFERENCES forward_requests(id) ON DELETE CASCADE
+251,forward_requests,forward_requests_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,gear_items,gear_items_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,gear_requests,gear_requests_borrower_vendor_id_fkey,FOREIGN KEY (borrower_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,gear_requests,gear_requests_item_id_fkey,FOREIGN KEY (item_id) REFERENCES gear_items(id) ON DELETE CASCADE
+251,gear_requests,gear_requests_owner_vendor_id_fkey,FOREIGN KEY (owner_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,hub_credits,hub_credits_call_id_fkey,FOREIGN KEY (call_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+251,hub_credits,hub_credits_giver_profile_id_fkey,FOREIGN KEY (giver_profile_id) REFERENCES hub_profiles(id) ON DELETE CASCADE
+251,hub_credits,hub_credits_person_profile_id_fkey,FOREIGN KEY (person_profile_id) REFERENCES hub_profiles(id) ON DELETE CASCADE
+251,hub_credits,hub_credits_taken_back_by_fkey,FOREIGN KEY (taken_back_by) REFERENCES hub_profiles(id) ON DELETE SET NULL
+251,hub_profiles,hub_profiles_org_id_fkey,FOREIGN KEY (org_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+251,hub_profiles,hub_profiles_user_id_fkey,FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+251,hub_profiles,hub_profiles_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,influencer_reach_snapshots,influencer_reach_snapshots_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,instagram_briefs,instagram_briefs_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,introductions,introductions_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,invite_codes,invite_codes_consumed_by_user_id_fkey,FOREIGN KEY (consumed_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+251,invoices,invoices_client_id_fkey,FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+251,invoices,invoices_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,invoices,invoices_lead_package_id_fkey,FOREIGN KEY (lead_package_id) REFERENCES lead_packages(id) ON DELETE SET NULL
+251,invoices,invoices_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,issued_papers,issued_papers_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,lead_alerts,lead_alerts_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,lead_alerts,lead_alerts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,lead_packages,lead_packages_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
+251,lead_packages,lead_packages_package_id_fkey,FOREIGN KEY (package_id) REFERENCES vendor_packages(id) ON DELETE SET NULL
+251,lead_packages,lead_packages_quote_draft_id_fkey,FOREIGN KEY (quote_draft_id) REFERENCES pending_couple_drafts(id) ON DELETE SET NULL
+251,lead_packages,lead_packages_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,lead_referrals,lead_referrals_from_vendor_id_fkey,FOREIGN KEY (from_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,lead_referrals,lead_referrals_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,lead_referrals,lead_referrals_new_lead_id_fkey,FOREIGN KEY (new_lead_id) REFERENCES leads(id) ON DELETE CASCADE
+251,lead_referrals,lead_referrals_to_vendor_id_fkey,FOREIGN KEY (to_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,leads,leads_client_id_fkey,FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+251,leads,leads_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,leads,leads_wedding_id_fkey,FOREIGN KEY (wedding_id) REFERENCES weddings(id) ON DELETE SET NULL
+251,look_hearts_daily,look_hearts_daily_look_id_fkey,FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+251,look_hearts_daily,look_hearts_daily_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,messages,messages_conversation_id_fkey,FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+251,muse_saves,muse_saves_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,muse_saves,muse_saves_saved_by_user_id_fkey,FOREIGN KEY (saved_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+251,muse_saves,muse_saves_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,notes,notes_conversation_id_fkey,FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+251,notes,notes_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,notes,notes_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,owner_notes,owner_notes_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,partner_answers,partner_answers_interest_id_fkey,FOREIGN KEY (interest_id) REFERENCES collab_interest(id) ON DELETE SET NULL
+251,partner_answers,partner_answers_send_id_fkey,FOREIGN KEY (send_id) REFERENCES partner_sends(id) ON DELETE CASCADE
+251,partner_connections,partner_connections_partner_id_fkey,FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+251,partner_connections,partner_connections_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,partner_members,partner_members_added_by_fkey,FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
+251,partner_members,partner_members_partner_id_fkey,FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+251,partner_members,partner_members_user_id_fkey,FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+251,partner_reports,partner_reports_partner_id_fkey,FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+251,partner_reports,partner_reports_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,partner_send_log,partner_send_log_send_id_fkey,FOREIGN KEY (send_id) REFERENCES partner_sends(id) ON DELETE CASCADE
+251,partner_sends,partner_sends_partner_id_fkey,FOREIGN KEY (partner_id) REFERENCES partner_orgs(id) ON DELETE CASCADE
+251,partner_sends,partner_sends_post_id_fkey,FOREIGN KEY (post_id) REFERENCES collab_posts(id) ON DELETE CASCADE
+251,payment_reminder_settings,payment_reminder_settings_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,payment_reminders,payment_reminders_invoice_id_fkey,FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
+251,payment_reminders,payment_reminders_milestone_id_fkey,FOREIGN KEY (milestone_id) REFERENCES payment_schedules(id) ON DELETE SET NULL
+251,payment_reminders,payment_reminders_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,payment_schedules,payment_schedules_invoice_id_fkey,FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+251,payment_schedules,payment_schedules_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,pending_couple_drafts,pending_couple_drafts_conversation_id_fkey,FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+251,pending_couple_drafts,pending_couple_drafts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,pending_event_proposals,pending_event_proposals_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,pending_lead_pings,pending_lead_pings_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
+251,pending_lead_pings,pending_lead_pings_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,pending_money_acts,pending_money_acts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,referral_alerts,referral_alerts_referral_id_fkey,FOREIGN KEY (referral_id) REFERENCES lead_referrals(id) ON DELETE CASCADE
+251,referral_alerts,referral_alerts_to_vendor_id_fkey,FOREIGN KEY (to_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,reviews_asked,reviews_asked_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+251,reviews_asked,reviews_asked_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,reviews_asked,reviews_asked_wedding_id_fkey,FOREIGN KEY (wedding_id) REFERENCES weddings(id) ON DELETE SET NULL
+251,search_console_daily,search_console_daily_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,search_console_queries,search_console_queries_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,shop_items,shop_items_event_id_fkey,FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+251,shop_items,shop_items_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,shop_orders,shop_orders_event_id_fkey,FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+251,shop_orders,shop_orders_item_id_fkey,FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
+251,shop_orders,shop_orders_lead_id_fkey,FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+251,shop_orders,shop_orders_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,shop_vouchers,shop_vouchers_item_id_fkey,FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
+251,shop_vouchers,shop_vouchers_order_id_fkey,FOREIGN KEY (order_id) REFERENCES shop_orders(id) ON DELETE CASCADE
+251,shop_vouchers,shop_vouchers_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,site_visits_daily,site_visits_daily_look_id_fkey,FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+251,site_visits_daily,site_visits_daily_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,spotlight,spotlight_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,tds_ledger,tds_ledger_client_id_fkey,FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+251,tds_ledger,tds_ledger_invoice_id_fkey,FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
+251,tds_ledger,tds_ledger_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,team_members,team_members_roster_vendor_id_fkey,FOREIGN KEY (roster_vendor_id) REFERENCES vendor_roster(id) ON DELETE SET NULL
+251,team_members,team_members_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,team_messages,team_messages_linked_event_id_fkey,FOREIGN KEY (linked_event_id) REFERENCES events(id) ON DELETE SET NULL
+251,team_messages,team_messages_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,team_payments,team_payments_linked_event_id_fkey,FOREIGN KEY (linked_event_id) REFERENCES events(id) ON DELETE SET NULL
+251,team_payments,team_payments_linked_task_id_fkey,FOREIGN KEY (linked_task_id) REFERENCES team_tasks(id) ON DELETE SET NULL
+251,team_payments,team_payments_team_member_id_fkey,FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE
+251,team_payments,team_payments_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,team_tasks,team_tasks_assigned_to_member_id_fkey,FOREIGN KEY (assigned_to_member_id) REFERENCES team_members(id) ON DELETE SET NULL
+251,team_tasks,team_tasks_linked_event_id_fkey,FOREIGN KEY (linked_event_id) REFERENCES events(id) ON DELETE SET NULL
+251,team_tasks,team_tasks_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_activity_log,vendor_activity_log_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_ad_connections,vendor_ad_connections_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_ads,vendor_ads_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_collection_looks,vendor_collection_looks_collection_id_fkey,FOREIGN KEY (collection_id) REFERENCES vendor_collections(id) ON DELETE CASCADE
+251,vendor_collection_looks,vendor_collection_looks_look_id_fkey,FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+251,vendor_collections,vendor_collections_cover_photo_id_fkey,FOREIGN KEY (cover_photo_id) REFERENCES vendor_look_photos(id) ON DELETE SET NULL
+251,vendor_collections,vendor_collections_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_discover_requests,vendor_discover_requests_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_domains,vendor_domains_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_feature_choices,vendor_feature_choices_feature_key_fkey,FOREIGN KEY (feature_key) REFERENCES capabilities(key)
+251,vendor_feature_choices,vendor_feature_choices_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_featured_submissions,vendor_featured_submissions_hero_image_id_fkey,FOREIGN KEY (hero_image_id) REFERENCES vendor_portfolio(id) ON DELETE SET NULL
+251,vendor_featured_submissions,vendor_featured_submissions_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_first_builds,vendor_first_builds_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_google_connections,vendor_google_connections_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_ig_connections,vendor_ig_connections_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_insurance_settings,vendor_insurance_settings_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_look_photos,vendor_look_photos_look_id_fkey,FOREIGN KEY (look_id) REFERENCES vendor_looks(id) ON DELETE CASCADE
+251,vendor_look_photos,vendor_look_photos_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_looks,vendor_looks_package_id_fkey,FOREIGN KEY (package_id) REFERENCES vendor_packages(id) ON DELETE SET NULL
+251,vendor_looks,vendor_looks_share_photo_fk,FOREIGN KEY (share_photo_id) REFERENCES vendor_look_photos(id) ON DELETE SET NULL
+251,vendor_looks,vendor_looks_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_packages,vendor_packages_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_pay_accounts,vendor_pay_accounts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_pay_event_answers,vendor_pay_event_answers_event_id_fkey,FOREIGN KEY (event_id) REFERENCES vendor_pay_events(id) ON DELETE CASCADE
+251,vendor_pay_events,vendor_pay_events_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_pay_links,vendor_pay_links_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_pay_oauth_states,vendor_pay_oauth_states_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_pay_settings,vendor_pay_settings_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_policies,vendor_policies_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_portfolio,vendor_portfolio_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_roster,vendor_roster_member_vendor_id_fkey,FOREIGN KEY (member_vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,vendor_roster,vendor_roster_owner_vendor_id_fkey,FOREIGN KEY (owner_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_seal,vendor_seal_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_site_drafts,vendor_site_drafts_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_site_faq,vendor_site_faq_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_site_pages,vendor_site_pages_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_site_sections,vendor_site_sections_page_id_fkey,FOREIGN KEY (page_id) REFERENCES vendor_site_pages(id) ON DELETE CASCADE
+251,vendor_site_sections,vendor_site_sections_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_sites,vendor_sites_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_state,vendor_state_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_stories,vendor_stories_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_testimonial_requests,vendor_testimonial_requests_client_id_fkey,FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+251,vendor_testimonial_requests,vendor_testimonial_requests_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_testimonials,vendor_testimonials_request_id_fkey,FOREIGN KEY (request_id) REFERENCES vendor_testimonial_requests(id) ON DELETE SET NULL
+251,vendor_testimonials,vendor_testimonials_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_wa_events,vendor_wa_events_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendor_wabas,vendor_wabas_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,vendors,vendors_user_id_fkey,FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+251,website_chat_tokens,website_chat_tokens_conversation_id_fkey,FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+251,website_chat_tokens,website_chat_tokens_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+251,wedding_credits,wedding_credits_vendor_id_fkey,FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+251,wedding_credits,wedding_credits_wedding_id_fkey,FOREIGN KEY (wedding_id) REFERENCES weddings(id) ON DELETE CASCADE
+251,wedding_photos,wedding_photos_wedding_id_fkey,FOREIGN KEY (wedding_id) REFERENCES weddings(id) ON DELETE CASCADE
+251,weddings,weddings_couple_id_fkey,FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE SET NULL
+251,weddings,weddings_event_id_fkey,FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+251,weddings,weddings_owner_vendor_id_fkey,FOREIGN KEY (owner_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE

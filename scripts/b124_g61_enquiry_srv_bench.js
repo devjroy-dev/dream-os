@@ -1,4 +1,5 @@
 'use strict';
+const __docCols = (doc, t) => { const m = doc.match(new RegExp('## public\\.' + t + ' [^\\n]*\\n\\n```\\n([\\s\\S]*?)```')); return m ? m[1].split('\n').map((l) => (l.match(/^\d+\.\s+(\w+)\s/) || [])[1]).filter(Boolean) : []; };   // AMENDED BY LABEL, WEB-4 cut 29
 // scripts/b124_g61_enquiry_srv_bench.js · TDW CE-45 · G6-1 · FE_2's DREAM-OS HALF · rung b124.
 //
 // WHAT IT HOLDS (§7c; FE_2 read-first FK1, FK2, FK4, FK5 and e-109's ruling (a), 2026-09-24):
@@ -205,7 +206,7 @@ const V0 = () => ({ id: 'v1', user_id: 'u1', business_name: 'Dev Roy Photography
 
   sec('5  the schema doc names 0171 (e-107)');
   const doc = read('docs/db/PUBLIC_SCHEMA.md');
-  ok(/STALE BY A THIRD SINCE 24 SEPTEMBER 2026: `0171_own_number\.sql`/.test(doc) && /vendor_wabas/.test(doc) && /enquiry_routing/.test(doc), '5.1 the staleness note names 0171, its tables and its columns');
+  /* AMENDED BY LABEL, CE-47 WEB-4 cut 29 (the PAIR regen of 8 October 2026, ladder 0220): the note is gone because the snapshot now CARRIES 0171; the cell holds the debt paid */ ok(__docCols(doc, 'vendor_wabas').length > 0 && __docCols(doc, 'vendor_wa_events').length > 0 && __docCols(doc, 'vendors').includes('enquiry_routing') && __docCols(doc, 'vendors').includes('enquiry_phone') && !/STALE BY A THIRD SINCE 24 SEPTEMBER 2026/.test(doc), '5.1 the snapshot carries 0171: vendor_wabas, vendor_wa_events, vendors.enquiry_routing and enquiry_phone (the staleness note retired by the regen)');
 
   sec('6  mutations of production code (each must turn its cell red; restored by sha)');
   const mutate = async (rel, from, to, stillHolds) => {

@@ -127,10 +127,13 @@ sec('§1 · THE WITNESS LOADS, AND IS NOT EMPTY (vacuity guard)');
 {
   ok(`§1.1 the public witness parses (${Object.keys(SCHEMA).length} tables)`, Object.keys(SCHEMA).length > 50);
   ok('§1.2 conversations is in the witness', !!SCHEMA['conversations']);
-  ok(`§1.3 conversations has exactly TWELVE columns (the number the cure rests on)`,
-     SCHEMA['conversations'].size === 12);
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 29 (the PAIR regen of 8 October 2026, ladder 0220): 0173 added `channel`,
+  // `counterparty_ig_id` and `ig_stopped_at` to conversations (the Instagram DM lane), so the witness now reads 15.
+  ok(`§1.3 conversations has exactly FIFTEEN columns (twelve, plus 0173's three)`,
+     SCHEMA['conversations'].size === 15);
   ok('§1.4 CANARY: a column that DOES exist is recognised', SCHEMA['conversations'].has('kind'));
-  ok('§1.5 CANARY: `channel` is genuinely absent from conversations', !SCHEMA['conversations'].has('channel'));
+  // AMENDED BY LABEL, cut 29: `channel` is REAL on conversations since 0173; the canary is a column that is not.
+  ok('§1.5 CANARY: a column that does NOT exist is refused (`deleted_at` on conversations; `channel` is real since 0173)', !SCHEMA['conversations'].has('deleted_at') && SCHEMA['conversations'].has('channel'));
   ok('§1.6 CANARY: `channel` DOES exist on messages — the field list was copied across',
      !!SCHEMA['messages'] && SCHEMA['messages'].has('channel'));
   ok('§1.7 the migration ladder loads (the staleness escape hatch is real)', MIGS.length > 10000);

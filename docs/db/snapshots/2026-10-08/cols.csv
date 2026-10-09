@@ -1,0 +1,1840 @@
+tables_expected,table_name,columns,columns_detail
+157,admin_activity_log,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. admin_email text NOT NULL
+3. action text NOT NULL
+4. target_type text
+5. target_id uuid
+6. metadata jsonb NOT NULL default '{}'::jsonb
+7. created_at timestamp with time zone NOT NULL default now()"
+157,admin_config,4,"1. key text NOT NULL
+2. value text NOT NULL
+3. description text
+4. updated_at timestamp with time zone NOT NULL default now()"
+157,assistance_forwards,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. item_id uuid NOT NULL
+3. target_kind text NOT NULL
+4. vendor_id uuid
+5. prospect_id uuid
+6. lead_id uuid
+7. wamid text
+8. status text NOT NULL default 'recorded'::text
+9. error_code text
+10. error_title text
+11. sent_at timestamp with time zone
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()"
+157,assistance_found_notices,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. forward_id uuid NOT NULL
+3. kind text NOT NULL
+4. wamid text
+5. status text NOT NULL default 'queued'::text
+6. error_code text
+7. error_title text
+8. sent_at timestamp with time zone
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()"
+157,assistance_request_items,6,"1. id uuid NOT NULL default gen_random_uuid()
+2. request_id uuid NOT NULL
+3. category text NOT NULL
+4. budget_rs integer
+5. forwarded_count integer NOT NULL default 0
+6. created_at timestamp with time zone NOT NULL default now()"
+157,assistance_requests,17,"1. id uuid NOT NULL default gen_random_uuid()
+2. couple_id uuid
+3. phone text NOT NULL
+4. name text
+5. status text NOT NULL default 'open'::text
+6. city text
+7. area text
+8. wedding_date date
+9. brief text
+10. origin text NOT NULL default 'bride'::text
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. notify_wamid text
+14. notify_status text
+15. notify_error_code text
+16. notify_error_title text
+17. notify_sent_at timestamp with time zone"
+157,bill_drafts,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. file_path text NOT NULL
+4. fields jsonb NOT NULL default '{}'::jsonb
+5. expense_id uuid
+6. created_at timestamp with time zone NOT NULL default now()
+7. confirmed_at timestamp with time zone"
+157,billing_events,12,"1. id uuid NOT NULL default gen_random_uuid()
+2. event_id text NOT NULL
+3. provider text NOT NULL default 'razorpay'::text
+4. event text NOT NULL
+5. vendor_id uuid
+6. provider_subscription_id text
+7. provider_payment_id text
+8. amount_paise integer
+9. currency text
+10. counts_as_revenue boolean NOT NULL default false
+11. payload jsonb NOT NULL
+12. created_at timestamp with time zone NOT NULL default now()"
+157,bride_pages,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. couple_id uuid NOT NULL
+3. user_id uuid NOT NULL
+4. entry_date date NOT NULL default CURRENT_DATE
+5. mood text NOT NULL
+6. mood_color text NOT NULL
+7. body text NOT NULL
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()"
+157,broadcast_recipients,14,"1. id uuid NOT NULL default gen_random_uuid()
+2. broadcast_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. phone text NOT NULL
+5. source text NOT NULL
+6. status text NOT NULL default 'queued'::text
+7. wamid text
+8. error_code text
+9. error_title text
+10. stopped_at timestamp with time zone
+11. replied_at timestamp with time zone
+12. reply_text text
+13. created_at timestamp with time zone NOT NULL default now()
+14. updated_at timestamp with time zone NOT NULL default now()"
+157,broadcasts,6,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. template_name text NOT NULL
+5. recipient_count integer NOT NULL
+6. created_at timestamp with time zone NOT NULL default now()"
+157,budget_envelopes,6,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. name text NOT NULL
+4. amount_inr integer NOT NULL default 0
+5. sort integer NOT NULL default 0
+6. created_at timestamp with time zone NOT NULL default now()"
+157,capabilities,10,"1. key text NOT NULL
+2. kind text NOT NULL
+3. status text NOT NULL
+4. evidence text
+5. checked_at timestamp with time zone
+6. flipped_at timestamp with time zone
+7. flipped_by text
+8. auto_on boolean NOT NULL default false
+9. walk_ref text
+10. updated_at timestamp with time zone NOT NULL default now()"
+157,circle_activity,13,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. actor_user_id uuid
+4. actor_name text NOT NULL
+5. actor_role text NOT NULL
+6. activity_type text NOT NULL
+7. subject_type text
+8. subject_id uuid
+9. payload jsonb NOT NULL default '{}'::jsonb
+10. surfaced_to_bride boolean NOT NULL default false
+11. surfaced_at timestamp with time zone
+12. created_at timestamp with time zone NOT NULL default now()
+13. session_id uuid"
+157,circle_members,14,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. invitee_name text NOT NULL
+4. invitee_phone text
+5. role text NOT NULL
+6. invite_token text NOT NULL
+7. status text NOT NULL default 'pending'::text
+8. sticky_couple_until timestamp with time zone
+9. invited_at timestamp with time zone NOT NULL default now()
+10. joined_at timestamp with time zone
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. expires_at timestamp with time zone
+14. visibility jsonb NOT NULL default '{}'::jsonb"
+157,circle_poll_votes,4,"1. poll_id uuid NOT NULL
+2. voter_user_id uuid NOT NULL
+3. option_id text NOT NULL
+4. created_at timestamp with time zone NOT NULL default now()"
+157,circle_polls,9,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. thread_id uuid
+4. question text NOT NULL
+5. options jsonb NOT NULL
+6. linked_event_id uuid
+7. closes_at timestamp with time zone
+8. created_by_user_id uuid NOT NULL
+9. created_at timestamp with time zone NOT NULL default now()"
+157,circle_sessions,10,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. circle_member_id uuid NOT NULL
+4. started_at timestamp with time zone NOT NULL default now()
+5. last_activity_at timestamp with time zone NOT NULL default now()
+6. summarized_to_bride boolean NOT NULL default false
+7. summarized_at timestamp with time zone
+8. summary_message_id uuid
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()"
+157,clients,12,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. user_id uuid
+4. name text NOT NULL
+5. phone text
+6. email text
+7. source text NOT NULL default 'lead_promotion'::text
+8. referrer_name text
+9. notes text
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()
+13. deleted_at timestamp with time zone"
+157,collab_house_tokens,4,"1. platform text NOT NULL
+2. token text NOT NULL
+3. refreshed_at timestamp with time zone NOT NULL default now()
+4. expires_at timestamp with time zone"
+157,collab_interest,17,"1. id uuid NOT NULL default gen_random_uuid()
+2. post_id uuid NOT NULL
+3. share_id uuid
+4. platform text
+5. how text
+6. external_user_id text
+7. display_name text
+8. body text
+9. vendor_id uuid
+10. join_link_sent boolean NOT NULL default false
+11. created_at timestamp with time zone NOT NULL default now()
+12. source text NOT NULL default 'instagram'::text
+13. partner_id uuid
+14. send_id uuid
+15. role text
+16. link text
+17. agreed_at timestamp with time zone"
+157,collab_post_items,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. post_id uuid NOT NULL
+3. position smallint NOT NULL default 0
+4. requirement_type text NOT NULL
+5. note text
+6. filled_by_response_id uuid
+7. created_at timestamp with time zone NOT NULL default now()
+8. needed integer NOT NULL default 1"
+157,collab_posts,21,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. requirement_type text NOT NULL
+4. event_date date NOT NULL
+5. city text NOT NULL
+6. open_to_other_cities boolean NOT NULL default false
+7. budget_inr integer
+8. payment_period text
+9. event_type text
+10. details text
+11. state text NOT NULL default 'open'::text
+12. expires_at timestamp with time zone NOT NULL default (now() + '30 days'::interval)
+13. created_at timestamp with time zone NOT NULL default now()
+14. updated_at timestamp with time zone NOT NULL default now()
+15. first_look_until timestamp with time zone
+16. pay_kind text
+17. reference_urls jsonb NOT NULL default '[]'::jsonb
+18. source text NOT NULL default 'vendor'::text
+19. asked_at timestamp with time zone
+20. budget_from integer
+21. budget_to integer"
+157,collab_prospects,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. name text NOT NULL
+3. craft text
+4. city text
+5. instagram_handle text
+6. threads_handle text
+7. source text
+8. opted_out boolean NOT NULL default false
+9. created_at timestamp with time zone NOT NULL default now()"
+157,collab_responses,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. post_id uuid NOT NULL
+3. responder_vendor_id uuid NOT NULL
+4. state text NOT NULL default 'interested'::text
+5. poster_notified_at timestamp with time zone
+6. contact_shared_at timestamp with time zone
+7. created_at timestamp with time zone NOT NULL default now()
+8. updated_at timestamp with time zone NOT NULL default now()
+9. item_id uuid"
+157,collab_shares,16,"1. id uuid NOT NULL default gen_random_uuid()
+2. post_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. account text NOT NULL
+5. platform text NOT NULL
+6. state text NOT NULL default 'queued'::text
+7. caption text
+8. hashtags jsonb NOT NULL default '[]'::jsonb
+9. image_url text
+10. media_id text
+11. permalink text
+12. error text
+13. decided_by text
+14. decided_at timestamp with time zone
+15. published_at timestamp with time zone
+16. created_at timestamp with time zone NOT NULL default now()"
+157,contract_profiles,4,"1. vendor_id uuid NOT NULL
+2. fields jsonb NOT NULL default '{}'::jsonb
+3. created_at timestamp with time zone NOT NULL default now()
+4. updated_at timestamp with time zone NOT NULL default now()"
+157,contract_sends,12,"1. id uuid NOT NULL default uuid_generate_v4()
+2. contract_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. recipient text NOT NULL
+5. to_phone text
+6. template_key text NOT NULL
+7. wamid text
+8. status text NOT NULL default 'queued'::text
+9. error_code text
+10. error_title text
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()"
+157,contract_signatures,15,"1. id uuid NOT NULL default gen_random_uuid()
+2. contract_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. signer_phone text
+5. channel text NOT NULL default 'otp'::text
+6. sign_token text
+7. token_expires_at timestamp with time zone
+8. otp_hash text
+9. otp_expires_at timestamp with time zone
+10. otp_attempts integer NOT NULL default 0
+11. verified_at timestamp with time zone
+12. document_sha256 text
+13. sealed_path text
+14. signed_at timestamp with time zone
+15. created_at timestamp with time zone NOT NULL default now()"
+157,contracts,22,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. client_id uuid
+4. lead_id uuid
+5. invoice_id uuid
+6. title text NOT NULL
+7. storage_path text
+8. file_size integer
+9. mime_type text default 'application/pdf'::text
+10. notes text
+11. state text NOT NULL default 'draft'::text
+12. sent_at timestamp with time zone
+13. signed_at timestamp with time zone
+14. created_at timestamp with time zone NOT NULL default now()
+15. updated_at timestamp with time zone NOT NULL default now()
+16. event_id uuid
+17. terms jsonb NOT NULL default '{}'::jsonb
+18. annexes jsonb NOT NULL default '{}'::jsonb
+19. deposit_pct numeric(5,2)
+20. deposit_received_at timestamp with time zone
+21. number text
+22. lead_package_id uuid"
+157,conversations,15,"1. id uuid NOT NULL default uuid_generate_v4()
+2. vendor_id uuid
+3. counterparty_user_id uuid
+4. counterparty_phone text
+5. kind text NOT NULL
+6. state text NOT NULL default 'new'::text
+7. mode text NOT NULL default 'draft'::text
+8. last_message_at timestamp with time zone
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()
+11. couple_id uuid
+12. prospect_id uuid
+13. channel text NOT NULL default 'whatsapp'::text
+14. counterparty_ig_id text
+15. ig_stopped_at timestamp with time zone"
+157,couple_ai_usage,14,"1. id uuid NOT NULL default gen_random_uuid()
+2. couple_id uuid NOT NULL
+3. circle_member_id uuid
+4. turn_id uuid
+5. kind text NOT NULL
+6. provider text NOT NULL
+7. model text
+8. input_tokens integer
+9. output_tokens integer
+10. cost_inr numeric NOT NULL default 0
+11. cost_basis text NOT NULL default 'metered'::text
+12. created_at timestamp with time zone NOT NULL default now()
+13. cache_read_tokens integer
+14. cache_write_tokens integer"
+157,couple_bookings,14,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. vendor_name text NOT NULL
+4. vendor_id uuid
+5. category text NOT NULL
+6. amount_total integer
+7. amount_advance integer
+8. amount_paid integer NOT NULL default 0
+9. balance_due_date date
+10. state text NOT NULL default 'booked'::text
+11. notes text
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()
+14. contact_phone text"
+157,couple_enquiries,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. couple_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. vendor_name text
+5. vendor_category text
+6. vendor_city text
+7. routing_handle text
+8. vendor_lead_id uuid
+9. created_at timestamp with time zone NOT NULL default now()"
+157,couple_receipts,12,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. booking_id uuid
+4. amount integer
+5. vendor_name text
+6. description text
+7. receipt_date date
+8. image_url text
+9. tags text[] NOT NULL default ARRAY[]::text[]
+10. created_at timestamp with time zone NOT NULL default now()
+11. label text
+12. envelope_id uuid"
+157,couple_state,5,"1. couple_id uuid NOT NULL
+2. summary text
+3. vendor_shortlist jsonb NOT NULL default '[]'::jsonb
+4. taste_notes text
+5. updated_at timestamp with time zone NOT NULL default now()"
+157,couple_tasks,9,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. title text NOT NULL
+4. status text NOT NULL default 'pending'::text
+6. due_date date
+7. event_name text
+8. notes text
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()"
+157,couples,24,"1. id uuid NOT NULL default uuid_generate_v4()
+2. user_id uuid NOT NULL
+3. partner_name text
+4. wedding_date date
+5. wedding_city text
+6. budget_total integer
+7. events_planned jsonb
+8. planning_state text default 'browsing'::text
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()
+11. onboarding_state text default 'new'::text
+12. nudge_sent_at timestamp with time zone
+13. pin_hash text
+14. pin_failed_attempts integer NOT NULL default 0
+15. pin_locked_until timestamp with time zone
+16. taste_quiz_done boolean NOT NULL default false
+17. aesthetic_tags jsonb NOT NULL default '[]'::jsonb
+18. tier text NOT NULL default 'basic'::text
+19. function_count integer
+20. wedding_days integer
+21. functions text
+22. residence_city text
+23. wedding_style text
+24. publish_weddings boolean NOT NULL default false"
+157,couture_appointments,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. couple_id uuid
+4. appointment_at timestamp with time zone NOT NULL
+5. duration_minutes integer NOT NULL default 60
+6. fee_inr integer NOT NULL
+7. state text NOT NULL default 'booked'::text
+8. razorpay_order_id text
+9. paid_at timestamp with time zone
+10. vendor_payout_inr integer
+11. notes text
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()"
+157,couture_availability,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. slot_at timestamp with time zone NOT NULL
+4. duration_minutes integer NOT NULL default 60
+5. fee_inr integer NOT NULL
+6. state text NOT NULL default 'open'::text
+7. booked_by_appointment_id uuid
+8. created_at timestamp with time zone NOT NULL default now()"
+157,crew_confirmations,6,"1. id uuid NOT NULL default uuid_generate_v4()
+2. event_id uuid NOT NULL
+3. member_id uuid NOT NULL
+4. status text NOT NULL default 'pending'::text
+5. note text
+6. updated_at timestamp with time zone NOT NULL default now()"
+157,date_checks,4,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. date date NOT NULL
+4. checked_at timestamp with time zone NOT NULL default now()"
+157,demo_claim_requests,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. ig_handle text NOT NULL
+3. vendor_name text
+4. phone text NOT NULL
+5. claimed_at timestamp with time zone NOT NULL default now()
+6. contacted boolean NOT NULL default false
+7. notes text"
+157,demo_leads,15,"1. id uuid NOT NULL default gen_random_uuid()
+2. demo_vendor_id uuid NOT NULL
+3. demo_vendor_handle text NOT NULL
+4. bride_name text NOT NULL
+5. bride_phone text NOT NULL
+6. bride_ig_handle text
+7. bride_email text
+8. bride_wedding_date date
+9. bride_wedding_city text
+10. otp_verified boolean NOT NULL default false
+11. notified_vendor boolean NOT NULL default false
+12. admin_notified boolean NOT NULL default false
+13. created_at timestamp with time zone NOT NULL default now()
+14. converted_lead_id uuid
+15. budget_max integer"
+157,demo_vendors,26,"1. id uuid NOT NULL default gen_random_uuid()
+2. ig_handle text NOT NULL
+3. display_name text NOT NULL
+4. category text NOT NULL
+5. city text NOT NULL
+6. whatsapp_phone text
+7. about text
+8. rate_display text
+9. photos jsonb NOT NULL default '[]'::jsonb
+10. active boolean NOT NULL default true
+11. created_at timestamp with time zone NOT NULL default now()
+12. created_by text NOT NULL default 'admin'::text
+13. discover_eligible boolean NOT NULL default false
+14. discover_eligible_at timestamp with time zone
+15. state text NOT NULL default 'built'::text
+16. invited_at timestamp with time zone
+17. opened_at timestamp with time zone
+18. engaged_at timestamp with time zone
+19. claimed_at timestamp with time zone
+20. removed_at timestamp with time zone
+21. expires_at timestamp with time zone
+22. extension_used boolean NOT NULL default false
+23. claim_token uuid NOT NULL default gen_random_uuid()
+24. claimed_vendor_id uuid
+25. sunset_at timestamp with time zone
+26. invite_sent_at timestamp with time zone"
+157,discover_heroes,8,"1. id uuid NOT NULL default uuid_generate_v4()
+2. image_url text NOT NULL
+3. cloudinary_public_id text
+4. caption text
+5. display_order integer NOT NULL default 0
+6. active boolean NOT NULL default true
+7. created_at timestamp with time zone NOT NULL default now()
+8. updated_at timestamp with time zone NOT NULL default now()"
+157,engagements,11,"1. id uuid NOT NULL default gen_random_uuid()
+2. couple_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. category text NOT NULL
+5. status text NOT NULL default 'enquiry'::text
+6. source text NOT NULL default 'discover_enquiry'::text
+7. enquiry_id uuid
+8. couple_booking_id uuid
+9. lead_id uuid
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()"
+157,enquiry_taps,4,"1. id uuid NOT NULL default gen_random_uuid()
+2. handle text NOT NULL
+3. source text
+4. tapped_at timestamp with time zone NOT NULL default now()"
+157,events,18,"1. id uuid NOT NULL default uuid_generate_v4()
+2. vendor_id uuid
+3. title text NOT NULL
+4. event_date date NOT NULL
+5. event_time time without time zone
+6. kind text NOT NULL
+7. linked_lead_id uuid
+8. state text NOT NULL default 'upcoming'::text
+9. notes text
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()
+12. couple_id uuid
+14. deleted_at timestamp with time zone
+15. linked_binder_id uuid
+16. slot text
+17. ready_by date
+18. assigned_member_ids uuid[] NOT NULL default '{}'::uuid[]
+19. assigned_circle_member_id uuid"
+157,exchange_requests,16,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. influencer_vendor_id uuid NOT NULL
+4. offer_kind text NOT NULL
+5. offer_note text NOT NULL default ''::text
+6. ask_kind text NOT NULL
+7. ask_count integer NOT NULL
+8. date_from date NOT NULL
+9. date_to date NOT NULL
+10. state text NOT NULL default 'sent'::text
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. accepted_at timestamp with time zone
+14. declined_at timestamp with time zone
+15. withdrawn_at timestamp with time zone
+16. completed_at timestamp with time zone"
+157,expenses,20,"1. id uuid NOT NULL default uuid_generate_v4()
+2. vendor_id uuid NOT NULL
+3. amount integer NOT NULL
+4. category text NOT NULL
+5. description text
+6. expense_date date default CURRENT_DATE
+7. client_name text
+8. linked_lead_id uuid
+9. notes text
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()
+13. deleted_at timestamp with time zone
+14. taxable_value integer
+15. gst_rate numeric(5,2)
+16. gst_amount integer
+17. supplier_name text
+18. supplier_gstin text
+19. bill_number text
+20. bill_file_url text
+21. source text"
+157,exploring_photos,8,"1. id uuid NOT NULL default uuid_generate_v4()
+2. image_url text NOT NULL
+3. cloudinary_public_id text
+4. caption text
+5. display_order integer NOT NULL default 0
+6. active boolean NOT NULL default true
+7. created_at timestamp with time zone NOT NULL default now()
+8. updated_at timestamp with time zone NOT NULL default now()"
+157,failed_turns,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. service text
+3. phone text
+4. payload jsonb NOT NULL
+5. error text
+6. state text NOT NULL default 'dead'::text
+7. created_at timestamp with time zone NOT NULL default now()"
+157,forward_recipients,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. request_id uuid NOT NULL
+3. contact_id uuid NOT NULL
+4. token_hash text NOT NULL
+5. channel text NOT NULL default 'hand'::text
+6. sent_at timestamp with time zone
+7. sent_by text
+8. replied_at timestamp with time zone
+9. created_at timestamp with time zone NOT NULL default now()"
+157,forward_requests,15,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid
+3. outside_handle text
+4. outside_phone text
+5. role text NOT NULL
+6. city text NOT NULL
+7. event_date date NOT NULL
+8. budget_from integer NOT NULL
+9. budget_to integer NOT NULL
+10. pay_kind text NOT NULL
+11. note text
+12. asked boolean NOT NULL
+13. post_id uuid
+14. created_by text
+15. created_at timestamp with time zone NOT NULL default now()"
+157,gear_items,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. item text NOT NULL
+4. value_rs integer NOT NULL
+5. price_per_day_rs integer NOT NULL
+6. city text NOT NULL
+7. note text
+8. state text NOT NULL default 'listed'::text
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()"
+157,gear_requests,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. item_id uuid NOT NULL
+3. owner_vendor_id uuid NOT NULL
+4. borrower_vendor_id uuid NOT NULL
+5. date_from date NOT NULL
+6. date_to date NOT NULL
+7. note text
+8. state text NOT NULL default 'requested'::text
+9. created_at timestamp with time zone NOT NULL default now()
+10. decided_at timestamp with time zone"
+157,hot_dates,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. date date NOT NULL
+3. note text
+4. region text default 'All India'::text
+5. created_at timestamp with time zone NOT NULL default now()
+6. label text
+7. intensity text NOT NULL default 'high'::text
+8. active boolean NOT NULL default true
+9. source text NOT NULL default 'admin'::text"
+157,hub_credits,12,"1. id uuid NOT NULL default gen_random_uuid()
+2. call_id uuid
+3. shoot_name text
+4. city text
+5. month date
+6. giver_profile_id uuid NOT NULL
+7. person_profile_id uuid NOT NULL
+8. state text NOT NULL default 'offered'::text
+9. offered_at timestamp with time zone NOT NULL default now()
+10. decided_at timestamp with time zone
+11. taken_back_at timestamp with time zone
+12. taken_back_by uuid"
+157,hub_profiles,16,"1. id uuid NOT NULL default gen_random_uuid()
+2. owner_kind text NOT NULL
+3. vendor_id uuid
+4. org_id uuid
+5. user_id uuid
+6. handle text NOT NULL
+7. display_name text NOT NULL
+8. roles text[] NOT NULL default '{}'::text[]
+9. city text
+10. open_to text[] NOT NULL default '{}'::text[]
+11. instagram_handle text
+12. website text
+13. work_urls jsonb NOT NULL default '[]'::jsonb
+14. check_state text NOT NULL default 'unchecked'::text
+15. created_at timestamp with time zone NOT NULL default now()
+16. updated_at timestamp with time zone NOT NULL default now()"
+157,image_throttle_log,5,"1. id uuid NOT NULL default gen_random_uuid()
+2. phone text NOT NULL
+3. engine text NOT NULL
+4. created_at timestamp with time zone NOT NULL default now()
+5. rejection_sent boolean NOT NULL default false"
+157,influencer_reach_snapshots,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. follower_count integer NOT NULL
+4. engagement_rate numeric(5,2) NOT NULL
+5. audience_city jsonb NOT NULL default '[]'::jsonb
+6. audience_age jsonb NOT NULL default '[]'::jsonb
+7. audience_gender jsonb NOT NULL default '[]'::jsonb
+8. verified_at timestamp with time zone NOT NULL default now()
+9. created_at timestamp with time zone NOT NULL default now()"
+157,instagram_briefs,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. week_start date NOT NULL
+4. week_end date NOT NULL
+5. status text NOT NULL
+6. payload jsonb
+7. reason text
+8. generated_at timestamp with time zone NOT NULL default now()
+9. created_at timestamp with time zone NOT NULL default now()"
+157,introductions,15,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. recipient_phone text NOT NULL
+4. recipient_name text NOT NULL
+5. where_met text NOT NULL
+6. page_code text NOT NULL
+7. status text NOT NULL default 'staged'::text
+8. wamid text
+9. error_code text
+10. error_title text
+11. approved_at timestamp with time zone
+12. sent_at timestamp with time zone
+13. created_at timestamp with time zone NOT NULL default now()
+14. updated_at timestamp with time zone NOT NULL default now()
+15. stopped_at timestamp with time zone"
+157,invite_codes,9,"1. code text NOT NULL
+2. kind text NOT NULL
+3. tier text
+4. notes text
+5. created_at timestamp with time zone NOT NULL default now()
+6. created_by text
+7. consumed_at timestamp with time zone
+8. consumed_by_user_id uuid
+9. intended_phone text"
+157,invoices,24,"1. id uuid NOT NULL default uuid_generate_v4()
+2. vendor_id uuid NOT NULL
+3. lead_id uuid
+4. invoice_number text NOT NULL
+5. client_name text NOT NULL
+6. client_phone text
+7. description text
+8. amount_total integer NOT NULL
+9. amount_advance integer
+10. amount_paid integer NOT NULL default 0
+11. due_date date
+12. state text NOT NULL default 'unpaid'::text
+13. pdf_url text
+14. notes text
+15. created_at timestamp with time zone NOT NULL default now()
+16. updated_at timestamp with time zone NOT NULL default now()
+17. client_id uuid
+19. last_payment_at timestamp with time zone
+20. deleted_at timestamp with time zone
+21. has_schedule boolean NOT NULL default false
+22. binder_id uuid
+23. lead_package_id uuid
+24. gst_rate numeric(5,2)
+25. gst_amount integer"
+157,issued_papers,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. period_from date
+5. period_to date
+6. purpose text
+7. figures jsonb NOT NULL default '{}'::jsonb
+8. check_code text NOT NULL
+9. issued_at timestamp with time zone NOT NULL default now()
+10. withdrawn_at timestamp with time zone"
+157,landing_slides,8,"1. id uuid NOT NULL default uuid_generate_v4()
+2. image_url text NOT NULL
+3. cloudinary_public_id text
+4. caption text
+5. display_order integer NOT NULL default 0
+6. active boolean NOT NULL default true
+7. created_at timestamp with time zone NOT NULL default now()
+8. updated_at timestamp with time zone NOT NULL default now()"
+157,lead_alerts,11,"1. id uuid NOT NULL default uuid_generate_v4()
+2. vendor_id uuid NOT NULL
+3. lead_id uuid
+4. source text
+5. template_key text NOT NULL
+6. wamid text
+7. status text NOT NULL default 'queued'::text
+8. error_code text
+9. error_title text
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()"
+157,lead_packages,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. lead_id uuid NOT NULL
+4. package_id uuid
+5. snapshot jsonb NOT NULL
+6. total integer
+7. schedule jsonb NOT NULL default '[]'::jsonb
+8. delivery_on date
+9. quoted_at timestamp with time zone
+10. quote_draft_id uuid
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. deleted_at timestamp with time zone"
+157,lead_referrals,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. from_vendor_id uuid NOT NULL
+3. to_vendor_id uuid NOT NULL
+4. lead_id uuid
+5. new_lead_id uuid NOT NULL
+6. note text
+7. created_at timestamp with time zone NOT NULL default now()"
+157,leads,32,"1. id uuid NOT NULL default uuid_generate_v4()
+2. vendor_id uuid NOT NULL
+3. name text
+4. phone text
+5. email text
+6. wedding_date date
+7. wedding_city text
+8. event_types text[]
+9. budget_min integer
+10. budget_max integer
+11. source text default 'whatsapp'::text
+12. referrer_name text
+13. state text NOT NULL default 'new'::text
+14. raw_message text
+15. notes text
+16. created_at timestamp with time zone NOT NULL default now()
+17. updated_at timestamp with time zone NOT NULL default now()
+18. client_id uuid
+20. deleted_at timestamp with time zone
+21. vendor_summary text
+22. intent_summary text
+23. intent_summary_at timestamp with time zone
+24. wedding_date_precision text
+25. function_count integer
+26. wedding_days integer
+27. functions text
+28. draft_meta jsonb
+29. wedding_id uuid
+30. binder_id uuid
+31. counterparty_ig_id text
+32. consent_at timestamp with time zone
+33. consent_text_version text"
+157,look_hearts_daily,4,"1. vendor_id uuid NOT NULL
+2. look_id uuid NOT NULL
+3. day date NOT NULL
+4. hearts integer NOT NULL default 0"
+157,messages,20,"1. id uuid NOT NULL default uuid_generate_v4()
+2. conversation_id uuid NOT NULL
+3. direction text NOT NULL
+4. channel text NOT NULL
+5. body text
+6. media_url text
+7. sent_by text NOT NULL
+8. tool_calls jsonb
+9. tool_results jsonb
+10. twilio_sid text
+11. created_at timestamp with time zone NOT NULL default now()
+12. delivery_status text
+13. model text
+14. input_tokens integer
+15. output_tokens integer
+16. cost_usd numeric(10,6)
+17. cost_inr numeric(10,2)
+18. message_sid text
+19. sender_name text
+20. sender_user_id uuid"
+157,muse_pool,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. image_url text NOT NULL
+3. cloudinary_public_id text
+4. caption text
+5. aesthetic_tags jsonb NOT NULL default '[]'::jsonb
+6. active boolean NOT NULL default true
+7. sort_order integer NOT NULL default 0
+8. created_at timestamp with time zone NOT NULL default now()"
+157,muse_saves,16,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. save_number integer NOT NULL
+4. source_type text NOT NULL
+5. source_url text
+6. image_url text
+7. vendor_id uuid
+8. caption text
+9. aesthetic_tags jsonb NOT NULL default '[]'::jsonb
+10. vision_raw jsonb
+11. saved_by_user_id uuid NOT NULL
+12. saved_by_role text NOT NULL
+13. created_at timestamp with time zone NOT NULL default now()
+14. updated_at timestamp with time zone NOT NULL default now()
+15. circle_comment_count integer NOT NULL default 0
+16. surface text NOT NULL default 'muse'::text"
+157,notes,7,"1. id uuid NOT NULL default uuid_generate_v4()
+2. vendor_id uuid
+3. conversation_id uuid
+4. content text NOT NULL
+5. tags text[]
+6. created_at timestamp with time zone NOT NULL default now()
+7. couple_id uuid"
+157,nudge_optout,7,"1. id uuid NOT NULL default uuid_generate_v4()
+2. phone text NOT NULL
+3. lane text NOT NULL
+4. state text NOT NULL default 'opted_out'::text
+5. source text NOT NULL default 'inbound_stop_mornings'::text
+6. created_at timestamp with time zone NOT NULL default now()
+7. updated_at timestamp with time zone NOT NULL default now()"
+157,otp_sessions,5,"1. phone text NOT NULL
+2. otp_hash text NOT NULL
+3. purpose text NOT NULL
+4. expires_at timestamp with time zone NOT NULL
+5. created_at timestamp with time zone NOT NULL default now()"
+157,owner_notes,5,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. body text NOT NULL
+4. binder_id uuid
+5. created_at timestamp with time zone NOT NULL default now()"
+157,partner_answers,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. send_id uuid NOT NULL
+3. interest_id uuid
+4. talent_name text NOT NULL
+5. talent_role text
+6. talent_link text
+7. agreed boolean NOT NULL
+8. created_at timestamp with time zone NOT NULL default now()"
+157,partner_connections,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. partner_id uuid NOT NULL
+3. kind text NOT NULL
+4. ref_id uuid NOT NULL
+5. vendor_id uuid NOT NULL
+6. n integer NOT NULL
+7. created_at timestamp with time zone NOT NULL default now()"
+157,partner_contacts,11,"1. id uuid NOT NULL default gen_random_uuid()
+2. name text NOT NULL
+3. kind text NOT NULL
+4. instagram_handle text
+5. website text
+6. phone text
+7. how_we_know text NOT NULL
+8. knows_tdw boolean NOT NULL default false
+9. added_by text
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()"
+157,partner_members,5,"1. partner_id uuid NOT NULL
+2. user_id uuid NOT NULL
+3. role text NOT NULL default 'member'::text
+4. added_by uuid
+5. created_at timestamp with time zone NOT NULL default now()"
+157,partner_orgs,35,"1. id uuid NOT NULL default gen_random_uuid()
+2. name text NOT NULL
+3. kind text NOT NULL
+4. instagram_handle text NOT NULL
+5. website text
+6. cities text[] NOT NULL default '{}'::text[]
+7. roles text[] NOT NULL default '{}'::text[]
+8. pay_rule text NOT NULL default 'paid_and_credit'::text
+9. wants text[] NOT NULL default '{}'::text[]
+10. calls_email text
+11. whatsapp_opt boolean NOT NULL default false
+12. whatsapp_phone text
+13. daily_cap integer NOT NULL default 10
+14. send_state text NOT NULL default 'active'::text
+15. paused_until timestamp with time zone
+16. check_state text NOT NULL default 'unchecked'::text
+17. checked_how text
+18. checked_at timestamp with time zone
+19. checked_by text
+20. blocked_at timestamp with time zone
+21. blocked_reason text
+22. ig_user_id text
+23. ig_username_proved text
+24. ig_proved_at timestamp with time zone
+25. ig_verified_seen boolean
+26. ig_verified_read_at timestamp with time zone
+27. plan_state text NOT NULL default 'free'::text
+28. exempt_by text
+29. razorpay_subscription_id text
+30. legal_name text
+31. gstin text
+32. created_at timestamp with time zone NOT NULL default now()
+33. updated_at timestamp with time zone NOT NULL default now()
+34. whatsapp_opt_at timestamp with time zone
+35. whatsapp_opt_words text"
+157,partner_reports,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. partner_id uuid NOT NULL
+3. item_kind text NOT NULL
+4. item_id uuid
+5. vendor_id uuid NOT NULL
+6. reason text NOT NULL
+7. note text
+8. created_at timestamp with time zone NOT NULL default now()
+9. handled_at timestamp with time zone
+10. handled_by text"
+157,partner_send_log,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. send_id uuid NOT NULL
+3. at timestamp with time zone NOT NULL default now()
+4. kind text NOT NULL
+5. state text NOT NULL
+6. channel text NOT NULL
+7. attempts integer NOT NULL default 0
+8. why text
+9. by_whom text"
+157,partner_sends,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. partner_id uuid NOT NULL
+3. post_id uuid NOT NULL
+4. channel text NOT NULL default 'email'::text
+5. state text NOT NULL default 'queued'::text
+6. not_before timestamp with time zone NOT NULL default now()
+7. token_hash text NOT NULL
+8. why text
+9. provider_ref text
+10. attempts integer NOT NULL default 0
+11. sent_at timestamp with time zone
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()"
+157,payment_reminder_settings,3,"1. vendor_id uuid NOT NULL
+2. auto_send boolean NOT NULL default false
+3. updated_at timestamp with time zone NOT NULL default now()"
+157,payment_reminders,17,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. milestone_id uuid
+4. invoice_id uuid
+5. kind text NOT NULL default 'due_3d'::text
+6. milestone_label text NOT NULL
+7. amount_due integer NOT NULL
+8. due_date date
+9. to_phone text
+10. template text NOT NULL default 'tdw_payment_reminder'::text
+11. wamid text
+12. source text NOT NULL
+13. created_at timestamp with time zone NOT NULL default now()
+14. status text NOT NULL default 'queued'::text
+15. error_code text
+16. error_title text
+17. updated_at timestamp with time zone NOT NULL default now()"
+157,payment_schedules,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. invoice_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. milestone_label text NOT NULL
+5. pct numeric(5,2) NOT NULL
+6. amount_due integer NOT NULL
+7. due_date date
+8. state text NOT NULL default 'pending'::text
+9. paid_at timestamp with time zone
+10. paid_amount integer
+11. ordinal integer NOT NULL
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()"
+157,pending_couple_drafts,11,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. conversation_id uuid
+4. couple_phone text NOT NULL
+5. body text NOT NULL
+6. state text NOT NULL default 'staged'::text
+7. twilio_sid text
+8. created_at timestamp with time zone NOT NULL default now()
+9. resolved_at timestamp with time zone
+10. expires_at timestamp with time zone NOT NULL default (now() + '24:00:00'::interval)
+11. refusal_reason text"
+157,pending_event_proposals,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. proposals jsonb NOT NULL
+4. source_image_url text
+5. caption text
+6. created_at timestamp with time zone NOT NULL default now()
+7. resolved_at timestamp with time zone
+8. resolution text"
+157,pending_lead_pings,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. lead_id uuid NOT NULL
+4. lead_name text
+5. bride_message text
+6. intent_summary text
+7. source text NOT NULL
+8. created_at timestamp with time zone NOT NULL default now()
+9. acknowledged_at timestamp with time zone"
+157,pending_money_acts,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. act text NOT NULL
+4. request jsonb NOT NULL
+5. lane text NOT NULL
+6. state text NOT NULL default 'staged'::text
+7. outcome jsonb
+8. created_at timestamp with time zone NOT NULL default now()
+9. resolved_at timestamp with time zone
+10. expires_at timestamp with time zone NOT NULL default (now() + '00:15:00'::interval)"
+157,prospects,19,"1. id uuid NOT NULL default uuid_generate_v4()
+2. phone text NOT NULL
+3. name text
+4. ig_handle text
+5. category text
+6. city text
+7. source text
+8. state text NOT NULL default 'cold'::text
+9. demo_vendor_ref uuid
+10. notes text
+11. last_template_at timestamp with time zone
+12. session_opened_at timestamp with time zone
+13. created_at timestamp with time zone NOT NULL default now()
+14. updated_at timestamp with time zone NOT NULL default now()
+15. discarded_at timestamp with time zone
+16. consent_text text
+17. consent_source text
+18. consent_at timestamp with time zone
+19. consent_recorded_by text"
+157,referral_alerts,10,"1. id uuid NOT NULL default uuid_generate_v4()
+2. referral_id uuid NOT NULL
+3. to_vendor_id uuid NOT NULL
+4. template_key text NOT NULL
+5. wamid text
+6. status text NOT NULL default 'queued'::text
+7. error_code text
+8. error_title text
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()"
+157,reviews_asked,7,"1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. wedding_id uuid
+4. vendor_id uuid
+5. asked_at timestamp with time zone NOT NULL default now()
+6. template text NOT NULL
+7. wamid text"
+157,search_console_daily,5,"1. vendor_id uuid NOT NULL
+2. day date NOT NULL
+3. impressions integer NOT NULL default 0
+4. clicks integer NOT NULL default 0
+5. pulled_at timestamp with time zone NOT NULL default now()"
+157,search_console_queries,6,"1. vendor_id uuid NOT NULL
+2. window_end date NOT NULL
+3. query text NOT NULL
+4. impressions integer NOT NULL default 0
+5. clicks integer NOT NULL default 0
+6. pulled_at timestamp with time zone NOT NULL default now()"
+157,shop_items,26,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. name text NOT NULL
+5. slug text NOT NULL
+6. photo_url text
+7. price integer NOT NULL
+8. includes text[] NOT NULL default '{}'::text[]
+9. shown boolean NOT NULL default true
+10. position integer NOT NULL default 0
+11. voucher_for text
+12. valid_months integer
+13. starts_at timestamp with time zone
+14. ends_at timestamp with time zone
+15. place text
+16. online boolean NOT NULL default false
+17. seats_total integer
+18. class_dates date[] NOT NULL default '{}'::date[]
+19. occasion text
+20. hours integer
+21. lead_days integer
+22. event_id uuid
+23. created_at timestamp with time zone NOT NULL default now()
+24. updated_at timestamp with time zone NOT NULL default now()
+25. deleted_at timestamp with time zone
+26. class_link text"
+157,shop_orders,17,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. item_id uuid NOT NULL
+4. buyer_name text NOT NULL
+5. buyer_phone text NOT NULL
+6. qty integer NOT NULL default 1
+7. amount integer NOT NULL
+8. wanted_date date
+9. state text NOT NULL default 'asked'::text
+10. hold_until timestamp with time zone
+11. paid_at timestamp with time zone
+12. paid_by text
+13. payment_ref text
+14. lead_id uuid
+15. event_id uuid
+16. created_at timestamp with time zone NOT NULL default now()
+17. updated_at timestamp with time zone NOT NULL default now()"
+157,shop_vouchers,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. order_id uuid NOT NULL
+4. item_id uuid NOT NULL
+5. code text NOT NULL
+6. valid_until date NOT NULL
+7. redeemed_at timestamp with time zone
+8. redeemed_note text
+9. created_at timestamp with time zone NOT NULL default now()"
+157,site_visit_salt,2,"1. day date NOT NULL
+2. salt bytea NOT NULL"
+157,site_visit_seen,2,"1. day date NOT NULL
+2. digest bytea NOT NULL"
+157,site_visits_daily,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. day date NOT NULL
+4. page text NOT NULL
+5. look_id uuid
+6. source text NOT NULL
+7. views integer NOT NULL default 0
+8. uniques integer NOT NULL default 0"
+157,spotlight,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid
+3. image_url text NOT NULL
+4. cloudinary_public_id text
+5. caption text
+6. week_label text
+7. active boolean NOT NULL default true
+8. sort_order integer NOT NULL default 0
+9. created_at timestamp with time zone NOT NULL default now()"
+157,taste_quiz_images,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. image_url text NOT NULL
+3. cloudinary_public_id text
+4. caption text
+5. aesthetic_tags jsonb NOT NULL default '[]'::jsonb
+6. active boolean NOT NULL default true
+7. sort_order integer NOT NULL default 0
+8. created_at timestamp with time zone NOT NULL default now()"
+157,tds_ledger,18,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. invoice_id uuid
+4. client_id uuid
+5. client_name text NOT NULL
+6. client_pan text
+7. client_tan text
+8. gross_amount integer NOT NULL
+9. tds_rate numeric(4,2) NOT NULL
+10. tds_amount integer NOT NULL
+11. net_received integer NOT NULL
+12. section text
+13. deduction_date date NOT NULL
+14. financial_year text NOT NULL
+15. certificate_no text
+16. notes text
+17. created_at timestamp with time zone NOT NULL default now()
+18. updated_at timestamp with time zone NOT NULL default now()"
+157,team_members,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. name text NOT NULL
+4. role text
+5. phone text
+6. daily_rate_inr integer
+7. notes text
+8. active boolean NOT NULL default true
+9. deleted_at timestamp with time zone
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()
+12. page_token uuid NOT NULL default uuid_generate_v4()
+13. roster_vendor_id uuid"
+157,team_messages,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. body text NOT NULL
+4. pinned boolean NOT NULL default false
+5. sent_to_count integer
+6. linked_event_id uuid
+7. created_at timestamp with time zone NOT NULL default now()"
+157,team_payments,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. team_member_id uuid NOT NULL
+4. linked_event_id uuid
+5. linked_task_id uuid
+6. description text
+7. amount_inr integer NOT NULL
+8. state text NOT NULL default 'owed'::text
+9. paid_at timestamp with time zone
+10. paid_via text
+11. notes text
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()"
+157,team_tasks,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. assigned_to_member_id uuid
+4. linked_event_id uuid
+5. title text NOT NULL
+6. description text
+7. due_date date
+8. priority text NOT NULL default 'normal'::text
+9. state text NOT NULL default 'open'::text
+10. completed_at timestamp with time zone
+11. deleted_at timestamp with time zone
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()"
+157,users,9,"1. id uuid NOT NULL default uuid_generate_v4()
+2. phone text NOT NULL
+3. name text
+4. created_at timestamp with time zone NOT NULL default now()
+5. updated_at timestamp with time zone NOT NULL default now()
+6. email text
+7. pending_routing_context jsonb
+8. pronouns text
+9. auth_user_id uuid"
+157,vendor_activity_log,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. surface text NOT NULL
+4. action text NOT NULL
+5. summary text NOT NULL
+6. entity_type text
+7. entity_id uuid
+8. created_at timestamp with time zone NOT NULL default now()"
+157,vendor_ad_connections,18,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. fb_user_id text
+4. access_token text
+5. token_expires_at timestamp with time zone
+6. granted_scopes text[] NOT NULL default '{}'::text[]
+7. ad_account_id text
+8. ad_account_name text
+9. currency text
+10. page_id text
+11. page_name text
+12. ig_user_id text
+13. pending_state_nonce text
+14. pending_state_at timestamp with time zone
+15. consented_at timestamp with time zone
+16. connected_at timestamp with time zone
+17. created_at timestamp with time zone NOT NULL default now()
+18. updated_at timestamp with time zone NOT NULL default now()"
+157,vendor_ads,23,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. ad_account_id text NOT NULL
+5. source_media_id text
+6. campaign_id text
+7. adset_id text
+8. creative_id text
+9. ad_id text
+10. daily_budget_minor bigint NOT NULL
+11. currency text NOT NULL
+12. days integer NOT NULL
+13. settings jsonb NOT NULL default '{}'::jsonb
+14. total_minor bigint
+15. status text NOT NULL default 'draft'::text
+16. refused_reason text
+17. started_at timestamp with time zone
+18. ends_at timestamp with time zone
+19. ended_at timestamp with time zone
+20. last_insights jsonb
+21. last_insights_at timestamp with time zone
+22. created_at timestamp with time zone NOT NULL default now()
+23. updated_at timestamp with time zone NOT NULL default now()"
+157,vendor_collection_looks,3,"1. collection_id uuid NOT NULL
+2. look_id uuid NOT NULL
+3. position integer NOT NULL default 0"
+157,vendor_collections,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. name text NOT NULL
+4. slug text NOT NULL
+5. description text
+6. cover_photo_id uuid
+7. position integer NOT NULL default 0
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()
+10. deleted_at timestamp with time zone"
+157,vendor_discover_requests,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. state text NOT NULL
+4. reason text
+5. decided_by_admin text
+6. decided_at timestamp with time zone
+7. created_at timestamp with time zone NOT NULL default now()"
+157,vendor_domains,32,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. domain text NOT NULL
+4. registrar text NOT NULL default 'resellerclub'::text
+5. status text NOT NULL default 'paying'::text
+6. cost_paise integer NOT NULL
+7. gst_pct integer NOT NULL default 18
+8. price_paise integer NOT NULL
+9. years integer NOT NULL default 1
+10. razorpay_link_id text
+11. razorpay_link_url text
+12. razorpay_payment_id text
+13. paid_at timestamp with time zone
+14. registrant jsonb NOT NULL default '{}'::jsonb
+15. registrar_customer_id text
+16. registrar_contact_id text
+17. registrar_order_id text
+18. registered_at timestamp with time zone
+19. expires_at timestamp with time zone
+20. auto_renew boolean NOT NULL default false
+21. vercel_domain_added_at timestamp with time zone
+22. dns_verified_at timestamp with time zone
+23. ssl_issued_at timestamp with time zone
+24. live_at timestamp with time zone
+25. forward_email text
+26. last_error text
+27. retries integer NOT NULL default 0
+28. refund_due_at timestamp with time zone
+29. refunded_at timestamp with time zone
+30. created_at timestamp with time zone NOT NULL default now()
+31. updated_at timestamp with time zone NOT NULL default now()
+32. deleted_at timestamp with time zone"
+157,vendor_feature_choices,5,"1. vendor_id uuid NOT NULL
+2. feature_key text NOT NULL
+3. choice text NOT NULL
+4. chosen_at timestamp with time zone NOT NULL default now()
+5. chosen_by text"
+157,vendor_featured_submissions,18,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. slot_kind text NOT NULL
+4. hero_image_id uuid
+5. caption text
+6. proposed_start_date date
+7. proposed_end_date date
+8. fee_inr integer NOT NULL
+9. razorpay_order_id text
+10. paid_at timestamp with time zone
+11. state text NOT NULL default 'submitted'::text
+12. scheduled_start timestamp with time zone
+13. scheduled_end timestamp with time zone
+14. rejection_reason text
+15. decided_by_admin text
+16. decided_at timestamp with time zone
+17. created_at timestamp with time zone NOT NULL default now()
+18. updated_at timestamp with time zone NOT NULL default now()"
+157,vendor_first_builds,7,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. state text NOT NULL default 'running'::text
+4. steps jsonb NOT NULL default '[]'::jsonb
+5. started_at timestamp with time zone NOT NULL default now()
+6. updated_at timestamp with time zone NOT NULL default now()
+7. finished_at timestamp with time zone"
+157,vendor_google_connections,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid
+3. google_sub text
+4. google_email text
+5. scope text
+6. refresh_token_enc text
+7. connected_at timestamp with time zone
+8. last_synced_at timestamp with time zone
+9. sc_property text
+10. pending_state_nonce text
+11. pending_state_at timestamp with time zone
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()"
+157,vendor_ig_connections,18,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. ig_user_id text
+4. access_token text
+5. token_expires_at timestamp with time zone
+6. connected_at timestamp with time zone
+7. last_refreshed_at timestamp with time zone
+8. pending_state_nonce text
+9. pending_state_at timestamp with time zone
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()
+12. ig_username text
+13. insights_granted_at timestamp with time zone
+14. messages_granted_at timestamp with time zone
+15. dm_state text NOT NULL default 'off'::text
+16. dm_consented_at timestamp with time zone
+17. dm_subscribed_at timestamp with time zone
+18. ig_account_id text"
+157,vendor_insurance_settings,3,"1. vendor_id uuid NOT NULL
+2. show_mark boolean NOT NULL default false
+3. updated_at timestamp with time zone NOT NULL default now()"
+157,vendor_look_photos,20,"1. id uuid NOT NULL default gen_random_uuid()
+2. look_id uuid NOT NULL
+3. vendor_id uuid NOT NULL
+4. image_url text NOT NULL
+5. width integer
+6. height integer
+7. focal_portrait_x numeric(5,2) NOT NULL default 50
+8. focal_portrait_y numeric(5,2) NOT NULL default 50
+9. focal_landscape_x numeric(5,2) NOT NULL default 50
+10. focal_landscape_y numeric(5,2) NOT NULL default 50
+11. caption text
+12. alt text
+13. position integer NOT NULL default 0
+14. approval_state text NOT NULL default 'pending'::text
+15. created_at timestamp with time zone NOT NULL default now()
+16. updated_at timestamp with time zone NOT NULL default now()
+17. deleted_at timestamp with time zone
+18. rejection_reason text
+19. reviewed_at timestamp with time zone
+20. source text NOT NULL default 'upload'::text"
+157,vendor_looks,26,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. title text NOT NULL
+4. slug text NOT NULL
+5. status text NOT NULL default 'draft'::text
+6. published_at timestamp with time zone
+7. category text
+8. year_label text
+9. description text
+10. included jsonb NOT NULL default '[]'::jsonb
+11. from_price_text text
+12. from_price_rupees integer
+13. package_id uuid
+14. credits jsonb NOT NULL default '[]'::jsonb
+15. videos jsonb NOT NULL default '[]'::jsonb
+16. related_ids uuid[] NOT NULL default '{}'::uuid[]
+17. new_mark boolean NOT NULL default true
+18. seo_title text
+19. seo_description text
+20. share_photo_id uuid
+21. source text NOT NULL default 'manual'::text
+22. ig_media_id text
+23. position integer NOT NULL default 0
+24. created_at timestamp with time zone NOT NULL default now()
+25. updated_at timestamp with time zone NOT NULL default now()
+26. deleted_at timestamp with time zone"
+157,vendor_packages,16,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. name text NOT NULL
+4. description text NOT NULL default ''::text
+5. line_items jsonb NOT NULL default '[]'::jsonb
+6. total integer
+7. deposit_pct integer NOT NULL default 30
+8. middle_pct integer NOT NULL default 30
+9. middle_enabled boolean NOT NULL default true
+10. delivery_basis text NOT NULL
+11. delivery_days integer
+12. is_default boolean NOT NULL default false
+13. seeded_from text
+14. created_at timestamp with time zone NOT NULL default now()
+15. updated_at timestamp with time zone NOT NULL default now()
+16. deleted_at timestamp with time zone"
+157,vendor_pay_accounts,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. provider text NOT NULL
+4. account_id text NOT NULL
+5. token_ref text
+6. status text NOT NULL default 'connected'::text
+7. connected_at timestamp with time zone NOT NULL default now()
+8. revoked_at timestamp with time zone"
+157,vendor_pay_event_answers,5,"1. event_id uuid NOT NULL
+2. round integer NOT NULL
+3. action text NOT NULL
+4. answered_by uuid NOT NULL
+5. answered_at timestamp with time zone NOT NULL default now()"
+157,vendor_pay_events,16,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. provider text NOT NULL
+4. provider_payment_id text NOT NULL
+5. kind text NOT NULL
+6. link_id uuid
+7. milestone_id uuid
+8. invoice_id uuid
+9. amount integer NOT NULL
+10. method text
+11. at timestamp with time zone NOT NULL default now()
+12. applied boolean NOT NULL default true
+13. not_applied_reason text
+14. binder_id uuid
+15. claimed_at timestamp with time zone
+16. binder_base_received integer"
+157,vendor_pay_links,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. provider text NOT NULL
+4. provider_link_id text
+5. short_url text
+6. invoice_id uuid
+7. milestone_id uuid
+8. amount integer NOT NULL
+9. state text NOT NULL default 'created'::text
+10. sent_at timestamp with time zone
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. binder_id uuid"
+157,vendor_pay_oauth_states,6,"1. nonce text NOT NULL
+2. vendor_id uuid NOT NULL
+3. session_id text NOT NULL
+4. expires_at timestamp with time zone NOT NULL
+5. spent_at timestamp with time zone
+6. created_at timestamp with time zone NOT NULL default now()"
+157,vendor_pay_settings,5,"1. vendor_id uuid NOT NULL
+2. auto_link boolean NOT NULL default false
+3. thank_you boolean NOT NULL default false
+4. updated_at timestamp with time zone NOT NULL default now()
+5. accept_partial boolean NOT NULL default false"
+157,vendor_policies,14,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. insurer text NOT NULL
+5. cover_amount integer NOT NULL
+6. ends_on date NOT NULL
+7. doc_path text
+8. doc_mime text
+9. confirmed_at timestamp with time zone
+10. reminded_30_on date
+11. reminded_7_on date
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()
+14. deleted_at timestamp with time zone"
+157,vendor_portfolio,15,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. image_url text NOT NULL
+4. caption text
+5. is_hero boolean NOT NULL default false
+6. in_carousel boolean NOT NULL default true
+7. aesthetic_tags jsonb NOT NULL default '[]'::jsonb
+8. approval_state text NOT NULL default 'pending'::text
+10. created_at timestamp with time zone NOT NULL default now()
+11. updated_at timestamp with time zone NOT NULL default now()
+12. reviewed_by_admin text
+13. reviewed_at timestamp with time zone
+14. rejection_reason text
+15. position integer NOT NULL default 0
+16. source text NOT NULL default 'upload'::text"
+157,vendor_roster,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. owner_vendor_id uuid NOT NULL
+3. member_vendor_id uuid
+4. name text NOT NULL
+5. phone text
+6. category text
+7. source text NOT NULL
+8. created_at timestamp with time zone NOT NULL default now()"
+157,vendor_seal,4,"1. vendor_id uuid NOT NULL
+2. weddings integer NOT NULL default 0
+3. delivery_days integer
+4. computed_at timestamp with time zone NOT NULL default now()"
+157,vendor_site_drafts,6,"1. vendor_id uuid NOT NULL
+2. settings jsonb NOT NULL default '{}'::jsonb
+3. sections jsonb
+4. pages jsonb
+5. created_at timestamp with time zone NOT NULL default now()
+6. updated_at timestamp with time zone NOT NULL default now()"
+157,vendor_site_faq,8,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. question text NOT NULL
+4. answer text NOT NULL
+5. position integer NOT NULL default 0
+6. created_at timestamp with time zone NOT NULL default now()
+7. updated_at timestamp with time zone NOT NULL default now()
+8. deleted_at timestamp with time zone"
+157,vendor_site_pages,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. slug text NOT NULL
+4. title text NOT NULL
+5. position integer NOT NULL default 0
+6. shown boolean NOT NULL default true
+7. created_at timestamp with time zone NOT NULL default now()
+8. updated_at timestamp with time zone NOT NULL default now()
+9. deleted_at timestamp with time zone"
+157,vendor_site_sections,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. page_id uuid
+4. key text NOT NULL
+5. variant text NOT NULL default 'default'::text
+6. shown boolean NOT NULL default true
+7. position integer NOT NULL default 0
+8. eyebrow text
+9. heading text
+10. body jsonb NOT NULL default '{}'::jsonb
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. deleted_at timestamp with time zone"
+157,vendor_sites,28,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. look text
+4. look_options jsonb NOT NULL default '{}'::jsonb
+5. pages jsonb NOT NULL default '[]'::jsonb
+6. sections jsonb NOT NULL default '{}'::jsonb
+7. seo jsonb NOT NULL default '{}'::jsonb
+8. credit_shown boolean NOT NULL default true
+9. published_at timestamp with time zone
+10. unpublished_at timestamp with time zone
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. style text
+14. styles_picked text[] NOT NULL default '{}'::text[]
+15. palette_id text
+16. palette_custom jsonb NOT NULL default '{}'::jsonb
+17. palette_resolved jsonb
+18. font_pair text
+19. motion text
+20. corners text
+21. texture text
+22. button_style text
+23. cover_mode text
+24. cover jsonb NOT NULL default '[]'::jsonb
+25. monogram text
+26. site_name text
+27. copy jsonb NOT NULL default '{}'::jsonb
+28. style_changed_at timestamp with time zone"
+157,vendor_state,7,"1. vendor_id uuid NOT NULL
+2. summary text
+3. pricing_policy jsonb default '{}'::jsonb
+4. recent_notes jsonb default '[]'::jsonb
+5. open_threads integer default 0
+6. pending_actions integer default 0
+7. updated_at timestamp with time zone NOT NULL default now()"
+157,vendor_stories,10,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. title text NOT NULL
+4. slug text NOT NULL
+5. body text NOT NULL default ''::text
+6. cover_url text
+7. published_at timestamp with time zone
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()
+10. deleted_at timestamp with time zone"
+157,vendor_testimonial_requests,13,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. client_id uuid
+4. person_name text NOT NULL
+5. phone text
+6. token_hash text NOT NULL
+7. origin text NOT NULL
+8. sent_via text
+9. sent_at timestamp with time zone
+10. expires_at timestamp with time zone NOT NULL default (now() + '30 days'::interval)
+11. used_at timestamp with time zone
+12. revoked_at timestamp with time zone
+13. created_at timestamp with time zone NOT NULL default now()"
+157,vendor_testimonials,21,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. author text NOT NULL
+4. body text
+5. wedding_when text
+6. consented_at timestamp with time zone NOT NULL
+7. position integer NOT NULL default 0
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()
+10. deleted_at timestamp with time zone
+11. request_id uuid
+12. occasion text
+13. event_month date
+14. place text
+15. state text NOT NULL default 'pending'::text
+16. approved_at timestamp with time zone
+17. hidden_at timestamp with time zone
+18. submitted_at timestamp with time zone
+19. video_url text
+20. video_duration_s integer
+21. video_title text"
+157,vendor_wa_events,5,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. kind text NOT NULL
+4. payload jsonb NOT NULL
+5. received_at timestamp with time zone NOT NULL default now()"
+157,vendor_wabas,16,"1. id uuid NOT NULL default gen_random_uuid()
+2. vendor_id uuid NOT NULL
+3. business_id text NOT NULL
+4. waba_id text NOT NULL
+5. phone_number_id text NOT NULL
+6. display_number text NOT NULL
+7. connect_way text NOT NULL
+8. status text NOT NULL default 'pending'::text
+9. quality_rating text
+10. tier text
+11. paused_reason text
+12. sync_started_at timestamp with time zone
+13. created_at timestamp with time zone NOT NULL default now()
+14. updated_at timestamp with time zone NOT NULL default now()
+15. business_token text
+16. removed_at timestamp with time zone"
+157,vendors,63,"1. id uuid NOT NULL default uuid_generate_v4()
+2. user_id uuid NOT NULL
+3. business_name text
+4. category text
+5. vertical text NOT NULL default 'wedding'::text
+6. city text
+7. upi_id text
+8. gstin text
+9. status text NOT NULL default 'active'::text
+10. tier text NOT NULL default 'basic'::text
+11. founding_cohort boolean NOT NULL default false
+12. created_at timestamp with time zone NOT NULL default now()
+13. updated_at timestamp with time zone NOT NULL default now()
+14. onboarding_state text
+15. routing_handle text
+16. instagram_handle text
+17. open_to_travel boolean default false
+18. travel_notes text
+19. briefing_enabled boolean NOT NULL default true
+20. invoice_prefix text
+21. invoice_counter integer NOT NULL default 0
+22. style_notes text
+23. pin_hash text
+24. pin_failed_attempts integer NOT NULL default 0
+25. pin_locked_until timestamp with time zone
+26. aesthetic_tags jsonb NOT NULL default '[]'::jsonb
+27. rate_min integer
+28. rate_max integer
+29. discover_preview boolean NOT NULL default false
+30. discover_eligible boolean NOT NULL default false
+31. discover_request_state text
+32. couture_eligible boolean NOT NULL default false
+33. featured_eligible boolean NOT NULL default false
+34. about text
+43. base_fee_min integer
+44. base_fee_max integer
+45. slot_capacity integer
+46. assistant_name text
+47. rate_display boolean NOT NULL default true
+48. discover_paused boolean NOT NULL default false
+49. billing_status text NOT NULL default 'none'::text
+50. razorpay_subscription_id text
+51. razorpay_subscription_link text
+52. service_area text
+53. service_cities text[]
+54. account_name text
+55. account_number text
+56. ifsc text
+57. address text
+58. date_check_enabled boolean NOT NULL default false
+59. contract_prefix text
+60. contract_counter integer NOT NULL default 0
+61. peer_discoverable boolean NOT NULL default true
+62. seo_title text
+63. seo_description text
+64. exchange_discoverable boolean NOT NULL default false
+65. enquiry_routing text NOT NULL default 'tdw'::text
+66. enquiry_phone text
+67. reply_quiet_minutes integer NOT NULL default 120
+68. price_share_enabled boolean NOT NULL default false
+69. layout_v2 boolean NOT NULL default false
+70. wa_eliza_state text
+71. wa_eliza_consented_at timestamp with time zone"
+157,waitlist_signups,9,"1. id uuid NOT NULL default gen_random_uuid()
+2. kind text NOT NULL
+3. name text NOT NULL
+4. phone text NOT NULL
+5. instagram_handle text NOT NULL
+6. status text NOT NULL default 'new'::text
+7. notes text
+8. created_at timestamp with time zone NOT NULL default now()
+9. updated_at timestamp with time zone NOT NULL default now()"
+157,website_chat_tokens,7,"1. token_hash text NOT NULL
+2. vendor_id uuid NOT NULL
+3. phone text NOT NULL
+4. conversation_id uuid NOT NULL
+5. page_title text
+6. created_at timestamp with time zone NOT NULL default now()
+7. expires_at timestamp with time zone NOT NULL default (now() + '24:00:00'::interval)"
+157,wedding_credits,10,"1. id uuid NOT NULL default uuid_generate_v4()
+2. wedding_id uuid NOT NULL
+3. role text NOT NULL
+4. vendor_id uuid
+5. phone text
+6. name text
+7. status text NOT NULL default 'tagged'::text
+8. claim_token uuid NOT NULL default uuid_generate_v4()
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()"
+157,wedding_photos,6,"1. id uuid NOT NULL default uuid_generate_v4()
+2. wedding_id uuid NOT NULL
+3. url text NOT NULL
+4. public_id text NOT NULL
+5. position integer NOT NULL default 0
+6. created_at timestamp with time zone NOT NULL default now()"
+157,weddings,19,"1. id uuid NOT NULL default uuid_generate_v4()
+2. owner_vendor_id uuid NOT NULL
+3. event_id uuid
+4. slug text NOT NULL
+5. title text NOT NULL
+6. venue text
+7. city text
+8. delivered_at timestamp with time zone
+9. couple_consent boolean NOT NULL default false
+10. visibility text NOT NULL default 'draft'::text
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. couple_id uuid
+14. consent_token uuid
+15. consent_sent_at timestamp with time zone
+16. consent_phone text
+17. consent_attempts integer NOT NULL default 0
+18. wedding_date date
+19. wedding_date_precision text"

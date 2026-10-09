@@ -357,6 +357,14 @@ const LEADS_COLUMN_CENSUS = [
   // on no wire. It is not contact, so WITHHELD_FIELDS is unchanged. If a door ever
   // selects it, legs B and C red and THAT is the ruling; this line is not permission.
   'binder_id',
+  // ── CE-47 · WEB-4 cut 29 · THREE COLUMNS CLASSIFIED (the chair's ruling, 8 Oct 2026, as for binder_id, F-43.73) ──
+  // The PAIR regen of 8 October 2026 (ladder 0220) made three columns visible to leg A that the 0168 snapshot could not
+  // see: `counterparty_ig_id` (0173; written by the Instagram lead path, src/agent/engine.js) and `consent_at` and
+  // `consent_text_version` (written by the website enquiry, src/lib/website/enquiry.js). DISPOSITIONED **PRESENT IN
+  // THE SCHEMA, ON NO WIRE**: no door asks for them and no wire carries them (legs B1, B2, C and D stayed green).
+  // WITHHELD_FIELDS is unchanged ({phone, email}). If a door ever selects one, legs B and C red and THAT is the
+  // ruling; this line is not permission.
+  'counterparty_ig_id', 'consent_at', 'consent_text_version',
 ];
 
 // The columns the LIST door asks the database for (src/api/vendor/leads.js,

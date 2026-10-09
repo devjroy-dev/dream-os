@@ -1,0 +1,504 @@
+rows_expected,table_name,index_name,definition
+503,admin_activity_log,admin_activity_log_admin_idx,"CREATE INDEX admin_activity_log_admin_idx ON public.admin_activity_log USING btree (admin_email, created_at DESC)"
+503,admin_activity_log,admin_activity_log_pkey,CREATE UNIQUE INDEX admin_activity_log_pkey ON public.admin_activity_log USING btree (id)
+503,admin_activity_log,admin_activity_log_target_idx,"CREATE INDEX admin_activity_log_target_idx ON public.admin_activity_log USING btree (target_type, target_id, created_at DESC)"
+503,admin_config,admin_config_pkey,CREATE UNIQUE INDEX admin_config_pkey ON public.admin_config USING btree (key)
+503,assistance_forwards,assistance_forwards_pkey,CREATE UNIQUE INDEX assistance_forwards_pkey ON public.assistance_forwards USING btree (id)
+503,assistance_forwards,idx_assistance_forwards_item,CREATE INDEX idx_assistance_forwards_item ON public.assistance_forwards USING btree (item_id)
+503,assistance_forwards,idx_assistance_forwards_wamid,CREATE INDEX idx_assistance_forwards_wamid ON public.assistance_forwards USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,assistance_forwards,uq_assistance_forwards_wamid,CREATE UNIQUE INDEX uq_assistance_forwards_wamid ON public.assistance_forwards USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,assistance_found_notices,assistance_found_notices_pkey,CREATE UNIQUE INDEX assistance_found_notices_pkey ON public.assistance_found_notices USING btree (id)
+503,assistance_found_notices,assistance_found_notices_wamid_idx,CREATE INDEX assistance_found_notices_wamid_idx ON public.assistance_found_notices USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,assistance_found_notices,uq_assistance_found_notices_forward,CREATE UNIQUE INDEX uq_assistance_found_notices_forward ON public.assistance_found_notices USING btree (forward_id)
+503,assistance_found_notices,uq_assistance_found_notices_wamid,CREATE UNIQUE INDEX uq_assistance_found_notices_wamid ON public.assistance_found_notices USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,assistance_request_items,assistance_request_items_pkey,CREATE UNIQUE INDEX assistance_request_items_pkey ON public.assistance_request_items USING btree (id)
+503,assistance_request_items,idx_assistance_request_items_request,CREATE INDEX idx_assistance_request_items_request ON public.assistance_request_items USING btree (request_id)
+503,assistance_requests,assistance_requests_pkey,CREATE UNIQUE INDEX assistance_requests_pkey ON public.assistance_requests USING btree (id)
+503,assistance_requests,idx_assistance_requests_notify_wamid,CREATE INDEX idx_assistance_requests_notify_wamid ON public.assistance_requests USING btree (notify_wamid) WHERE (notify_wamid IS NOT NULL)
+503,assistance_requests,idx_assistance_requests_phone,CREATE INDEX idx_assistance_requests_phone ON public.assistance_requests USING btree (phone)
+503,assistance_requests,idx_assistance_requests_status_created,"CREATE INDEX idx_assistance_requests_status_created ON public.assistance_requests USING btree (status, created_at DESC)"
+503,assistance_requests,uq_assistance_requests_notify_wamid,CREATE UNIQUE INDEX uq_assistance_requests_notify_wamid ON public.assistance_requests USING btree (notify_wamid) WHERE (notify_wamid IS NOT NULL)
+503,bill_drafts,bill_drafts_pkey,CREATE UNIQUE INDEX bill_drafts_pkey ON public.bill_drafts USING btree (id)
+503,bill_drafts,bill_drafts_unconfirmed_idx,CREATE INDEX bill_drafts_unconfirmed_idx ON public.bill_drafts USING btree (created_at) WHERE (confirmed_at IS NULL)
+503,bill_drafts,bill_drafts_vendor_idx,"CREATE INDEX bill_drafts_vendor_idx ON public.bill_drafts USING btree (vendor_id, created_at DESC)"
+503,billing_events,billing_events_created_at_idx,CREATE INDEX billing_events_created_at_idx ON public.billing_events USING btree (created_at DESC)
+503,billing_events,billing_events_event_id_key,CREATE UNIQUE INDEX billing_events_event_id_key ON public.billing_events USING btree (event_id)
+503,billing_events,billing_events_pkey,CREATE UNIQUE INDEX billing_events_pkey ON public.billing_events USING btree (id)
+503,billing_events,billing_events_revenue_idx,CREATE INDEX billing_events_revenue_idx ON public.billing_events USING btree (created_at DESC) WHERE counts_as_revenue
+503,billing_events,billing_events_vendor_idx,"CREATE INDEX billing_events_vendor_idx ON public.billing_events USING btree (vendor_id, created_at DESC)"
+503,bride_pages,bride_pages_pkey,CREATE UNIQUE INDEX bride_pages_pkey ON public.bride_pages USING btree (id)
+503,bride_pages,idx_bride_pages_couple_created,"CREATE INDEX idx_bride_pages_couple_created ON public.bride_pages USING btree (couple_id, created_at DESC)"
+503,bride_pages,idx_bride_pages_couple_entry_date,"CREATE INDEX idx_bride_pages_couple_entry_date ON public.bride_pages USING btree (couple_id, entry_date DESC)"
+503,broadcast_recipients,broadcast_recipients_pkey,CREATE UNIQUE INDEX broadcast_recipients_pkey ON public.broadcast_recipients USING btree (id)
+503,broadcast_recipients,broadcast_recipients_vendor_phone_idx,"CREATE INDEX broadcast_recipients_vendor_phone_idx ON public.broadcast_recipients USING btree (vendor_id, phone)"
+503,broadcast_recipients,uq_broadcast_recipients_wamid,CREATE UNIQUE INDEX uq_broadcast_recipients_wamid ON public.broadcast_recipients USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,broadcasts,broadcasts_pkey,CREATE UNIQUE INDEX broadcasts_pkey ON public.broadcasts USING btree (id)
+503,broadcasts,uq_broadcasts_referral_year,"CREATE UNIQUE INDEX uq_broadcasts_referral_year ON public.broadcasts USING btree (vendor_id, kind, EXTRACT(year FROM (created_at AT TIME ZONE 'Asia/Kolkata'::text))) WHERE (kind = 'referral'::text)"
+503,budget_envelopes,budget_envelopes_couple_sort_idx,"CREATE INDEX budget_envelopes_couple_sort_idx ON public.budget_envelopes USING btree (couple_id, sort, created_at)"
+503,budget_envelopes,budget_envelopes_pkey,CREATE UNIQUE INDEX budget_envelopes_pkey ON public.budget_envelopes USING btree (id)
+503,capabilities,capabilities_pkey,CREATE UNIQUE INDEX capabilities_pkey ON public.capabilities USING btree (key)
+503,circle_activity,circle_activity_couple_created_idx,"CREATE INDEX circle_activity_couple_created_idx ON public.circle_activity USING btree (couple_id, created_at DESC)"
+503,circle_activity,circle_activity_couple_unsurfaced_idx,"CREATE INDEX circle_activity_couple_unsurfaced_idx ON public.circle_activity USING btree (couple_id, created_at) WHERE (surfaced_to_bride = false)"
+503,circle_activity,circle_activity_pkey,CREATE UNIQUE INDEX circle_activity_pkey ON public.circle_activity USING btree (id)
+503,circle_activity,circle_activity_session_chrono_idx,"CREATE INDEX circle_activity_session_chrono_idx ON public.circle_activity USING btree (session_id, created_at) WHERE (session_id IS NOT NULL)"
+503,circle_activity,circle_activity_subject_idx,CREATE INDEX circle_activity_subject_idx ON public.circle_activity USING btree (subject_id) WHERE (subject_id IS NOT NULL)
+503,circle_members,circle_members_couple_status_idx,"CREATE INDEX circle_members_couple_status_idx ON public.circle_members USING btree (couple_id, status)"
+503,circle_members,circle_members_invite_token_unique,CREATE UNIQUE INDEX circle_members_invite_token_unique ON public.circle_members USING btree (invite_token)
+503,circle_members,circle_members_phone_idx,CREATE INDEX circle_members_phone_idx ON public.circle_members USING btree (invitee_phone) WHERE (invitee_phone IS NOT NULL)
+503,circle_members,circle_members_pkey,CREATE UNIQUE INDEX circle_members_pkey ON public.circle_members USING btree (id)
+503,circle_poll_votes,circle_poll_votes_pkey,"CREATE UNIQUE INDEX circle_poll_votes_pkey ON public.circle_poll_votes USING btree (poll_id, voter_user_id)"
+503,circle_poll_votes,circle_poll_votes_poll_idx,CREATE INDEX circle_poll_votes_poll_idx ON public.circle_poll_votes USING btree (poll_id)
+503,circle_polls,circle_polls_couple_created_idx,"CREATE INDEX circle_polls_couple_created_idx ON public.circle_polls USING btree (couple_id, created_at DESC)"
+503,circle_polls,circle_polls_pkey,CREATE UNIQUE INDEX circle_polls_pkey ON public.circle_polls USING btree (id)
+503,circle_sessions,circle_sessions_couple_pending_idx,"CREATE INDEX circle_sessions_couple_pending_idx ON public.circle_sessions USING btree (couple_id, last_activity_at) WHERE (summarized_to_bride = false)"
+503,circle_sessions,circle_sessions_member_activity_idx,"CREATE INDEX circle_sessions_member_activity_idx ON public.circle_sessions USING btree (circle_member_id, last_activity_at DESC)"
+503,circle_sessions,circle_sessions_one_open_per_member_unique,CREATE UNIQUE INDEX circle_sessions_one_open_per_member_unique ON public.circle_sessions USING btree (circle_member_id) WHERE (summarized_to_bride = false)
+503,circle_sessions,circle_sessions_pkey,CREATE UNIQUE INDEX circle_sessions_pkey ON public.circle_sessions USING btree (id)
+503,clients,clients_active_idx,CREATE INDEX clients_active_idx ON public.clients USING btree (vendor_id) WHERE (deleted_at IS NULL)
+503,clients,clients_created_at_idx,CREATE INDEX clients_created_at_idx ON public.clients USING btree (created_at DESC)
+503,clients,clients_pkey,CREATE UNIQUE INDEX clients_pkey ON public.clients USING btree (id)
+503,clients,clients_vendor_id_idx,CREATE INDEX clients_vendor_id_idx ON public.clients USING btree (vendor_id)
+503,clients,clients_vendor_phone_unique,"CREATE UNIQUE INDEX clients_vendor_phone_unique ON public.clients USING btree (vendor_id, phone) WHERE ((phone IS NOT NULL) AND (deleted_at IS NULL))"
+503,collab_house_tokens,collab_house_tokens_pkey,CREATE UNIQUE INDEX collab_house_tokens_pkey ON public.collab_house_tokens USING btree (platform)
+503,collab_interest,collab_interest_partner_once,"CREATE UNIQUE INDEX collab_interest_partner_once ON public.collab_interest USING btree (send_id, lower(display_name)) WHERE (source = 'partner'::text)"
+503,collab_interest,collab_interest_pkey,CREATE UNIQUE INDEX collab_interest_pkey ON public.collab_interest USING btree (id)
+503,collab_interest,collab_interest_post_idx,"CREATE INDEX collab_interest_post_idx ON public.collab_interest USING btree (post_id, created_at DESC)"
+503,collab_post_items,collab_post_items_order_idx,"CREATE UNIQUE INDEX collab_post_items_order_idx ON public.collab_post_items USING btree (post_id, ""position"")"
+503,collab_post_items,collab_post_items_pkey,CREATE UNIQUE INDEX collab_post_items_pkey ON public.collab_post_items USING btree (id)
+503,collab_post_items,collab_post_items_type_idx,"CREATE INDEX collab_post_items_type_idx ON public.collab_post_items USING btree (requirement_type, post_id)"
+503,collab_posts,collab_posts_expires_idx,CREATE INDEX collab_posts_expires_idx ON public.collab_posts USING btree (expires_at) WHERE (state = 'open'::text)
+503,collab_posts,collab_posts_feed_idx,"CREATE INDEX collab_posts_feed_idx ON public.collab_posts USING btree (requirement_type, city, state, event_date) WHERE (state = 'open'::text)"
+503,collab_posts,collab_posts_pkey,CREATE UNIQUE INDEX collab_posts_pkey ON public.collab_posts USING btree (id)
+503,collab_posts,collab_posts_vendor_id_idx,"CREATE INDEX collab_posts_vendor_id_idx ON public.collab_posts USING btree (vendor_id, created_at DESC)"
+503,collab_prospects,collab_prospects_pkey,CREATE UNIQUE INDEX collab_prospects_pkey ON public.collab_prospects USING btree (id)
+503,collab_responses,collab_responses_pkey,CREATE UNIQUE INDEX collab_responses_pkey ON public.collab_responses USING btree (id)
+503,collab_responses,collab_responses_post_id_idx,"CREATE INDEX collab_responses_post_id_idx ON public.collab_responses USING btree (post_id, state, created_at DESC)"
+503,collab_responses,collab_responses_post_id_responder_vendor_id_key,"CREATE UNIQUE INDEX collab_responses_post_id_responder_vendor_id_key ON public.collab_responses USING btree (post_id, responder_vendor_id)"
+503,collab_responses,collab_responses_responder_idx,"CREATE INDEX collab_responses_responder_idx ON public.collab_responses USING btree (responder_vendor_id, created_at DESC)"
+503,collab_shares,collab_shares_pkey,CREATE UNIQUE INDEX collab_shares_pkey ON public.collab_shares USING btree (id)
+503,collab_shares,collab_shares_post_id_account_platform_key,"CREATE UNIQUE INDEX collab_shares_post_id_account_platform_key ON public.collab_shares USING btree (post_id, account, platform)"
+503,collab_shares,collab_shares_state_idx,"CREATE INDEX collab_shares_state_idx ON public.collab_shares USING btree (state, created_at DESC)"
+503,contract_profiles,contract_profiles_pkey,CREATE UNIQUE INDEX contract_profiles_pkey ON public.contract_profiles USING btree (vendor_id)
+503,contract_sends,contract_sends_pkey,CREATE UNIQUE INDEX contract_sends_pkey ON public.contract_sends USING btree (id)
+503,contract_sends,idx_contract_sends_contract_created,"CREATE INDEX idx_contract_sends_contract_created ON public.contract_sends USING btree (contract_id, created_at DESC)"
+503,contract_sends,idx_contract_sends_wamid,CREATE INDEX idx_contract_sends_wamid ON public.contract_sends USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,contract_sends,uq_contract_sends_wamid,CREATE UNIQUE INDEX uq_contract_sends_wamid ON public.contract_sends USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,contract_signatures,contract_signatures_contract_idx,CREATE INDEX contract_signatures_contract_idx ON public.contract_signatures USING btree (contract_id)
+503,contract_signatures,contract_signatures_open_key,CREATE UNIQUE INDEX contract_signatures_open_key ON public.contract_signatures USING btree (contract_id) WHERE (verified_at IS NULL)
+503,contract_signatures,contract_signatures_pkey,CREATE UNIQUE INDEX contract_signatures_pkey ON public.contract_signatures USING btree (id)
+503,contract_signatures,contract_signatures_sign_token_key,CREATE UNIQUE INDEX contract_signatures_sign_token_key ON public.contract_signatures USING btree (sign_token)
+503,contract_signatures,contract_signatures_token_idx,CREATE INDEX contract_signatures_token_idx ON public.contract_signatures USING btree (sign_token) WHERE (sign_token IS NOT NULL)
+503,contracts,contracts_client_idx,CREATE INDEX contracts_client_idx ON public.contracts USING btree (client_id) WHERE (client_id IS NOT NULL)
+503,contracts,contracts_event_idx,CREATE INDEX contracts_event_idx ON public.contracts USING btree (event_id) WHERE (event_id IS NOT NULL)
+503,contracts,contracts_invoice_idx,CREATE INDEX contracts_invoice_idx ON public.contracts USING btree (invoice_id) WHERE (invoice_id IS NOT NULL)
+503,contracts,contracts_lead_idx,CREATE INDEX contracts_lead_idx ON public.contracts USING btree (lead_id) WHERE (lead_id IS NOT NULL)
+503,contracts,contracts_pkey,CREATE UNIQUE INDEX contracts_pkey ON public.contracts USING btree (id)
+503,contracts,contracts_vendor_idx,"CREATE INDEX contracts_vendor_idx ON public.contracts USING btree (vendor_id, created_at DESC)"
+503,contracts,contracts_vendor_number_unique,"CREATE UNIQUE INDEX contracts_vendor_number_unique ON public.contracts USING btree (vendor_id, number) WHERE (number IS NOT NULL)"
+503,conversations,conversations_counterparty_phone_idx,CREATE INDEX conversations_counterparty_phone_idx ON public.conversations USING btree (counterparty_phone)
+503,conversations,conversations_couple_id_idx,CREATE INDEX conversations_couple_id_idx ON public.conversations USING btree (couple_id)
+503,conversations,conversations_pkey,CREATE UNIQUE INDEX conversations_pkey ON public.conversations USING btree (id)
+503,conversations,conversations_prospect_id_idx,CREATE INDEX conversations_prospect_id_idx ON public.conversations USING btree (prospect_id)
+503,conversations,conversations_state_idx,CREATE INDEX conversations_state_idx ON public.conversations USING btree (state)
+503,conversations,conversations_vendor_id_idx,CREATE INDEX conversations_vendor_id_idx ON public.conversations USING btree (vendor_id)
+503,conversations,conversations_vendor_ig_thread_uidx,"CREATE UNIQUE INDEX conversations_vendor_ig_thread_uidx ON public.conversations USING btree (vendor_id, counterparty_ig_id) WHERE ((kind = 'couple_thread'::text) AND (counterparty_ig_id IS NOT NULL))"
+503,couple_ai_usage,couple_ai_usage_pkey,CREATE UNIQUE INDEX couple_ai_usage_pkey ON public.couple_ai_usage USING btree (id)
+503,couple_ai_usage,idx_couple_ai_usage_member,"CREATE INDEX idx_couple_ai_usage_member ON public.couple_ai_usage USING btree (circle_member_id, created_at DESC) WHERE (circle_member_id IS NOT NULL)"
+503,couple_ai_usage,idx_couple_ai_usage_meter,"CREATE INDEX idx_couple_ai_usage_meter ON public.couple_ai_usage USING btree (couple_id, created_at DESC, kind, turn_id)"
+503,couple_ai_usage,idx_couple_ai_usage_spend,"CREATE INDEX idx_couple_ai_usage_spend ON public.couple_ai_usage USING btree (couple_id, created_at DESC)"
+503,couple_bookings,couple_bookings_couple_due_idx,"CREATE INDEX couple_bookings_couple_due_idx ON public.couple_bookings USING btree (couple_id, balance_due_date) WHERE (balance_due_date IS NOT NULL)"
+503,couple_bookings,couple_bookings_couple_id_idx,CREATE INDEX couple_bookings_couple_id_idx ON public.couple_bookings USING btree (couple_id)
+503,couple_bookings,couple_bookings_couple_state_idx,"CREATE INDEX couple_bookings_couple_state_idx ON public.couple_bookings USING btree (couple_id, state)"
+503,couple_bookings,couple_bookings_couple_vendor_name_idx,"CREATE INDEX couple_bookings_couple_vendor_name_idx ON public.couple_bookings USING btree (couple_id, lower(vendor_name))"
+503,couple_bookings,couple_bookings_pkey,CREATE UNIQUE INDEX couple_bookings_pkey ON public.couple_bookings USING btree (id)
+503,couple_enquiries,couple_enquiries_couple_idx,"CREATE INDEX couple_enquiries_couple_idx ON public.couple_enquiries USING btree (couple_id, created_at DESC)"
+503,couple_enquiries,couple_enquiries_couple_vendor_uidx,"CREATE UNIQUE INDEX couple_enquiries_couple_vendor_uidx ON public.couple_enquiries USING btree (couple_id, vendor_id)"
+503,couple_enquiries,couple_enquiries_pkey,CREATE UNIQUE INDEX couple_enquiries_pkey ON public.couple_enquiries USING btree (id)
+503,couple_receipts,couple_receipts_booking_id_idx,"CREATE INDEX couple_receipts_booking_id_idx ON public.couple_receipts USING btree (couple_id, booking_id) WHERE (booking_id IS NOT NULL)"
+503,couple_receipts,couple_receipts_couple_created_idx,"CREATE INDEX couple_receipts_couple_created_idx ON public.couple_receipts USING btree (couple_id, created_at DESC)"
+503,couple_receipts,couple_receipts_couple_id_idx,CREATE INDEX couple_receipts_couple_id_idx ON public.couple_receipts USING btree (couple_id)
+503,couple_receipts,couple_receipts_couple_label_idx,"CREATE INDEX couple_receipts_couple_label_idx ON public.couple_receipts USING btree (couple_id, lower(label)) WHERE (label IS NOT NULL)"
+503,couple_receipts,couple_receipts_pkey,CREATE UNIQUE INDEX couple_receipts_pkey ON public.couple_receipts USING btree (id)
+503,couple_receipts,couple_receipts_unfiled_idx,CREATE INDEX couple_receipts_unfiled_idx ON public.couple_receipts USING btree (couple_id) WHERE (envelope_id IS NULL)
+503,couple_state,couple_state_pkey,CREATE UNIQUE INDEX couple_state_pkey ON public.couple_state USING btree (couple_id)
+503,couple_tasks,couple_tasks_couple_id_idx,CREATE INDEX couple_tasks_couple_id_idx ON public.couple_tasks USING btree (couple_id)
+503,couple_tasks,couple_tasks_open_by_due_idx,"CREATE INDEX couple_tasks_open_by_due_idx ON public.couple_tasks USING btree (couple_id, status, due_date) WHERE (status = 'pending'::text)"
+503,couple_tasks,couple_tasks_pkey,CREATE UNIQUE INDEX couple_tasks_pkey ON public.couple_tasks USING btree (id)
+503,couples,couples_pkey,CREATE UNIQUE INDEX couples_pkey ON public.couples USING btree (id)
+503,couples,couples_user_id_idx,CREATE INDEX couples_user_id_idx ON public.couples USING btree (user_id)
+503,couples,couples_user_id_unique,CREATE UNIQUE INDEX couples_user_id_unique ON public.couples USING btree (user_id)
+503,couture_appointments,couture_appointments_couple_idx,"CREATE INDEX couture_appointments_couple_idx ON public.couture_appointments USING btree (couple_id, appointment_at)"
+503,couture_appointments,couture_appointments_pkey,CREATE UNIQUE INDEX couture_appointments_pkey ON public.couture_appointments USING btree (id)
+503,couture_appointments,couture_appointments_vendor_idx,"CREATE INDEX couture_appointments_vendor_idx ON public.couture_appointments USING btree (vendor_id, appointment_at)"
+503,couture_availability,couture_availability_pkey,CREATE UNIQUE INDEX couture_availability_pkey ON public.couture_availability USING btree (id)
+503,couture_availability,couture_availability_vendor_id_slot_at_key,"CREATE UNIQUE INDEX couture_availability_vendor_id_slot_at_key ON public.couture_availability USING btree (vendor_id, slot_at)"
+503,couture_availability,couture_availability_vendor_state_idx,"CREATE INDEX couture_availability_vendor_state_idx ON public.couture_availability USING btree (vendor_id, state, slot_at)"
+503,crew_confirmations,crew_confirmations_event_id_member_id_key,"CREATE UNIQUE INDEX crew_confirmations_event_id_member_id_key ON public.crew_confirmations USING btree (event_id, member_id)"
+503,crew_confirmations,crew_confirmations_event_idx,CREATE INDEX crew_confirmations_event_idx ON public.crew_confirmations USING btree (event_id)
+503,crew_confirmations,crew_confirmations_member_idx,CREATE INDEX crew_confirmations_member_idx ON public.crew_confirmations USING btree (member_id)
+503,crew_confirmations,crew_confirmations_pkey,CREATE UNIQUE INDEX crew_confirmations_pkey ON public.crew_confirmations USING btree (id)
+503,date_checks,date_checks_pkey,CREATE UNIQUE INDEX date_checks_pkey ON public.date_checks USING btree (id)
+503,date_checks,date_checks_vendor_checked_idx,"CREATE INDEX date_checks_vendor_checked_idx ON public.date_checks USING btree (vendor_id, checked_at DESC)"
+503,demo_claim_requests,demo_claim_requests_claimed_at_idx,CREATE INDEX demo_claim_requests_claimed_at_idx ON public.demo_claim_requests USING btree (claimed_at DESC)
+503,demo_claim_requests,demo_claim_requests_handle_idx,CREATE INDEX demo_claim_requests_handle_idx ON public.demo_claim_requests USING btree (ig_handle)
+503,demo_claim_requests,demo_claim_requests_pkey,CREATE UNIQUE INDEX demo_claim_requests_pkey ON public.demo_claim_requests USING btree (id)
+503,demo_leads,demo_leads_created_at_idx,CREATE INDEX demo_leads_created_at_idx ON public.demo_leads USING btree (created_at DESC)
+503,demo_leads,demo_leads_notified_idx,"CREATE INDEX demo_leads_notified_idx ON public.demo_leads USING btree (notified_vendor, admin_notified)"
+503,demo_leads,demo_leads_pkey,CREATE UNIQUE INDEX demo_leads_pkey ON public.demo_leads USING btree (id)
+503,demo_leads,demo_leads_vendor_id_idx,CREATE INDEX demo_leads_vendor_id_idx ON public.demo_leads USING btree (demo_vendor_id)
+503,demo_vendors,demo_vendors_active_idx,CREATE INDEX demo_vendors_active_idx ON public.demo_vendors USING btree (active)
+503,demo_vendors,demo_vendors_claim_token_key,CREATE UNIQUE INDEX demo_vendors_claim_token_key ON public.demo_vendors USING btree (claim_token)
+503,demo_vendors,demo_vendors_discover_idx,"CREATE INDEX demo_vendors_discover_idx ON public.demo_vendors USING btree (discover_eligible, active) WHERE ((discover_eligible = true) AND (active = true))"
+503,demo_vendors,demo_vendors_ig_handle_idx,CREATE INDEX demo_vendors_ig_handle_idx ON public.demo_vendors USING btree (ig_handle)
+503,demo_vendors,demo_vendors_ig_handle_key,CREATE UNIQUE INDEX demo_vendors_ig_handle_key ON public.demo_vendors USING btree (ig_handle)
+503,demo_vendors,demo_vendors_pkey,CREATE UNIQUE INDEX demo_vendors_pkey ON public.demo_vendors USING btree (id)
+503,discover_heroes,discover_heroes_active_order_idx,CREATE INDEX discover_heroes_active_order_idx ON public.discover_heroes USING btree (display_order) WHERE (active = true)
+503,discover_heroes,discover_heroes_pkey,CREATE UNIQUE INDEX discover_heroes_pkey ON public.discover_heroes USING btree (id)
+503,discover_heroes,idx_discover_heroes_active,"CREATE INDEX idx_discover_heroes_active ON public.discover_heroes USING btree (active, display_order)"
+503,engagements,engagements_couple_idx,"CREATE INDEX engagements_couple_idx ON public.engagements USING btree (couple_id, updated_at DESC)"
+503,engagements,engagements_couple_vendor_uidx,"CREATE UNIQUE INDEX engagements_couple_vendor_uidx ON public.engagements USING btree (couple_id, vendor_id)"
+503,engagements,engagements_lead_idx,"CREATE INDEX engagements_lead_idx ON public.engagements USING btree (vendor_id, lead_id) WHERE (lead_id IS NOT NULL)"
+503,engagements,engagements_pkey,CREATE UNIQUE INDEX engagements_pkey ON public.engagements USING btree (id)
+503,engagements,engagements_vendor_idx,"CREATE INDEX engagements_vendor_idx ON public.engagements USING btree (vendor_id, updated_at DESC)"
+503,enquiry_taps,enquiry_taps_handle_idx,"CREATE INDEX enquiry_taps_handle_idx ON public.enquiry_taps USING btree (handle, tapped_at DESC)"
+503,enquiry_taps,enquiry_taps_pkey,CREATE UNIQUE INDEX enquiry_taps_pkey ON public.enquiry_taps USING btree (id)
+503,enquiry_taps,enquiry_taps_tapped_at_idx,CREATE INDEX enquiry_taps_tapped_at_idx ON public.enquiry_taps USING btree (tapped_at DESC)
+503,events,events_active_idx,"CREATE INDEX events_active_idx ON public.events USING btree (vendor_id, event_date) WHERE (deleted_at IS NULL)"
+503,events,events_assigned_member_ids_gin,CREATE INDEX events_assigned_member_ids_gin ON public.events USING gin (assigned_member_ids)
+503,events,events_couple_id_idx,CREATE INDEX events_couple_id_idx ON public.events USING btree (couple_id)
+503,events,events_event_date_idx,CREATE INDEX events_event_date_idx ON public.events USING btree (event_date)
+503,events,events_linked_binder_idx,CREATE INDEX events_linked_binder_idx ON public.events USING btree (linked_binder_id) WHERE (linked_binder_id IS NOT NULL)
+503,events,events_pkey,CREATE UNIQUE INDEX events_pkey ON public.events USING btree (id)
+503,events,events_state_idx,CREATE INDEX events_state_idx ON public.events USING btree (state)
+503,events,events_vendor_date_slot_blocked_unique_idx,"CREATE UNIQUE INDEX events_vendor_date_slot_blocked_unique_idx ON public.events USING btree (vendor_id, event_date, slot) WHERE ((kind = 'blocked'::text) AND (deleted_at IS NULL))"
+503,events,events_vendor_date_state_idx,"CREATE INDEX events_vendor_date_state_idx ON public.events USING btree (vendor_id, event_date, state)"
+503,events,events_vendor_id_idx,CREATE INDEX events_vendor_id_idx ON public.events USING btree (vendor_id)
+503,exchange_requests,exchange_requests_influencer_state_idx,"CREATE INDEX exchange_requests_influencer_state_idx ON public.exchange_requests USING btree (influencer_vendor_id, state, created_at DESC)"
+503,exchange_requests,exchange_requests_pkey,CREATE UNIQUE INDEX exchange_requests_pkey ON public.exchange_requests USING btree (id)
+503,exchange_requests,exchange_requests_vendor_idx,"CREATE INDEX exchange_requests_vendor_idx ON public.exchange_requests USING btree (vendor_id, created_at DESC)"
+503,expenses,expenses_active_idx,"CREATE INDEX expenses_active_idx ON public.expenses USING btree (vendor_id, expense_date) WHERE (deleted_at IS NULL)"
+503,expenses,expenses_category_idx,CREATE INDEX expenses_category_idx ON public.expenses USING btree (category)
+503,expenses,expenses_created_at_idx,CREATE INDEX expenses_created_at_idx ON public.expenses USING btree (created_at DESC)
+503,expenses,expenses_expense_date_idx,CREATE INDEX expenses_expense_date_idx ON public.expenses USING btree (expense_date)
+503,expenses,expenses_pkey,CREATE UNIQUE INDEX expenses_pkey ON public.expenses USING btree (id)
+503,expenses,expenses_vendor_id_idx,CREATE INDEX expenses_vendor_id_idx ON public.expenses USING btree (vendor_id)
+503,exploring_photos,exploring_photos_active_order_idx,CREATE INDEX exploring_photos_active_order_idx ON public.exploring_photos USING btree (display_order) WHERE (active = true)
+503,exploring_photos,exploring_photos_pkey,CREATE UNIQUE INDEX exploring_photos_pkey ON public.exploring_photos USING btree (id)
+503,failed_turns,failed_turns_created_at_idx,CREATE INDEX failed_turns_created_at_idx ON public.failed_turns USING btree (created_at)
+503,failed_turns,failed_turns_pkey,CREATE UNIQUE INDEX failed_turns_pkey ON public.failed_turns USING btree (id)
+503,failed_turns,failed_turns_state_idx,CREATE INDEX failed_turns_state_idx ON public.failed_turns USING btree (state)
+503,forward_recipients,forward_recipients_pkey,CREATE UNIQUE INDEX forward_recipients_pkey ON public.forward_recipients USING btree (id)
+503,forward_recipients,forward_recipients_request_id_contact_id_key,"CREATE UNIQUE INDEX forward_recipients_request_id_contact_id_key ON public.forward_recipients USING btree (request_id, contact_id)"
+503,forward_recipients,forward_recipients_token_hash_key,CREATE UNIQUE INDEX forward_recipients_token_hash_key ON public.forward_recipients USING btree (token_hash)
+503,forward_requests,forward_requests_created_idx,CREATE INDEX forward_requests_created_idx ON public.forward_requests USING btree (created_at DESC)
+503,forward_requests,forward_requests_outside_phone_idx,CREATE INDEX forward_requests_outside_phone_idx ON public.forward_requests USING btree (outside_phone) WHERE (outside_phone IS NOT NULL)
+503,forward_requests,forward_requests_pkey,CREATE UNIQUE INDEX forward_requests_pkey ON public.forward_requests USING btree (id)
+503,gear_items,gear_items_city_idx,"CREATE INDEX gear_items_city_idx ON public.gear_items USING btree (lower(city), state)"
+503,gear_items,gear_items_pkey,CREATE UNIQUE INDEX gear_items_pkey ON public.gear_items USING btree (id)
+503,gear_items,gear_items_vendor_idx,"CREATE INDEX gear_items_vendor_idx ON public.gear_items USING btree (vendor_id, created_at DESC)"
+503,gear_requests,gear_requests_borrower_idx,"CREATE INDEX gear_requests_borrower_idx ON public.gear_requests USING btree (borrower_vendor_id, created_at DESC)"
+503,gear_requests,gear_requests_item_idx,"CREATE INDEX gear_requests_item_idx ON public.gear_requests USING btree (item_id, state, date_from)"
+503,gear_requests,gear_requests_owner_idx,"CREATE INDEX gear_requests_owner_idx ON public.gear_requests USING btree (owner_vendor_id, created_at DESC)"
+503,gear_requests,gear_requests_pkey,CREATE UNIQUE INDEX gear_requests_pkey ON public.gear_requests USING btree (id)
+503,hot_dates,hot_dates_pkey,CREATE UNIQUE INDEX hot_dates_pkey ON public.hot_dates USING btree (id)
+503,hot_dates,idx_hot_dates_date,CREATE INDEX idx_hot_dates_date ON public.hot_dates USING btree (date)
+503,hub_credits,hub_credits_call_once,"CREATE UNIQUE INDEX hub_credits_call_once ON public.hub_credits USING btree (call_id, person_profile_id) WHERE (call_id IS NOT NULL)"
+503,hub_credits,hub_credits_giver_idx,"CREATE INDEX hub_credits_giver_idx ON public.hub_credits USING btree (giver_profile_id, state, offered_at DESC)"
+503,hub_credits,hub_credits_person_idx,"CREATE INDEX hub_credits_person_idx ON public.hub_credits USING btree (person_profile_id, state)"
+503,hub_credits,hub_credits_pkey,CREATE UNIQUE INDEX hub_credits_pkey ON public.hub_credits USING btree (id)
+503,hub_credits,hub_credits_shoot_once,"CREATE UNIQUE INDEX hub_credits_shoot_once ON public.hub_credits USING btree (giver_profile_id, person_profile_id, lower(shoot_name), month) WHERE (call_id IS NULL)"
+503,hub_profiles,hub_profiles_city_idx,CREATE INDEX hub_profiles_city_idx ON public.hub_profiles USING btree (lower(city))
+503,hub_profiles,hub_profiles_handle_once,CREATE UNIQUE INDEX hub_profiles_handle_once ON public.hub_profiles USING btree (lower(handle))
+503,hub_profiles,hub_profiles_org_id_key,CREATE UNIQUE INDEX hub_profiles_org_id_key ON public.hub_profiles USING btree (org_id)
+503,hub_profiles,hub_profiles_pkey,CREATE UNIQUE INDEX hub_profiles_pkey ON public.hub_profiles USING btree (id)
+503,hub_profiles,hub_profiles_user_id_key,CREATE UNIQUE INDEX hub_profiles_user_id_key ON public.hub_profiles USING btree (user_id)
+503,hub_profiles,hub_profiles_vendor_id_key,CREATE UNIQUE INDEX hub_profiles_vendor_id_key ON public.hub_profiles USING btree (vendor_id)
+503,image_throttle_log,idx_image_throttle_phone_recent,"CREATE INDEX idx_image_throttle_phone_recent ON public.image_throttle_log USING btree (phone, created_at DESC)"
+503,image_throttle_log,idx_image_throttle_rejection,"CREATE INDEX idx_image_throttle_rejection ON public.image_throttle_log USING btree (phone, created_at DESC) WHERE (rejection_sent = true)"
+503,image_throttle_log,image_throttle_log_pkey,CREATE UNIQUE INDEX image_throttle_log_pkey ON public.image_throttle_log USING btree (id)
+503,influencer_reach_snapshots,influencer_reach_snapshots_pkey,CREATE UNIQUE INDEX influencer_reach_snapshots_pkey ON public.influencer_reach_snapshots USING btree (id)
+503,influencer_reach_snapshots,influencer_reach_snapshots_vendor_verified_idx,"CREATE INDEX influencer_reach_snapshots_vendor_verified_idx ON public.influencer_reach_snapshots USING btree (vendor_id, verified_at DESC)"
+503,instagram_briefs,instagram_briefs_pkey,CREATE UNIQUE INDEX instagram_briefs_pkey ON public.instagram_briefs USING btree (id)
+503,instagram_briefs,uq_instagram_briefs_vendor_week,"CREATE UNIQUE INDEX uq_instagram_briefs_vendor_week ON public.instagram_briefs USING btree (vendor_id, week_start)"
+503,introductions,introductions_pkey,CREATE UNIQUE INDEX introductions_pkey ON public.introductions USING btree (id)
+503,introductions,introductions_vendor_created_idx,"CREATE INDEX introductions_vendor_created_idx ON public.introductions USING btree (vendor_id, created_at DESC)"
+503,introductions,introductions_wamid_idx,CREATE INDEX introductions_wamid_idx ON public.introductions USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,introductions,uq_introductions_vendor_recipient,"CREATE UNIQUE INDEX uq_introductions_vendor_recipient ON public.introductions USING btree (vendor_id, recipient_phone) WHERE (status <> 'declined'::text)"
+503,introductions,uq_introductions_wamid,CREATE UNIQUE INDEX uq_introductions_wamid ON public.introductions USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,invite_codes,invite_codes_created_at_idx,CREATE INDEX invite_codes_created_at_idx ON public.invite_codes USING btree (created_at DESC)
+503,invite_codes,invite_codes_pkey,CREATE UNIQUE INDEX invite_codes_pkey ON public.invite_codes USING btree (code)
+503,invite_codes,invite_codes_unconsumed_idx,CREATE INDEX invite_codes_unconsumed_idx ON public.invite_codes USING btree (code) WHERE (consumed_at IS NULL)
+503,invoices,idx_invoices_binder_id,CREATE INDEX idx_invoices_binder_id ON public.invoices USING btree (binder_id)
+503,invoices,invoices_active_idx,"CREATE INDEX invoices_active_idx ON public.invoices USING btree (vendor_id, state) WHERE (deleted_at IS NULL)"
+503,invoices,invoices_client_id_idx,CREATE INDEX invoices_client_id_idx ON public.invoices USING btree (client_id)
+503,invoices,invoices_created_at_idx,CREATE INDEX invoices_created_at_idx ON public.invoices USING btree (created_at DESC)
+503,invoices,invoices_due_date_idx,CREATE INDEX invoices_due_date_idx ON public.invoices USING btree (due_date)
+503,invoices,invoices_lead_id_idx,CREATE INDEX invoices_lead_id_idx ON public.invoices USING btree (lead_id)
+503,invoices,invoices_pkey,CREATE UNIQUE INDEX invoices_pkey ON public.invoices USING btree (id)
+503,invoices,invoices_state_idx,CREATE INDEX invoices_state_idx ON public.invoices USING btree (state)
+503,invoices,invoices_vendor_id_idx,CREATE INDEX invoices_vendor_id_idx ON public.invoices USING btree (vendor_id)
+503,invoices,invoices_vendor_number_unique,"CREATE UNIQUE INDEX invoices_vendor_number_unique ON public.invoices USING btree (vendor_id, invoice_number)"
+503,invoices,uq_invoices_lead_package,CREATE UNIQUE INDEX uq_invoices_lead_package ON public.invoices USING btree (lead_package_id) WHERE ((lead_package_id IS NOT NULL) AND (deleted_at IS NULL))
+503,issued_papers,issued_papers_check_code_key,CREATE UNIQUE INDEX issued_papers_check_code_key ON public.issued_papers USING btree (check_code)
+503,issued_papers,issued_papers_pkey,CREATE UNIQUE INDEX issued_papers_pkey ON public.issued_papers USING btree (id)
+503,issued_papers,issued_papers_vendor_idx,"CREATE INDEX issued_papers_vendor_idx ON public.issued_papers USING btree (vendor_id, issued_at DESC)"
+503,landing_slides,landing_slides_active_order_idx,CREATE INDEX landing_slides_active_order_idx ON public.landing_slides USING btree (display_order) WHERE (active = true)
+503,landing_slides,landing_slides_pkey,CREATE UNIQUE INDEX landing_slides_pkey ON public.landing_slides USING btree (id)
+503,lead_alerts,idx_lead_alerts_vendor_created,"CREATE INDEX idx_lead_alerts_vendor_created ON public.lead_alerts USING btree (vendor_id, created_at DESC)"
+503,lead_alerts,idx_lead_alerts_wamid,CREATE INDEX idx_lead_alerts_wamid ON public.lead_alerts USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,lead_alerts,lead_alerts_pkey,CREATE UNIQUE INDEX lead_alerts_pkey ON public.lead_alerts USING btree (id)
+503,lead_alerts,uq_lead_alerts_wamid,CREATE UNIQUE INDEX uq_lead_alerts_wamid ON public.lead_alerts USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,lead_packages,lead_packages_pkey,CREATE UNIQUE INDEX lead_packages_pkey ON public.lead_packages USING btree (id)
+503,lead_packages,uq_lead_packages_live,CREATE UNIQUE INDEX uq_lead_packages_live ON public.lead_packages USING btree (lead_id) WHERE (deleted_at IS NULL)
+503,lead_referrals,idx_lead_referrals_from,"CREATE INDEX idx_lead_referrals_from ON public.lead_referrals USING btree (from_vendor_id, created_at DESC)"
+503,lead_referrals,idx_lead_referrals_lead,CREATE INDEX idx_lead_referrals_lead ON public.lead_referrals USING btree (lead_id) WHERE (lead_id IS NOT NULL)
+503,lead_referrals,idx_lead_referrals_new_lead,CREATE UNIQUE INDEX idx_lead_referrals_new_lead ON public.lead_referrals USING btree (new_lead_id)
+503,lead_referrals,idx_lead_referrals_to,"CREATE INDEX idx_lead_referrals_to ON public.lead_referrals USING btree (to_vendor_id, created_at DESC)"
+503,lead_referrals,lead_referrals_pkey,CREATE UNIQUE INDEX lead_referrals_pkey ON public.lead_referrals USING btree (id)
+503,leads,idx_leads_wedding,CREATE INDEX idx_leads_wedding ON public.leads USING btree (wedding_id) WHERE (wedding_id IS NOT NULL)
+503,leads,leads_active_idx,"CREATE INDEX leads_active_idx ON public.leads USING btree (vendor_id, state) WHERE (deleted_at IS NULL)"
+503,leads,leads_client_id_idx,CREATE INDEX leads_client_id_idx ON public.leads USING btree (client_id)
+503,leads,leads_created_at_idx,CREATE INDEX leads_created_at_idx ON public.leads USING btree (created_at DESC)
+503,leads,leads_draft_idx,CREATE INDEX leads_draft_idx ON public.leads USING btree (vendor_id) WHERE (draft_meta IS NOT NULL)
+503,leads,leads_pkey,CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (id)
+503,leads,leads_state_idx,CREATE INDEX leads_state_idx ON public.leads USING btree (state)
+503,leads,leads_vendor_id_idx,CREATE INDEX leads_vendor_id_idx ON public.leads USING btree (vendor_id)
+503,leads,leads_vendor_ig_uidx,"CREATE UNIQUE INDEX leads_vendor_ig_uidx ON public.leads USING btree (vendor_id, counterparty_ig_id) WHERE (counterparty_ig_id IS NOT NULL)"
+503,leads,leads_wedding_date_idx,CREATE INDEX leads_wedding_date_idx ON public.leads USING btree (wedding_date)
+503,leads,uq_leads_binder_id,CREATE UNIQUE INDEX uq_leads_binder_id ON public.leads USING btree (binder_id) WHERE (binder_id IS NOT NULL)
+503,look_hearts_daily,look_hearts_daily_pkey,"CREATE UNIQUE INDEX look_hearts_daily_pkey ON public.look_hearts_daily USING btree (look_id, day)"
+503,messages,messages_conversation_id_idx,CREATE INDEX messages_conversation_id_idx ON public.messages USING btree (conversation_id)
+503,messages,messages_created_at_idx,CREATE INDEX messages_created_at_idx ON public.messages USING btree (created_at)
+503,messages,messages_message_sid_uidx,CREATE UNIQUE INDEX messages_message_sid_uidx ON public.messages USING btree (message_sid) WHERE (message_sid IS NOT NULL)
+503,messages,messages_model_idx,CREATE INDEX messages_model_idx ON public.messages USING btree (model)
+503,messages,messages_pkey,CREATE UNIQUE INDEX messages_pkey ON public.messages USING btree (id)
+503,muse_pool,muse_pool_active_order_idx,CREATE INDEX muse_pool_active_order_idx ON public.muse_pool USING btree (sort_order) WHERE (active = true)
+503,muse_pool,muse_pool_pkey,CREATE UNIQUE INDEX muse_pool_pkey ON public.muse_pool USING btree (id)
+503,muse_saves,muse_saves_couple_created_idx,"CREATE INDEX muse_saves_couple_created_idx ON public.muse_saves USING btree (couple_id, created_at DESC)"
+503,muse_saves,muse_saves_couple_id_idx,CREATE INDEX muse_saves_couple_id_idx ON public.muse_saves USING btree (couple_id)
+503,muse_saves,muse_saves_couple_save_number_unique,"CREATE UNIQUE INDEX muse_saves_couple_save_number_unique ON public.muse_saves USING btree (couple_id, save_number)"
+503,muse_saves,muse_saves_couple_saved_by_idx,"CREATE INDEX muse_saves_couple_saved_by_idx ON public.muse_saves USING btree (couple_id, saved_by_user_id)"
+503,muse_saves,muse_saves_couple_surface_idx,"CREATE INDEX muse_saves_couple_surface_idx ON public.muse_saves USING btree (couple_id, surface, created_at DESC)"
+503,muse_saves,muse_saves_couple_vendor_idx,"CREATE INDEX muse_saves_couple_vendor_idx ON public.muse_saves USING btree (couple_id, vendor_id) WHERE (vendor_id IS NOT NULL)"
+503,muse_saves,muse_saves_pkey,CREATE UNIQUE INDEX muse_saves_pkey ON public.muse_saves USING btree (id)
+503,notes,notes_conversation_id_idx,CREATE INDEX notes_conversation_id_idx ON public.notes USING btree (conversation_id)
+503,notes,notes_couple_id_idx,CREATE INDEX notes_couple_id_idx ON public.notes USING btree (couple_id)
+503,notes,notes_created_at_idx,CREATE INDEX notes_created_at_idx ON public.notes USING btree (created_at DESC)
+503,notes,notes_pkey,CREATE UNIQUE INDEX notes_pkey ON public.notes USING btree (id)
+503,notes,notes_vendor_id_idx,CREATE INDEX notes_vendor_id_idx ON public.notes USING btree (vendor_id)
+503,nudge_optout,nudge_optout_phone_idx,CREATE INDEX nudge_optout_phone_idx ON public.nudge_optout USING btree (phone)
+503,nudge_optout,nudge_optout_phone_lane_key,"CREATE UNIQUE INDEX nudge_optout_phone_lane_key ON public.nudge_optout USING btree (phone, lane)"
+503,nudge_optout,nudge_optout_pkey,CREATE UNIQUE INDEX nudge_optout_pkey ON public.nudge_optout USING btree (id)
+503,nudge_optout,nudge_optout_state_idx,CREATE INDEX nudge_optout_state_idx ON public.nudge_optout USING btree (state)
+503,otp_sessions,otp_sessions_expires_at_idx,CREATE INDEX otp_sessions_expires_at_idx ON public.otp_sessions USING btree (expires_at)
+503,otp_sessions,otp_sessions_pkey,CREATE UNIQUE INDEX otp_sessions_pkey ON public.otp_sessions USING btree (phone)
+503,owner_notes,owner_notes_pkey,CREATE UNIQUE INDEX owner_notes_pkey ON public.owner_notes USING btree (id)
+503,owner_notes,owner_notes_vendor_recent_idx,"CREATE INDEX owner_notes_vendor_recent_idx ON public.owner_notes USING btree (vendor_id, created_at DESC)"
+503,partner_answers,partner_answers_pkey,CREATE UNIQUE INDEX partner_answers_pkey ON public.partner_answers USING btree (id)
+503,partner_answers,partner_answers_send_idx,CREATE INDEX partner_answers_send_idx ON public.partner_answers USING btree (send_id)
+503,partner_connections,partner_connections_partner_id_ref_id_key,"CREATE UNIQUE INDEX partner_connections_partner_id_ref_id_key ON public.partner_connections USING btree (partner_id, ref_id)"
+503,partner_connections,partner_connections_pkey,CREATE UNIQUE INDEX partner_connections_pkey ON public.partner_connections USING btree (id)
+503,partner_contacts,partner_contacts_pkey,CREATE UNIQUE INDEX partner_contacts_pkey ON public.partner_contacts USING btree (id)
+503,partner_members,partner_members_pkey,"CREATE UNIQUE INDEX partner_members_pkey ON public.partner_members USING btree (partner_id, user_id)"
+503,partner_members,partner_members_user_idx,CREATE INDEX partner_members_user_idx ON public.partner_members USING btree (user_id)
+503,partner_orgs,partner_orgs_check_idx,"CREATE INDEX partner_orgs_check_idx ON public.partner_orgs USING btree (check_state, created_at DESC)"
+503,partner_orgs,partner_orgs_handle_uq,CREATE UNIQUE INDEX partner_orgs_handle_uq ON public.partner_orgs USING btree (lower(instagram_handle))
+503,partner_orgs,partner_orgs_pkey,CREATE UNIQUE INDEX partner_orgs_pkey ON public.partner_orgs USING btree (id)
+503,partner_reports,partner_reports_partner_idx,"CREATE INDEX partner_reports_partner_idx ON public.partner_reports USING btree (partner_id, created_at DESC)"
+503,partner_reports,partner_reports_pkey,CREATE UNIQUE INDEX partner_reports_pkey ON public.partner_reports USING btree (id)
+503,partner_send_log,partner_send_log_pkey,CREATE UNIQUE INDEX partner_send_log_pkey ON public.partner_send_log USING btree (id)
+503,partner_send_log,partner_send_log_send_idx,"CREATE INDEX partner_send_log_send_idx ON public.partner_send_log USING btree (send_id, at DESC)"
+503,partner_sends,partner_sends_due_idx,"CREATE INDEX partner_sends_due_idx ON public.partner_sends USING btree (state, not_before)"
+503,partner_sends,partner_sends_partner_id_post_id_channel_key,"CREATE UNIQUE INDEX partner_sends_partner_id_post_id_channel_key ON public.partner_sends USING btree (partner_id, post_id, channel)"
+503,partner_sends,partner_sends_partner_idx,"CREATE INDEX partner_sends_partner_idx ON public.partner_sends USING btree (partner_id, created_at DESC)"
+503,partner_sends,partner_sends_pkey,CREATE UNIQUE INDEX partner_sends_pkey ON public.partner_sends USING btree (id)
+503,partner_sends,partner_sends_token_hash_key,CREATE UNIQUE INDEX partner_sends_token_hash_key ON public.partner_sends USING btree (token_hash)
+503,payment_reminder_settings,payment_reminder_settings_pkey,CREATE UNIQUE INDEX payment_reminder_settings_pkey ON public.payment_reminder_settings USING btree (vendor_id)
+503,payment_reminders,idx_payment_reminders_wamid,CREATE INDEX idx_payment_reminders_wamid ON public.payment_reminders USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,payment_reminders,payment_reminders_invoice_idx,CREATE INDEX payment_reminders_invoice_idx ON public.payment_reminders USING btree (invoice_id)
+503,payment_reminders,payment_reminders_pkey,CREATE UNIQUE INDEX payment_reminders_pkey ON public.payment_reminders USING btree (id)
+503,payment_reminders,payment_reminders_vendor_idx,"CREATE INDEX payment_reminders_vendor_idx ON public.payment_reminders USING btree (vendor_id, created_at DESC)"
+503,payment_reminders,uq_payment_reminders_milestone_kind_live,"CREATE UNIQUE INDEX uq_payment_reminders_milestone_kind_live ON public.payment_reminders USING btree (milestone_id, kind) WHERE (status <> 'failed'::text)"
+503,payment_reminders,uq_payment_reminders_wamid,CREATE UNIQUE INDEX uq_payment_reminders_wamid ON public.payment_reminders USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,payment_schedules,payment_schedules_invoice_id_ordinal_key,"CREATE UNIQUE INDEX payment_schedules_invoice_id_ordinal_key ON public.payment_schedules USING btree (invoice_id, ordinal)"
+503,payment_schedules,payment_schedules_invoice_idx,"CREATE INDEX payment_schedules_invoice_idx ON public.payment_schedules USING btree (invoice_id, ordinal)"
+503,payment_schedules,payment_schedules_pkey,CREATE UNIQUE INDEX payment_schedules_pkey ON public.payment_schedules USING btree (id)
+503,payment_schedules,payment_schedules_vendor_pending_idx,"CREATE INDEX payment_schedules_vendor_pending_idx ON public.payment_schedules USING btree (vendor_id, due_date) WHERE (state = 'pending'::text)"
+503,pending_couple_drafts,idx_pending_couple_drafts_phone_open,"CREATE INDEX idx_pending_couple_drafts_phone_open ON public.pending_couple_drafts USING btree (couple_phone, created_at DESC) WHERE (resolved_at IS NULL)"
+503,pending_couple_drafts,idx_pending_couple_drafts_vendor_open,"CREATE INDEX idx_pending_couple_drafts_vendor_open ON public.pending_couple_drafts USING btree (vendor_id, created_at DESC) WHERE (resolved_at IS NULL)"
+503,pending_couple_drafts,pending_couple_drafts_pkey,CREATE UNIQUE INDEX pending_couple_drafts_pkey ON public.pending_couple_drafts USING btree (id)
+503,pending_event_proposals,idx_pending_event_proposals_vendor_open,"CREATE INDEX idx_pending_event_proposals_vendor_open ON public.pending_event_proposals USING btree (vendor_id, created_at DESC) WHERE (resolved_at IS NULL)"
+503,pending_event_proposals,pending_event_proposals_pkey,CREATE UNIQUE INDEX pending_event_proposals_pkey ON public.pending_event_proposals USING btree (id)
+503,pending_lead_pings,idx_pending_pings_vendor_open,"CREATE INDEX idx_pending_pings_vendor_open ON public.pending_lead_pings USING btree (vendor_id, created_at DESC) WHERE (acknowledged_at IS NULL)"
+503,pending_lead_pings,pending_lead_pings_pkey,CREATE UNIQUE INDEX pending_lead_pings_pkey ON public.pending_lead_pings USING btree (id)
+503,pending_money_acts,pending_money_acts_pkey,CREATE UNIQUE INDEX pending_money_acts_pkey ON public.pending_money_acts USING btree (id)
+503,pending_money_acts,uq_pending_money_acts_vendor_open,CREATE UNIQUE INDEX uq_pending_money_acts_vendor_open ON public.pending_money_acts USING btree (vendor_id) WHERE (resolved_at IS NULL)
+503,prospects,prospects_consent_recorded_idx,CREATE INDEX prospects_consent_recorded_idx ON public.prospects USING btree (phone) WHERE (consent_text IS NOT NULL)
+503,prospects,prospects_phone_idx,CREATE INDEX prospects_phone_idx ON public.prospects USING btree (phone)
+503,prospects,prospects_phone_key,CREATE UNIQUE INDEX prospects_phone_key ON public.prospects USING btree (phone)
+503,prospects,prospects_pkey,CREATE UNIQUE INDEX prospects_pkey ON public.prospects USING btree (id)
+503,prospects,prospects_state_idx,CREATE INDEX prospects_state_idx ON public.prospects USING btree (state)
+503,referral_alerts,idx_referral_alerts_referral,CREATE INDEX idx_referral_alerts_referral ON public.referral_alerts USING btree (referral_id)
+503,referral_alerts,idx_referral_alerts_wamid,CREATE INDEX idx_referral_alerts_wamid ON public.referral_alerts USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,referral_alerts,referral_alerts_pkey,CREATE UNIQUE INDEX referral_alerts_pkey ON public.referral_alerts USING btree (id)
+503,referral_alerts,uq_referral_alerts_referral_sent,CREATE UNIQUE INDEX uq_referral_alerts_referral_sent ON public.referral_alerts USING btree (referral_id) WHERE (wamid IS NOT NULL)
+503,referral_alerts,uq_referral_alerts_wamid,CREATE UNIQUE INDEX uq_referral_alerts_wamid ON public.referral_alerts USING btree (wamid) WHERE (wamid IS NOT NULL)
+503,reviews_asked,idx_reviews_asked_vendor,CREATE INDEX idx_reviews_asked_vendor ON public.reviews_asked USING btree (vendor_id)
+503,reviews_asked,idx_reviews_asked_wedding,CREATE INDEX idx_reviews_asked_wedding ON public.reviews_asked USING btree (wedding_id)
+503,reviews_asked,reviews_asked_couple_key,CREATE UNIQUE INDEX reviews_asked_couple_key ON public.reviews_asked USING btree (couple_id)
+503,reviews_asked,reviews_asked_pkey,CREATE UNIQUE INDEX reviews_asked_pkey ON public.reviews_asked USING btree (id)
+503,search_console_daily,search_console_daily_pkey,"CREATE UNIQUE INDEX search_console_daily_pkey ON public.search_console_daily USING btree (vendor_id, day)"
+503,search_console_queries,search_console_queries_pkey,"CREATE UNIQUE INDEX search_console_queries_pkey ON public.search_console_queries USING btree (vendor_id, window_end, query)"
+503,shop_items,shop_items_pkey,CREATE UNIQUE INDEX shop_items_pkey ON public.shop_items USING btree (id)
+503,shop_items,shop_items_slug_uidx,"CREATE UNIQUE INDEX shop_items_slug_uidx ON public.shop_items USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)"
+503,shop_items,shop_items_vendor_idx,"CREATE INDEX shop_items_vendor_idx ON public.shop_items USING btree (vendor_id, ""position"") WHERE (deleted_at IS NULL)"
+503,shop_orders,shop_orders_item_idx,"CREATE INDEX shop_orders_item_idx ON public.shop_orders USING btree (item_id, state)"
+503,shop_orders,shop_orders_pkey,CREATE UNIQUE INDEX shop_orders_pkey ON public.shop_orders USING btree (id)
+503,shop_orders,shop_orders_vendor_idx,"CREATE INDEX shop_orders_vendor_idx ON public.shop_orders USING btree (vendor_id, created_at DESC)"
+503,shop_vouchers,shop_vouchers_code_uidx,"CREATE UNIQUE INDEX shop_vouchers_code_uidx ON public.shop_vouchers USING btree (vendor_id, code)"
+503,shop_vouchers,shop_vouchers_order_uidx,CREATE UNIQUE INDEX shop_vouchers_order_uidx ON public.shop_vouchers USING btree (order_id)
+503,shop_vouchers,shop_vouchers_pkey,CREATE UNIQUE INDEX shop_vouchers_pkey ON public.shop_vouchers USING btree (id)
+503,site_visit_salt,site_visit_salt_pkey,CREATE UNIQUE INDEX site_visit_salt_pkey ON public.site_visit_salt USING btree (day)
+503,site_visit_seen,site_visit_seen_pkey,"CREATE UNIQUE INDEX site_visit_seen_pkey ON public.site_visit_seen USING btree (day, digest)"
+503,site_visits_daily,site_visits_daily_pkey,CREATE UNIQUE INDEX site_visits_daily_pkey ON public.site_visits_daily USING btree (id)
+503,site_visits_daily,site_visits_daily_uidx,"CREATE UNIQUE INDEX site_visits_daily_uidx ON public.site_visits_daily USING btree (vendor_id, day, page, COALESCE(look_id, '00000000-0000-0000-0000-000000000000'::uuid), source)"
+503,spotlight,spotlight_active_idx,"CREATE INDEX spotlight_active_idx ON public.spotlight USING btree (active, sort_order)"
+503,spotlight,spotlight_pkey,CREATE UNIQUE INDEX spotlight_pkey ON public.spotlight USING btree (id)
+503,taste_quiz_images,taste_quiz_images_active_order_idx,CREATE INDEX taste_quiz_images_active_order_idx ON public.taste_quiz_images USING btree (sort_order) WHERE (active = true)
+503,taste_quiz_images,taste_quiz_images_pkey,CREATE UNIQUE INDEX taste_quiz_images_pkey ON public.taste_quiz_images USING btree (id)
+503,tds_ledger,tds_ledger_pkey,CREATE UNIQUE INDEX tds_ledger_pkey ON public.tds_ledger USING btree (id)
+503,tds_ledger,tds_ledger_vendor_date_idx,"CREATE INDEX tds_ledger_vendor_date_idx ON public.tds_ledger USING btree (vendor_id, deduction_date DESC)"
+503,tds_ledger,tds_ledger_vendor_fy_idx,"CREATE INDEX tds_ledger_vendor_fy_idx ON public.tds_ledger USING btree (vendor_id, financial_year)"
+503,team_members,team_members_page_token_unique_idx,CREATE UNIQUE INDEX team_members_page_token_unique_idx ON public.team_members USING btree (page_token)
+503,team_members,team_members_pkey,CREATE UNIQUE INDEX team_members_pkey ON public.team_members USING btree (id)
+503,team_members,team_members_vendor_active_idx,"CREATE INDEX team_members_vendor_active_idx ON public.team_members USING btree (vendor_id, active) WHERE (deleted_at IS NULL)"
+503,team_messages,team_messages_pkey,CREATE UNIQUE INDEX team_messages_pkey ON public.team_messages USING btree (id)
+503,team_messages,team_messages_vendor_pinned_idx,"CREATE INDEX team_messages_vendor_pinned_idx ON public.team_messages USING btree (vendor_id, pinned, created_at DESC)"
+503,team_payments,team_payments_pkey,CREATE UNIQUE INDEX team_payments_pkey ON public.team_payments USING btree (id)
+503,team_payments,team_payments_vendor_owed_idx,"CREATE INDEX team_payments_vendor_owed_idx ON public.team_payments USING btree (vendor_id, team_member_id) WHERE (state = 'owed'::text)"
+503,team_tasks,team_tasks_assigned_idx,"CREATE INDEX team_tasks_assigned_idx ON public.team_tasks USING btree (assigned_to_member_id, state) WHERE (deleted_at IS NULL)"
+503,team_tasks,team_tasks_pkey,CREATE UNIQUE INDEX team_tasks_pkey ON public.team_tasks USING btree (id)
+503,team_tasks,team_tasks_vendor_open_idx,"CREATE INDEX team_tasks_vendor_open_idx ON public.team_tasks USING btree (vendor_id, due_date) WHERE ((state = ANY (ARRAY['open'::text, 'in_progress'::text])) AND (deleted_at IS NULL))"
+503,users,users_auth_user_id_key,CREATE UNIQUE INDEX users_auth_user_id_key ON public.users USING btree (auth_user_id) WHERE (auth_user_id IS NOT NULL)
+503,users,users_phone_idx,CREATE INDEX users_phone_idx ON public.users USING btree (phone)
+503,users,users_phone_key,CREATE UNIQUE INDEX users_phone_key ON public.users USING btree (phone)
+503,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)
+503,vendor_activity_log,vendor_activity_log_pkey,CREATE UNIQUE INDEX vendor_activity_log_pkey ON public.vendor_activity_log USING btree (id)
+503,vendor_activity_log,vendor_activity_log_vendor_recent_idx,"CREATE INDEX vendor_activity_log_vendor_recent_idx ON public.vendor_activity_log USING btree (vendor_id, created_at DESC)"
+503,vendor_ad_connections,vendor_ad_connections_pkey,CREATE UNIQUE INDEX vendor_ad_connections_pkey ON public.vendor_ad_connections USING btree (id)
+503,vendor_ad_connections,vendor_ad_connections_vendor_id_key,CREATE UNIQUE INDEX vendor_ad_connections_vendor_id_key ON public.vendor_ad_connections USING btree (vendor_id)
+503,vendor_ads,vendor_ads_ad_id_key,CREATE UNIQUE INDEX vendor_ads_ad_id_key ON public.vendor_ads USING btree (ad_id)
+503,vendor_ads,vendor_ads_pkey,CREATE UNIQUE INDEX vendor_ads_pkey ON public.vendor_ads USING btree (id)
+503,vendor_ads,vendor_ads_vendor_created_idx,"CREATE INDEX vendor_ads_vendor_created_idx ON public.vendor_ads USING btree (vendor_id, created_at DESC)"
+503,vendor_collection_looks,vendor_collection_looks_pkey,"CREATE UNIQUE INDEX vendor_collection_looks_pkey ON public.vendor_collection_looks USING btree (collection_id, look_id)"
+503,vendor_collections,vendor_collections_pkey,CREATE UNIQUE INDEX vendor_collections_pkey ON public.vendor_collections USING btree (id)
+503,vendor_collections,vendor_collections_slug_uidx,"CREATE UNIQUE INDEX vendor_collections_slug_uidx ON public.vendor_collections USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)"
+503,vendor_discover_requests,vendor_discover_requests_pending_idx,"CREATE INDEX vendor_discover_requests_pending_idx ON public.vendor_discover_requests USING btree (state, created_at) WHERE (state = ANY (ARRAY['requested'::text, 'under_review'::text]))"
+503,vendor_discover_requests,vendor_discover_requests_pkey,CREATE UNIQUE INDEX vendor_discover_requests_pkey ON public.vendor_discover_requests USING btree (id)
+503,vendor_discover_requests,vendor_discover_requests_vendor_idx,"CREATE INDEX vendor_discover_requests_vendor_idx ON public.vendor_discover_requests USING btree (vendor_id, created_at DESC)"
+503,vendor_domains,vendor_domains_domain_key,CREATE UNIQUE INDEX vendor_domains_domain_key ON public.vendor_domains USING btree (domain)
+503,vendor_domains,vendor_domains_pkey,CREATE UNIQUE INDEX vendor_domains_pkey ON public.vendor_domains USING btree (id)
+503,vendor_domains,vendor_domains_razorpay_link_id_key,CREATE UNIQUE INDEX vendor_domains_razorpay_link_id_key ON public.vendor_domains USING btree (razorpay_link_id)
+503,vendor_domains,vendor_domains_razorpay_payment_id_key,CREATE UNIQUE INDEX vendor_domains_razorpay_payment_id_key ON public.vendor_domains USING btree (razorpay_payment_id)
+503,vendor_domains,vendor_domains_registrar_order_id_key,CREATE UNIQUE INDEX vendor_domains_registrar_order_id_key ON public.vendor_domains USING btree (registrar_order_id)
+503,vendor_domains,vendor_domains_status_idx,CREATE INDEX vendor_domains_status_idx ON public.vendor_domains USING btree (status) WHERE (deleted_at IS NULL)
+503,vendor_domains,vendor_domains_vendor_idx,CREATE INDEX vendor_domains_vendor_idx ON public.vendor_domains USING btree (vendor_id) WHERE (deleted_at IS NULL)
+503,vendor_feature_choices,vendor_feature_choices_pkey,"CREATE UNIQUE INDEX vendor_feature_choices_pkey ON public.vendor_feature_choices USING btree (vendor_id, feature_key)"
+503,vendor_featured_submissions,vendor_featured_submissions_admin_idx,"CREATE INDEX vendor_featured_submissions_admin_idx ON public.vendor_featured_submissions USING btree (state, created_at) WHERE (state = ANY (ARRAY['submitted'::text, 'under_review'::text]))"
+503,vendor_featured_submissions,vendor_featured_submissions_pkey,CREATE UNIQUE INDEX vendor_featured_submissions_pkey ON public.vendor_featured_submissions USING btree (id)
+503,vendor_featured_submissions,vendor_featured_submissions_vendor_idx,"CREATE INDEX vendor_featured_submissions_vendor_idx ON public.vendor_featured_submissions USING btree (vendor_id, created_at DESC)"
+503,vendor_first_builds,vendor_first_builds_one_running,CREATE UNIQUE INDEX vendor_first_builds_one_running ON public.vendor_first_builds USING btree (vendor_id) WHERE (state = 'running'::text)
+503,vendor_first_builds,vendor_first_builds_pkey,CREATE UNIQUE INDEX vendor_first_builds_pkey ON public.vendor_first_builds USING btree (id)
+503,vendor_first_builds,vendor_first_builds_vendor,"CREATE INDEX vendor_first_builds_vendor ON public.vendor_first_builds USING btree (vendor_id, started_at DESC)"
+503,vendor_google_connections,vendor_google_connections_house_key,CREATE UNIQUE INDEX vendor_google_connections_house_key ON public.vendor_google_connections USING btree (((vendor_id IS NULL))) WHERE (vendor_id IS NULL)
+503,vendor_google_connections,vendor_google_connections_pkey,CREATE UNIQUE INDEX vendor_google_connections_pkey ON public.vendor_google_connections USING btree (id)
+503,vendor_google_connections,vendor_google_connections_vendor_id_key,CREATE UNIQUE INDEX vendor_google_connections_vendor_id_key ON public.vendor_google_connections USING btree (vendor_id)
+503,vendor_ig_connections,vendor_ig_connections_ig_account_id_uidx,CREATE UNIQUE INDEX vendor_ig_connections_ig_account_id_uidx ON public.vendor_ig_connections USING btree (ig_account_id) WHERE (ig_account_id IS NOT NULL)
+503,vendor_ig_connections,vendor_ig_connections_pkey,CREATE UNIQUE INDEX vendor_ig_connections_pkey ON public.vendor_ig_connections USING btree (id)
+503,vendor_ig_connections,vendor_ig_connections_vendor_id_key,CREATE UNIQUE INDEX vendor_ig_connections_vendor_id_key ON public.vendor_ig_connections USING btree (vendor_id)
+503,vendor_insurance_settings,vendor_insurance_settings_pkey,CREATE UNIQUE INDEX vendor_insurance_settings_pkey ON public.vendor_insurance_settings USING btree (vendor_id)
+503,vendor_look_photos,vendor_look_photos_look_idx,"CREATE INDEX vendor_look_photos_look_idx ON public.vendor_look_photos USING btree (look_id, ""position"") WHERE (deleted_at IS NULL)"
+503,vendor_look_photos,vendor_look_photos_pkey,CREATE UNIQUE INDEX vendor_look_photos_pkey ON public.vendor_look_photos USING btree (id)
+503,vendor_looks,vendor_looks_pkey,CREATE UNIQUE INDEX vendor_looks_pkey ON public.vendor_looks USING btree (id)
+503,vendor_looks,vendor_looks_published_idx,"CREATE INDEX vendor_looks_published_idx ON public.vendor_looks USING btree (vendor_id, ""position"") WHERE ((status = 'published'::text) AND (deleted_at IS NULL))"
+503,vendor_looks,vendor_looks_slug_uidx,"CREATE UNIQUE INDEX vendor_looks_slug_uidx ON public.vendor_looks USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)"
+503,vendor_packages,uq_vendor_packages_default,CREATE UNIQUE INDEX uq_vendor_packages_default ON public.vendor_packages USING btree (vendor_id) WHERE (is_default AND (deleted_at IS NULL))
+503,vendor_packages,uq_vendor_packages_seed,"CREATE UNIQUE INDEX uq_vendor_packages_seed ON public.vendor_packages USING btree (vendor_id, seeded_from) WHERE (seeded_from IS NOT NULL)"
+503,vendor_packages,vendor_packages_pkey,CREATE UNIQUE INDEX vendor_packages_pkey ON public.vendor_packages USING btree (id)
+503,vendor_packages,vendor_packages_vendor_idx,CREATE INDEX vendor_packages_vendor_idx ON public.vendor_packages USING btree (vendor_id) WHERE (deleted_at IS NULL)
+503,vendor_pay_accounts,vendor_pay_accounts_one_live,CREATE UNIQUE INDEX vendor_pay_accounts_one_live ON public.vendor_pay_accounts USING btree (vendor_id) WHERE (status <> 'revoked'::text)
+503,vendor_pay_accounts,vendor_pay_accounts_pkey,CREATE UNIQUE INDEX vendor_pay_accounts_pkey ON public.vendor_pay_accounts USING btree (id)
+503,vendor_pay_accounts,vendor_pay_accounts_provider_account,"CREATE UNIQUE INDEX vendor_pay_accounts_provider_account ON public.vendor_pay_accounts USING btree (provider, account_id) WHERE (status <> 'revoked'::text)"
+503,vendor_pay_event_answers,vendor_pay_event_answers_pkey,"CREATE UNIQUE INDEX vendor_pay_event_answers_pkey ON public.vendor_pay_event_answers USING btree (event_id, round)"
+503,vendor_pay_events,vendor_pay_events_binder_pending,CREATE INDEX vendor_pay_events_binder_pending ON public.vendor_pay_events USING btree (binder_id) WHERE (applied = false)
+503,vendor_pay_events,vendor_pay_events_pkey,CREATE UNIQUE INDEX vendor_pay_events_pkey ON public.vendor_pay_events USING btree (id)
+503,vendor_pay_events,vendor_pay_events_provider_provider_payment_id_kind_key,"CREATE UNIQUE INDEX vendor_pay_events_provider_provider_payment_id_kind_key ON public.vendor_pay_events USING btree (provider, provider_payment_id, kind)"
+503,vendor_pay_events,vendor_pay_events_vendor_idx,"CREATE INDEX vendor_pay_events_vendor_idx ON public.vendor_pay_events USING btree (vendor_id, at DESC)"
+503,vendor_pay_links,vendor_pay_links_pkey,CREATE UNIQUE INDEX vendor_pay_links_pkey ON public.vendor_pay_links USING btree (id)
+503,vendor_pay_links,vendor_pay_links_vendor_idx,"CREATE INDEX vendor_pay_links_vendor_idx ON public.vendor_pay_links USING btree (vendor_id, created_at DESC)"
+503,vendor_pay_oauth_states,vendor_pay_oauth_states_old,CREATE INDEX vendor_pay_oauth_states_old ON public.vendor_pay_oauth_states USING btree (expires_at)
+503,vendor_pay_oauth_states,vendor_pay_oauth_states_pkey,CREATE UNIQUE INDEX vendor_pay_oauth_states_pkey ON public.vendor_pay_oauth_states USING btree (nonce)
+503,vendor_pay_settings,vendor_pay_settings_pkey,CREATE UNIQUE INDEX vendor_pay_settings_pkey ON public.vendor_pay_settings USING btree (vendor_id)
+503,vendor_policies,vendor_policies_ends_idx,CREATE INDEX vendor_policies_ends_idx ON public.vendor_policies USING btree (ends_on) WHERE ((deleted_at IS NULL) AND (confirmed_at IS NOT NULL))
+503,vendor_policies,vendor_policies_pkey,CREATE UNIQUE INDEX vendor_policies_pkey ON public.vendor_policies USING btree (id)
+503,vendor_policies,vendor_policies_vendor_idx,CREATE INDEX vendor_policies_vendor_idx ON public.vendor_policies USING btree (vendor_id) WHERE (deleted_at IS NULL)
+503,vendor_portfolio,idx_vendor_portfolio_approved,CREATE INDEX idx_vendor_portfolio_approved ON public.vendor_portfolio USING btree (vendor_id) WHERE (approval_state = 'approved'::text)
+503,vendor_portfolio,vendor_portfolio_pending_idx,"CREATE INDEX vendor_portfolio_pending_idx ON public.vendor_portfolio USING btree (approval_state, created_at) WHERE (approval_state = 'pending'::text)"
+503,vendor_portfolio,vendor_portfolio_pkey,CREATE UNIQUE INDEX vendor_portfolio_pkey ON public.vendor_portfolio USING btree (id)
+503,vendor_portfolio,vendor_portfolio_vendor_idx,"CREATE INDEX vendor_portfolio_vendor_idx ON public.vendor_portfolio USING btree (vendor_id, approval_state)"
+503,vendor_portfolio,vendor_portfolio_vendor_position_idx,"CREATE INDEX vendor_portfolio_vendor_position_idx ON public.vendor_portfolio USING btree (vendor_id, ""position"")"
+503,vendor_roster,vendor_roster_member_idx,"CREATE UNIQUE INDEX vendor_roster_member_idx ON public.vendor_roster USING btree (owner_vendor_id, member_vendor_id) WHERE (member_vendor_id IS NOT NULL)"
+503,vendor_roster,vendor_roster_phone_idx,"CREATE UNIQUE INDEX vendor_roster_phone_idx ON public.vendor_roster USING btree (owner_vendor_id, phone) WHERE (member_vendor_id IS NULL)"
+503,vendor_roster,vendor_roster_pkey,CREATE UNIQUE INDEX vendor_roster_pkey ON public.vendor_roster USING btree (id)
+503,vendor_seal,vendor_seal_pkey,CREATE UNIQUE INDEX vendor_seal_pkey ON public.vendor_seal USING btree (vendor_id)
+503,vendor_site_drafts,vendor_site_drafts_pkey,CREATE UNIQUE INDEX vendor_site_drafts_pkey ON public.vendor_site_drafts USING btree (vendor_id)
+503,vendor_site_faq,vendor_site_faq_pkey,CREATE UNIQUE INDEX vendor_site_faq_pkey ON public.vendor_site_faq USING btree (id)
+503,vendor_site_faq,vendor_site_faq_vendor_idx,"CREATE INDEX vendor_site_faq_vendor_idx ON public.vendor_site_faq USING btree (vendor_id, ""position"") WHERE (deleted_at IS NULL)"
+503,vendor_site_pages,vendor_site_pages_pkey,CREATE UNIQUE INDEX vendor_site_pages_pkey ON public.vendor_site_pages USING btree (id)
+503,vendor_site_pages,vendor_site_pages_slug_uidx,"CREATE UNIQUE INDEX vendor_site_pages_slug_uidx ON public.vendor_site_pages USING btree (vendor_id, slug) WHERE (deleted_at IS NULL)"
+503,vendor_site_sections,vendor_site_sections_home_key_uidx,"CREATE UNIQUE INDEX vendor_site_sections_home_key_uidx ON public.vendor_site_sections USING btree (vendor_id, key) WHERE ((page_id IS NULL) AND (deleted_at IS NULL))"
+503,vendor_site_sections,vendor_site_sections_page_key_uidx,"CREATE UNIQUE INDEX vendor_site_sections_page_key_uidx ON public.vendor_site_sections USING btree (page_id, key) WHERE ((page_id IS NOT NULL) AND (deleted_at IS NULL))"
+503,vendor_site_sections,vendor_site_sections_pkey,CREATE UNIQUE INDEX vendor_site_sections_pkey ON public.vendor_site_sections USING btree (id)
+503,vendor_sites,vendor_sites_pkey,CREATE UNIQUE INDEX vendor_sites_pkey ON public.vendor_sites USING btree (id)
+503,vendor_sites,vendor_sites_vendor_id_key,CREATE UNIQUE INDEX vendor_sites_vendor_id_key ON public.vendor_sites USING btree (vendor_id)
+503,vendor_state,vendor_state_pkey,CREATE UNIQUE INDEX vendor_state_pkey ON public.vendor_state USING btree (vendor_id)
+503,vendor_stories,vendor_stories_pkey,CREATE UNIQUE INDEX vendor_stories_pkey ON public.vendor_stories USING btree (id)
+503,vendor_stories,vendor_stories_vendor_id_slug_key,"CREATE UNIQUE INDEX vendor_stories_vendor_id_slug_key ON public.vendor_stories USING btree (vendor_id, slug)"
+503,vendor_stories,vendor_stories_vendor_idx,CREATE INDEX vendor_stories_vendor_idx ON public.vendor_stories USING btree (vendor_id) WHERE (deleted_at IS NULL)
+503,vendor_testimonial_requests,vendor_testimonial_requests_phone_sweep_idx,CREATE INDEX vendor_testimonial_requests_phone_sweep_idx ON public.vendor_testimonial_requests USING btree (expires_at) WHERE (phone IS NOT NULL)
+503,vendor_testimonial_requests,vendor_testimonial_requests_pkey,CREATE UNIQUE INDEX vendor_testimonial_requests_pkey ON public.vendor_testimonial_requests USING btree (id)
+503,vendor_testimonial_requests,vendor_testimonial_requests_token_hash_key,CREATE UNIQUE INDEX vendor_testimonial_requests_token_hash_key ON public.vendor_testimonial_requests USING btree (token_hash)
+503,vendor_testimonial_requests,vendor_testimonial_requests_vendor_idx,"CREATE INDEX vendor_testimonial_requests_vendor_idx ON public.vendor_testimonial_requests USING btree (vendor_id, created_at DESC)"
+503,vendor_testimonials,vendor_testimonials_pkey,CREATE UNIQUE INDEX vendor_testimonials_pkey ON public.vendor_testimonials USING btree (id)
+503,vendor_testimonials,vendor_testimonials_vendor_idx,CREATE INDEX vendor_testimonials_vendor_idx ON public.vendor_testimonials USING btree (vendor_id) WHERE (deleted_at IS NULL)
+503,vendor_wa_events,vendor_wa_events_pkey,CREATE UNIQUE INDEX vendor_wa_events_pkey ON public.vendor_wa_events USING btree (id)
+503,vendor_wa_events,vendor_wa_events_vendor_kind_idx,"CREATE INDEX vendor_wa_events_vendor_kind_idx ON public.vendor_wa_events USING btree (vendor_id, kind, received_at)"
+503,vendor_wabas,vendor_wabas_phone_number_id_key,CREATE UNIQUE INDEX vendor_wabas_phone_number_id_key ON public.vendor_wabas USING btree (phone_number_id)
+503,vendor_wabas,vendor_wabas_pkey,CREATE UNIQUE INDEX vendor_wabas_pkey ON public.vendor_wabas USING btree (id)
+503,vendor_wabas,vendor_wabas_vendor_id_key,CREATE UNIQUE INDEX vendor_wabas_vendor_id_key ON public.vendor_wabas USING btree (vendor_id)
+503,vendor_wabas,vendor_wabas_waba_id_key,CREATE UNIQUE INDEX vendor_wabas_waba_id_key ON public.vendor_wabas USING btree (waba_id)
+503,vendors,vendors_discover_live_idx,CREATE INDEX vendors_discover_live_idx ON public.vendors USING btree (created_at DESC) WHERE (discover_eligible AND (NOT discover_paused))
+503,vendors,vendors_pkey,CREATE UNIQUE INDEX vendors_pkey ON public.vendors USING btree (id)
+503,vendors,vendors_razorpay_subscription_idx,CREATE INDEX vendors_razorpay_subscription_idx ON public.vendors USING btree (razorpay_subscription_id) WHERE (razorpay_subscription_id IS NOT NULL)
+503,vendors,vendors_routing_handle_idx,CREATE INDEX vendors_routing_handle_idx ON public.vendors USING btree (routing_handle)
+503,vendors,vendors_routing_handle_key,CREATE UNIQUE INDEX vendors_routing_handle_key ON public.vendors USING btree (routing_handle)
+503,vendors,vendors_user_id_idx,CREATE INDEX vendors_user_id_idx ON public.vendors USING btree (user_id)
+503,vendors,vendors_vertical_idx,CREATE INDEX vendors_vertical_idx ON public.vendors USING btree (vertical)
+503,waitlist_signups,waitlist_signups_created_at_idx,CREATE INDEX waitlist_signups_created_at_idx ON public.waitlist_signups USING btree (created_at DESC)
+503,waitlist_signups,waitlist_signups_new_recent_idx,CREATE INDEX waitlist_signups_new_recent_idx ON public.waitlist_signups USING btree (created_at DESC) WHERE (status = 'new'::text)
+503,waitlist_signups,waitlist_signups_pkey,CREATE UNIQUE INDEX waitlist_signups_pkey ON public.waitlist_signups USING btree (id)
+503,website_chat_tokens,website_chat_tokens_expires_idx,CREATE INDEX website_chat_tokens_expires_idx ON public.website_chat_tokens USING btree (expires_at)
+503,website_chat_tokens,website_chat_tokens_pkey,CREATE UNIQUE INDEX website_chat_tokens_pkey ON public.website_chat_tokens USING btree (token_hash)
+503,wedding_credits,idx_wedding_credits_vendor,CREATE INDEX idx_wedding_credits_vendor ON public.wedding_credits USING btree (vendor_id)
+503,wedding_credits,idx_wedding_credits_wedding,CREATE INDEX idx_wedding_credits_wedding ON public.wedding_credits USING btree (wedding_id)
+503,wedding_credits,wedding_credits_claim_token_key,CREATE UNIQUE INDEX wedding_credits_claim_token_key ON public.wedding_credits USING btree (claim_token)
+503,wedding_credits,wedding_credits_pkey,CREATE UNIQUE INDEX wedding_credits_pkey ON public.wedding_credits USING btree (id)
+503,wedding_photos,idx_wedding_photos_wedding,"CREATE INDEX idx_wedding_photos_wedding ON public.wedding_photos USING btree (wedding_id, ""position"")"
+503,wedding_photos,wedding_photos_pkey,CREATE UNIQUE INDEX wedding_photos_pkey ON public.wedding_photos USING btree (id)
+503,weddings,idx_weddings_consent_token,CREATE UNIQUE INDEX idx_weddings_consent_token ON public.weddings USING btree (consent_token) WHERE (consent_token IS NOT NULL)
+503,weddings,idx_weddings_couple,CREATE INDEX idx_weddings_couple ON public.weddings USING btree (couple_id) WHERE (couple_id IS NOT NULL)
+503,weddings,idx_weddings_event,CREATE INDEX idx_weddings_event ON public.weddings USING btree (event_id)
+503,weddings,idx_weddings_live,"CREATE INDEX idx_weddings_live ON public.weddings USING btree (owner_vendor_id, slug) WHERE ((visibility = 'published'::text) AND (couple_consent = true))"
+503,weddings,idx_weddings_owner,CREATE INDEX idx_weddings_owner ON public.weddings USING btree (owner_vendor_id)
+503,weddings,weddings_owner_slug_key,"CREATE UNIQUE INDEX weddings_owner_slug_key ON public.weddings USING btree (owner_vendor_id, slug)"
+503,weddings,weddings_pkey,CREATE UNIQUE INDEX weddings_pkey ON public.weddings USING btree (id)

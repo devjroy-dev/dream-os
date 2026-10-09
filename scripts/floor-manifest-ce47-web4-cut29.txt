@@ -1,0 +1,25 @@
+# scripts/floor-manifest-ce47-web4-cut29.txt
+# CE-47 · WEB-4 cut 29 · the schema register PAIR regen of 8 October 2026 (ladder 0220) · base 5058d8c (server train 15) · F-19.16: a dirty path outside this list stops the floor.
+# Rung b300 (22 cells; record 0210 for PRO P3, whose package lands first). b261, b263, b266, b267, b268, b269, b230, b124, b141, b150 and b07_f0789 amended by label. leadSerializer.js: three census entries (the chair's ruling). No migration. One new directory, docs/db/snapshots/2026-10-08/: `git status --porcelain` names it as docs/db/snapshots/, so that entry is declared beside its four files. No file deleted.
+db/migrations/OUT_OF_ORDER.json
+docs/db/PUBLIC_SCHEMA.md
+docs/db/snapshots/
+docs/db/snapshots/2026-10-08/cols.csv
+docs/db/snapshots/2026-10-08/s1.csv
+docs/db/snapshots/2026-10-08/s2.csv
+docs/db/snapshots/2026-10-08/s3.csv
+docs/handovers/TDW_CE47_WEB4_CUT29_HANDOVER.md
+scripts/b07_f0789_phantom_columns_bench.js
+scripts/b124_g61_enquiry_srv_bench.js
+scripts/b141_g63_business_token_bench.js
+scripts/b150_g64_remove_number_bench.js
+scripts/b230_ce47_off_a1_shop_bench.js
+scripts/b261_ce47_web4_cut16_bench.js
+scripts/b263_ce47_web4_cut17_bench.js
+scripts/b266_ce47_web4_cut22_bench.js
+scripts/b267_ce47_web4_cut23_bench.js
+scripts/b268_ce47_web4_cut24_bench.js
+scripts/b269_ce47_web4_cut25_bench.js
+scripts/b300_ce47_web4_cut29_bench.js
+scripts/floor-manifest-ce47-web4-cut29.txt
+src/lib/vendor/leadSerializer.js
