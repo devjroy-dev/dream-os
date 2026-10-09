@@ -2,7 +2,7 @@
 // src/lib/hub/people.js · CE-47 · HUB-1 · THE PEOPLE TAB'S READ: only people who joined (a hub page exists).
 // Filters: role (a collab role), city, open_to. mine=1 is "My people": her roster (vendor_roster, kept as ruled) plus
 // everyone with a yes credit with her, each once. Each row carries "Worked with N people" (yes credits only).
-const { publicCard, COLS, OPEN_TO } = require('./profiles');
+const { publicCard, COLS, OPEN_TO, livePages } = require('./profiles');
 const { isCollabRole } = require('../collab/roles');
 const { sameCity } = require('../vendor/cityMatch');
 const { upsertRosterEdge } = require('../vendor/roster');
@@ -44,7 +44,9 @@ async function people(sb, me, q = {}) {
   } else {
     rows = (await sb.from('hub_profiles').select(COLS).neq('id', me.id).order('created_at', { ascending: false }).limit(500)).data || [];
   }
-  rows = rows.filter((p) => (!q.role || (p.roles || []).includes(q.role)) && (!q.city || sameCity(p.city, q.city)) && (!q.open_to || (p.open_to || []).includes(q.open_to)));
+  rows = rows.filter((p) => (!q.role || (p.roles || []).includes(q.role)) && (!q.open_to || (p.open_to || []).includes(q.open_to)));
+  rows = await livePages(sb, rows);   // HUB-2e: name, city and Instagram from each vendor's TDW profile, before the city filter
+  if (q.city) rows = rows.filter((p) => sameCity(p.city, q.city));
   const counts = await workedCounts(sb, rows.map((r) => r.id));
   const why = await myPeopleWhy(sb, me);   // HUB-2: every row says whether it is in My people, and why
   return rows.slice(0, 100).map((p) => { const n = (counts.get(p.id) || new Set()).size; const w = why.get(p.id) || null;
@@ -95,7 +97,7 @@ async function waitingForYes(sb, me) {
   if (!ids.length) return [];
   const already = await myPeopleWhy(sb, me);
   const { data: pages } = await sb.from('hub_profiles').select(COLS).in('id', ids.filter((i) => !already.has(i)));
-  return (pages || []).map((p) => ({ id: p.id, ...publicCard(p), words: 'Waiting for them to confirm', line: 'Not on your list until they say yes' }));
+  return (await livePages(sb, pages || [])).map((p) => ({ id: p.id, ...publicCard(p), words: 'Waiting for them to confirm', line: 'Not on your list until they say yes' }));
 }
 
 /** Add a vendor to her people. Vendors only; a person or an organisation is refused. One edge, never two. */

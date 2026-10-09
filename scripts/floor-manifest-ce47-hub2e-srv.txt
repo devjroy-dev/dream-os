@@ -1,0 +1,20 @@
+# scripts/floor-manifest-ce47-hub2e-srv.txt
+# CE-47 · HUB-2e SERVER · "Your page": her page follows her TDW profile for name, city and Instagram (read through, the chair's ruling, 8 Oct 2026; the handle fixed); her pictures only from her TDW portfolio (R-47.2: any approval state, never a held one, one home pictureOnPage/HELD_STATES; never a look's). BASE: 5058d8c (server train 15). No migration.
+# No bench amended. New: b288.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# c6d8ec10dfc180e49eead2a36013e7c669cbaab75498c2be24c11190df9398c6 · ADDED · docs/handovers/TDW_CE47_HUB2E_SRV_HANDOVER.md
+# a3e428e0edfc81b5cc9d93e6914ce4771c7eb420398560c67803e656c17aecfb · ADDED · docs/handovers/b288_ledger_HUB2E.txt
+# e644d96cd0a626267ae5b014eeeabc743841332210bfed92fff181ebd0de8afa · ADDED · scripts/b288_hub2e_server_bench.js
+# 464300623eb2744293630f0927cab4d05f52f146fcc992a14d9a41d95721d679 · CHANGED · src/api/public/hub.js
+# 944594b817d69a4499d9b937d364cec8c945bb6371cd75063e5e2472d311efe8 · CHANGED · src/api/vendor/hub.js
+# a98f4dca8464b8092dc40379d2316bc56c1d3d6b0cbf46b1e0a316324dc5b3b6 · CHANGED · src/lib/hub/people.js
+# 43f634fd07c1d56ec38e7fffbbcd2f81a091c662490cc96673367af3da899026 · CHANGED · src/lib/hub/profiles.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-hub2e-srv.txt
+docs/handovers/TDW_CE47_HUB2E_SRV_HANDOVER.md
+docs/handovers/b288_ledger_HUB2E.txt
+scripts/b288_hub2e_server_bench.js
+src/api/public/hub.js
+src/api/vendor/hub.js
+src/lib/hub/people.js
+src/lib/hub/profiles.js
+scripts/floor-manifest-ce47-hub2e-srv.txt

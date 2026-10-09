@@ -18,7 +18,8 @@ router.get('/:handle', asyncHandler(async (req, res) => {
   const h = profiles.toHandle(req.params.handle);
   const miss = () => errRes(res, 404, 'No such page');
   if (!h) return miss();
-  const { data: p } = await sb.from('hub_profiles').select(profiles.COLS).eq('handle', h).maybeSingle();
+  const { data: found } = await sb.from('hub_profiles').select(profiles.COLS).eq('handle', h).maybeSingle();
+  const [p] = found ? await profiles.livePages(sb, [found]) : [null];   // HUB-2e: her name, city and Instagram as her TDW profile says
   if (!p) return miss();
   if (p.owner_kind === 'org') {   // a blocked partner's page is gone, the same miss (PTN's rule)
     const { data: o } = await sb.from('partner_orgs').select('check_state').eq('id', p.org_id).maybeSingle();
@@ -26,7 +27,7 @@ router.get('/:handle', asyncHandler(async (req, res) => {
   }
   const lines = await credits.workedWith(sb, p.id);
   const ids = [...new Set(lines.flatMap((l) => l.with_ids))];
-  const others = ids.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('id', ids)).data || []) : [];
+  const others = ids.length ? await profiles.livePages(sb, (await sb.from('hub_profiles').select(profiles.COLS).in('id', ids)).data || []) : [];
   const card = new Map(others.map((o) => [o.id, profiles.publicCard(o)]));
   res.set('Cache-Control', 'public, max-age=60');
   return okRes(res, {

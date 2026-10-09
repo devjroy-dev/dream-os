@@ -39,27 +39,47 @@ const guard = (fn) => asyncHandler(async (req, res) => {
 const me = (req, sb) => profiles.ensureVendorProfile(sb, req.vendor.id);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const monthWords = (d) => { const m = String(d || '').match(/^(\d{4})-(\d{2})/); return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : ''; };
+const MAX_PICTURES = 12;   // HUB-2e: at most 12 pictures on her page
 const todayIST = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
 
 router.get('/me', requireAuth, resolveVendor(), guard(async (req, res, sb) => {
   // HUB-2 · RULE 1: a closed vendor is told so, and no page is made for her (her page exists only once she opens the Hub).
   if (!(await hubOpen(sb, req.vendor.id))) return okRes(res, { hub_open: false, line: CLOSED });
-  const p = await me(req, sb);
+  const [p] = await profiles.livePages(sb, [await me(req, sb)]);   // HUB-2e: name, city and Instagram from her TDW profile
   return okRes(res, { hub_open: true, page: { id: p.id, ...profiles.publicCard(p) }, worked_with: await credits.workedWith(sb, p.id) });
+}));
+
+// HUB-2e · "Your page": her portfolio pictures that may go on her page (R-47.2: any approval state, never a held one;
+// never a picture from a look), in her portfolio's order, each saying whether it is on her page now.
+router.get('/me/pictures', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
+  const [p] = await profiles.livePages(sb, [await me(req, sb)]);
+  const on = new Set(p.work_urls || []);
+  const pics = await profiles.pagePictures(sb, req.vendor.id);
+  return okRes(res, { pictures: pics.map((r) => ({ id: r.id, url: r.image_url, on_page: on.has(r.image_url) })), most: MAX_PICTURES });
 }));
 
 router.patch('/me', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
   const p = await me(req, sb); const b = req.body || {}; const patch = {};
   if (b.roles !== undefined) { if (!Array.isArray(b.roles) || !b.roles.every(isCollabRole)) throw new Error('roles must be collab roles'); patch.roles = [...new Set(b.roles)].slice(0, 5); }
   if (b.open_to !== undefined) { if (!Array.isArray(b.open_to) || !b.open_to.every((x) => profiles.OPEN_TO.includes(x))) throw new Error('open_to is paid, barter or credit_only'); patch.open_to = [...new Set(b.open_to)]; }
-  if (b.city !== undefined) patch.city = String(b.city || '').trim().slice(0, 60) || null;
+  // HUB-2e: her name, city and Instagram follow her TDW profile, so this door no longer sets them.
+  if (b.city !== undefined || b.display_name !== undefined || b.instagram_handle !== undefined) throw new Error('Your name, city and Instagram come from your TDW profile. Change them there.');
   if (b.website !== undefined) { const w = b.website ? websiteUrl(String(b.website)) : null; if (b.website && !w) throw new Error('that website is not a web address'); patch.website = w; }
-  if (b.work_urls !== undefined) { if (!Array.isArray(b.work_urls)) throw new Error('work_urls is a list'); patch.work_urls = b.work_urls.filter((u) => typeof u === 'string' && /^https:\/\/res\.cloudinary\.com\/[^\s]+$/.test(u)).slice(0, 12); }
+  if (b.work_urls !== undefined) {
+    // HUB-2e (R-47.2): only pictures of hers from her TDW portfolio, in any approval state, never a held one.
+    if (!Array.isArray(b.work_urls)) throw new Error('work_urls is a list');
+    const picked = [...new Set(b.work_urls.map((u) => String(u || '')))];
+    if (picked.length > MAX_PICTURES) throw new Error(`You can choose up to ${MAX_PICTURES} pictures.`);
+    const mine = new Set((await profiles.pagePictures(sb, req.vendor.id)).map((r) => r.image_url));
+    if (!picked.every((u) => mine.has(u))) throw new Error('You can choose only pictures from your TDW portfolio.');
+    patch.work_urls = picked;
+  }
   if (!Object.keys(patch).length) throw new Error('nothing to change');
   patch.updated_at = new Date().toISOString();
   const { data, error } = await sb.from('hub_profiles').update(patch).eq('id', p.id).select(profiles.COLS).maybeSingle();
   if (error) throw new Error(error.message);
-  return okRes(res, { page: { id: data.id, ...profiles.publicCard(data) } });
+  const [live] = await profiles.livePages(sb, [data]);
+  return okRes(res, { page: { id: live.id, ...profiles.publicCard(live) }, line: 'Your page is saved.' });
 }));
 
 router.get('/work', requireAuth, resolveVendor(), hubGate, guard(async (req, res, sb) => {
@@ -75,7 +95,7 @@ router.get('/work', requireAuth, resolveVendor(), hubGate, guard(async (req, res
   const calls = (open || []).filter((c) => !answered.has(c.id) && (all || !p.city || sameCity(c.city, p.city))
     && (!mine.size || (roles.get(c.id) || [{ requirement_type: c.requirement_type }]).some((r) => mine.has(r.requirement_type))));
   const posters = [...new Set(calls.map((c) => c.vendor_id))];
-  const pages = posters.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('vendor_id', posters)).data || []) : [];
+  const pages = posters.length ? await profiles.livePages(sb, (await sb.from('hub_profiles').select(profiles.COLS).in('vendor_id', posters)).data || []) : [];
   const byVendor = new Map(pages.map((x) => [x.vendor_id, x]));
   const names = posters.length ? ((await sb.from('vendors').select('id, business_name').in('id', posters)).data || []) : [];
   const nameOf = new Map(names.map((x) => [x.id, x.business_name]));
@@ -117,7 +137,7 @@ router.get('/mine', requireAuth, resolveVendor(), hubGate, guard(async (req, res
   const lines = await credits.workedWith(sb, p.id);
   // names and links for everyone Mine mentions, read once
   const pids = [...new Set([...(waiting || []).map((c) => c.giver_profile_id), ...lines.flatMap((l) => l.with_ids)])];
-  const pages = pids.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('id', pids)).data || []) : [];
+  const pages = pids.length ? await profiles.livePages(sb, (await sb.from('hub_profiles').select(profiles.COLS).in('id', pids)).data || []) : [];
   const byId = new Map(pages.map((x) => [x.id, profiles.publicCard(x)]));
   const cardOf = (id) => { const c = byId.get(id); return c ? { name: c.name, page_url: c.page_url } : null; };
   const callIds = [...new Set([...(applied || []).map((a) => a.post_id), ...(waiting || []).map((c) => c.call_id).filter(Boolean)])];
@@ -127,7 +147,7 @@ router.get('/mine', requireAuth, resolveVendor(), hubGate, guard(async (req, res
   const itemRows = itemIds.length ? ((await sb.from('collab_post_items').select('post_id, requirement_type, needed').in('post_id', itemIds)).data || []) : [];
   const titleOf = (post) => callTitle(post, itemRows.filter((r) => r.post_id === post.id));
   const posterIds = [...new Set(callRows.map((c) => c.vendor_id))];
-  const posterPages = posterIds.length ? ((await sb.from('hub_profiles').select(profiles.COLS).in('vendor_id', posterIds)).data || []) : [];
+  const posterPages = posterIds.length ? await profiles.livePages(sb, (await sb.from('hub_profiles').select(profiles.COLS).in('vendor_id', posterIds)).data || []) : [];
   const posterNames = posterIds.length ? ((await sb.from('vendors').select('id, business_name').in('id', posterIds)).data || []) : [];
   const posterOf = (vid) => { const pg = posterPages.find((x) => x.vendor_id === vid); if (pg) { const c = profiles.publicCard(pg); return { name: c.name, page_url: c.page_url }; }
     const v = posterNames.find((x) => x.id === vid); return { name: v ? v.business_name : 'A TDW vendor', page_url: null }; };

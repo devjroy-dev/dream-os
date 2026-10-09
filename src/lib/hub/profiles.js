@@ -45,6 +45,61 @@ async function ensureVendorProfile(sb, vendorId) {
   return ins.data;
 }
 
+// ── HUB-2e · HER PAGE FOLLOWS HER TDW PROFILE (the chair's ruling, 8 Oct 2026: read through) ─────────────────
+// A vendor's page is made once (ensureVendorProfile) and keeps a copy of her name, city and Instagram. Those three are
+// read THROUGH from her vendors row wherever pages are loaded, so the page always says what her TDW profile says; the
+// stored copy is only a fallback when her row cannot be read. The handle (her page's address, /c/<handle>) never follows:
+// it stays fixed so links she has shared keep working. Roles, open to, website and pictures are hers to set on her page.
+//
+// R-47.2 (the founder, 8 Oct 2026): her pictures are hers. Any picture of hers in vendor_portfolio may go on her page,
+// in any approval state, EXCEPT one the image safety check holds. WEB-4's contract will name the held state; it is added
+// in HELD_STATES and nowhere else. Pictures in looks (vendor_look_photos) are never offered: only vendor_portfolio is read.
+const HELD_STATES = Object.freeze([]);   // the safety check's held state(s), once WEB-4's contract names them
+const PICTURE = /^https:\/\/res\.cloudinary\.com\/[^\s]+$/;
+/** One home for "may this portfolio picture be on her page?" */
+function pictureOnPage(row) {
+  // If WEB-4's contract puts the held state in a column of its own, that column is read here and only here.
+  return !!row && typeof row.image_url === 'string' && PICTURE.test(row.image_url) && !HELD_STATES.includes(row.approval_state);
+}
+const IG = /^[A-Za-z0-9._]{1,30}$/;
+const igHandle = (h) => { const x = String(h || '').replace(/^@+/, ''); return IG.test(x) ? x : null; };
+
+/** Her portfolio pictures that may go on her page, in her portfolio's order. */
+async function pagePictures(sb, vendorId) {
+  const { data, error } = await sb.from('vendor_portfolio').select('id, vendor_id, image_url, approval_state, position, created_at').eq('vendor_id', vendorId);
+  if (error) throw new Error('Your portfolio could not be read. Please try again.');
+  return (data || []).filter(pictureOnPage)
+    .sort((x, y) => ((x.position ?? 1e9) - (y.position ?? 1e9)) || String(x.created_at || '').localeCompare(String(y.created_at || '')));
+}
+
+/** Pages as loaded, with each vendor's name, city and Instagram read through from her vendors row, and her pictures
+ *  kept only while they are still in her portfolio. Pages of organisations and people are returned as they are. */
+async function livePages(sb, rows) {
+  const list = (rows || []).filter(Boolean);
+  const vids = [...new Set(list.filter((p) => p.owner_kind === 'vendor' && p.vendor_id).map((p) => p.vendor_id))];
+  if (!vids.length) return list;
+  const [vr, pr] = await Promise.all([
+    sb.from('vendors').select('id, business_name, city, instagram_handle').in('id', vids),
+    sb.from('vendor_portfolio').select('vendor_id, image_url, approval_state').in('vendor_id', vids),
+  ]);
+  const byV = new Map(((vr && vr.data) || []).map((v) => [v.id, v]));
+  const pics = new Map();
+  for (const r of ((pr && pr.data) || [])) if (pictureOnPage(r)) { if (!pics.has(r.vendor_id)) pics.set(r.vendor_id, new Set()); pics.get(r.vendor_id).add(r.image_url); }
+  const picsRead = !!(pr && !pr.error);
+  return list.map((p) => {
+    if (p.owner_kind !== 'vendor' || !p.vendor_id) return p;
+    const v = byV.get(p.vendor_id);
+    const out = { ...p };
+    if (v) {
+      if (v.business_name && String(v.business_name).trim()) out.display_name = String(v.business_name).trim().slice(0, 120);
+      out.city = v.city || null;
+      out.instagram_handle = igHandle(v.instagram_handle);
+    }
+    if (picsRead) { const ok = pics.get(p.vendor_id) || new Set(); out.work_urls = (p.work_urls || []).filter((u) => ok.has(u)); }
+    return out;
+  });
+}
+
 /** What a page shows to anyone: links built here, never plain handles. No check label (HUB-2). */
 function publicCard(p) {
   return { handle: p.handle, name: p.display_name, kind: p.owner_kind, roles: p.roles || [], city: p.city || null,
@@ -58,4 +113,4 @@ function publicCard(p) {
     work: Array.isArray(p.work_urls) ? p.work_urls.filter((u) => typeof u === 'string' && /^https:\/\/res\.cloudinary\.com\//.test(u)).slice(0, 12) : [] };
 }
 
-module.exports = { HANDLE, OPEN_TO, OPEN_WORD, COLS, toHandle, freeHandle, ensureVendorProfile, publicCard };
+module.exports = { HANDLE, OPEN_TO, OPEN_WORD, COLS, toHandle, freeHandle, ensureVendorProfile, publicCard, livePages, pagePictures, pictureOnPage, HELD_STATES };
