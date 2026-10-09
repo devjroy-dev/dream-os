@@ -96,14 +96,14 @@ async function uploadUrl(vendorId, body, deps) {
   if (!ext) return no(400, 'Upload a PDF or a photo.');
   const path = `${vendorId}/${crypto.randomUUID()}.${ext}`;
   const { data, error } = await deps.supabase.storage.from(BUCKET).createSignedUploadUrl(path);
-  if (error || !data) return no(503, 'The upload could not start. Try again in a minute.');
+  if (error || !data) return no(503, 'TDW could not start the upload. Please try again in a minute.');
   return ok({ path, upload_url: data.signedUrl, token: data.token });
 }
 
 /** I6 step 2: read the uploaded document and hand back what was read cleanly. Nothing is saved here. */
 async function read(vendorId, body, deps) {
   const path = body && body.path; const mime = body && body.mime;
-  if (!ownPath(vendorId, path) || !MIME_EXT[mime]) return no(400, 'Upload the document again.');
+  if (!ownPath(vendorId, path) || !MIME_EXT[mime]) return no(400, 'TDW could not use that upload. Please upload the document again.');
   const reader = deps.readPolicy || require('./policyRead').readPolicy;
   const { data: blob, error } = await deps.supabase.storage.from(BUCKET).download(path);
   if (error || !blob) return ok({ prefill: { insurer: null, kind: null, cover_amount: null, ends_on: null } });
@@ -115,32 +115,32 @@ async function read(vendorId, body, deps) {
 async function save(vendorId, body, deps, id = null) {
   const v = validate(body); if (v.error) return no(400, v.error);
   const doc = body.doc_path == null ? null : body.doc_path;
-  if (doc !== null && (!ownPath(vendorId, doc) || !MIME_EXT[body.doc_mime])) return no(400, 'Upload the document again.');
+  if (doc !== null && (!ownPath(vendorId, doc) || !MIME_EXT[body.doc_mime])) return no(400, 'TDW could not use that upload. Please upload the document again.');
   const nowIso = isoNow(deps);
   const row = { ...v.fields, confirmed_at: nowIso, updated_at: nowIso, ...(doc !== null ? { doc_path: doc, doc_mime: body.doc_mime } : {}) };
   const q = id
     ? deps.supabase.from('vendor_policies').update({ ...row, reminded_30_on: null, reminded_7_on: null }).eq('id', id).eq('vendor_id', vendorId).is('deleted_at', null)
     : deps.supabase.from('vendor_policies').insert({ ...row, vendor_id: vendorId });
   const { data, error } = await q.select('*').maybeSingle();
-  if (error) return no(500, 'The policy could not be saved. Try again.');
-  if (!data) return no(404, 'That policy is not here any more.');
+  if (error) return no(500, 'TDW could not save the policy. Please try again.');
+  if (!data) return no(404, 'TDW could not find that policy. It may have been deleted.');
   return ok({ policy: shape(data, today(deps)) });
 }
 
 async function remove(vendorId, id, deps) {
   const { data, error } = await deps.supabase.from('vendor_policies').update({ deleted_at: isoNow(deps) })
     .eq('id', id).eq('vendor_id', vendorId).is('deleted_at', null).select('id').maybeSingle();
-  if (error) return no(500, 'The policy could not be deleted. Try again.');
-  if (!data) return no(404, 'That policy is not here any more.');
+  if (error) return no(500, 'TDW could not delete the policy. Please try again.');
+  if (!data) return no(404, 'TDW could not find that policy. It may have been deleted.');
   return ok({});
 }
 
 /** I7 "Open document": a ten-minute address to her own file. */
 async function documentUrl(vendorId, id, deps) {
   const { data: p } = await deps.supabase.from('vendor_policies').select('doc_path').eq('id', id).eq('vendor_id', vendorId).is('deleted_at', null).maybeSingle();
-  if (!p || !p.doc_path) return no(404, 'No document is kept for this policy.');
+  if (!p || !p.doc_path) return no(404, 'This policy has no document saved with it.');
   const { data, error } = await deps.supabase.storage.from(BUCKET).createSignedUrl(p.doc_path, 600);
-  if (error || !data) return no(503, 'The document could not be opened. Try again.');
+  if (error || !data) return no(503, 'TDW could not open the document. Please try again.');
   return ok({ url: data.signedUrl });
 }
 
@@ -148,7 +148,7 @@ async function settings(vendorId, body, deps) {
   if (!body || typeof body.show_mark !== 'boolean') return no(400, 'Choose On or Off.');
   const { error } = await deps.supabase.from('vendor_insurance_settings')
     .upsert({ vendor_id: vendorId, show_mark: body.show_mark, updated_at: isoNow(deps) }, { onConflict: 'vendor_id' });
-  if (error) return no(500, 'The switch could not be saved. Try again.');
+  if (error) return no(500, 'TDW could not save the switch. Please try again.');
   return room(vendorId, deps);
 }
 

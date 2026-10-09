@@ -1,0 +1,8 @@
+# scripts/floor-manifest-ce47-ins-insurance-words-server.txt
+# CE-47 · INS · the Insurance room's server sentences under R-47.1 · base 5058d8c · no migration, no behaviour change
+docs/handovers/TDW_CE47_INS_INSURANCE_WORDS_SERVER_HANDOVER.md
+scripts/b220_ins_a_rules_bench.js
+scripts/b221_ins_a_doors_bench.js
+scripts/floor-manifest-ce47-ins-insurance-words-server.txt
+src/lib/vendor/insurance.js
+src/lib/vendor/insuranceRoom.js

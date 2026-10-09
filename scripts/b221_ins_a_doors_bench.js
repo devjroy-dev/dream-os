@@ -76,7 +76,8 @@ const good = { insurer: 'HDFC ERGO', kind: 'equipment', cover_amount: 300000, en
   const r0 = await room.room(V, d1);
   ok(() => r0.status === 200 && r0.body.policies.length === 1 && r0.body.show_mark === false && r0.body.mark_showing === false && r0.body.destinations.length === 14, '2.1 the room: her policy, the switch off, the A-to-Z list');
   // AMENDED BY LABEL, INS-A r2 (ruling b): each policy row carries its plain label, each entry its fee line.
-  ok(() => r0.body.policies[0].checked === 'Details confirmed by you. Not checked by TDW.' && r0.body.destinations.every((d) => d.fee_line.endsWith('TDW takes nothing.')), '2.1b each policy says "Not checked by TDW"; each entry says TDW takes nothing');
+  // AMENDED BY LABEL · R-47.1 (8 October): the pins follow the plain sentences; what each cell guards is unchanged.
+  ok(() => r0.body.policies[0].checked === 'You confirmed these details. TDW has not checked them.' && r0.body.destinations.every((d) => d.fee_line.endsWith('TDW takes nothing.')), '2.1b each policy says "Not checked by TDW"; each entry says TDW takes nothing');
   const rw = await room.room(W, d1);
   ok(() => rw.body.policies.length === 0, '2.3 another vendor sees none of her policies');
   f1.T.vendor_policies[0].reminded_30_on = '2026-09-01';
@@ -119,9 +120,9 @@ const good = { insurer: 'HDFC ERGO', kind: 'equipment', cover_amount: 300000, en
       { vendor_id: W, kind: 'ceremony', state: 'upcoming', deleted_at: null, event_date: '2026-12-04' },
     ] });
   const qb = await room.quoteBrief(V, { insurer: 'Digit', answers: { gearValue: 400000, worksAtVenues: true }, kinds: ['equipment', 'public_liability'] }, { supabase: fb.db, now: NOW });
-  ok(() => qb.status === 200 && qb.body.insurer === 'Digit' && qb.body.url === 'https://www.godigit.com' && qb.body.fee_line === "This opens Digit's own website. Digit sets its own price and may charge its own fees. TDW takes nothing.", '3b.1 the insurer\'s own page and its fee line', JSON.stringify(qb.body));
-  ok(() => qb.body.text.startsWith('Cover enquiry from Swati Roy Makeup, Makeup, Delhi.') && qb.body.text.includes('Weddings delivered through The Dream Wedding: 14 (counted'), '3b.2 her name, trade and city, and her own counted weddings (not another vendor\'s)', qb.body.text);
-  ok(() => qb.body.text.includes('Wedding days booked in the next 12 months: 2 ('), '3b.3 booked days: upcoming bookings in the next 12 months, one per date; cancelled, deleted, other kinds, past, far and other vendors\' dates left out', qb.body.text);
+  ok(() => qb.status === 200 && qb.body.insurer === 'Digit' && qb.body.url === 'https://www.godigit.com' && qb.body.fee_line === "The button below opens Digit's own website. Digit sets its own price and may charge its own fees. TDW takes nothing.", '3b.1 the insurer\'s own page and its fee line', JSON.stringify(qb.body));
+  ok(() => qb.body.text.startsWith('This is a cover enquiry from Swati Roy Makeup, a makeup studio in Delhi.') && qb.body.text.includes('The studio has delivered 14 weddings through The Dream Wedding'), '3b.2 her name, trade and city, and her own counted weddings (not another vendor\'s)', qb.body.text);
+  ok(() => qb.body.text.includes('The studio has 2 wedding days booked in the next 12 months'), '3b.3 booked days: upcoming bookings in the next 12 months, one per date; cancelled, deleted, other kinds, past, far and other vendors\' dates left out', qb.body.text);
   ok(() => fb.log.every((l) => l.op === 'select'), '3b.4 a brief writes nothing anywhere: nothing is sent to an insurer');
   ok((await room.quoteBrief(V, { insurer: 'Some Broker' }, { supabase: fb.db, now: NOW })).status === 400, '3b.5 only a listed insurer or comparison site');
 
@@ -132,7 +133,7 @@ const good = { insurer: 'HDFC ERGO', kind: 'equipment', cover_amount: 300000, en
   const on = await room.settings(V, { show_mark: true }, d4);
   ok(() => on.body.show_mark === true && on.body.mark_showing === true, '4.2 switch on with a policy in date: the room says the mark is showing');
   const pub = await room.publicMark(f4.db, V, 'Swati Roy Makeup', NOW());
-  ok(() => pub && pub.until === '2027-02-14' && pub.text.startsWith('Policy uploaded by Swati Roy Makeup'), '4.3 the public door shows the same mark');
+  ok(() => pub && pub.until === '2027-02-14' && pub.text.startsWith('Swati Roy Makeup uploaded this policy.'), '4.3 the public door shows the same mark');
   f4.T.vendor_policies[0].ends_on = '2026-10-03';
   ok((await room.publicMark(f4.db, V, 'Swati Roy Makeup', NOW())) === null && (await room.room(V, d4)).body.mark_showing === false, '4.4 the day after it ends, both lose the mark together');
 

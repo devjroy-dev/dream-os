@@ -55,22 +55,23 @@ ok(() => D.every((d) => /^https:\/\/[a-z0-9.-]+\.[a-z.]+$/.test(d.url) && d.mode
 // AMENDED BY LABEL, INS-A r2 (CE-47 ruling b, 6 October): `fee_line` joins each entry; still no price, rank or score.
 ok(() => D.every((d) => Object.keys(d).sort().join() === 'fee_line,label,mode,name,url'), '3.5 no price, rank or score field travels');
 // r2 · the founder's principle: "Get a quote" says plainly what it is, and the brief says where each figure came from.
-ok(() => D.every((d) => d.fee_line === `This opens ${d.name}'s own website. ${d.name} sets its own price and may charge its own fees. TDW takes nothing.`), '3.6 every entry names its own fees and says TDW takes nothing (ruling b)');
-ok(() => I.NOT_CHECKED === 'Details confirmed by you. Not checked by TDW.', '3.7 a policy row says plainly it is not checked by TDW (ruling b)');
+// AMENDED BY LABEL · R-47.1 (8 October): the pins follow the plain sentences; what each cell guards is unchanged.
+ok(() => D.every((d) => d.fee_line === `The button below opens ${d.name}'s own website. ${d.name} sets its own price and may charge its own fees. TDW takes nothing.`), '3.6 every entry names its own fees and says TDW takes nothing (ruling b)');
+ok(() => I.NOT_CHECKED === 'You confirmed these details. TDW has not checked them.', '3.7 a policy row says plainly it is not checked by TDW (ruling b)');
 const BR = I.coverBrief({ studioName: 'Swati Roy Makeup', trade: 'Makeup', city: 'Delhi', weddingsCounted: 14, bookedDays: 38, answers: { gearValue: 400000, worksAtVenues: true, holdsClientMoney: false }, kindKeys: ['equipment', 'public_liability', 'car'] });
-ok(() => BR.includes('Weddings delivered through The Dream Wedding: 14 (counted by The Dream Wedding).') && BR.includes('Wedding days booked in the next 12 months: 38 (from the studio\'s own calendar on The Dream Wedding).'), '3.8 the two figures only TDW holds, each saying where it came from', BR);
-ok(() => BR.includes('Value of kit and equipment: Rs 4,00,000 (as stated by the studio).') && BR.includes('Works at venues: Yes (as stated by the studio).') && BR.includes('Holds client money before the event: No (as stated by the studio).'), '3.9 her own answers marked as hers, money in Rs with Indian grouping');
-ok(() => BR.includes('Kinds of cover to quote for: Kit and equipment cover, Public liability.') && !/car/i.test(BR.split('\n').slice(-2).join(' ')), '3.10 only real kinds travel; an unknown key is dropped');
+ok(() => BR.includes('The studio has delivered 14 weddings through The Dream Wedding, as counted by The Dream Wedding.') && BR.includes('The studio has 38 wedding days booked in the next 12 months, from its own calendar on The Dream Wedding.'), '3.8 the two figures only TDW holds, each saying where it came from', BR);
+ok(() => BR.includes('The studio says its kit and equipment are worth Rs 4,00,000.') && BR.includes('The studio says it works at venues.') && BR.includes('The studio says it does not hold client money before the event.'), '3.9 her own answers marked as hers, money in Rs with Indian grouping');
+ok(() => BR.includes('The studio would like a quote for these kinds of cover: Kit and equipment cover, Public liability.') && !/car/i.test(BR.split('\n').slice(-2).join(' ')), '3.10 only real kinds travel; an unknown key is dropped');
 ok(() => !/\b(recommend|best|top|cheapest|ranked|rating|couple|bride)\b/i.test(BR), '3.11 the brief recommends nothing and names no client');
 const BR0 = I.coverBrief({ studioName: '', weddingsCounted: null, bookedDays: undefined });
-ok(() => BR0.startsWith('Cover enquiry from a wedding studio.') && BR0.includes(': 0 (counted') && !BR0.includes('Rs ') && !BR0.includes('Works at venues'), '3.12 with nothing known, zeros are said and unanswered lines are left out, never guessed');
+ok(() => BR0.startsWith('This is a cover enquiry from a wedding studio.') && BR0.includes('has delivered 0 weddings') && !BR0.includes('Rs ') && !BR0.includes('works at venues'), '3.12 with nothing known, zeros are said and unanswered lines are left out, never guessed');
 
 sec('4  a policy\'s state, and the public mark');
 ok(() => I.policyState('2027-02-14', T).key === 'in_date' && I.policyState('2026-11-02', T).key === 'renew_soon' && I.policyState('2026-10-03', T).key === 'ended', '4.1 in date, renew soon from 30 days, ended');
 ok(() => I.policyState('2026-10-04', T).key === 'renew_soon', '4.2 the last day is still in date');
 const m = I.insuredMark({ showMark: true, studioName: 'Swati Roy Makeup', todayKey: T, policies: [P({}), P({ ends_on: '2026-11-02' })] });
 ok(() => m && m.label === 'Insured' && m.until === '2027-02-14', '4.3 switch on and a policy in date: the mark, dated by the latest end');
-ok(() => m && m.text === 'Policy uploaded by Swati Roy Makeup, valid until 14 February 2027. Details confirmed by Swati Roy Makeup; TDW has not verified the policy.', '4.4 the ruled tap text, with the studio name (ruling b)');
+ok(() => m && m.text === 'Swati Roy Makeup uploaded this policy. It is valid until 14 February 2027. Swati Roy Makeup confirmed its details, and TDW has not verified the policy.', '4.4 the ruled tap text, with the studio name (ruling b)');
 ok(() => I.insuredMark({ showMark: false, studioName: 'S', todayKey: T, policies: [P({})] }) === null, '4.5 switch off: no mark');
 ok(() => I.insuredMark({ showMark: true, studioName: 'S', todayKey: T, policies: [P({ ends_on: '2026-10-03' })] }) === null, '4.6 every policy ended: no mark (it comes off by itself)');
 ok(() => I.insuredMark({ showMark: true, studioName: 'S', todayKey: T, policies: [P({ confirmed_at: null })] }) === null, '4.7 an unconfirmed policy never counts');
@@ -106,10 +107,10 @@ if (!process.env.B220_ROOT) {
     ['the 30-day reminder sends twice', 'src/lib/vendor/insurance.js', "return p.reminded_30_on ? null : 30;", 'return 30;', '5.2'],
     ['the list loses its order', 'src/lib/vendor/insurance.js', ".sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))", '.reverse()', '3.1'],
     ['a broker labelled as an insurer', 'src/lib/vendor/insurance.js', "{ name: 'Policybazaar', kind: 'comparison'", "{ name: 'Policybazaar', kind: 'insurer'", '3.3'],
-    ['the tap text names TDW as checker', 'src/lib/vendor/insurance.js', '; TDW has not verified the policy.`', '; verified by TDW.`', '4.4'],
+    ['the tap text names TDW as checker', 'src/lib/vendor/insurance.js', ', and TDW has not verified the policy.`', ', and TDW verified the policy.`', '4.4'],   // re-anchored by label, R-47.1
     // AMENDED BY LABEL, INS-A r2: two mutations for the brief and the fee line.
     ['the fee line drops "TDW takes nothing"', 'src/lib/vendor/insurance.js', 'may charge its own fees. TDW takes nothing.`', 'may charge its own fees.`', '3.6'],
-    ['the brief hides where the weddings figure came from', 'src/lib/vendor/insurance.js', ' (counted by The Dream Wedding).`', '.`', '3.8'],
+    ['the brief hides where the weddings figure came from', 'src/lib/vendor/insurance.js', ' weddings through The Dream Wedding, as counted by The Dream Wedding.`', ' weddings through The Dream Wedding.`', '3.8'],   // re-anchored by label, R-47.1
     // AMENDED BY LABEL, INS-A r3: a retired token typed back into the table is refused at load.
     ['a retired trade token back in the table', 'src/lib/vendor/insurance.js', "trades: ['decor', 'venue_catering', 'performer']", "trades: ['decor', 'catering', 'performer']", '0.1'],
     ['a short month', 'src/lib/format.js', "`${Number(m[3])} ${MONTHS_LONG[Number(m[2]) - 1]} ${m[1]}`", "`${Number(m[3])} ${MONTHS_LONG[Number(m[2]) - 1].slice(0, 3)} ${m[1]}`", '1.1'],

@@ -21,28 +21,28 @@ const { normaliseCategory } = require('./categoryFraming');
 // fits; `when` names the answers (I2) that bring it in for any trade. Each example is a real wedding situation.
 const KINDS = [
   { key: 'equipment', title: 'Kit and equipment cover',
-    example: 'A kit bag left in a hotel lobby goes missing on the morning of a wedding. This pays to replace what was in it.',
+    example: 'A kit bag left in a hotel lobby goes missing on the morning of a wedding. This cover pays to replace what was in it.',
     trades: ['photography', 'makeup', 'hairstylist', 'performer', 'decor', 'content_creator'], when: { gearOver: 50000 } },
   { key: 'public_liability', title: 'Public liability',
-    example: 'A light stand tips over at the venue and hurts a guest. This pays the claim made against the business.',
+    example: 'A light stand tips over at the venue and hurts a guest. This cover pays the claim made against the business.',
     trades: ['decor', 'venue_catering', 'performer'], when: { venues: true } },
   { key: 'professional_indemnity', title: 'Professional indemnity',
-    example: 'A client says a missed booking spoiled the day and asks for money back. This pays the legal costs and the claim.',
+    example: 'A client says a missed booking spoiled the day and asks for money back. This cover pays the legal costs and the claim.',
     trades: ['planning', 'photography', 'designer'], when: { holdsMoney: true } },
   { key: 'goods_in_transit', title: 'Goods in transit',
-    example: 'An outfit or a load of decor is damaged in the van on the way to the venue. This pays for what was damaged.',
+    example: 'An outfit or a load of decor is damaged in the van on the way to the venue. This cover pays for what was damaged.',
     trades: ['decor', 'designer', 'jewellery'], when: {} },
   { key: 'shop_and_stock', title: 'Shop and stock',
-    example: 'A fire in the studio destroys stock a month before the season. This pays for the stock and the fittings.',
+    example: 'A fire in the studio destroys stock a month before the season. This cover pays for the stock and the fittings.',
     trades: ['designer', 'jewellery'], when: {} },
   { key: 'jewellers_block', title: "Jeweller's block",
-    example: 'Pieces sent out on approval for a fitting are stolen. This pays for the pieces.',
+    example: 'Pieces sent out on approval for a fitting are stolen. This cover pays for the pieces.',
     trades: ['jewellery'], when: {} },
   { key: 'personal_accident', title: 'Personal accident for you and your crew',
-    example: 'An assistant slips on wet stairs between two functions. This pays for treatment and time off work.',
+    example: 'An assistant slips on wet stairs between two functions. This cover pays for treatment and time off work.',
     trades: [], when: { eventsOver: 20 } },
   { key: 'event_cancellation', title: 'Event cancellation',
-    example: 'Rain or a strike cancels an outdoor function. This pays the costs already spent.',
+    example: 'Rain or a strike cancels an outdoor function. This cover pays the costs already spent.',
     trades: ['planning'], when: {} },
 ];
 const KIND_KEYS = KINDS.map((k) => k.key).concat('other');
@@ -91,8 +91,8 @@ const LABEL = { insurer: 'Insurer', comparison: 'Comparison site' };
 // ── r2 · THE FOUNDER'S PRINCIPLE (CE-47, 6 October): a connection finishes the job and says plainly what it is.
 // "Where to buy" became "Get a quote" (ruling a): each entry carries the cover brief (below) and its fee line (ruling b).
 // Step 2, "Buy here" inside TDW, is NOT built until a partner agreement settles the IRDAI question.
-const feeLine = (name) => `This opens ${name}'s own website. ${name} sets its own price and may charge its own fees. TDW takes nothing.`;
-const NOT_CHECKED = 'Details confirmed by you. Not checked by TDW.';
+const feeLine = (name) => `The button below opens ${name}'s own website. ${name} sets its own price and may charge its own fees. TDW takes nothing.`;
+const NOT_CHECKED = 'You confirmed these details. TDW has not checked them.';
 
 /** The list as the room draws it: one A-to-Z list, each with its label and fee line. Sorted here, so a new entry cannot break order. */
 function destinations() {
@@ -110,15 +110,17 @@ function coverBrief({ studioName, trade, city, weddingsCounted, bookedDays, answ
   const yn = (v) => (v === true ? 'Yes' : v === false ? 'No' : null);
   const kinds = kindKeys.filter((k) => KIND_KEYS.includes(k) && k !== 'other').map(kindTitle);
   const lines = [
-    `Cover enquiry from ${String(studioName || '').trim() || 'a wedding studio'}${trade ? `, ${trade}` : ''}${city ? `, ${city}` : ''}.`,
-    `Weddings delivered through The Dream Wedding: ${Number(weddingsCounted) || 0} (counted by The Dream Wedding).`,
-    `Wedding days booked in the next 12 months: ${Number(bookedDays) || 0} (from the studio's own calendar on The Dream Wedding).`,
+    `This is a cover enquiry from ${String(studioName || '').trim() || 'a wedding studio'}${trade ? `, a ${String(trade).toLowerCase()} studio` : ''}${city ? ` in ${city}` : ''}.`,
+    `The studio has delivered ${Number(weddingsCounted) || 0} weddings through The Dream Wedding, as counted by The Dream Wedding.`,
+    `The studio has ${Number(bookedDays) || 0} wedding days booked in the next 12 months, from its own calendar on The Dream Wedding.`,
   ];
   const gear = Number(answers.gearValue);
-  if (Number.isInteger(gear) && gear > 0) lines.push(`Value of kit and equipment: Rs ${formatRs(gear)} (as stated by the studio).`);
-  if (yn(answers.worksAtVenues)) lines.push(`Works at venues: ${yn(answers.worksAtVenues)} (as stated by the studio).`);
-  if (yn(answers.holdsClientMoney)) lines.push(`Holds client money before the event: ${yn(answers.holdsClientMoney)} (as stated by the studio).`);
-  if (kinds.length) lines.push(`Kinds of cover to quote for: ${kinds.join(', ')}.`);
+  if (Number.isInteger(gear) && gear > 0) lines.push(`The studio says its kit and equipment are worth Rs ${formatRs(gear)}.`);
+  if (answers.worksAtVenues === true) lines.push('The studio says it works at venues.');
+  if (answers.worksAtVenues === false) lines.push('The studio says it does not work at venues.');
+  if (answers.holdsClientMoney === true) lines.push('The studio says it holds client money before the event.');
+  if (answers.holdsClientMoney === false) lines.push('The studio says it does not hold client money before the event.');
+  if (kinds.length) lines.push(`The studio would like a quote for these kinds of cover: ${kinds.join(', ')}.`);
   lines.push('Please send a quote by reply.');
   return lines.join('\n');
 }
@@ -144,7 +146,7 @@ function insuredMark({ showMark, policies, studioName, todayKey }) {
   const until = live.map((p) => p.ends_on).sort().pop();
   const name = String(studioName || '').trim() || 'the studio';
   const date = formatDateLong(until);
-  return { label: 'Insured', until, text: `Policy uploaded by ${name}, valid until ${date}. Details confirmed by ${name}; TDW has not verified the policy.` };
+  return { label: 'Insured', until, text: `${name} uploaded this policy. It is valid until ${date}. ${name} confirmed its details, and TDW has not verified the policy.` };
 }
 
 /** Which reminder (30 or 7) is due today for a policy, or null. Each sends once; a missed day sends late, never twice. */
