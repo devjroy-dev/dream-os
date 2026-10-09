@@ -41,6 +41,18 @@ function parseIgMessages(body) {
   for (const entry of body.entry) {
     if (!entry || typeof entry !== 'object' || !Array.isArray(entry.messaging)) continue;
     for (const m of entry.messaging) {
+      // CLB part C (8 Oct 2026): a tap on a conversation starter arrives as messaging[].postback { mid, title, payload }.
+      // It is read as her client's message (its text the starter's words) carrying the payload; never an echo.
+      if (m && typeof m === 'object' && m.postback && typeof m.postback === 'object' && !m.message) {
+        const sender = s(m.sender && m.sender.id, 64);
+        const recipient = s(m.recipient && m.recipient.id, 64);
+        const mid = s(m.postback.mid, 512);
+        const payload = s(m.postback.payload, 200);
+        if (!sender || !recipient || !mid || !payload) continue;
+        const text = typeof m.postback.title === 'string' ? m.postback.title.slice(0, 4000) : '';
+        out.push({ accountId: recipient, igsid: sender, mid, text, echo: false, payload });
+        continue;
+      }
       if (!m || typeof m !== 'object' || !m.message || typeof m.message !== 'object') continue;
       const echo = m.message.is_echo === true;
       const sender = s(m.sender && m.sender.id, 64);
@@ -102,6 +114,16 @@ async function receive(supabase, msg, env, deps) {
   const recorded = await recordInbound(supabase, msg, env);
   if (!recorded.ok || recorded.dup || recorded.echo) return { recorded, reply: null };
   const receivedAtMs = deps.nowMs();
+  // CLB part C: "See packages" is answered with her package cards (igCards), under the same turn lock. If the feature is
+  // closed for her (she turned it off, or it is not open yet), the tap goes to the ordinary reply like any message.
+  if (msg.payload === require('./igCards').PAYLOAD) {
+    const cards = await withTurnLock(turnKey('instagram', recorded.conversationId), () => require('./igCards').answer(
+      { supabase, fetchImpl: deps.fetchImpl, tokenForCall: deps.tokenForCall, nowMs: deps.nowMs, env },
+      { vendorId: recorded.vendorId, igsid: msg.igsid, receivedAtMs }));
+    if (!/^closed/.test(cards.why)) return { recorded, reply: cards };
+  }
+  // CLB part C: live by itself. Her client's ordinary message puts "See packages" in place when the gate is open (once in six hours).
+  await require('./igCards').ensureStarter({ supabase, fetchImpl: deps.fetchImpl, tokenForCall: deps.tokenForCall, nowMs: deps.nowMs, env }, recorded.vendorId).catch(() => null);
   const reply = await withTurnLock(turnKey('instagram', recorded.conversationId), () => deps.reply({
     vendorId: recorded.vendorId, conversationId: recorded.conversationId, igsid: msg.igsid, text: msg.text, receivedAtMs,
   }));

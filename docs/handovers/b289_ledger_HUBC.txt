@@ -1,0 +1,22 @@
+SERIES START 16:45:58 · base 5058d8c + HUB2E_SRV_1 + HUBC_SRV_1 · load: b290 and b292 looping · each run with mutations M1 to M6 through mutation_guard
+run 1 · b289 · 30 pass · 0 fail · rc 0 · 16:46:00
+run 2 · b289 · 30 pass · 0 fail · rc 0 · 16:46:03
+run 3 · b289 · 30 pass · 0 fail · rc 0 · 16:46:06
+run 4 · b289 · 30 pass · 0 fail · rc 0 · 16:46:09
+run 5 · b289 · 30 pass · 0 fail · rc 0 · 16:46:11
+run 6 · b289 · 30 pass · 0 fail · rc 0 · 16:46:14
+run 7 · b289 · 30 pass · 0 fail · rc 0 · 16:46:17
+run 8 · b289 · 30 pass · 0 fail · rc 0 · 16:46:20
+run 9 · b289 · 30 pass · 0 fail · rc 0 · 16:46:23
+run 10 · b289 · 30 pass · 0 fail · rc 0 · 16:46:25
+run 11 · b289 · 30 pass · 0 fail · rc 0 · 16:46:28
+run 12 · b289 · 30 pass · 0 fail · rc 0 · 16:46:31
+run 13 · b289 · 30 pass · 0 fail · rc 0 · 16:46:34
+run 14 · b289 · 30 pass · 0 fail · rc 0 · 16:46:36
+run 15 · b289 · 30 pass · 0 fail · rc 0 · 16:46:39
+run 16 · b289 · 30 pass · 0 fail · rc 0 · 16:46:42
+run 17 · b289 · 30 pass · 0 fail · rc 0 · 16:46:45
+run 18 · b289 · 30 pass · 0 fail · rc 0 · 16:46:47
+run 19 · b289 · 30 pass · 0 fail · rc 0 · 16:46:51
+run 20 · b289 · 30 pass · 0 fail · rc 0 · 16:46:54
+SERIES END 16:46:54 · not green: 0

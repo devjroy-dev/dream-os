@@ -43,7 +43,10 @@ let BASE = null; try { BASE = JSON.parse(execSync('git show eb6b51c:db/seeds/pac
   const ins2 = []; const sbOld = { from: () => { const q = { select: () => q, eq: () => q, not: () => q, is: () => q, limit: () => Promise.resolve({ data: [{ id: 'pk1' }], error: null }), insert: (rows) => { ins2.push(...rows); return Promise.resolve({ error: null }); }, update: () => { ins2.push('UPDATE'); return q; } }; return q; } };
   const r2 = await S.ensureSeeded(sbOld, { id: 'v-old', category: 'makeup' });
   ok(() => r2.seeded === false && r2.reason === 'already_seeded' && ins2.length === 0, '3.1 a vendor already seeded: nothing inserted, nothing updated (her "Bride, one function" stays hers)', JSON.stringify(r2));
-  ok(() => !fs.readdirSync(P('db/migrations')).some((f) => /seed|package/i.test(f) && /^019[4-9]|^02/.test(f)), '3.2 no migration rewrites anyone\'s packages');
+  // AMENDED BY LABEL · CE-47 server train 16 (the chair): the cell read only file NAMES, so CLB's 0221_ig_package_cards_gate.sql
+  // (one capabilities row; it touches no package) read as a package rewrite. It now reads what each migration from 0194 on
+  // DOES: none may insert into, update or delete from vendor_packages.
+  ok(() => !fs.readdirSync(P('db/migrations')).filter((f) => /^019[4-9]|^02/.test(f) && /\.sql$/.test(f)).some((f) => /(update|delete\s+from|insert\s+into)\s+(public\.)?vendor_packages\b/i.test(fs.readFileSync(P('db/migrations/' + f), 'utf8'))), '3.2 no migration rewrites anyone\'s packages');
 
   sec('4  nothing else in the seeds moved');
   const strip = (j) => JSON.stringify(j, (k, v) => (['name', 'description', 'detail'].includes(k) ? undefined : v));

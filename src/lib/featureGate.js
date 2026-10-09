@@ -11,11 +11,12 @@ const gates = require('./metaGates');
 const IG_GRAPH = 'https://graph.instagram.com/v26.0';
 const FB_GRAPH = 'https://graph.facebook.com';
 const FEATURE_KEYS = Object.freeze(gates.FEATURES.map((f) => f.gate));
-const NEEDS_INSTAGRAM = Object.freeze(['perm.instagram_business_manage_messages', 'flag.ig_photo_import']);
+const NEEDS_INSTAGRAM = Object.freeze(['perm.instagram_business_manage_messages', 'flag.ig_photo_import', 'flag.ig_package_cards']);
 
 function walkOpen(key, row, vendorId, env) {
   const v = String(vendorId || '');
-  if (key === 'perm.instagram_business_manage_messages') {
+  // CLB part C: package cards ride the Instagram messages lane, so before approval its walk list is the lane's.
+  if (key === 'perm.instagram_business_manage_messages' || key === 'flag.ig_package_cards') {
     return String((env && env.IG_DM_WALK_VENDOR_IDS) || '').split(',').map((x) => x.trim()).filter(Boolean).includes(v);
   }
   if (key === 'flag.ads') return !!(row && row.status === 'armed' && env && env.ADS_WALK_VENDOR_ID && env.ADS_WALK_VENDOR_ID === v);
@@ -79,7 +80,7 @@ async function getJson(f, url, token) {
 async function probe(key, { supabase, env = process.env, fetch: f = globalThis.fetch } = {}) {
   const who = env.FEATURE_PROBE_VENDOR_ID || '';
   if (!who) return { ok: false, evidence: 'FEATURE_PROBE_VENDOR_ID is not set; no live probe can run' };
-  if (key === 'perm.instagram_business_manage_messages' || key === 'flag.ig_photo_import') {
+  if (key === 'perm.instagram_business_manage_messages' || key === 'flag.ig_photo_import' || key === 'flag.ig_package_cards') {
     const t = await require('./vendor/igConnection').tokenForCall(supabase, who);
     if (!t.ok) return { ok: false, evidence: `the probe vendor's Instagram token: ${t.error}` };
     const path = key === 'flag.ig_photo_import' ? 'me/media?fields=id&limit=1' : 'me/conversations?platform=instagram&limit=1';
@@ -95,4 +96,4 @@ async function probe(key, { supabase, env = process.env, fetch: f = globalThis.f
   return { ok: false, evidence: `no live probe is defined for ${key}` };
 }
 
-module.exports = { FEATURE_KEYS, NEEDS_INSTAGRAM, openFor, choicesFor, setChoice, probe, walkOpen };
+module.exports = { FEATURE_KEYS, NEEDS_INSTAGRAM, openFor, choicesFor, setChoice, probe, walkOpen, choiceOf };

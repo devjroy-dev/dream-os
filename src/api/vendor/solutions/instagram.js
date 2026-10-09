@@ -33,4 +33,12 @@ router.get('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => s
 router.post('/switch', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   send(res, await igRoom.flip(req.vendor.id, req.body && req.body.on, deps(req)))));
 
+// CLB part C (CE-47, 8 Oct 2026): her package cards in her Instagram messages. The logic is src/lib/instagram/igCards.js.
+const igCards = require('../../../lib/instagram/igCards');
+const cardsDeps = (req) => { const d = deps(req); return { supabase: d.supabase, env: d.env, fetchImpl: fetch,
+  token: async (vendorId) => { const t = await igConn.tokenForCall(d.supabase, vendorId); return t && t.ok ? t.accessToken : null; } }; };
+router.get('/package-cards', requireAuth, resolveVendor(), asyncHandler(async (req, res) => send(res, await igCards.room(req.vendor.id, cardsDeps(req)))));
+router.post('/package-cards', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
+  send(res, await igCards.room(req.vendor.id, cardsDeps(req), req.body ? req.body.on : null))));
+
 module.exports = router;

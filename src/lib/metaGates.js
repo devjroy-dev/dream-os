@@ -22,6 +22,10 @@ const FEATURES = Object.freeze([
   Object.freeze({ gate: 'flag.ig_photo_import', feature: 'The Instagram photo import', app: 'app_live',
     permissions: Object.freeze(['instagram_business_basic']),   // the import needs basic alone (CE-47, 4 Oct)
     onLine: 'The Instagram photo import is now live for every vendor.' }),
+  // CLB part C (CE-47, 8 Oct 2026): her packages as cards in her Instagram messages; the same pair as Instagram messages.
+  Object.freeze({ gate: 'flag.ig_package_cards', feature: 'Package cards in Instagram messages', app: 'app_live',
+    permissions: Object.freeze(['instagram_business_basic', 'instagram_business_manage_messages']),
+    plural: true, onLine: 'Package cards in Instagram messages are now live for every vendor.' }),
 ]);
 
 // Every perm.* row the sweep reads, with its app and the permissions that make it approved. The feature gates above

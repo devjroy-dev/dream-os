@@ -1,0 +1,24 @@
+# scripts/floor-manifest-ce47-hubc-srv.txt
+# CE-47 · CLB PART C SERVER · her packages as cards in her Instagram messages (the chair's ruling, 8 Oct 2026): the gate is capabilities row flag.ig_package_cards (0221; her choice ON unless she turns it off; live by itself on Meta's grant of instagram_business_basic and instagram_business_manage_messages; clb.testers before it); the picture through pictureOnPage (a held one never sent); "From Rs <amount>" only when her website shows prices; the starter "See packages" set and removed with the switch, hers never overwritten; cards only inside the 24-hour window. BASE: 5058d8c with HUB2E_SRV_1 (server train 16). Migration 0221 (one row), run by the founder before the push.
+# No bench amended. New: b289.
+# Against the base: sha256 · ADDED / CHANGED / DELETED · path
+# b4cba781a18f5f9859011768fd321a88ab3d68e4a3caaa5ee4822ed15fe5ba6f · ADDED · db/migrations/0221_ig_package_cards_gate.sql
+# 59e5d8eb77c294cebeb0131b5fba3c9ccf9041694daa47d6aa565e2e6c312394 · ADDED · docs/handovers/TDW_CE47_HUBC_SRV_HANDOVER.md
+# 6ecce2c53b8b074cff6e8ec1a803bfa3a309ecb1fb7b0fc6b096878f2199e11c · ADDED · docs/handovers/b289_ledger_HUBC.txt
+# a31bcc4e3f817dd4bfba9b0f3a219902835d3cfc6a56ea0289860af8d2a80e14 · ADDED · scripts/b289_clb_c_ig_package_cards_bench.js
+# a91136a7536cb991719cf680dc59eb01f26c13cb88daa24f88cc12b8f09efd73 · ADDED · src/lib/instagram/igCards.js
+# d08bd848bcda8e97b1c10b04218d45bb5048b8649c54300fd4742fd99d2838ed · CHANGED · src/api/vendor/solutions/instagram.js
+# d9a2a25b537f6e13aa18050ba6f50faa19b7d101408380260ae5c5492b81a39f · CHANGED · src/lib/featureGate.js
+# e645b17ecae187f1404ff0af9e6c7fb2ec67d05df46f0bc44e888b1da0c60da7 · CHANGED · src/lib/instagram/igInbound.js
+# 592a510f967cf403da585a0922511441fe7ac6e6513b2958b26082423134d7e7 · CHANGED · src/lib/metaGates.js
+# (this file) · ADDED · scripts/floor-manifest-ce47-hubc-srv.txt
+db/migrations/0221_ig_package_cards_gate.sql
+docs/handovers/TDW_CE47_HUBC_SRV_HANDOVER.md
+docs/handovers/b289_ledger_HUBC.txt
+scripts/b289_clb_c_ig_package_cards_bench.js
+src/lib/instagram/igCards.js
+src/api/vendor/solutions/instagram.js
+src/lib/featureGate.js
+src/lib/instagram/igInbound.js
+src/lib/metaGates.js
+scripts/floor-manifest-ce47-hubc-srv.txt
