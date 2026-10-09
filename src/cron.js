@@ -481,6 +481,22 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── CE-47 PRO P3 · THE TREND ROOM — Monday 01:10 am India time ───────────────────────────────────────────────
+  // The briefs for the week that just ended (Monday to Sunday) are counted and saved as drafts. An admin approves each
+  // one before 9:00 am; vendors see an approved brief from 9:00 am. :10 is free in every band above. It sends nothing to
+  // anyone. Asia/Kolkata declared (B3(a)).
+  cron.schedule('10 1 * * 1', async () => {
+    try {
+      const { makeWeek } = require('./lib/trends/trends');
+      const { lastWeekStart } = require('./lib/trends/build');
+      await makeWeek({ supabase, weekStart: lastWeekStart(Date.now()) });
+    } catch (err) {
+      console.error('[cron:trendBriefs] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── CE-47 PTN-A2-1 · CALLS TO PARTNERS, the drain — every five minutes at :02, :07, :12 ... ─────────────────
   // Clear of every band above (night :00 :15 :20 :25 :35 :40 :45; hourly :05 :30 :50). It emails only between
   // 9 am and 8 pm IST (sends.js holds the rest till 9 am); without RESEND_API_KEY it sends nothing and says why.

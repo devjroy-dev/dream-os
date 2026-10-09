@@ -33,6 +33,7 @@ router.use('/public/partner',     require('./public/partnerPublic'));  // CE-47 
 router.use('/public/testimonial', require('./public/testimonial'));
 // CE-47 PRO P1 · the check door for her issued papers (public, keyed on the check code; one miss for every refusal; 60 tries an hour per address).
 router.use('/public/check',       require('./public/check'));
+router.use('/public/kit',         require('./public/kit'));         // CE-47 PRO P3: her media kit (thedreamwedding.in/v/<code>/kit)
 // CE-47 WEB-4 cut 4 · visits and hearts on her site (always 204; nobody identified; daily totals only).
 router.use('/public/site-kind', require('./public/siteKind'));
 // CE-47 WEB-4 cut 7 · the website panel's two doors (WEB-7's contract): the enquiry, then the chat by its token.
@@ -99,6 +100,8 @@ router.use('/admin/config',          require('./admin/config'));
 router.use('/admin/capabilities',    require('./admin/capabilities')); // CE-41 seat C: the switchboard (R-41.8)
 router.use('/admin/collab',          require('./admin/collab'));       // CE-47 CLB-1: the collab queue and prospects (F-44.300)
 router.use('/admin/partners',        require('./admin/partners'));     // CE-47 PTN-A1: partners, contacts, forward a request (by hand)
+router.use('/admin/brands',          require('./admin/brands'));       // CE-47 PRO P3: More > Brands
+router.use('/admin/trends',          require('./admin/trends'));       // CE-47 PRO P3: More > Trend briefs
 router.use('/admin/model_routes',    require('./admin/modelRoutes'));  // CE-41 seat F: who answers, per lane (R-41.85)
 router.use('/admin',                 require('./admin/content'));
 router.use('/admin/muse-pool',       require('./admin/musePool').adminRouter);

@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const router = express.Router();
 const limiter = require('../../lib/site/limiter').makeLimiter({ cap: 5000 });
 const HOUR = 3600 * 1000; const PER_ADDR_GET = 60;
-const TOO_MANY = { ok: false, error: 'Too many tries. Please try again in an hour.' };
+const TOO_MANY = { ok: false, error: 'There have been too many tries from this connection. Please try again in an hour.' };
 const addrKey = (req) => `addr:check:${crypto.createHash('sha256').update(String(req.ip || '')).digest('hex')}`;
 const { readCode } = require('../../lib/papers/code');
 const { lines, note } = require('../../lib/papers/render');

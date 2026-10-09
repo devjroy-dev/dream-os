@@ -27,7 +27,7 @@ function checkItem(body) {
   const item = String(b.item || '').trim().replace(/\s+/g, ' ');
   const city = String(b.city || '').trim().replace(/\s+/g, ' ');
   const value = whole(b.value_rs); const price = whole(b.price_per_day_rs);
-  if (item.length < 2 || item.length > 80) return { ok: false, error: 'Name the item in 2 to 80 letters.' };
+  if (item.length < 2 || item.length > 80) return { ok: false, error: 'Type the item’s name in 2 to 80 letters.' };
   if (!Number.isInteger(value) || value <= 0 || value > 100000000) return { ok: false, error: 'Type what the item is worth, in rupees.' };
   if (!Number.isInteger(price) || price < 0 || price > 10000000) return { ok: false, error: 'Type the price per day, in rupees. Type 0 to lend it free.' };
   if (city.length < 2 || city.length > 60) return { ok: false, error: 'Type the city the item is in.' };
@@ -40,10 +40,10 @@ function checkAsk(body, today) {
   const b = body || {};
   const from = String(b.date_from || ''); const to = String(b.date_to || '');
   if (!realDate(from) || !realDate(to)) return { ok: false, error: 'Pick the first and last day you need it.' };
-  if (from < today) return { ok: false, error: 'The first day has passed. Pick a day from today on.' };
-  if (to < from) return { ok: false, error: 'The last day is before the first day.' };
+  if (from < today) return { ok: false, error: 'The first day you picked has passed. Pick today or a later day.' };
+  if (to < from) return { ok: false, error: 'The last day you picked is before the first day.' };
   if (daysBetween(from, to) + 1 > MAX_DAYS) return { ok: false, error: `Ask for ${MAX_DAYS} days or fewer.` };
-  if (daysBetween(today, from) > MAX_AHEAD_DAYS) return { ok: false, error: 'Ask no more than a year ahead.' };
+  if (daysBetween(today, from) > MAX_AHEAD_DAYS) return { ok: false, error: 'You can ask for an item up to one year ahead.' };
   const note = b.note == null ? null : String(b.note).trim().slice(0, 300) || null;
   return { ok: true, row: { date_from: from, date_to: to, note } };
 }

@@ -33,7 +33,7 @@ async function draftOf(supabase, vendorId, id) {
   return { draft: data };
 }
 const view = (d, now, problems) => ({ id: d.id, fields: d.fields || {}, problems: problems || [], confirmed: !!d.confirmed_at, days_left: daysLeft(d.created_at, now),
-  keep_line: `Not added yet. TDW deletes this bill in ${daysLeft(d.created_at, now)} ${daysLeft(d.created_at, now) === 1 ? 'day' : 'days'} unless you add it.` });
+  keep_line: `You have not added this bill yet. TDW deletes it in ${daysLeft(d.created_at, now)} ${daysLeft(d.created_at, now) === 1 ? 'day' : 'days'} unless you add it.` });
 
 /** Her unconfirmed bills, newest first, each with the days left before the sweep. */
 async function drafts(vendorId, deps) {
@@ -49,9 +49,9 @@ async function uploadUrl(vendorId, body, deps) {
   if (!ext) return no(400, 'Add a photo (JPG, PNG or WEBP) or a PDF of the bill.');
   const path = `${vendorId}/${crypto.randomUUID()}.${ext}`;
   const ins = await deps.supabase.from('bill_drafts').insert({ vendor_id: vendorId, file_path: path }).select('id').single();
-  if (ins.error || !ins.data) return no(500, 'The upload could not start. Try again in a minute.');
+  if (ins.error || !ins.data) return no(500, 'TDW could not start the upload. Please try again in a minute.');
   const { data, error } = await deps.supabase.storage.from(BUCKET).createSignedUploadUrl(path);
-  if (error || !data) { await deps.supabase.from('bill_drafts').delete().eq('id', ins.data.id); return no(503, 'The upload could not start. Try again in a minute.'); }
+  if (error || !data) { await deps.supabase.from('bill_drafts').delete().eq('id', ins.data.id); return no(503, 'TDW could not start the upload. Please try again in a minute.'); }
   return ok({ draft_id: ins.data.id, path, upload_url: data.signedUrl, token: data.token });
 }
 
@@ -68,7 +68,7 @@ async function read(vendorId, draftId, vendor, deps) {
   const fields = await reader({ base64, mime });
   const c = P.check(fields, { ownGstin: vendor && vendor.gstin, today: todayIST(now.getTime()) });
   const up = await deps.supabase.from('bill_drafts').update({ fields }).eq('id', g.draft.id).eq('vendor_id', vendorId);
-  if (up.error) return no(500, 'TDW could not keep what it read. Please try again.');
+  if (up.error) return no(500, 'TDW could not save what it read from the bill. Please try again.');
   return ok({ draft: view({ ...g.draft, fields }, now, c.problems) });
 }
 
@@ -78,7 +78,7 @@ async function confirm(vendorId, draftId, body, vendor, deps) {
   if (g.draft.confirmed_at) return no(409, 'This bill is already in Expenses.');
   const b = body || {};
   const c = P.check(b, { ownGstin: vendor && vendor.gstin, today: todayIST(nowOf(deps).getTime()) });
-  if (!c.ok) return no(400, c.problems[0] || 'Check the bill’s figures.');
+  if (!c.ok) return no(400, c.problems[0] || 'The figures on the bill do not add up. Check them and try again.');
   const create = deps.createExpense || require('../vendor/expenses').createExpense;
   const f = c.fields;
   const r = await create(deps.supabase, vendorId, {
@@ -110,7 +110,7 @@ async function fileUrl(vendorId, expenseId, deps) {
   const { data: e } = await deps.supabase.from('expenses').select('bill_file_url').eq('id', expenseId).eq('vendor_id', vendorId).is('deleted_at', null).maybeSingle();
   if (!e || !ownPath(vendorId, e.bill_file_url)) return no(404, 'No bill is kept for this expense.');
   const { data, error } = await deps.supabase.storage.from(BUCKET).createSignedUrl(e.bill_file_url, 600);
-  if (error || !data) return no(503, 'The bill could not be opened. Try again.');
+  if (error || !data) return no(503, 'TDW could not open the bill. Please try again.');
   return ok({ url: data.signedUrl });
 }
 

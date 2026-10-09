@@ -101,9 +101,9 @@ function store(seed) {
   const c2 = P.check(P.fromText(bill2, { ownGstin: OWN }), { ownGstin: OWN, today: '2026-10-07' });
   ok(c2.ok && c2.fields.gst_rate === 18 && c2.fields.gst_amount === 1800 && c2.fields.supplier_gstin === '29AAGCB7383J1Z4', '2.6 an other-state bill with IGST holds', JSON.stringify(c2));
   const bad = (draft, want) => { const r = P.check(draft, { ownGstin: OWN, today: '2026-10-07' }); return !r.ok && r.problems.some((p) => p.includes(want)) ? r : null; };
-  ok(!!bad({ amount: 4300, taxable_value: 3600, cgst: 324, sgst: 324 }, 'not the total Rs 4,300') , '2.7 taxable + GST that do not make the total: said in Rs words, nothing recorded');
-  ok(!!bad({ amount: 3700, taxable_value: 3600, gst_amount: 100 }, 'is not one of the GST rates'), '2.8 GST that is no GST rate is refused');
-  ok(!!bad({ amount: 4248, taxable_value: 3600, cgst: 324, sgst: 324, printed_rate: 12 }, 'prints 12% but its figures make 18%'), '2.9 a printed rate that the figures contradict is named');
+  ok(!!bad({ amount: 4300, taxable_value: 3600, cgst: 324, sgst: 324 }, 'The total on the bill is Rs 4,300.') , '2.7 (P3, R-47.1) taxable + GST that do not make the total: said in Rs words, nothing recorded');
+  ok(!!bad({ amount: 3700, taxable_value: 3600, gst_amount: 100 }, 'does not match any GST rate'), '2.8 (P3, R-47.1) GST that is no GST rate is refused');
+  ok(!!bad({ amount: 4248, taxable_value: 3600, cgst: 324, sgst: 324, printed_rate: 12 }, 'shows a GST rate of 12%, but its figures give 18%'), '2.9 (P3, R-47.1) a printed rate that the figures contradict is named');
   ok(!!bad({ amount: 1180, taxable_value: 1000, cgst: 90, sgst: 90, igst: 180 }, 'not both'), '2.10 IGST and CGST together are refused');
   ok(!!bad({ amount: 1180, taxable_value: 1000, igst: 180, supplier_gstin: '27AAPFU0939F1ZV' }, 'in your state'), '2.11 a same-state seller charging IGST is named');
   ok(!!bad({ amount: 1180, taxable_value: 1000, cgst: 90, sgst: 90, supplier_gstin: '29AAGCB7383J1Z4' }, 'in another state'), '2.12 an other-state seller charging CGST and SGST is named');
@@ -121,9 +121,9 @@ function store(seed) {
   ok(R.checkItem({ item: 'Sony 85mm f/1.4 GM', value_rs: '1,40,000', price_per_day_rs: 1500, city: 'Delhi' }).ok && !R.checkItem({ item: 'x', value_rs: 1, price_per_day_rs: 0, city: 'Delhi' }).ok
     && R.checkItem({ item: 'Ring light', value_rs: 5000, price_per_day_rs: -1, city: 'Delhi' }).error === 'Type the price per day, in rupees. Type 0 to lend it free.', '3.1 an item: named, worth something, a price per day (0 lends free), a city');
   const T0 = '2026-10-07';
-  ok(R.checkAsk({ date_from: '2026-10-10', date_to: '2026-10-12' }, T0).ok && R.checkAsk({ date_from: '2026-10-06', date_to: '2026-10-08' }, T0).error === 'The first day has passed. Pick a day from today on.'
-    && R.checkAsk({ date_from: '2026-10-12', date_to: '2026-10-10' }, T0).error === 'The last day is before the first day.' && !R.checkAsk({ date_from: '2026-10-10', date_to: '2026-12-15' }, T0).ok
-    && !R.checkAsk({ date_from: '2026-02-30', date_to: '2026-03-01' }, '2026-01-01').ok, '3.2 an ask: real days, from today on, in order, 61 days at most');
+  ok(R.checkAsk({ date_from: '2026-10-10', date_to: '2026-10-12' }, T0).ok && R.checkAsk({ date_from: '2026-10-06', date_to: '2026-10-08' }, T0).error === 'The first day you picked has passed. Pick today or a later day.'
+    && R.checkAsk({ date_from: '2026-10-12', date_to: '2026-10-10' }, T0).error === 'The last day you picked is before the first day.' && !R.checkAsk({ date_from: '2026-10-10', date_to: '2026-12-15' }, T0).ok
+    && !R.checkAsk({ date_from: '2026-02-30', date_to: '2026-03-01' }, '2026-01-01').ok, '3.2 (P3, R-47.1) an ask: real days, from today on, in order, 61 days at most');
   ok(R.overlaps({ date_from: '2026-10-10', date_to: '2026-10-12' }, { date_from: '2026-10-12', date_to: '2026-10-14' }) && !R.overlaps({ date_from: '2026-10-10', date_to: '2026-10-11' }, { date_from: '2026-10-12', date_to: '2026-10-14' }), '3.3 ranges share a day when an end touches (both ends counted)');
   const V = { business_name: 'Studio Asha', city: 'Delhi', phone: '+919800000001' };
   ok(JSON.stringify(R.party(V, false)) === '{"business_name":"Studio Asha","city":"Delhi"}' && R.party(V, true).whatsapp === '+919800000001', '3.4 the other vendor is name and city; her number only once accepted (P2-F6)');
@@ -154,7 +154,7 @@ function store(seed) {
     const seen = roomB.j.room && roomB.j.room.near.find((i) => i.id === itemId);
     ok(seen && seen.owner.business_name === 'Studio Asha' && seen.owner.city === 'Delhi' && !phoneIn(roomB.t, A), '4.2 B sees it in Delhi: name and city, and A’s number nowhere in the raw body (P2-F6)', roomB.t);
     const self = await call(A, 'POST', `/items/${itemId}/ask`, { date_from: '2026-12-10', date_to: '2026-12-12' });
-    ok(self.status === 400 && self.j.error === 'This item is yours.', '4.3 A cannot ask for her own item');
+    ok(self.status === 400 && self.j.error === 'You cannot ask for your own item.', '4.3 (P3, R-47.1) A cannot ask for her own item');
     const askB = await call(B, 'POST', `/items/${itemId}/ask`, { date_from: '2026-12-10', date_to: '2026-12-12' });
     const askC = await call(C, 'POST', `/items/${itemId}/ask`, { date_from: '2026-12-12', date_to: '2026-12-14' });
     ok(askB.status === 200 && askC.status === 200 && askB.j.request.state === 'requested' && !phoneIn(askB.t, A) && !phoneIn(askC.t, A), '4.4 B and C ask for overlapping days; neither answer carries A’s number', askB.t);
@@ -254,10 +254,10 @@ function store(seed) {
     const rdA = await c7(VA, 'POST', `/drafts/${up.j.draft_id}/read`);
     ok(rdA.status === 200 && readerCalls.length === 1 && readerCalls[0].base64 === Buffer.from('JPEGBYTES').toString('base64') && readerCalls[0].mime === 'image/jpeg' && rdA.j.draft.problems.length === 0 && rdA.j.draft.fields.amount === 4248,
       '7.4 read: her own file’s bytes go to the reader once; the fields hold', rdA.t);
-    ok(/^Not added yet\. TDW deletes this bill in 7 days unless you add it\.$/.test(rdA.j.draft.keep_line), '7.5 she is told the bill goes in 7 days unless she adds it');
+    ok(/^You have not added this bill yet\. TDW deletes it in 7 days unless you add it\.$/.test(rdA.j.draft.keep_line), '7.5 (P3, R-47.1) she is told the bill goes in 7 days unless she adds it');
     ok(!JSON.stringify(S7.T.bill_drafts).includes('IGNORE') && !JSON.stringify(S7.T.bill_drafts).includes('9800000009') && !rdA.t.includes('IGNORE'), '7.6 the model’s raw reply is kept nowhere: not in the draft, not in the answer');
     const wrong = await c7(VA, 'POST', `/drafts/${up.j.draft_id}/confirm`, { ...rdA.j.draft.fields, amount: 4300, category: 'inventory' });
-    ok(wrong.status === 400 && /not the total Rs 4,300/.test(wrong.j.error) && S7.T.expenses.length === 0, '7.7 figures that do not hold are refused in Rs words, and no expense is written');
+    ok(wrong.status === 400 && /The total on the bill is Rs 4,300\./.test(wrong.j.error) && S7.T.expenses.length === 0, '7.7 (P3, R-47.1) figures that do not hold are refused in Rs words, and no expense is written');
     const noCat = await c7(VA, 'POST', `/drafts/${up.j.draft_id}/confirm`, { ...rdA.j.draft.fields });
     ok(noCat.status === 400 && S7.T.expenses.length === 0, '7.8 no category: refused by the write home’s own rule, nothing written');
     const conf = await c7(VA, 'POST', `/drafts/${up.j.draft_id}/confirm`, { ...rdA.j.draft.fields, category: 'inventory' });

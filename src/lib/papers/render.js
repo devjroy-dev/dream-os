@@ -52,7 +52,7 @@ function lines(paper) {
 function note(paper) {
   if (paper.kind === 'statement') return W.statementNote((paper.figures || {}).name, paper.issued_at);
   if (paper.kind === 'certificate' || paper.kind === 'id_card') return W.WEDDINGS_NOTE;
-  return 'Her own records from TDW for her CA: invoices, expenses with GST, and TDS, month by month.';
+  return 'This pack holds her own records from TDW for her CA. It has her invoices, her expenses with GST and her TDS, month by month.';
 }
 
 // CUT 2 · the ID's photo (R3 (b)): fetched at render from the URL kept on the paper, 5 s at most, JPEG or PNG only (what
@@ -101,7 +101,7 @@ function caSummaryTable(doc, f) {
   for (const m of months) { const t = f.months[m]; const y = doc.y; doc.font('Helvetica').fontSize(9).fillColor(INK);
     [W.monthName(m), W.rs(t.invoiced), W.rs(t.gst_charged), W.rs(t.received), W.rs(t.spent), W.rs(t.gst_paid), W.rs(t.tds)].forEach((v, i) => doc.text(v, X[i], y, { width: i ? 66 : 84, align: i ? 'right' : 'left' }));
     doc.y = y + 15; if (doc.y > 760) { doc.addPage(); } }
-  if (!months.length) doc.font('Helvetica').fontSize(10).fillColor(MUTE).text('No invoices, expenses or TDS entries in this period.', 56);
+  if (!months.length) doc.font('Helvetica').fontSize(10).fillColor(MUTE).text('There are no invoices, expenses or TDS entries in this period.', 56);
   doc.moveDown(1);
   doc.font('Helvetica').fontSize(9).fillColor(MUTE).text('GST input credit depends on your GST registration. Your CA confirms it. Expenses without a date are counted on the day they were added to TDW.', 56, doc.y, { width: 483 });
   doc.moveDown(1);

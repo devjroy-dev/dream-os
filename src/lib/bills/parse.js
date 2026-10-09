@@ -113,7 +113,7 @@ function check(draft, { ownGstin = null, today = null } = {}) {
 
   const g = d.supplier_gstin ? String(d.supplier_gstin).trim().toUpperCase() : '';
   if (g) {
-    if (!gstinValid(g)) problems.push('The seller’s GSTIN does not check out. Look at the bill again and fix it, or leave it empty.');
+    if (!gstinValid(g)) problems.push('The seller’s GSTIN is not a valid number. Check it against the bill and correct it, or leave the box empty.');
     else if (ownGstin && g === String(ownGstin).trim().toUpperCase()) problems.push('That GSTIN is yours. Type the seller’s GSTIN.');
     else f.supplier_gstin = g;
   }
@@ -123,35 +123,35 @@ function check(draft, { ownGstin = null, today = null } = {}) {
   if (d.expense_date) {
     const iso = /^\d{4}-\d{2}-\d{2}$/.test(String(d.expense_date)) ? isoDate(String(d.expense_date).split('-').reverse().join('-')) : isoDate(d.expense_date);
     if (!iso) problems.push('The bill’s date is not a real date.');
-    else if (today && iso > today) problems.push('The bill’s date is after today.');
+    else if (today && iso > today) problems.push('The bill’s date cannot be after today.');
     else f.expense_date = iso;
   }
 
   if (igst != null && (cgst != null || sgst != null) && igst > 0 && (cgst > 0 || sgst > 0)) {
-    problems.push('A bill charges IGST, or CGST and SGST, not both. Check the tax lines.');
+    problems.push('A bill charges either IGST or CGST and SGST, but not both. Check the tax lines on the bill.');
   } else {
     if (gst == null) {
       if (igst != null) gst = igst;
       else if (cgst != null && sgst != null) gst = round2(cgst + sgst);
-      else if (cgst != null || sgst != null) problems.push('Only one of CGST and SGST was found. Type both, or the total GST.');
+      else if (cgst != null || sgst != null) problems.push('TDW found only one of CGST and SGST. Type both amounts, or type the total GST.');
     }
-    if (cgst != null && sgst != null && Math.abs(cgst - sgst) > TOLERANCE) problems.push('CGST and SGST should be equal. Check the tax lines.');
+    if (cgst != null && sgst != null && Math.abs(cgst - sgst) > TOLERANCE) problems.push('CGST and SGST must be equal. Check the tax lines on the bill.');
   }
 
   if (taxable != null && taxable > 0 && gst != null && gst >= 0) {
     const sum = round2(taxable + gst);
     if (amount != null && Math.abs(sum - amount) > TOLERANCE) {
-      problems.push(`Taxable value ${rs(taxable)} and GST ${rs(gst)} make ${rs(sum)}, not the total ${rs(amount)}. Check the three figures.`);
+      problems.push(`The value before GST (${rs(taxable)}) and the GST (${rs(gst)}) add up to ${rs(sum)}. The total on the bill is ${rs(amount)}. Check the three figures.`);
     } else {
       const raw = (gst / taxable) * 100;
-      if (Math.abs(round2(taxable * 0.40) - gst) <= TOLERANCE) { problems.push('This bill charges GST at 40%. TDW cannot record a 40% bill yet; add it in Expenses without the GST.'); return { ok: false, fields: f, problems }; }
+      if (Math.abs(round2(taxable * 0.40) - gst) <= TOLERANCE) { problems.push('This bill charges GST at 40%. TDW cannot record GST at 40% yet. Add this bill in Expenses without the GST.'); return { ok: false, fields: f, problems }; }
       const rate = RATES.reduce((a, r) => (Math.abs(r - raw) < Math.abs(a - raw) ? r : a), RATES[0]);
-      if (Math.abs(round2(taxable * rate / 100) - gst) > TOLERANCE) problems.push(`GST of ${rs(gst)} on ${rs(taxable)} is not one of the GST rates. Check the tax lines.`);
-      else if (d.printed_rate != null && Number(d.printed_rate) !== rate) problems.push(`The bill prints ${d.printed_rate}% but its figures make ${rate}%. Check the tax lines.`);
+      if (Math.abs(round2(taxable * rate / 100) - gst) > TOLERANCE) problems.push(`A GST of ${rs(gst)} on ${rs(taxable)} does not match any GST rate. Check the tax lines on the bill.`);
+      else if (d.printed_rate != null && Number(d.printed_rate) !== rate) problems.push(`The bill shows a GST rate of ${d.printed_rate}%, but its figures give ${rate}%. Check the tax lines on the bill.`);
       else { f.taxable_value = taxable; f.gst_amount = gst; f.gst_rate = rate; }
     }
   } else if (gst != null || taxable != null) {
-    problems.push('Type both the taxable value and the GST, or leave both empty.');
+    problems.push('Type both the value before GST and the GST, or leave both empty.');
   }
 
   if (f.supplier_gstin && ownGstin && gstinValid(ownGstin) && f.gst_amount > 0) {

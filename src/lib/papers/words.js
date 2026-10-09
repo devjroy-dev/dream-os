@@ -25,7 +25,7 @@ const KIND_TITLE = Object.freeze({ certificate: 'Professional certificate', id_c
 const PURPOSE = Object.freeze({ bank: 'For a bank', landlord: 'For a landlord', visa: 'For a visa office', other: 'For other use' });
 const WEDDINGS_NOTE = 'Weddings are counted by TDW from bookings with an invoice and a payment recorded in TDW.';
 /** The founder's words for the statement (ruled through the chair, CE-47). Carried verbatim on the PDF and the check page. */
-const statementNote = (name, issuedIso) => `Figures as recorded by ${name} in TDW. TDW confirms this statement was issued from her TDW account on ${fullDate(issuedIso)}. TDW has not audited or verified these figures.`;
+const statementNote = (name, issuedIso) => `These figures are as ${name} recorded them in TDW. TDW confirms this statement was issued from her TDW account on ${fullDate(issuedIso)}. TDW has not audited or verified these figures.`;
 const SITE = process.env.PWA_BASE_URL || 'https://thedreamwedding.in';
 const checkUrl = (code) => `${SITE.replace(/\/+$/, '')}/check/${code}`;
 

@@ -141,6 +141,8 @@ router.use('/tds',         require('./tds'));
 router.use('/papers',      require('./papers'));   // CE-47 PRO P1: Business papers
 router.use('/gear',        require('./gear'));     // CE-47 PRO P2: Gear sharing (Supplies)
 router.use('/bills',       require('./bills'));    // CE-47 PRO P2: Bills into Expenses (Supplies)
+router.use('/brands',      require('./brands'));   // CE-47 PRO P3: Brand collaborations
+router.use('/trends',      require('./trends'));   // CE-47 PRO P3: the Trend room
 router.use('/first-build', require('./firstBuild'));   // CE-47 WEB-4 cut 19: the two-minute start's first build
 
 module.exports = router;

@@ -69,7 +69,7 @@ async function ask({ supabase, vendor, itemId, body, today }) {
   const it = await supabase.from('gear_items').select(ITEM_COLS).eq('id', itemId).maybeSingle();
   if (it.error) return { ok: false, status: 500, error: 'TDW could not send the request just now. Please try again.' };
   if (!it.data || it.data.state !== 'listed') return { ok: false, status: 404, error: 'This item is no longer listed.' };
-  if (it.data.vendor_id === vendor.id) return { ok: false, status: 400, error: 'This item is yours.' };
+  if (it.data.vendor_id === vendor.id) return { ok: false, status: 400, error: 'You cannot ask for your own item.' };
   const taken = await supabase.from('gear_requests').select('date_from, date_to').eq('item_id', itemId).eq('state', 'accepted');
   if (taken.error) return { ok: false, status: 500, error: 'TDW could not send the request just now. Please try again.' };
   if ((taken.data || []).some((t) => R.overlaps(t, c.row))) return { ok: false, status: 409, error: 'The item is already lent on some of these days. Pick other dates.' };
