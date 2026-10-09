@@ -29,6 +29,7 @@
 const siteModel = require('../site/siteModel');
 const REG = require('../site/styles');
 const limits = require('../site/limits');
+const PR = require('./pictureRules');   // CE-47 WEB-4 cut 30 (R-47.2)
 
 const STEP_KEYS = Object.freeze(['photos', 'website', 'packages', 'storefront', 'eliza']);
 const N_PHOTOS = 20;                         // her portfolio's own cap (portfolio.js MAX_PORTFOLIO_IMAGES)
@@ -188,9 +189,10 @@ async function websiteState(sb, vendorId, prev) {
     one(sb.from('vendor_sites').select('published_at, style').eq('vendor_id', vendorId).maybeSingle()),
     one(sb.from('vendor_site_drafts').select('settings, sections, pages, updated_at').eq('vendor_id', vendorId).maybeSingle()),
     rows(sb.from('vendor_looks').select('id').eq('vendor_id', vendorId).is('deleted_at', null)),
-    rows(sb.from('vendor_portfolio').select('id, image_url, caption, approval_state, source').eq('vendor_id', vendorId).order('position', { ascending: true })),
+    rows(sb.from('vendor_portfolio').select('id, image_url, caption, source, safety_state, safety_scores, safety_checked_at').eq('vendor_id', vendorId).order('position', { ascending: true })),
   ]);
-  const pics = photos.filter((p) => /^https:\/\//.test(String(p.image_url || '')));
+  // cut 30 (R-47.2): a held picture is on none of her pages, so TDW builds nothing from it
+  const pics = photos.filter((p) => /^https:\/\//.test(String(p.image_url || '')) && PR.onHerPages(p));
   const untouched = untouchedDraft(draft, prev);
   const hers = Boolean((live && (live.published_at || live.style)) || looks.length
     || (draft && draft.settings && Object.keys(draft.settings).length && !untouched));
@@ -240,7 +242,9 @@ const STEPS = {
       const look = await one(sb.from('vendor_looks').insert({ vendor_id: vendor.id, slug, title, status: 'draft', source: p.source === 'instagram' ? 'instagram' : 'manual' }).select('id').single());
       if (!look) continue;
       await sb.from('vendor_look_photos').insert({ look_id: look.id, vendor_id: vendor.id, image_url: p.image_url, position: 0,
-        approval_state: p.approval_state === 'approved' ? 'approved' : 'pending', source: p.source === 'instagram' ? 'instagram' : 'upload' });
+        // cut 30 (R-47.2): the look photo carries its portfolio picture's safety state, as the room does
+        safety_state: p.safety_state || PR.SAFETY.UNCHECKED, safety_scores: p.safety_scores || null, safety_checked_at: p.safety_checked_at || null,
+        source: p.source === 'instagram' ? 'instagram' : 'upload' });
       made += 1;
     }
     return { state: 'done', line: pics.length ? LINES.website : LINES.websiteNoPhotos, opens: opensFor(vendor.tier),

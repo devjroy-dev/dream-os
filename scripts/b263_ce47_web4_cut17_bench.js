@@ -21,26 +21,32 @@ const { makeStore } = require('./lib/b196_store');
   sec('2  the source writers');
   const PF = load('src/lib/vendor/portfolio.js');
   const st = makeStore({ vendor_portfolio: [] });
-  const a = await PF.registerImage(st, 'v1', { image_url: 'https://res.cloudinary.com/x/a.jpg' });
-  const b = await PF.registerImage(st, 'v1', { image_url: 'https://res.cloudinary.com/x/b.jpg', source: 'instagram', approval_state: 'approved' });
-  const c = await PF.registerImage(st, 'v1', { image_url: 'https://res.cloudinary.com/x/c.jpg', source: 'tiktok' });
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2; the chair's ruling 5: the vendor door ignores approval_state and
+  // source). source no longer comes from the body at all: the import passes it as the door's own `internal` argument,
+  // and anything she sends is ignored (written 'upload'), not refused. Google is stood out (no key), so each is unchecked.
+  const NOKEY = { safetyDeps: { apiKey: '' } };
+  const a = await PF.registerImage(st, 'v1', { image_url: 'https://res.cloudinary.com/x/a.jpg' }, NOKEY);
+  const b = await PF.registerImage(st, 'v1', { image_url: 'https://res.cloudinary.com/x/b.jpg' }, { ...NOKEY, source: 'instagram' });
+  const c = await PF.registerImage(st, 'v1', { image_url: 'https://res.cloudinary.com/x/c.jpg', source: 'instagram', approval_state: 'approved' }, NOKEY);
   ok(() => a.ok && st.tables.vendor_portfolio[0].source === 'upload' && b.ok && st.tables.vendor_portfolio[1].source === 'instagram', '2.1 registerImage writes source: upload by default, instagram when the import says so', JSON.stringify(st.tables.vendor_portfolio.map((r) => r.source)));
-  ok(() => c.ok === false && /source must be upload or instagram/.test(c.error) && st.tables.vendor_portfolio.length === 2, '2.2 any other source is refused, nothing written');
-  ok(() => /source: 'instagram',   \/\/ CE-47 WEB-4 cut 17/.test(read('src/lib/vendor/igImport.js')), '2.3 the Instagram import marks its photographs instagram');
+  ok(() => c.ok && st.tables.vendor_portfolio[2].source === 'upload' && st.tables.vendor_portfolio[2].approval_state === undefined && st.tables.vendor_portfolio.every((r) => r.safety_state === 'unchecked'), '2.2 a source or state sent in her body is ignored: written upload, unchecked (R-47.2 ruling 5)');
+  ok(() => /\{ source: 'instagram', safety: checks\[i\] \}\);   \/\/ CE-47 WEB-4 cut 17/.test(read('src/lib/vendor/igImport.js')), '2.3 the Instagram import marks its photographs instagram (and hands each its safety answer)');
   const SR = read('src/api/vendor/solutions/siteRoom.js');
-  ok(() => (SR.match(/select\('id, image_url, approval_state, source'\)/g) || []).length === 2 && /position: have\.length, approval_state, source \}\)/.test(SR), '2.4 a look photo carries its portfolio photograph\'s source (both ways she adds one)');
+  ok(() => (SR.match(/select\('id, image_url, safety_state, safety_scores, safety_checked_at, source'\)/g) || []).length === 2 && /position: have\.length, \.\.\.safety, source \}\)/.test(SR), '2.4 a look photo carries its portfolio photograph\'s source and safety state (both ways she adds one)');
 
-  sec('3  her own site: her Instagram look photographs at once; Discover keeps its gate');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): the founder's rule closes the old asymmetry. Every picture that is
+  // not HELD shows on her own site at once, whatever its source; Discover shows only 'passed' and not hidden.
+  sec('3  her own site: every look photograph at once unless held; Discover keeps its gate (R-47.2)');
   const SC = load('src/lib/site/siteCard.js');
   const looks = [{ id: 'l1', slug: 'a', title: 'A', status: 'published', published_at: '2026-09-01T00:00:00Z', position: 0 }];
-  const ph = (id, state, source) => ({ id, look_id: 'l1', image_url: `https://res.cloudinary.com/tdw/image/upload/x/${id}.jpg`, approval_state: state, source, position: id.length });
+  const ph = (id, state, source) => ({ id, look_id: 'l1', image_url: `https://res.cloudinary.com/tdw/image/upload/x/${id}.jpg`, safety_state: state, source, position: id.length });
   const page = (rows) => SC.lookPage({ tier: 'basic', slug: 'a', looks, lookPhotos: rows, vendor: { routing_handle: 'S', status: 'active' }, packageRows: [] });
   const shown = (rows) => { const p = page(rows); return p ? (p.photos || p.look && p.look.photos || []).length : -1; };
-  ok(() => shown([ph('ig', 'pending', 'instagram')]) === 1, '3.1 a PENDING Instagram photograph shows on her own site at once', JSON.stringify(page([ph('ig', 'pending', 'instagram')])).slice(0, 160));
-  ok(() => shown([ph('ig', 'pending', 'instagram'), ph('up', 'pending', 'upload')]) === 1 && shown([ph('ig', 'rejected', 'instagram')]) !== 1, '3.2 a pending UPLOAD waits for the queue; a rejected photograph never shows');
+  ok(() => shown([ph('ig', 'unchecked', 'instagram')]) === 1, '3.1 an UNCHECKED Instagram photograph shows on her own site at once', JSON.stringify(page([ph('ig', 'unchecked', 'instagram')])).slice(0, 160));
+  ok(() => shown([ph('ig', 'unchecked', 'instagram'), ph('up', 'unchecked', 'upload')]) === 2 && shown([ph('ig', 'held', 'instagram')]) !== 1, '3.2 an unchecked UPLOAD shows at once too (both are live); a held photograph never shows');
   const VC = read('src/api/public/vendorCard.js');
-  ok(() => (VC.match(/\.in\('approval_state', \['approved', 'pending'\]\)/g) || []).length === 2 && /approval_state, source, deleted_at';/.test(VC), '3.3 her card reads approved and pending look photos with their source (the filter is her site\'s rule)');
-  ok(() => /\.from\('vendor_portfolio'\)\s*\.select\(PORTFOLIO_SELECT\)\s*\.eq\('vendor_id', v\.id\)\s*\.eq\('approval_state', 'approved'\)/.test(VC) && /approval_state/.test(read('src/lib/vendor/discover.js')), '3.4 the portfolio (Discover\'s and the card\'s) keeps its approval gate for every source');
+  ok(() => (VC.match(/\.in\('look_id', lookIds\)\.neq\('safety_state', PR\.SAFETY\.HELD\)/g) || []).length === 2 && /safety_state, source, deleted_at';/.test(VC), '3.3 her card reads every look photo that is not held, with its source (the filter is her site\'s rule)');
+  ok(() => /\.from\('vendor_portfolio'\)\s*\.select\(PORTFOLIO_SELECT\)\s*\.eq\('vendor_id', v\.id\)\s*\.neq\('safety_state', PR\.SAFETY\.HELD\)/.test(VC) && /\.eq\('safety_state', 'passed'\)\.is\('discover_hidden_at', null\)/.test(read('src/lib/vendor/discover.js')) && !/approval_state/.test(read('src/lib/vendor/discover.js').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')), '3.4 the card\'s portfolio shows what her pages show; Discover keeps its gate (passed, not hidden) for every source');
 
   sec('4  the package field on the website enquiry door');
   const E = load('src/lib/website/enquiry.js'); const now = Date.parse('2026-10-06T06:00:00Z');
@@ -63,8 +69,9 @@ const { makeStore } = require('./lib/b196_store');
   const M1 = load('src/lib/site/siteModel.js', MS.replace('own_domain: 2, built_from_instagram: 0,', 'own_domain: 2, built_from_instagram: 1,'));
   ok(() => M1 && M1.capabilitiesFor('basic').built_from_instagram === false, '6.1 the flag back at Essential: 1.1 reddens');
   const SS = read('src/lib/site/siteCard.js');
-  const S2 = load('src/lib/site/siteCard.js', SS.replace("|| (r.approval_state === 'pending' && r.source === 'instagram')", ''));
-  ok(() => { if (!S2 || S2 === SC) return false; const p2 = S2.lookPage({ tier: 'basic', slug: 'a', looks, lookPhotos: [ph('ig', 'pending', 'instagram')], vendor: { routing_handle: 'S', status: 'active' }, packageRows: [] }); return p2 === null || (p2.photos || (p2.look && p2.look.photos) || []).length === 0; }, '6.2 the Instagram arm removed: her pending Instagram photograph waits again (3.1 reddens)');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30: the mutation puts the old approval gate back in place of the founder's rule.
+  const S2 = SS.includes('function showsOnHerSite(r) { return PR.onHerPages(r); }') ? load('src/lib/site/siteCard.js', SS.replace('function showsOnHerSite(r) { return PR.onHerPages(r); }', "function showsOnHerSite(r) { return r.approval_state === 'approved'; }")) : null;
+  ok(() => { if (!S2 || S2 === SC) return false; const p2 = S2.lookPage({ tier: 'basic', slug: 'a', looks, lookPhotos: [ph('ig', 'unchecked', 'instagram')], vendor: { routing_handle: 'S', status: 'active' }, packageRows: [] }); return p2 === null || (p2.photos || (p2.look && p2.look.photos) || []).length === 0; }, '6.2 the approval gate put back: her unchecked Instagram photograph waits again (3.1 reddens)');
 
   console.log(`\nb263 ${pass} passed, ${fail} failed${fail ? ': ' + failed.join(' | ') : ''}`);
   process.exit(fail ? 1 : 0);

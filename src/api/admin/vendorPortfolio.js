@@ -1,12 +1,13 @@
 // src/api/admin/vendorPortfolio.js
 // Admin-side vendor portfolio management.
-// Allows admin to upload photos directly to any vendor's portfolio,
-// bypassing the approval queue (admin uploads are auto-approved).
+// Allows admin to upload photos directly to any vendor's portfolio (a person placed them, so they are 'passed').
 //
-// GET  /api/v2/admin/vendors/:vendorId/portfolio       — list photos
+// GET  /api/v2/admin/vendors/:vendorId/portfolio       — list photos (with held and hidden-from-Discover)
 // POST /api/v2/admin/vendors/:vendorId/portfolio/upload-url — get signed Cloudinary params
 // POST /api/v2/admin/vendors/:vendorId/portfolio       — register uploaded photo
-// DELETE /api/v2/admin/vendors/:vendorId/portfolio/:imageId — delete photo
+// CE-47 WEB-4 cut 30 (R-47.2, the founder's rule of 8 October 2026): the DELETE door is GONE. The admin's only power
+// over a picture is "hide from Discover"; a removal for a legal reason goes through admin/photos.js /:id/legal-removal,
+// which is logged and tells the vendor.
 'use strict';
 
 const express      = require('express');
@@ -33,13 +34,14 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
 
   const { data, error } = await supabase
     .from('vendor_portfolio')
-    .select('id, image_url, caption, aesthetic_tags, is_hero, in_carousel, approval_state, created_at, position')
+    .select('id, image_url, caption, aesthetic_tags, is_hero, in_carousel, safety_state, discover_hidden_at, created_at, position')
     .eq('vendor_id', vendorId)
     .order('position',   { ascending: true })
     .order('created_at', { ascending: false });
 
   if (error) return errRes(res, 500, error.message);
-  return okRes(res, { photos: data || [] });
+  // R-47.2: the state as the admin reads it: held (by the safety check) and hidden from Discover
+  return okRes(res, { photos: (data || []).map((p) => ({ ...p, held: p.safety_state === 'held', hidden_from_discover: Boolean(p.discover_hidden_at) })) });
 }));
 
 // ── POST /:vendorId/portfolio/upload-url ──────────────────────────────────────
@@ -84,9 +86,7 @@ router.post('/', requireAdmin, asyncHandler(async (req, res) => {
       aesthetic_tags: aesthetic_tags || [],
       is_hero:        false,        // written by writeOrder alone — the one hand
       in_carousel:    true,
-      approval_state: 'approved',   // admin uploads skip the queue
-      reviewed_by_admin: 'admin',
-      reviewed_at:    new Date().toISOString(),
+      safety_state:   'passed',     // R-47.2: a person placed it (the chair's ruling on (d) item 2)
       position:       room.count,   // append, as the vendor door does
     })
     .select()
@@ -105,31 +105,6 @@ router.post('/', requireAdmin, asyncHandler(async (req, res) => {
 }));
 
 // ── DELETE /:vendorId/portfolio/:imageId ──────────────────────────────────────
-router.delete('/:imageId', requireAdmin, asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const { vendorId, imageId } = req.params;
-
-  const { data: photo } = await supabase
-    .from('vendor_portfolio')
-    .select('id, image_url, vendor_id')
-    .eq('id', imageId)
-    .eq('vendor_id', vendorId)
-    .maybeSingle();
-
-  if (!photo) return errRes(res, 404, 'Photo not found.');
-
-  await deleteFromCloudinary(photo.image_url);
-
-  const { error } = await supabase
-    .from('vendor_portfolio').delete().eq('id', imageId);
-
-  if (error) return errRes(res, 500, error.message);
-
-  // Close the ordering gap, exactly as the vendor delete path does — contiguity
-  // is an invariant, and the admin cockpit must not be the door that breaks it.
-  const cur = await currentOrder(supabase, vendorId);
-  if (cur.ok && cur.ids.length > 0) await writeOrder(supabase, vendorId, cur.ids);
-  return okRes(res, { deleted: true });
-}));
+// R-47.2: no DELETE door here (see the header).
 
 module.exports = router;

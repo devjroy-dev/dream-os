@@ -437,7 +437,7 @@ router.get('/:post_id/responses', requireAuth, resolveVendor(), asyncHandler(asy
         city,
         open_to_travel,
         users!vendors_user_id_fkey ( name ),
-        vendor_portfolio ( image_url, is_hero, approval_state )
+        vendor_portfolio ( image_url, is_hero, safety_state )
       )
     `)
     .eq('post_id', post_id)
@@ -458,7 +458,7 @@ router.get('/:post_id/responses', requireAuth, resolveVendor(), asyncHandler(asy
       city:          r.vendors?.city,
       open_to_travel: r.vendors?.open_to_travel,
       hero_photo:    (r.vendors?.vendor_portfolio || [])
-        .filter(p => p.approval_state === 'approved' && p.is_hero)[0]?.image_url || null,
+        .filter(p => require('../../lib/vendor/pictureRules').onHerPages(p) && p.is_hero)[0]?.image_url || null,   // CE-47 WEB-4 cut 30 (R-47.2): her picture unless held
     },
   }));
 

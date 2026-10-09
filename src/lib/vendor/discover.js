@@ -365,7 +365,7 @@ async function getDiscoverPreview(supabase, vendor) {
     .from('vendor_portfolio')
     .select('image_url, is_hero, position')
     .eq('vendor_id', vendorId)
-    .eq('approval_state', 'approved')
+    .eq('safety_state', 'passed').is('discover_hidden_at', null)   // CE-47 WEB-4 cut 30 (R-47.2): Discover's rule, pictureRules.discoverFilter
     .order('position',   { ascending: true })
     .order('created_at', { ascending: false });
 

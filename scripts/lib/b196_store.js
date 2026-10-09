@@ -28,6 +28,7 @@ function makeStore(seed) {
       select(cols, opts) { if (st.op === 'select') { st.cols = cols; st.countOpt = opts && opts.count ? opts : null; } else st.returning = cols || '*'; return api; },   // opts: cut 9 (count, head)
       eq(c, v) { st.filters.push((r) => r[c] === v); return api; },
       neq(c, v) { st.filters.push((r) => r[c] !== v); return api; },   // cut 7
+      not(c, op, v) { if (op !== 'is' || v !== null) throw new Error('store: only not(col, \'is\', null)'); st.filters.push((r) => r[c] !== null && r[c] !== undefined); return api; },   // CE-47 WEB-4 cut 30
       is(c, v) { st.filters.push((r) => (v === null ? r[c] === null || r[c] === undefined : r[c] === v)); return api; },
       in(c, vs) { const s = new Set(vs); st.filters.push((r) => s.has(r[c])); return api; },
       gt(c, v) { st.filters.push((r) => r[c] !== null && r[c] !== undefined && String(r[c]) > String(v)); return api; },

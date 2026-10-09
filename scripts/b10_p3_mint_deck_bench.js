@@ -194,8 +194,10 @@ function baseFixtures() {
         onboarding_state: 'new', discover_eligible: false },
     ],
     vendor_portfolio: [
-      ...Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, vendor_id: V_FULL, approval_state: i < 6 ? 'approved' : 'pending' })),
-      ...Array.from({ length: 3 }, (_, i) => ({ id: `t${i}`, vendor_id: V_THIN, approval_state: 'approved' })),
+      // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): 'approved' now means what Discover shows (safety_state 'passed',
+      // not hidden); the fixture carries the switch-day state beside the old column.
+      ...Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, vendor_id: V_FULL, approval_state: i < 6 ? 'approved' : 'pending', safety_state: i < 6 ? 'passed' : 'unchecked', discover_hidden_at: null })),
+      ...Array.from({ length: 3 }, (_, i) => ({ id: `t${i}`, vendor_id: V_THIN, approval_state: 'approved', safety_state: 'passed', discover_hidden_at: null })),
     ],
     vendor_discover_requests: [
       { id: 'r1', vendor_id: V_FULL, state: 'requested', reason: 'I shoot Delhi weddings.',

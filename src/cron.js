@@ -450,6 +450,21 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── CE-47 WEB-4 cut 30 · R-47.2 · THE PICTURE SAFETY SWEEP — :13 :28 :43 :58 ───────
+  // Google's safety check runs inside every upload door; a picture it could not check there is 'unchecked' (live on
+  // her own pages, not on Discover). This sweep checks those, 64 at a time, and writes 'passed' or 'held' (the rule is
+  // pictureRules.HOLD_RULE). Its minutes are its own: :09/:24/:39/:54 are the pay sweep's, and 2-59/5 is taken.
+  cron.schedule('13,28,43,58 * * * *', async () => {
+    try {
+      const out = await require('./lib/vendor/safetyCheck').sweep(supabase);
+      console.log(`[pictures:safety] sweep scanned=${out.scanned} passed=${out.passed} held=${out.held} still_unchecked=${out.still_unchecked}`);
+    } catch (err) {
+      console.error('[cron:pictureSafety] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── CE-47 INS PAY-A · THE BINDER PAYMENT SWEEP — :09 :24 :39 :54 ───────────
   // A payment on a binder-only invoice is HELD, answered 200, then applied; if that apply failed or the process died,
   // this retries it (at most 50 a run, held 2 minutes or more), through the same claim and compare-and-flip. It never

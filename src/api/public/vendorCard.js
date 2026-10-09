@@ -246,11 +246,12 @@ const SITE_STYLES_SELECT = 'look, pages, credit_shown, published_at, style, styl
 const SECTIONS_SELECT  = 'key, page_id, variant, shown, position, eyebrow, heading, body, deleted_at';
 const PAGES_SELECT     = 'slug, title, position, shown, deleted_at';
 const LOOKS_SELECT     = 'id, slug, title, status, published_at, category, year_label, description, included, from_price_text, package_id, credits, videos, related_ids, new_mark, seo_title, seo_description, share_photo_id, position, deleted_at';
-const LOOK_PHOTOS_SELECT = 'id, look_id, image_url, width, height, focal_portrait_x, focal_portrait_y, focal_landscape_x, focal_landscape_y, caption, alt, position, approval_state, source, deleted_at';
+const LOOK_PHOTOS_SELECT = 'id, look_id, image_url, width, height, focal_portrait_x, focal_portrait_y, focal_landscape_x, focal_landscape_y, caption, alt, position, safety_state, source, deleted_at';   // cut 30: safety_state (R-47.2)
 const COLLECTIONS_SELECT = 'id, slug, name, description, cover_photo_id, position, deleted_at';
 const TESTIMONIALS_SELECT = 'author, body, occasion, event_month, place, video_url, video_duration_s, video_title, position, state, request_id, submitted_at, deleted_at';
 const FAQ_SELECT       = 'question, answer, position, deleted_at';
 const siteCardLib      = require('../../lib/site/siteCard');
+const PR = require('../../lib/vendor/pictureRules');   // CE-47 WEB-4 cut 30 (R-47.2): the one home for a picture's state
 const previewLib       = require('../../lib/site/preview');   // CE-47 WEB-4 cut 5 · her draft, to her room's token only
 const DOMAIN_SELECT    = 'domain, status';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
@@ -518,7 +519,7 @@ router.get('/:code/look/:slug', async (req, res) => {
     const safe = async (q) => { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch (_e) { return []; } };
     const looks = await safe(supabase.from('vendor_looks').select(LOOKS_SELECT).eq('vendor_id', v.id).eq('status', 'published').is('deleted_at', null).order('position', { ascending: true }).limit(60));
     const lookIds = looks.map((l) => l.id).filter(Boolean);
-    const lookPhotos = lookIds.length ? await safe(supabase.from('vendor_look_photos').select(LOOK_PHOTOS_SELECT).in('look_id', lookIds).in('approval_state', ['approved', 'pending']).is('deleted_at', null).order('position', { ascending: true })) : [];
+    const lookPhotos = lookIds.length ? await safe(supabase.from('vendor_look_photos').select(LOOK_PHOTOS_SELECT).in('look_id', lookIds).neq('safety_state', PR.SAFETY.HELD).is('deleted_at', null).order('position', { ascending: true })) : [];
     const target = looks.find((l) => l.slug === slug);
     if (!target) return notFound(res);
     const creditIds = (Array.isArray(target.credits) ? target.credits : []).map((c) => c && c.vendor_id).filter((x) => typeof x === 'string').slice(0, 8);
@@ -565,11 +566,12 @@ router.get('/:code', async (req, res) => {
       // portfolio is not merely withheld — it is never asked for.
       if (v.status !== 'active' || v.discover_paused === true) return notFound(res);
 
-      // ── THE APPROVED SET, IN THE FEED'S OWN ORDER ─────────────────────────
-      // `approval_state='approved'` is the consent (third band §4-1): the
-      // couple feed already renders these same rows to signed-out couples on
-      // the public landing, so `/v/` is that exposure class with an address.
-      // NOTHING UNAPPROVED IS EVEN FETCHED.
+      // ── HER PICTURES, IN THE FEED'S OWN ORDER ────────────────────────────
+      // CE-47 WEB-4 cut 30 (R-47.2, the founder's rule of 8 October 2026): her
+      // storefront is one of HER OWN pages, so it shows every picture of hers
+      // that Google's safety check did not hold (pictureRules.herPagesFilter,
+      // the one home). There is no approval step any more. NOTHING HELD IS EVEN
+      // FETCHED. (Discover keeps its own, narrower rule: passed and not hidden.)
       //
       // The order is `src/api/couple/discover.js:123-125`'s, not a new one:
       // `position` ascending, `created_at` descending as the tiebreak. `0102`
@@ -581,7 +583,7 @@ router.get('/:code', async (req, res) => {
         .from('vendor_portfolio')
         .select(PORTFOLIO_SELECT)
         .eq('vendor_id', v.id)
-        .eq('approval_state', 'approved')
+        .neq('safety_state', PR.SAFETY.HELD)
         .order('position',   { ascending: true })
         .order('created_at', { ascending: false });
       if (pErr) throw pErr;
@@ -702,7 +704,7 @@ router.get('/:code', async (req, res) => {
         const lookIds = styles ? looks.map((l) => l.id).filter(Boolean) : [];
         const colIds = styles ? collections.map((c) => c.id).filter(Boolean) : [];
         const [lookPhotos, collectionLooks] = await Promise.all([
-          lookIds.length ? safe(supabase.from('vendor_look_photos').select(LOOK_PHOTOS_SELECT).in('look_id', lookIds).in('approval_state', ['approved', 'pending']).is('deleted_at', null).order('position', { ascending: true })) : Promise.resolve([]),
+          lookIds.length ? safe(supabase.from('vendor_look_photos').select(LOOK_PHOTOS_SELECT).in('look_id', lookIds).neq('safety_state', PR.SAFETY.HELD).is('deleted_at', null).order('position', { ascending: true })) : Promise.resolve([]),
           colIds.length ? safe(supabase.from('vendor_collection_looks').select('collection_id, look_id, position').in('collection_id', colIds)) : Promise.resolve([]),
         ]);
         if (styles) ex = { sections, pages, looks, lookPhotos, collections, collectionLooks, testimonials, faq };

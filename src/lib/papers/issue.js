@@ -28,12 +28,12 @@ function readAsk(body, now = Date.now()) {
   return { ok: true, kind, from, to, purpose, photo: null };
 }
 
-/** The photo must be one of HER portfolio pictures (vendor_portfolio.image_url), and not one TDW refused. */
+/** The photo must be one of HER portfolio pictures (vendor_portfolio.image_url), on her pages (CE-47 WEB-4 cut 30, R-47.2: not held). */
 async function photoIsHers(supabase, vendorId, url) {
-  const r = await supabase.from('vendor_portfolio').select('image_url, approval_state').eq('vendor_id', vendorId).eq('image_url', url).limit(1);
+  const r = await supabase.from('vendor_portfolio').select('image_url, safety_state').eq('vendor_id', vendorId).eq('image_url', url).limit(1);
   if (r.error) return { ok: false, error: 'TDW could not read your portfolio just now. Please try again.' };
   const row = (r.data || [])[0];
-  return row && row.approval_state !== 'rejected' ? { ok: true } : { ok: false, error: 'Pick a photo from your portfolio.' };
+  return row && require('../vendor/pictureRules').onHerPages(row) ? { ok: true } : { ok: false, error: 'Pick a photo from your portfolio.' };
 }
 
 async function issuePaper({ supabase, vendor, body, now = Date.now() }) {

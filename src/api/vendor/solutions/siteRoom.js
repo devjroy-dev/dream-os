@@ -17,9 +17,9 @@
 //   GET    /testimonials · POST /testimonials/requests · POST /testimonials/requests/:id/revoke
 //   POST   /testimonials/:id/approve · POST /testimonials/:id/hide       (no edit door: ruling 2)
 //
-// The rulings: CE-47's field list and gaps (30 September 2026). A look photo picked from her own ALREADY-APPROVED
-// portfolio carries that approval, matched by the portfolio row's id AND its exact address, never by resemblance; a
-// fresh upload joins the admin queue (gap 6). Refusal lines are plain (R-45.30) and listed in the handover for the
+// The rulings: CE-47's field list and gaps (30 September 2026). A look photo picked from her own portfolio carries that
+// picture's safety state (cut 30, R-47.2; it carried its approval before), matched by the portfolio row's id AND its
+// exact address, never by resemblance; a fresh upload is checked by Google's safety check (gap 6, as R-47.2 reads it). Refusal lines are plain (R-45.30) and listed in the handover for the
 // founder's veto. Her tier is read to decide and never returned as a name.
 'use strict';
 
@@ -325,13 +325,16 @@ router.put('/pages', ...auth, asyncHandler(async (req, res) => {
 
 // ── LOOKS ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 const LOOK_COLS = 'id, slug, title, status, published_at, category, year_label, description, included, from_price_text, from_price_rupees, package_id, credits, videos, related_ids, new_mark, seo_title, seo_description, share_photo_id, source, position, deleted_at';
-const PHOTO_COLS = 'id, look_id, image_url, width, height, focal_portrait_x, focal_portrait_y, focal_landscape_x, focal_landscape_y, caption, alt, position, approval_state, rejection_reason, deleted_at';
+const PHOTO_COLS = 'id, look_id, image_url, width, height, focal_portrait_x, focal_portrait_y, focal_landscape_x, focal_landscape_y, caption, alt, position, safety_state, deleted_at';
 
-/** Gap 6: what she reads per photo and per look. */
-function reviewOf(p) { return p.approval_state === 'approved' ? 'approved' : p.approval_state === 'rejected' ? 'not_approved' : 'waiting'; }
+/** What she reads per photo and per look. CE-47 WEB-4 cut 30 (R-47.2): a photo is 'shown' on her site at once, or
+ *  'held' by the safety check (pictureRules.js); there is no approval and no rejection reason any more. */
+const PR = require('../../../lib/vendor/pictureRules');
+const safetyCheck = require('../../../lib/vendor/safetyCheck');
+function reviewOf(p) { return PR.onHerPages(p) ? 'shown' : 'held'; }
 function publicStateOf(look, photos) {
   if (look.status !== 'published') return 'draft';
-  return photos.some((p) => p.approval_state === 'approved' && !p.deleted_at) ? 'live' : 'waiting_for_photos';
+  return photos.some((p) => PR.onHerPages(p) && !p.deleted_at) ? 'live' : 'waiting_for_photos';
 }
 async function lookOf(sb, vid, id) {
   if (!UUID.test(String(id))) return null;
@@ -385,7 +388,7 @@ router.get('/looks', ...auth, asyncHandler(async (req, res) => {
     return { id: l.id, slug: l.slug, title: l.title, status: l.status, public_state: publicStateOf(l, ph), category: l.category, year_label: l.year_label,
       description: l.description, included: l.included, from_price: l.from_price_text, package_id: l.package_id, credits: l.credits, videos: l.videos,
       related_ids: l.related_ids, new_mark: l.new_mark, seo_title: l.seo_title, seo_description: l.seo_description, position: l.position,
-      photos: ph.map((p) => ({ id: p.id, url: p.image_url, review: reviewOf(p), reason: reviewOf(p) === 'not_approved' ? (p.rejection_reason || null) : null, caption: p.caption, alt: p.alt, position: p.position,
+      photos: ph.map((p) => ({ id: p.id, url: p.image_url, review: reviewOf(p), notice: PR.vendorNotice(p), caption: p.caption, alt: p.alt, position: p.position,
         focal_portrait: { x: Number(p.focal_portrait_x), y: Number(p.focal_portrait_y) }, focal_landscape: { x: Number(p.focal_landscape_x), y: Number(p.focal_landscape_y) } })) };
   }) });
 }));
@@ -428,7 +431,7 @@ router.post('/looks/:id/:act(publish|unpublish)', ...auth, asyncHandler(async (r
     const { error } = await sb.from('vendor_looks').update({ status: 'draft', updated_at: now() }).eq('id', look.id).eq('vendor_id', v.id);
     return error ? errRes(res, 503, LINES.saveFailed) : okRes(res, { public_state: 'draft' });
   }
-  const photos = await rows(sb.from('vendor_look_photos').select('id, approval_state, deleted_at').eq('look_id', look.id).eq('vendor_id', v.id).is('deleted_at', null));
+  const photos = await rows(sb.from('vendor_look_photos').select('id, safety_state, deleted_at').eq('look_id', look.id).eq('vendor_id', v.id).is('deleted_at', null));
   if (!photos.length) return errRes(res, 400, LINES.needPhoto);
   const live = await rows(sb.from('vendor_looks').select('id').eq('vendor_id', v.id).eq('status', 'published').is('deleted_at', null));
   if (live.filter((x) => x.id !== look.id).length >= limits.COUNTS.published_looks) return errRes(res, 400, LINES.publishedCap);
@@ -451,9 +454,10 @@ router.post('/looks/:id/photos/sign', ...auth, asyncHandler(async (req, res) => 
 
 /**
  * Add a photo. Either { portfolio_id }: one of HER portfolio rows, matched by id AND vendor, whose address becomes the
- * photo's and whose approval it carries; or { image_url } equal, byte for byte, to one of her portfolio rows' stored
- * address, which carries that row's state (the chair's ruling on gap 6: the same stored picture, by id or exact url,
- * never by resemblance). Any other { image_url } is a fresh upload into her own look folder and joins the admin queue.
+ * photo's and whose safety state it carries; or { image_url } equal, byte for byte, to one of her portfolio rows'
+ * stored address, which carries that row's state (the chair's ruling on gap 6: the same stored picture, by id or exact
+ * url, never by resemblance). Any other { image_url } is a fresh upload into her own look folder, checked by Google's
+ * safety check before the answer (R-47.2).
  */
 router.post('/looks/:id/photos', ...auth, asyncHandler(async (req, res) => {
   if (!gate(req, res)) return;
@@ -461,21 +465,24 @@ router.post('/looks/:id/photos', ...auth, asyncHandler(async (req, res) => {
   const look = await lookOf(sb, v.id, req.params.id); if (!look) return errRes(res, 404, LINES.notYours);
   const have = await rows(sb.from('vendor_look_photos').select('id').eq('look_id', look.id).eq('vendor_id', v.id).is('deleted_at', null));
   if (have.length >= limits.COUNTS.photos_per_look) return errRes(res, 400, LINES.photoCap);
-  let image_url = null; let approval_state = 'pending'; let source = 'upload';   // cut 17: a look photo carries its portfolio photo's source
+  // cut 17: a look photo carries its portfolio photo's source. cut 30 (R-47.2): and its safety state; a fresh upload is
+  // checked here, before the answer.
+  let image_url = null; let safety = null; let source = 'upload';
   if (b.portfolio_id !== undefined) {
     if (!UUID.test(String(b.portfolio_id))) return errRes(res, 404, LINES.notYours);
-    const pf = await one(sb.from('vendor_portfolio').select('id, image_url, approval_state, source').eq('id', b.portfolio_id).eq('vendor_id', v.id).maybeSingle());
+    const pf = await one(sb.from('vendor_portfolio').select('id, image_url, safety_state, safety_scores, safety_checked_at, source').eq('id', b.portfolio_id).eq('vendor_id', v.id).maybeSingle());
     if (!pf || !/^https:\/\//.test(String(pf.image_url || ''))) return errRes(res, 404, LINES.notYours);
-    image_url = pf.image_url; approval_state = pf.approval_state === 'approved' ? 'approved' : 'pending'; source = pf.source === 'instagram' ? 'instagram' : 'upload';
+    image_url = pf.image_url; safety = { safety_state: pf.safety_state, safety_scores: pf.safety_scores || null, safety_checked_at: pf.safety_checked_at || null }; source = pf.source === 'instagram' ? 'instagram' : 'upload';
   } else {
     const url = String(b.image_url || '');
     // The ruling's second match: the EXACT stored address of one of her own portfolio photos carries its state.
-    const same = /^https:\/\//.test(url) ? await one(sb.from('vendor_portfolio').select('id, image_url, approval_state, source').eq('vendor_id', v.id).eq('image_url', url).maybeSingle()) : null;
-    if (same) { image_url = same.image_url; approval_state = same.approval_state === 'approved' ? 'approved' : 'pending'; source = same.source === 'instagram' ? 'instagram' : 'upload'; }
+    const same = /^https:\/\//.test(url) ? await one(sb.from('vendor_portfolio').select('id, image_url, safety_state, safety_scores, safety_checked_at, source').eq('vendor_id', v.id).eq('image_url', url).maybeSingle()) : null;
+    if (same) { image_url = same.image_url; safety = { safety_state: same.safety_state, safety_scores: same.safety_scores || null, safety_checked_at: same.safety_checked_at || null }; source = same.source === 'instagram' ? 'instagram' : 'upload'; }
     else {
-      // a fresh upload: only into her own look folder, and it joins the admin queue
+      // a fresh upload: only into her own look folder; Google's safety check runs on it before the answer
       if (!CLOUD.test(url) || !url.includes(`/vendor_looks/${v.id}/`)) return errRes(res, 400, LINES.photoAddress);
       image_url = url;
+      safety = safetyCheck.fieldsOf((await safetyCheck.check([url], req.app.locals.safetyDeps))[0]) || { safety_state: PR.SAFETY.UNCHECKED };
     }
   }
   const fp = limits.focal(b.focal_portrait); const fl = limits.focal(b.focal_landscape);
@@ -485,9 +492,9 @@ router.post('/looks/:id/photos', ...auth, asyncHandler(async (req, res) => {
   const created = await one(sb.from('vendor_look_photos').insert({ look_id: look.id, vendor_id: v.id, image_url,
     width: Number.isInteger(w) && w > 0 ? w : null, height: Number.isInteger(h) && h > 0 ? h : null,
     focal_portrait_x: fp.x, focal_portrait_y: fp.y, focal_landscape_x: fl.x, focal_landscape_y: fl.y,
-    caption: cap.value, alt: alt.value, position: have.length, approval_state, source }).select('id, approval_state').single());
+    caption: cap.value, alt: alt.value, position: have.length, ...safety, source }).select('id, safety_state').single());
   if (!created) return errRes(res, 503, LINES.saveFailed);
-  return okRes(res, { photo: { id: created.id, review: reviewOf(created) } });
+  return okRes(res, { photo: { id: created.id, review: reviewOf(created), notice: PR.vendorNotice(created) } });
 }));
 
 router.patch('/looks/:id/photos/:pid', ...auth, asyncHandler(async (req, res) => {
@@ -499,7 +506,7 @@ router.patch('/looks/:id/photos/:pid', ...auth, asyncHandler(async (req, res) =>
   if ('caption' in b) { const f = limits.field('photo_caption', b.caption); if (!f.ok) return errRes(res, 400, f.error); p.caption = f.value; }
   if ('alt' in b) { const f = limits.field('photo_alt', b.alt); if (!f.ok) return errRes(res, 400, f.error); p.alt = f.value; }
   if ('position' in b && Number.isFinite(b.position)) p.position = Math.round(b.position);
-  p.updated_at = now();   // approval_state is never written here: only the admin's queue moves it
+  p.updated_at = now();   // a photo's state is never written here: only the safety check and the admin's release move it
   const { error } = await sb.from('vendor_look_photos').update(p).eq('id', req.params.pid).eq('look_id', look.id).eq('vendor_id', v.id);
   return error ? errRes(res, 503, LINES.saveFailed) : okRes(res, { saved: Object.keys(p) });
 }));

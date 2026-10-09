@@ -109,7 +109,7 @@ router.get('/feed', asyncHandler(async (req, res) => {
       .from('vendor_portfolio')
       .select('vendor_id, image_url, is_hero')
       .in('vendor_id', realIds)
-      .eq('approval_state', 'approved')
+      .eq('safety_state', 'passed').is('discover_hidden_at', null)   // CE-47 WEB-4 cut 30 (R-47.2): Discover's rule, pictureRules.discoverFilter
       // ── TDW_07 P3 · Fork 1(a): `position` (0102) IS THE ORDER. ─────────────
       // This replaced `.order('is_hero', desc).order('created_at', desc)`, and it
       // is INVISIBLE at apply by construction: 0102 backfilled every vendor's
@@ -520,7 +520,7 @@ router.get('/heroes', asyncHandler(async (req, res) => {
       .from('vendor_portfolio')
       .select('vendor_id, image_url')
       .in('vendor_id', vendorIds)
-      .eq('approval_state', 'approved')
+      .eq('safety_state', 'passed').is('discover_hidden_at', null)   // CE-47 WEB-4 cut 30 (R-47.2): Discover's rule, pictureRules.discoverFilter
       .eq('is_hero', true)
       .limit(vendorIds.length);
 

@@ -9,9 +9,9 @@
 //  · Basic keeps today's one-page site: `site` is today's four fields plus `v: 'classic'` (b148 3.1 by label), and the
 //    new top-level fields are empty. The classic `packages` is today's, byte for byte (Q4 does not touch it).
 //  · Essential and up: `site` is the six-style site from siteModel.resolveSite, shaped here.
-//  · A published look appears only once it has an approved photograph (gap 6); pending and rejected ones never show.
-//  · A picture she did not have approved never reaches a public page: cover slides and band photos are kept only when
-//    their address is one of her approved photographs (portfolio or look).
+//  · A published look appears only once it has a photograph on her pages (gap 6, as R-47.2 reads it: not held).
+//  · CE-47 WEB-4 cut 30 (R-47.2): a picture the safety check HELD never reaches a public page: cover slides and band
+//    photos are kept only when their address is one of her photographs on her pages (portfolio or look).
 //  · Prices follow rate_display (the founder's ruling). On the styles site a package row shows its figure only at or
 //    above her starting price (Q4); the room is told which rows are below it (packagesBelowStart).
 //  · Testimonials: approved only; a row with no request_id and no submitted_at is never shown (not the client's own
@@ -51,10 +51,11 @@ function photoOf(row) {
   return { url, w: num(r.width), h: num(r.height), focal_portrait: fp, focal_landscape: fl, alt: text('photo_alt', r.alt), caption: text('photo_caption', r.caption) };
 }
 
-/** Group approved look photos by look, in their own order. */
-/** CE-47 WEB-4 cut 17: on HER OWN SITE a look photograph shows when approved, or when it is her own Instagram photograph
- * still pending (rejected never shows). Discover and the admin queue are untouched: they keep the approval gate. */
-function showsOnHerSite(r) { return r.approval_state === 'approved' || (r.approval_state === 'pending' && r.source === 'instagram') || r.approval_state === undefined; }
+/** Group the look photos on her pages by look, in their own order. */
+/** CE-47 WEB-4 cut 30 (R-47.2, the founder's rule of 8 October): on HER OWN SITE every look photograph shows unless
+ * Google's safety check HELD it (pictureRules.onHerPages, the one home). A row read without the field (a demo) shows. */
+const PR = require('../vendor/pictureRules');
+function showsOnHerSite(r) { return PR.onHerPages(r); }
 function photosByLook(photoRows) {
   const m = new Map();
   for (const p of arr(photoRows)) {
@@ -254,7 +255,7 @@ function siteCard(input) {
     const live = liveLooks(i.looks, photoMap);
     const liveById = new Map(live.map((l) => [l.id, l]));
     const photoById = new Map();
-    for (const p of arr(i.lookPhotos).map(obj)) { if (p.id && showsOnHerSite(p) && p.approval_state !== undefined && !p.deleted_at) { const ph = photoOf(p); if (ph) photoById.set(p.id, ph); } }
+    for (const p of arr(i.lookPhotos).map(obj)) { if (p.id && showsOnHerSite(p) && p.safety_state !== undefined && !p.deleted_at) { const ph = photoOf(p); if (ph) photoById.set(p.id, ph); } }
     const okUrls = approvedUrls(i.portfolio, photoMap);
     const looks = live.map((l) => lookSummary(l, photoMap, i.rateDisplay, i.now));
     const cover = coverOf(row.cover, okUrls);

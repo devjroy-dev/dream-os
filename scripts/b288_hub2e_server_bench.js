@@ -80,9 +80,12 @@ const seed = () => ({
     { id: VA, business_name: 'Aman Frames', city: 'Delhi', category: 'makeup', instagram_handle: 'amanframes' }],
   hub_profiles: [{ id: 'p-star', owner_kind: 'org', org_id: 'org-star', handle: 'starlight.talent', display_name: 'Starlight Talent', roles: ['model'], city: 'Delhi', open_to: [], check_state: 'unchecked', created_at: '2026-10-03' }],
   vendor_portfolio: [
-    { id: 'pic-1', vendor_id: VME, image_url: CL('me-1'), approval_state: 'approved', position: 2, created_at: '2026-09-01' },
-    { id: 'pic-2', vendor_id: VME, image_url: CL('me-2'), approval_state: 'pending', position: 1, created_at: '2026-09-02' },
-    { id: 'pic-3', vendor_id: VME, image_url: CL('me-3'), approval_state: 'rejected', position: 3, created_at: '2026-09-03' },
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): WEB-4's contract names the held state: safety_state 'held'. The rows
+    // carry their switch-day state (approved -> passed; pending and rejected -> unchecked), and one HELD picture is added.
+    { id: 'pic-1', vendor_id: VME, image_url: CL('me-1'), approval_state: 'approved', safety_state: 'passed', position: 2, created_at: '2026-09-01' },
+    { id: 'pic-2', vendor_id: VME, image_url: CL('me-2'), approval_state: 'pending', safety_state: 'unchecked', position: 1, created_at: '2026-09-02' },
+    { id: 'pic-3', vendor_id: VME, image_url: CL('me-3'), approval_state: 'rejected', safety_state: 'unchecked', position: 3, created_at: '2026-09-03' },
+    { id: 'pic-h', vendor_id: VME, image_url: CL('me-h'), approval_state: 'approved', safety_state: 'held', position: 5, created_at: '2026-09-06' },
     { id: 'pic-x', vendor_id: VME, image_url: 'https://cdn.example.com/x.jpg', approval_state: 'approved', position: 4, created_at: '2026-09-04' },
     { id: 'pic-k', vendor_id: VK, image_url: CL('kabir-1'), approval_state: 'approved', position: 1, created_at: '2026-09-05' }],
   vendor_look_photos: [{ id: 'look-1', vendor_id: VME, url: CL('look-1') }],
@@ -137,7 +140,7 @@ async function cells() {
     sec('2  pictures come only from her TDW portfolio (R-47.2)');
     r = await s.call('GET', '/hub/me/pictures');
     ok(r.status === 200 && (r.body.pictures || []).map((x) => x.id).join(',') === 'pic-2,pic-1,pic-3' && r.body.most === 12 && r.body.pictures.every((x) => x.on_page === false),
-      '2.1 her pictures to choose from: every picture in her portfolio in any approval state (pending, approved, rejected), in her order; never a look’s, never another vendor’s', JSON.stringify(r.body).slice(0, 220));
+      '2.1 her pictures to choose from: every picture in her portfolio that is not held (passed or unchecked; R-47.2), in her order; never a held one, a look’s, or another vendor’s', JSON.stringify(r.body).slice(0, 220));
     r = await s.call('PATCH', '/hub/me', { work_urls: [CL('me-3'), CL('me-2'), CL('me-3')] });
     const me1 = await s.call('GET', '/hub/me');
     ok(r.status === 200 && r.body.line === 'Your page is saved.' && JSON.stringify(me1.body.page.work) === JSON.stringify([CL('me-3'), CL('me-2')]),
@@ -162,7 +165,7 @@ async function cells() {
     const held = strip(read('src/lib/hub/profiles.js'));
     const elsewhere = ['src/api/vendor/hub.js', 'src/lib/hub/people.js', 'src/api/public/hub.js', 'src/lib/hub/credits.js'].filter((f) => /approval_state|HELD_STATES|vendor_look_photos/.test(strip(read(f))));
     ok(Array.isArray(prof.HELD_STATES) && typeof prof.pictureOnPage === 'function' && (held.match(/HELD_STATES\.includes\(/g) || []).length === 1 && elsewhere.length === 0 && !/vendor_look_photos/.test(held),
-      '2.6 one home: the rule for which pictures may go on her page is pictureOnPage alone, with the held state(s) in HELD_STATES (empty until WEB-4’s contract names it)', elsewhere.join(', '));
+      '2.6 one home: the rule for which pictures may go on her page is pictureOnPage alone, with the held state in HELD_STATES (held, named by WEB-4 cut 30)', elsewhere.join(', '));
 
     sec('3  her page’s own fields');
     r = await s.call('PATCH', '/hub/me', { roles: ['photography', 'model'], open_to: ['paid', 'barter'], website: 'teststudio.example' });
@@ -191,7 +194,8 @@ const MUTS = [
   ['src/lib/hub/profiles.js', "  if (!vids.length) return list;\n", "  return list;\n", 'M1 pages no longer follow her profile', '1.1'],
   ['src/api/vendor/hub.js', "    if (!picked.every((u) => mine.has(u))) throw new Error('You can choose only pictures from your TDW portfolio.');\n", "", 'M2 any picture address accepted', '2.3'],
   ['src/lib/hub/people.js', "  if (q.city) rows = rows.filter((p) => sameCity(p.city, q.city));\n", "  if (q.city) rows = rows.filter((p) => sameCity(p.city, q.city) || p.vendor_id === 'v-kabir');\n", 'M3 the city chip reads the old city', '1.4'],
-  ['src/lib/hub/profiles.js', "const HELD_STATES = Object.freeze([]);", "const HELD_STATES = Object.freeze(['rejected']);", 'M4 a held state hides a picture', '2.1'],
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30: the held state is named now, so M4 empties it: a held picture is offered again.
+  ['src/lib/hub/profiles.js', "const HELD_STATES = Object.freeze(['held']);", "const HELD_STATES = Object.freeze([]);", 'M4 the held state removed: a held picture is offered', '2.1'],
   ['src/lib/hub/profiles.js', "    if (picsRead) { const ok = pics.get(p.vendor_id) || new Set(); out.work_urls = (p.work_urls || []).filter((u) => ok.has(u)); }\n", "", 'M5 a deleted picture stays on her page', '2.5'],
   ['src/api/vendor/hub.js', "  if (b.city !== undefined || b.display_name !== undefined || b.instagram_handle !== undefined) throw new Error('Your name, city and Instagram come from your TDW profile. Change them there.');\n", "", 'M6 her city set on the page again', '3.3'],
 ];

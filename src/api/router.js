@@ -122,6 +122,8 @@ router.use('/discover-heroes',       require('./admin/discoverHeroes').publicRou
 router.use('/discover',       require('./couple/discover'));
 router.use('/discover/enquire', require('./couple/enquire'));
 const requireCoupleAuth = require('./middleware/requireCoupleAuth');
+// CE-47 WEB-4 cut 30 (R-47.2 (d)): the Report button on Discover, signed-in Dreamers only. It hides nothing by itself.
+router.use('/discover/report', requireCoupleAuth, require('./couple/report'));
 router.use('/couple/me',      requireCoupleAuth, require('./couple/me'));
 router.use('/couple/muse',    requireCoupleAuth, require('./couple/muse'));
 router.use('/couple/profile', require('./couple/profile'));          // public, before /couple catch-all

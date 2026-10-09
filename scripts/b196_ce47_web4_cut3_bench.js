@@ -42,13 +42,21 @@ const V = (id, tier, extra) => Object.assign({ id, business_name: 'Studio ' + id
   date_check_enabled: true, about: 'About', rate_min: 40000, rate_display: true, tier, enquiry_routing: null, enquiry_phone: null }, extra || {});
 const CL = (vid, name) => `https://res.cloudinary.com/tdw/image/upload/${vid}/${name}.jpg`;
 const LOOKC = (vid, name) => `https://res.cloudinary.com/tdw/image/upload/vendor_looks/${vid}/${name}.jpg`;
+// AMENDED BY LABEL, CE-47 WEB-4 cut 30: Google's safety check, stood in. A fresh upload whose file name holds "fresh" is
+// answered adult LIKELY (held, by HOLD_RULE); every other picture is clean.
+const VISION = { apiKey: 'k', fetch: async (u, opt) => { const reqs = JSON.parse(opt.body).requests; return { ok: true, json: async () => ({ responses: reqs.map((r) => ({ safeSearchAnnotation: {
+  adult: /fresh/.test(r.image.source.imageUri) ? 'LIKELY' : 'VERY_UNLIKELY', spoof: 'VERY_UNLIKELY', medical: 'VERY_UNLIKELY', violence: 'VERY_UNLIKELY', racy: 'VERY_UNLIKELY' } })) }) }; } };
 function seed() {
   return {
     vendors: [V('basic1', 'basic'), V('ess1', 'essential'), V('sig1', 'signature'), V('pre1', 'prestige'), V('paused1', 'signature', { discover_paused: true })],
     vendor_portfolio: [
-      { id: '11111111-1111-4111-8111-111111111111', vendor_id: 'sig1', image_url: CL('sig1', 'approved'), approval_state: 'approved', position: 0 },
-      { id: '22222222-2222-4222-8222-222222222222', vendor_id: 'sig1', image_url: CL('sig1', 'pending'), approval_state: 'pending', position: 1 },
-      { id: '33333333-3333-4333-8333-333333333333', vendor_id: 'pre1', image_url: CL('pre1', 'other'), approval_state: 'approved', position: 0 },
+      // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2, the founder's rule of 8 October 2026): approval is gone; a picture is
+      // on her own pages unless Google's safety check HELD it. The 'pending' row stands in as a HELD picture (the one
+      // state her pages withhold), so every cell below keeps its shape: "approved" reads "not held", "pending" reads
+      // "held", and the admin's approve is now the admin's release.
+      { id: '11111111-1111-4111-8111-111111111111', vendor_id: 'sig1', image_url: CL('sig1', 'approved'), approval_state: 'approved', safety_state: 'passed', position: 0 },
+      { id: '22222222-2222-4222-8222-222222222222', vendor_id: 'sig1', image_url: CL('sig1', 'pending'), approval_state: 'pending', safety_state: 'held', position: 1 },
+      { id: '33333333-3333-4333-8333-333333333333', vendor_id: 'pre1', image_url: CL('pre1', 'other'), approval_state: 'approved', safety_state: 'passed', position: 0 },
     ],
     vendor_packages: [{ id: 'p-b', vendor_id: 'basic1', name: 'Trial', total: 5000, line_items: [], is_default: false, deleted_at: null },
       { id: 'p-s1', vendor_id: 'sig1', name: 'Bridal', total: 45000, line_items: [], is_default: true, deleted_at: null },
@@ -76,6 +84,7 @@ function seed() {
   const SC = load('src/lib/site/siteCard.js');
   async function server(store, parts) {
     const app = express(); app.use(express.json()); app.locals.supabase = store; app.set('trust proxy', true);
+    app.locals.safetyDeps = VISION;   // cut 30: Google stood in (a fresh upload named "fresh" is flagged and held)
     let who = null; app.use((q, r, n) => { q.vendor = who; n(); });
     if (parts.card) app.use('/card', parts.card); if (parts.t) app.use('/t', parts.t); if (parts.site) app.use('/site', parts.site); if (parts.admin) app.use('/admin', parts.admin);
     const s = await new Promise((r) => { const x = app.listen(0, '127.0.0.1', () => r(x)); }); const port = () => s.address().port;
@@ -107,8 +116,8 @@ function seed() {
   ok(() => JSON.stringify([basic.looks, basic.collections, basic.testimonials, basic.faq, basic.eliza]) === JSON.stringify([[], [], [], [], { live_booking: 'not_in_plan', own_voice: 'not_in_plan' }]), '1.2 Basic: the five fields empty, Eliza\'s words not_in_plan');
   ok(() => basic.packages.length === 1 && basic.packages[0].total === 5000, '1.3 Basic: packages as today, byte for byte: a row below her starting price keeps its figure (Q4 is styles only)');
   ok(() => sc && sc.site.v === 'styles' && sc.site.style === 'noir' && sc.site.palette && sc.site.fonts && sc.site.corners === 'square' && sc.site.buttons === 'gold_outline' && sc.site.texture === 'grain', '1.4 Signature: the styles site, resolved (style, palette, fonts, finish ids)');
-  ok(() => sc.site.cover.length === 1 && sc.site.cover[0].headline === 'The Night Bride', '1.5 a cover slide shows only over one of her APPROVED photographs (a pending one and a stranger\'s address are dropped)');
-  ok(() => sc.looks.length === 1 && sc.looks[0].slug === 'the-emerald-bride' && sc.looks[0].photo_count === 1 && sc.looks[0].from_price === 'From Rs 55,000' && sc.looks[0].is_new === true && sc.looks[0].has_video === true, '1.6 a published look with an approved photo shows; one whose only photo is pending does not');
+  ok(() => sc.site.cover.length === 1 && sc.site.cover[0].headline === 'The Night Bride', '1.5 a cover slide shows only over one of her pictures that is NOT HELD (a held one and a stranger\'s address are dropped; R-47.2)');
+  ok(() => sc.looks.length === 1 && sc.looks[0].slug === 'the-emerald-bride' && sc.looks[0].photo_count === 1 && sc.looks[0].from_price === 'From Rs 55,000' && sc.looks[0].is_new === true && sc.looks[0].has_video === true, '1.6 a published look with a photo that is not held shows; one whose only photo is held does not (R-47.2)');
   ok(() => sc.testimonials.length === 1 && sc.testimonials[0].name === 'Ananya' && sc.testimonials[0].month === '2026-02' && sc.testimonials[0].video && sc.testimonials[0].video.url === 'https://youtu.be/abc', '1.7 testimonials: approved and the client\'s own only (a typed row never shows); video on Signature');
   ok(() => ec.testimonials.length === 1 && ec.testimonials[0].video === null && ec.collections.length === 0, '1.8 Essential: written words only (the video is withheld), no collections');
   ok(() => JSON.stringify(sc.packages.map((p) => p.total)) === '[45000,null]', '1.9 Q4 on the styles site: a package below her starting price shows no figure');
@@ -155,10 +164,10 @@ function seed() {
   ok(() => f2.status === 500, '2.3 a failed vendor read answers as the card does (500), never as "no such look"');
 
   sec('3  her room\'s doors');
-  ok(() => lookA.status === 200 && pubA.status === 200 && pubA.body.public_state === 'live' && pubB.body.public_state === 'waiting_for_photos', '3.1 publish: live with an approved photo; "waiting_for_photos" with only a pending one');
+  ok(() => lookA.status === 200 && pubA.status === 200 && pubA.body.public_state === 'live' && pubB.body.public_state === 'waiting_for_photos', '3.1 publish: live with a photo that is not held; "waiting_for_photos" with only a held one (R-47.2)');
   const list = await sig('GET', '/looks');
   const la = list.body.looks.find((l) => l.id === idA); const lb = list.body.looks.find((l) => l.id === idB);
-  ok(() => la.public_state === 'live' && la.photos[0].review === 'approved' && lb.public_state === 'waiting_for_photos' && lb.photos[0].review === 'waiting', '3.2 per look public_state and per photo review (gap 6)');
+  ok(() => la.public_state === 'live' && la.photos[0].review === 'shown' && lb.public_state === 'waiting_for_photos' && lb.photos[0].review === 'held', '3.2 per look public_state and per photo review: shown or held (gap 6; R-47.2)');
   const b403 = await S.call('POST', '/site/looks', { title: 'x' }, vendorOf(store, 'basic1'));
   // AMENDED BY LABEL, CE-47 WEB-4 cut 16 (b261): Basic holds one free style and its looks section is open (ruling 1).
   ok(() => b403.status === 200 && store.tables.vendor_looks.some((l) => l.vendor_id === 'basic1'), '3.3 Basic\'s looks section is open (cut 16): her look is written');
@@ -179,28 +188,29 @@ function seed() {
   const colEss = await S.call('POST', '/site/collections', { name: 'X' }, vendorOf(store, 'ess1'));
   ok(() => col.status === 200 && colEss.status === 403, '3.10 collections: Signature yes, Essential no');
 
-  sec('4  a photo from her approved portfolio carries its approval; nothing else does (the chair\'s ruling, both ways)');
-  ok(() => phA.status === 200 && phA.body.photo.review === 'approved', '4.1 by the portfolio row\'s id: approved at once');
+  sec('4  a photo from her portfolio carries its safety state; nothing else does (the chair\'s ruling, both ways; R-47.2)');
+  ok(() => phA.status === 200 && phA.body.photo.review === 'shown', '4.1 by the portfolio row\'s id: shown at once');
   const byUrl = await sig('POST', `/looks/${idB}/photos`, { image_url: CL('sig1', 'approved') });
-  ok(() => byUrl.status === 200 && byUrl.body.photo.review === 'approved', '4.2 by its exact stored address: approved at once');
+  ok(() => byUrl.status === 200 && byUrl.body.photo.review === 'shown', '4.2 by its exact stored address: shown at once');
   const pendId = await sig('POST', `/looks/${idB}/photos`, { portfolio_id: '22222222-2222-4222-8222-222222222222' });
-  ok(() => pendId.status === 200 && pendId.body.photo.review === 'waiting', '4.3 her PENDING portfolio photo carries pending, not approval');
+  ok(() => pendId.status === 200 && pendId.body.photo.review === 'held', '4.3 her HELD portfolio photo carries held, not shown');
   const theirs = await sig('POST', `/looks/${idB}/photos`, { portfolio_id: '33333333-3333-4333-8333-333333333333' });
   const theirsUrl = await sig('POST', `/looks/${idB}/photos`, { image_url: CL('pre1', 'other') });
-  ok(() => theirs.status === 404 && theirsUrl.status === 400, '4.4 another vendor\'s approved photo, by id or by address, carries nothing (404 / refused)');
+  ok(() => theirs.status === 404 && theirsUrl.status === 400, '4.4 another vendor\'s passed photo, by id or by address, carries nothing (404 / refused)');
   const alike = await sig('POST', `/looks/${idB}/photos`, { image_url: CL('sig1', 'approved').replace('.jpg', '.jpeg') });
   ok(() => alike.status === 400, '4.5 an address that only RESEMBLES hers is not the same picture: refused');
-  ok(() => phB.status === 200 && phB.body.photo.review === 'waiting', '4.6 a fresh upload into her look folder waits for the admin');
+  ok(() => phB.status === 200 && phB.body.photo.review === 'held', '4.6 a fresh upload into her look folder is checked before the answer: Google flags it, it is held (R-47.2)');
 
-  sec('5  look photos in the admin queue');
-  const q = await S.call('GET', '/admin/queue?kind=look&state=pending');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): "Pictures to look at" lists HELD pictures of both tables, told apart by
+  // kind; the admin's one act on a held picture is release (the approve door is gone).
+  sec('5  held look photos in the admin queue');
+  const q = await S.call('GET', '/admin/queue');
   const freshId = phB.body && phB.body.photo.id;
-  ok(() => q.status === 200 && q.body.kind === 'look' && q.body.photos.some((p) => p.id === freshId), '5.1 the queue lists pending look photos under kind=look');
-  const qp = await S.call('GET', '/admin/queue?state=pending');
-  ok(() => qp.status === 200 && qp.body.photos.every((p) => !p.look_id), '5.2 the portfolio queue is unchanged (no look photos in it)');
-  const ap = await S.call('POST', `/admin/${freshId}/approve?kind=look`);
+  ok(() => q.status === 200 && q.body.held.some((p) => p.id === freshId && p.kind === 'look'), '5.1 the queue lists held look photos under kind look');
+  ok(() => q.status === 200 && q.body.held.filter((p) => p.kind === 'portfolio').every((p) => !p.look_id) && q.body.held.some((p) => p.kind === 'portfolio' && p.id === '22222222-2222-4222-8222-222222222222'), '5.2 held portfolio pictures are listed as kind portfolio (no look photo among them)');
+  const ap = await S.call('POST', `/admin/${freshId}/release?kind=look`);
   const after = await cardOf(S, 'sig1');
-  ok(() => ap.status === 200 && after.looks.some((l) => l.slug === 'waiting-look'), '5.3 approving it puts the waiting look on her site');
+  ok(() => ap.status === 200 && after.looks.some((l) => l.slug === 'waiting-look'), '5.3 releasing it puts the waiting look on her site');
 
   sec('6  kind words by request');
   const rq = await sig('POST', '/testimonials/requests', { client_id: '44444444-4444-4444-8444-444444444444' });
@@ -307,7 +317,7 @@ function seed() {
     const r = await SM.call('POST', `/site/looks/${lk.body.look.id}/photos`, { portfolio_id: '33333333-3333-4333-8333-333333333333' }, storeM.tables.vendors.find((x) => x.id === 'sig1'));
     carried = r.body && r.body.photo && r.body.photo.review; await SM.close();
   } finally { try { fs.unlinkSync(P('src/api/vendor/solutions/siteRoom.mut.js')); } catch { /* */ } }
-  ok(() => carried === 'approved' && !fs.existsSync(P('src/api/vendor/solutions/siteRoom.mut.js')), '8.8 run: with the scope removed another vendor\'s approved photo carries (so 4.4 is not vacuous); the mutant file is gone');
+  ok(() => carried === 'shown' && !fs.existsSync(P('src/api/vendor/solutions/siteRoom.mut.js')), '8.8 run: with the scope removed another vendor\'s passed photo carries (so 4.4 is not vacuous); the mutant file is gone');
   void SITEm;
   const storeT = makeStore(seed()); const TSmut = load('src/api/public/testimonial.js', TSm.replace(".is('used_at', null)", ''));
   const ST = await server(storeT, { t: TSmut, site: SITE });
@@ -326,8 +336,9 @@ function seed() {
     const ladder = fs.readdirSync(P('db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f) && f.slice(0, 4) > '0168').map((f) => 'db/migrations/' + f);
     for (const f of ladder) {
       const sql = read(f).split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
-      for (const b of sql.matchAll(/CREATE TABLE public\.(\w+) \(([\s\S]*?)\n\);/g)) for (const l of b[2].split('\n')) { const c = /^\s+([a-z_]+)\s+(uuid|text|integer|boolean|jsonb|timestamptz|date|bytea|numeric|text\[\]|uuid\[\])/.exec(l); if (c) add(b[1], c[1]); }
-      for (const b of sql.matchAll(/ALTER TABLE public\.(\w+)([\s\S]*?);/g)) for (const c of b[2].matchAll(/ADD COLUMN ([a-z_]+)/g)) add(b[1], c[1]);
+      // AMENDED BY LABEL, CE-47 WEB-4 cut 30: the parser also reads "IF NOT EXISTS" (0223 writes it, as 0208-0219 do)
+      for (const b of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?public\.(\w+) \(([\s\S]*?)\n\);/g)) for (const l of b[2].split('\n')) { const c = /^\s+([a-z_]+)\s+(uuid|text|integer|boolean|jsonb|timestamptz|date|bytea|numeric|text\[\]|uuid\[\])/.exec(l); if (c) add(b[1], c[1]); }
+      for (const b of sql.matchAll(/ALTER TABLE public\.(\w+)([\s\S]*?);/g)) for (const c of b[2].matchAll(/ADD COLUMN (?:IF NOT EXISTS )?([a-z_]+)/g)) add(b[1], c[1]);
     }
     const doc = read('docs/db/PUBLIC_SCHEMA.md');
     for (const sct of doc.split(/\n## public\./).slice(1)) { const t = sct.split(/\s/)[0]; for (const c of sct.matchAll(/\n\d+\. ([a-z_]+) /g)) add(t, c[1]); }

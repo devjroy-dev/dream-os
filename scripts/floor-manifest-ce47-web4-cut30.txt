@@ -1,0 +1,44 @@
+# scripts/floor-manifest-ce47-web4-cut30.txt
+# CE-47 · WEB-4 cut 30 · R-47.2, a vendor's pictures belong to her (the founder's rule of 8 October 2026; thresholds ruled 9 October) · base 6c25fb3 (server train 16) · F-19.16: a dirty path outside this list stops the floor.
+# Migration 0223 (above tip 0221: no register record). Rung b301 (48 cells). One rule file, src/lib/vendor/pictureRules.js. b07_p1, b07_p2, b07_p3, b10_p3, b44, b196, b197, b198, b240, b245, b263, b271 and b288 amended by label; scripts/lib/b196_store.js gains not(col, 'is', null). The switch-day pass lives in tools/, which the floor does not run. No new directory. No file deleted.
+db/migrations/0223_picture_rules.sql
+docs/handovers/TDW_CE47_WEB4_CUT30_HANDOVER.md
+scripts/b07_p1_bench.js
+scripts/b07_p2_bench.js
+scripts/b07_p3_bench.js
+scripts/b10_p3_mint_deck_bench.js
+scripts/b196_ce47_web4_cut3_bench.js
+scripts/b197_ce47_web4_cut4_bench.js
+scripts/b198_ce47_web4_cut5_bench.js
+scripts/b240_ce47_pro_p1_bench.js
+scripts/b245_ce47_pro_p3_bench.js
+scripts/b263_ce47_web4_cut17_bench.js
+scripts/b271_ce47_web4_cut26_bench.js
+scripts/b288_hub2e_server_bench.js
+scripts/b301_ce47_web4_cut30_bench.js
+scripts/b44_public_vendor_card_bench.js
+scripts/floor-manifest-ce47-web4-cut30.txt
+scripts/lib/b196_store.js
+src/api/admin/photos.js
+src/api/admin/vendorPortfolio.js
+src/api/couple/discover.js
+src/api/couple/report.js
+src/api/couple/taste.js
+src/api/public/vendorCard.js
+src/api/router.js
+src/api/vendor/collab.js
+src/api/vendor/portfolio.js
+src/api/vendor/solutions/siteRoom.js
+src/cron.js
+src/lib/brands/kit.js
+src/lib/hub/profiles.js
+src/lib/papers/issue.js
+src/lib/site/siteCard.js
+src/lib/vendor/discover.js
+src/lib/vendor/firstBuild.js
+src/lib/vendor/igImport.js
+src/lib/vendor/pictureRules.js
+src/lib/vendor/portfolio.js
+src/lib/vendor/profileScore.js
+src/lib/vendor/safetyCheck.js
+tools/r47_2_switch_day_pass.js

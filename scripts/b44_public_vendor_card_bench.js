@@ -95,20 +95,24 @@ const DEMO   = { display_name: 'Demo Films', category: 'Film', city: 'Jaipur',
 // struck — a cap would not have shown here, so the cell that proves its absence
 // is §7.3, which counts against the FIXTURE's approved total, not a literal.
 const PORTFOLIO = [
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/p2.jpg', caption: 'Second',  is_hero: false, in_carousel: true,  position: 2, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin' },
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/px.jpg', caption: 'Pending', is_hero: false, in_carousel: true,  position: 1, approval_state: 'pending',  rejection_reason: null,      reviewed_by_admin: null },
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/p1.jpg', caption: 'First',   is_hero: false, in_carousel: true,  position: 1, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin' },
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/pr.jpg', caption: 'Rejected',is_hero: false, in_carousel: true,  position: 3, approval_state: 'rejected', rejection_reason: 'blurry',  reviewed_by_admin: 'admin' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/p2.jpg', caption: 'Second',  is_hero: false, in_carousel: true,  position: 2, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin', safety_state: 'passed' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/px.jpg', caption: 'Pending', is_hero: false, in_carousel: true,  position: 1, approval_state: 'pending',  rejection_reason: null,      reviewed_by_admin: null, safety_state: 'unchecked' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/p1.jpg', caption: 'First',   is_hero: false, in_carousel: true,  position: 1, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin', safety_state: 'passed' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/pr.jpg', caption: 'Rejected',is_hero: false, in_carousel: true,  position: 3, approval_state: 'rejected', rejection_reason: 'blurry',  reviewed_by_admin: 'admin', safety_state: 'unchecked' },
   // in_carousel FALSE and approved. Under the charter's first wording this row
   // would have been withheld; under CE-38 relay #1's amendment it ships, because
   // the couple feed does not consult the flag either (F-19.22).
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/p4.jpg', caption: 'Off-carousel', is_hero: false, in_carousel: false, position: 4, approval_state: 'approved', rejection_reason: null, reviewed_by_admin: 'admin' },
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/p5.jpg', caption: null,      is_hero: false, in_carousel: true,  position: 5, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin' },
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/p6.jpg', caption: 'Sixth',   is_hero: false, in_carousel: true,  position: 6, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin' },
-  { vendor_id: 'v-live', image_url: 'https://cdn.example/p0.jpg', caption: 'Hero',    is_hero: true,  in_carousel: true,  position: 0, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/p4.jpg', caption: 'Off-carousel', is_hero: false, in_carousel: false, position: 4, approval_state: 'approved', rejection_reason: null, reviewed_by_admin: 'admin', safety_state: 'passed' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/p5.jpg', caption: null,      is_hero: false, in_carousel: true,  position: 5, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin', safety_state: 'passed' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/p6.jpg', caption: 'Sixth',   is_hero: false, in_carousel: true,  position: 6, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin', safety_state: 'passed' },
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/p0.jpg', caption: 'Hero',    is_hero: true,  in_carousel: true,  position: 0, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin', safety_state: 'passed' },
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): every row carries its switch-day safety_state (approved -> passed;
+  // pending and rejected -> unchecked, which her own pages show), and one HELD row is added: the only picture her
+  // storefront withholds now. It is declared out of order like the rest.
+  { vendor_id: 'v-live', image_url: 'https://cdn.example/ph.jpg', caption: 'Held',    is_hero: false, in_carousel: true,  position: 7, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin', safety_state: 'held' },
   // The paused vendor HAS approved photos. If §2-3 were a filter rather than
   // control flow, this row is what would leak.
-  { vendor_id: 'v-paus', image_url: 'https://cdn.example/q1.jpg', caption: 'Quiet',   is_hero: true,  in_carousel: true,  position: 0, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin' },
+  { vendor_id: 'v-paus', image_url: 'https://cdn.example/q1.jpg', caption: 'Quiet',   is_hero: true,  in_carousel: true,  position: 0, approval_state: 'approved', rejection_reason: null,      reviewed_by_admin: 'admin', safety_state: 'passed' },
 ];
 
 // ── THE TWO LAWS, WRITTEN SEPARATELY (P2-A correction 6) ────────────────────
@@ -155,6 +159,8 @@ function fake() {
       const q = { table, filters: [], orders: [], cols: null };
       q.select = (c) => { q.cols = c; SELECTS.push({ table, cols: c }); return q; };
       q.eq     = (c, v) => { q.filters.push([c, v]); FILTERS.push({ table, col: c }); return q; };
+      // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): the storefront reads `.neq('safety_state', 'held')`.
+      q.neq    = (c, v) => { q.nots = (q.nots || []).concat([[c, v]]); FILTERS.push({ table, col: c, op: 'neq' }); return q; };
       q.order  = (c, o) => { q.orders.push([c, o && o.ascending === false ? 'desc' : 'asc']); return q; };
 
       // A LIST READ. `vendor_portfolio` is awaited on the builder itself, with
@@ -169,7 +175,7 @@ function fake() {
           const f = Object.fromEntries(q.filters);
           if (q.cols === '*') return resolve({ data: PORTFOLIO.map((r) => ({ ...r })), error: null });
           let rows = PORTFOLIO.filter((r) =>
-            Object.entries(f).every(([c, v]) => r[c] === v));
+            Object.entries(f).every(([c, v]) => r[c] === v) && (q.nots || []).every(([c, v]) => r[c] !== v));
           // Apply the declared orders in sequence, last key first, so the
           // primary key wins — the same semantics PostgREST gives.
           for (let i = q.orders.length - 1; i >= 0; i--) {
@@ -531,12 +537,13 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_ena
     const c = (r.body && r.body.card) || {};
     const urls = (c.photos || []).map((p) => p.url);
 
-    // THE APPROVAL CELL. `approval_state='approved'` is the consent (third band
-    // §4-1); a pending or rejected row on a public URL is the vendor's unshown
-    // work published without her.
-    const leaked = urls.filter((u) => u.includes('/px.jpg') || u.includes('/pr.jpg'));
-    chk(leaked.length === 0, '§7.1 no unapproved photo reaches the wire',
-        leaked.length ? 'LEAKED: ' + leaked.join(', ') : 'pending and rejected rows both withheld');
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2, the founder's rule of 8 October 2026): her pictures belong to her.
+    // Her storefront shows every picture that is not HELD by the safety check; the old pending and rejected rows
+    // (switch day: unchecked) now ship, and the held row is the one that must not.
+    const leaked = urls.filter((u) => u.includes('/ph.jpg'));
+    const herOwn = ['/px.jpg', '/pr.jpg'].every((x) => urls.some((u) => u.includes(x)));
+    chk(leaked.length === 0 && herOwn, '§7.1 no HELD photo reaches the wire, and her unchecked pictures do (R-47.2)',
+        leaked.length ? 'LEAKED: ' + leaked.join(', ') : `held withheld; old pending and rejected shown=${herOwn}`);
 
     // The fixture declares position 0 LAST, so array order proving out means
     // the door ordered rather than inherited.
@@ -549,10 +556,11 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_ena
 
     // c-38.33. Counted against the fixture's approved total, never a literal —
     // a cell asserting `<= 12` would pass on a capped door too.
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 30: counted against the fixture's NOT-HELD total (R-47.2).
     const approvedForLive = PORTFOLIO.filter(
-      (p) => p.vendor_id === 'v-live' && p.approval_state === 'approved').length;
+      (p) => p.vendor_id === 'v-live' && p.safety_state !== 'held').length;
     chk((c.photos || []).length === approvedForLive,
-        '§7.3 EVERY approved row reaches the wire \u2014 no cap (MICRO-2)',
+        '§7.3 EVERY not-held row reaches the wire \u2014 no cap (MICRO-2; R-47.2)',
         `${(c.photos || []).length} of ${approvedForLive} approved; the ceiling is the portfolio\u2019s own 20`);
 
     // The off-carousel row is approved and MUST ship under the amended §2-1.

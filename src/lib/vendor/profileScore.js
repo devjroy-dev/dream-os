@@ -58,7 +58,7 @@
 // ── A DIVERGENCE, DECLARED NOT PAPERED (filed as F-07.4) ──────────────────────────
 // discover.js's gate counts `summary.total` — EVERY portfolio row, pending included
 // (portfolio.js:134-144). This score counts APPROVED rows only, because the feed
-// renders approved rows only (couple/discover.js:60 `.eq('approval_state','approved')`)
+// renders the pictures Discover shows only (CE-47 WEB-4 cut 30, R-47.2: passed and not hidden, pictureRules.discoverFilter)
 // and a completeness score that credits invisible photos would rank a card above what
 // a couple can actually see. The two readings are both defensible and they DISAGREE;
 // P2 reconciles them at the 5→6 raise. Named here so the next reader finds the seam
@@ -120,7 +120,7 @@ function hasText(v) {
  * The completeness score, 0–1.
  *
  * @param {object} p
- * @param {number} p.approvedPhotoCount  rows in vendor_portfolio with approval_state='approved'
+ * @param {number} p.approvedPhotoCount  rows in vendor_portfolio Discover shows (cut 30, R-47.2: passed, not hidden)
  * @param {boolean} p.hasHero            any approved row with is_hero=true
  * @param {string|null} p.about          vendors.about
  * @param {Array|null} p.aestheticTags   vendors.aesthetic_tags

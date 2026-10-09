@@ -172,8 +172,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const cols = {}; const add = (t, c) => { (cols[t] = cols[t] || new Set()).add(c); };
   for (const f of fs.readdirSync(P('db/migrations')).filter((x) => /^\d{4}_.*\.sql$/.test(x) && x.slice(0, 4) > '0168')) {
     const sql = read('db/migrations/' + f).split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
-    for (const b of sql.matchAll(/CREATE TABLE public\.(\w+) \(([\s\S]*?)\n\);/g)) for (const l of b[2].split('\n')) { const c = /^\s+([a-z_]+)\s+(uuid|text|integer|boolean|jsonb|timestamptz|date|bytea|numeric|text\[\]|uuid\[\])/.exec(l); if (c) add(b[1], c[1]); }
-    for (const b of sql.matchAll(/ALTER TABLE public\.(\w+)([\s\S]*?);/g)) for (const c of b[2].matchAll(/ADD COLUMN ([a-z_]+)/g)) add(b[1], c[1]);
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 30: the parser also reads "IF NOT EXISTS" (0223 writes it, as 0208-0219 do)
+    for (const b of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?public\.(\w+) \(([\s\S]*?)\n\);/g)) for (const l of b[2].split('\n')) { const c = /^\s+([a-z_]+)\s+(uuid|text|integer|boolean|jsonb|timestamptz|date|bytea|numeric|text\[\]|uuid\[\])/.exec(l); if (c) add(b[1], c[1]); }
+    for (const b of sql.matchAll(/ALTER TABLE public\.(\w+)([\s\S]*?);/g)) for (const c of b[2].matchAll(/ADD COLUMN (?:IF NOT EXISTS )?([a-z_]+)/g)) add(b[1], c[1]);
   }
   for (const sct of read('docs/db/PUBLIC_SCHEMA.md').split(/\n## public\./).slice(1)) { const t = sct.split(/\s/)[0]; for (const c of sct.matchAll(/\n\d+\. ([a-z_]+) /g)) add(t, c[1]); }
   add('vendor_sites', 'published_at');   // 0179's own column (in the snapshot and the ladder)

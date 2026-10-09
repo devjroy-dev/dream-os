@@ -57,6 +57,8 @@ function makeSupabase(tables) {
       ilike(col, val)   { state.filters.push(['ilike', col, val]);   return b; },
       overlaps(col, val){ state.filters.push(['overlaps', col, val]); return b; },
       in(col, vals)     { state.filters.push(['in', col, vals]);     state.rows = state.rows.filter(r => vals.includes(r[col])); return b; },
+      // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): Discover's rule adds .is('discover_hidden_at', null) to the photo read
+      is(col, val)      { state.filters.push(['is', col, val]);      state.rows = state.rows.filter(r => (val === null ? r[col] == null : r[col] === val)); return b; },
       then(resolve)     { calls.push(state); return Promise.resolve({ data: state.rows, error: null, count: state.rows.length }).then(resolve); },
     };
     return b;

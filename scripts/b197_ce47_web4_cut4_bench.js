@@ -22,7 +22,9 @@ const L = (id, vid, slug, status) => ({ id, vendor_id: vid, slug, title: slug, s
 const seed = () => ({
   vendors: [V('basic1', 'basic'), V('ess1', 'essential'), V('sig1', 'signature'), V('pre1', 'prestige')],
   vendor_looks: [L('l-e', 'ess1', 'rose', 'published'), L('l-s', 'sig1', 'emerald', 'published'), L('l-d', 'sig1', 'draft-one', 'draft'), L('l-p', 'pre1', 'gold', 'published')],
-  vendor_look_photos: [{ id: 'ph1', look_id: 'l-s', vendor_id: 'sig1', image_url: 'https://res.cloudinary.com/t/image/upload/vendor_looks/sig1/a.jpg', approval_state: 'pending', position: 0, deleted_at: null }],
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): the look photo is HELD by the safety check (approval is gone), and its
+  // id is a real uuid, as the admin's doors require.
+  vendor_look_photos: [{ id: 'aaaaaaaa-1111-4111-8111-111111111111', look_id: 'l-s', vendor_id: 'sig1', image_url: 'https://res.cloudinary.com/t/image/upload/vendor_looks/sig1/a.jpg', approval_state: 'pending', safety_state: 'held', position: 0, deleted_at: null }],
   site_visit_salt: [{ day: '2026-01-01', salt: '\\x' + '00'.repeat(32) }],
   site_visit_seen: [{ day: '2026-01-01', digest: '\\x' + 'ab'.repeat(32) }],
 });
@@ -52,17 +54,20 @@ const seed = () => ({
   ok(() => /^BEGIN;$/m.test(body) && /^COMMIT;$/m.test(body) && /ADD COLUMN rejection_reason text CHECK \(rejection_reason IS NULL OR char_length\(rejection_reason\) BETWEEN 1 AND 200\)/.test(body) && /ADD COLUMN reviewed_at\s+timestamptz/.test(body), '1.2 one transaction: the reason (1 to 200) and the review time on vendor_look_photos');
   ok(() => body.length > 0 && !/\bDROP\b|\bUPDATE\b|\bDELETE\b|CREATE POLICY|GRANT/i.test(body), '1.3 nothing dropped, no data touched, no grant needed (the table\'s carry)');
 
-  sec('2  a look photo\'s reason, from the admin queue into her room');
-  const rej = await S.call('POST', '/admin/ph1/reject?kind=look', { reason: '  The face is out of focus. ' + 'x'.repeat(300) });
-  const ph = store.tables.vendor_look_photos[0];
-  ok(() => rej.status === 200 && ph.approval_state === 'rejected' && ph.rejection_reason.startsWith('The face is out of focus.') && ph.rejection_reason.length === 200 && ph.reviewed_at, '2.1 a rejection keeps its reason (trimmed, at most 200) and its time');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2, the founder's rule of 8 October 2026): there is no reject and no
+  // reason any more. A HELD look photo shows her the founder's line; the admin's release clears it. Same three cells.
+  sec('2  a held look photo, from the admin queue into her room (R-47.2)');
+  const PH = 'aaaaaaaa-1111-4111-8111-111111111111';
   const room = await S.call('GET', '/site/looks', undefined, { as: vendor('sig1') });
   const p1 = room.body && room.body.looks.find((l) => l.id === 'l-s').photos[0];
-  ok(() => p1 && p1.review === 'not_approved' && p1.reason && p1.reason.startsWith('The face'), '2.2 her room shows "not approved" with the reason');
-  await S.call('POST', '/admin/ph1/approve?kind=look');
+  const ph = store.tables.vendor_look_photos[0];
+  ok(() => p1 && p1.review === 'held' && p1.notice === 'TDW is checking this picture. It is not shown yet.' && !('reason' in p1), '2.1 a held photo shows her the founder\'s line, and no reason key');
+  const rej = await S.call('POST', `/admin/${PH}/reject?kind=look`, { reason: 'The face is out of focus.' });
+  ok(() => rej.status === 404 && ph.safety_state === 'held' && ph.rejection_reason === undefined, '2.2 the reject door is gone: 404, nothing written');
+  const rel = await S.call('POST', `/admin/${PH}/release?kind=look`);
   const room2 = await S.call('GET', '/site/looks', undefined, { as: vendor('sig1') });
   const p2 = room2.body.looks.find((l) => l.id === 'l-s').photos[0];
-  ok(() => ph.approval_state === 'approved' && ph.rejection_reason === null && p2.review === 'approved' && p2.reason === null, '2.3 approving clears the reason; an approved photo shows none');
+  ok(() => rel.status === 200 && ph.safety_state === 'passed' && p2.review === 'shown' && p2.notice === null, '2.3 the admin\'s release: shown, with no line');
 
   sec('3  visits, nobody identified');
   const r1 = await S.call('POST', '/s/visit', { code: 'sig1', page: 'home', ref: 'https://www.google.com/' }); await settle();
@@ -118,8 +123,9 @@ const seed = () => ({
   const add = (t, c) => { (cols[t] = cols[t] || new Set()).add(c); };
   for (const f of fs.readdirSync(P('db/migrations')).filter((x) => /^\d{4}_.*\.sql$/.test(x) && x.slice(0, 4) > '0168')) {
     const sql = read('db/migrations/' + f).split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
-    for (const b of sql.matchAll(/CREATE TABLE public\.(\w+) \(([\s\S]*?)\n\);/g)) for (const l of b[2].split('\n')) { const c = /^\s+([a-z_]+)\s+(uuid|text|integer|boolean|jsonb|timestamptz|date|bytea|numeric|text\[\]|uuid\[\])/.exec(l); if (c) add(b[1], c[1]); }
-    for (const b of sql.matchAll(/ALTER TABLE public\.(\w+)([\s\S]*?);/g)) for (const c of b[2].matchAll(/ADD COLUMN ([a-z_]+)/g)) add(b[1], c[1]);
+    // AMENDED BY LABEL, CE-47 WEB-4 cut 30: the parser also reads "IF NOT EXISTS" (0223 writes it, as 0208-0219 do)
+    for (const b of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?public\.(\w+) \(([\s\S]*?)\n\);/g)) for (const l of b[2].split('\n')) { const c = /^\s+([a-z_]+)\s+(uuid|text|integer|boolean|jsonb|timestamptz|date|bytea|numeric|text\[\]|uuid\[\])/.exec(l); if (c) add(b[1], c[1]); }
+    for (const b of sql.matchAll(/ALTER TABLE public\.(\w+)([\s\S]*?);/g)) for (const c of b[2].matchAll(/ADD COLUMN (?:IF NOT EXISTS )?([a-z_]+)/g)) add(b[1], c[1]);
   }
   for (const sct of read('docs/db/PUBLIC_SCHEMA.md').split(/\n## public\./).slice(1)) { const t = sct.split(/\s/)[0]; for (const c of sct.matchAll(/\n\d+\. ([a-z_]+) /g)) add(t, c[1]); }
   const bad = []; for (const bag of [store.written, store.selected]) for (const [t, ks] of Object.entries(bag)) for (const k of ks) if (!(cols[t] && cols[t].has(k))) bad.push(t + '.' + k);
@@ -139,7 +145,8 @@ const seed = () => ({
   { const st = makeStore(seed()); const X = await server(st, { site: SRm ? load('src/api/vendor/solutions/site.js', read('src/api/vendor/solutions/site.js').replace("require('./siteRoom')", "require('./siteRoom')")) : null });
     await X.close(); ok(() => SRm !== null && read('src/api/vendor/solutions/siteRoom.js').includes('by_source: r >= 2 ? bySource : null'), '7.4 the sources gate is one named line (removing it gives Essential sources: 5.3 reddens)'); }
   const ADm = read('src/api/admin/photos.js');
-  ok(() => ADm.includes("rejection_reason: why,") && ADm.includes("rejection_reason: null, reviewed_at"), '7.5 the reason is written on reject and cleared on approve by named lines (2.1 and 2.3 hold them)');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): the release is one named, guarded line, and no reason is written anywhere.
+  ok(() => ADm.includes(".eq('id', id).eq('safety_state', PR.SAFETY.HELD)") && !/rejection_reason/.test(ADm), '7.5 the release moves only a held picture, by one named line; no door writes a reason (2.2 and 2.3 hold them)');
 
   await S.close();
   console.log(`\nb197 ${pass} passed, ${fail} failed${fail ? ': ' + failed.join(' | ') : ''}`);

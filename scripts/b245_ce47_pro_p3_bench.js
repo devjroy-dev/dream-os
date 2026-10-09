@@ -221,8 +221,10 @@ const call = async (srv, method, p, body, as) => {
 
   console.log('\n── 4  the public kit door: named fields only ──');
   const K = require(path.join(ROOT, 'src/lib/brands/kit.js'));
-  const SK = store({ ...seed(), vendor_portfolio: [{ vendor_id: A, image_url: 'https://res.cloudinary.com/tdw/a.jpg', caption: 'Bridal look', is_hero: true, position: 0, approval_state: 'approved', created_at: '2026-01-01', rejection_reason: null },
-    { vendor_id: A, image_url: 'https://res.cloudinary.com/tdw/b.jpg', caption: null, is_hero: false, position: 1, approval_state: 'rejected', created_at: '2026-01-02', rejection_reason: 'blurry' }],
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2; the chair: "the kit shows what her own pages show (not 'held')"): the
+  // second row is HELD by the safety check, the one picture the kit withholds now.
+  const SK = store({ ...seed(), vendor_portfolio: [{ vendor_id: A, image_url: 'https://res.cloudinary.com/tdw/a.jpg', caption: 'Bridal look', is_hero: true, position: 0, approval_state: 'approved', safety_state: 'passed', created_at: '2026-01-01', rejection_reason: null },
+    { vendor_id: A, image_url: 'https://res.cloudinary.com/tdw/b.jpg', caption: null, is_hero: false, position: 1, approval_state: 'rejected', safety_state: 'held', created_at: '2026-01-02', rejection_reason: 'blurry' }],
   vendor_testimonials: [{ vendor_id: A, author: 'Ananya', body: 'She understood my face in ten minutes.', place: 'Udaipur', position: 0, state: 'approved', deleted_at: null }, { vendor_id: A, author: 'Hidden', body: 'Not approved.', place: null, position: 1, state: 'pending', deleted_at: null }],
   pro_kits: [{ vendor_id: A, contact_email: 'hello@studioivara.in', followers: null, followers_on: null }] });
   let reads = 0; const deps = { readFollowers: async () => { reads += 1; return 8420; } };
@@ -237,7 +239,7 @@ const call = async (srv, method, p, body, as) => {
     '4.1 the kit’s shape is the named allowlist, field by field', JSON.stringify(kit && Object.keys(kit)));
   ok(!/27AAGCB7383J1Z8|ivara@upi|\+9198|rejection|blurry|Not approved|"id"|vendor_id/.test(r.raw), '4.2 the raw body holds no GSTIN, UPI, phone, rejected photo, unapproved words or row id', r.raw.slice(0, 200));
   ok(kit.photos.length === 1 && kit.words.length === 1 && kit.followers === 8420 && kit.contact.email_link === 'mailto:hello@studioivara.in?subject=Collaboration%20enquiry' && kit.contact.instagram_url === 'https://www.instagram.com/studio.ivara/' && kit.weddings === 0,
-    '4.3 approved photos and words only; followers read through her own connection; her chosen email and her Instagram', JSON.stringify(kit));
+    '4.3 photos that are not held (R-47.2) and approved words only; followers read through her own connection; her chosen email and her Instagram', JSON.stringify(kit));
   const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
   ok(JSON.stringify(kit.footer) === JSON.stringify(['Weddings are counted by TDW from bookings with an invoice and a payment recorded in TDW.', `Followers as of ${R.fullDate(today)}.`]) && kit.footer.every(SENT), '4.4 the footer: the founder’s weddings line, then "Followers as of <date>." (no Google reviews are read yet)', JSON.stringify(kit.footer));
   await call(srvK, 'GET', '/kit/DEV440');

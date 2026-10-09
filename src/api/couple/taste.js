@@ -103,7 +103,7 @@ router.get('/surprise', asyncHandler(async (req, res) => {
     const { data: portfolio } = await supabase
       .from('vendor_portfolio')
       .select('id, image_url, caption, aesthetic_tags, vendor_id')
-      .eq('approval_state', 'approved')
+      .eq('safety_state', 'passed').is('discover_hidden_at', null)   // CE-47 WEB-4 cut 30 (R-47.2): Discover's rule, pictureRules.discoverFilter
       .not('image_url', 'is', null)
       .limit(50);
 

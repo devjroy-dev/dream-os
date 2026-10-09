@@ -46,7 +46,7 @@ async function kitFor({ supabase, code, now = Date.now(), deps = {} }) {
   if (!v.data || v.data.status !== 'active' || v.data.discover_paused === true) return null;
   const vendor = v.data; const today = todayIST(now);
   const [photos, words, kit, w] = await Promise.all([
-    supabase.from('vendor_portfolio').select(PHOTO_SELECT).eq('vendor_id', vendor.id).eq('approval_state', 'approved').order('position', { ascending: true }).order('created_at', { ascending: false }).limit(MAX_PHOTOS),
+    supabase.from('vendor_portfolio').select(PHOTO_SELECT).eq('vendor_id', vendor.id).neq('safety_state', 'held').order('position', { ascending: true })   /* CE-47 WEB-4 cut 30 (R-47.2): her kit shows what her own pages show, pictureRules.herPagesFilter */.order('created_at', { ascending: false }).limit(MAX_PHOTOS),
     supabase.from('vendor_testimonials').select(WORDS_SELECT).eq('vendor_id', vendor.id).eq('state', 'approved').is('deleted_at', null).order('position', { ascending: true }).limit(MAX_WORDS),
     supabase.from('pro_kits').select('contact_email, followers, followers_on').eq('vendor_id', vendor.id).maybeSingle(),
     verifiedWeddings({ supabase, vendorId: vendor.id, now }),

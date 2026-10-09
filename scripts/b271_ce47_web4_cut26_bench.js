@@ -60,7 +60,9 @@ async function door(mod, st, d) {
   const st1 = world({ vendor_portfolio: [UP(0), UP(1)] }); const d1 = deps(st1); const s1 = await build(FB, st1, V('v1', 'basic'), d1);
   const look1 = st1.tables.vendor_looks;
   ok(() => look1.length === 2 && look1.every((l) => l.source === 'manual' && l.status === 'draft'), '1.1 (c) a look made from her uploaded photo is written source manual, status draft', JSON.stringify(look1.map((l) => [l.source, l.status])));
-  ok(() => st1.tables.vendor_look_photos.length === 2 && st1.tables.vendor_look_photos.every((p) => p.source === 'upload' && p.approval_state === 'pending'), '1.2 (c) the look PHOTO keeps the truth: source upload, approval pending (her site\'s rule reads this)');
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): approval is gone; the look photo carries its portfolio picture's safety
+  // state (the fixture's pictures were never checked: unchecked, which her site shows), and writes no approval_state.
+  ok(() => st1.tables.vendor_look_photos.length === 2 && st1.tables.vendor_look_photos.every((p) => p.source === 'upload' && p.safety_state === 'unchecked' && p.approval_state === undefined), '1.2 (c) the look PHOTO keeps the truth: source upload, its picture\'s safety state (her site\'s rule reads this)');
   ok(() => stepOf(s1, 'photos').state === 'skipped' && stepOf(s1, 'photos').line === 'Your portfolio has 2 photos. We used them for your website.' && stepOf(s1, 'photos').counts.own === 2, '1.3 (d) the photos line names her photos and says they were used, not a gap', JSON.stringify(stepOf(s1, 'photos')));
   ok(() => stepOf(s1, 'website').state === 'done' && st1.tables.vendor_site_drafts[0].settings.cover.length === 2 && stepOf(s1, 'website').counts.photos === 2, '1.4 the website step: her draft has her two photos as cover slides');
   ok(() => !st1.tables.vendor_sites.some((x) => x.published_at), '1.5 nothing published');

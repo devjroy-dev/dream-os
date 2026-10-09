@@ -164,14 +164,16 @@ const rd = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
     leads: [{ vendor_id: 'v1', id: 'LB', binder_id: 'B', wedding_city: 'Jaipur', wedding_date: '2026-09-20', deleted_at: null }] };
   const w10 = await verifiedWeddings({ supabase: store(T10), vendorId: 'v1', now: Date.parse('2026-10-06T06:00:00Z') });
   ok(w10.count === 1 && w10.weddings[0].city === 'Jaipur' && w10.weddings[0].month === '2026-09', '10.3 through a store: the binder\'s lead is read for its city; the count is unchanged', JSON.stringify(w10));
-  const PF = { vendor_portfolio: [{ vendor_id: 'v1', image_url: 'https://res.cloudinary.com/x/image/upload/v1/me.jpg', approval_state: 'approved' }, { vendor_id: 'v1', image_url: 'https://res.cloudinary.com/x/image/upload/v1/no.jpg', approval_state: 'rejected' }, { vendor_id: 'v2', image_url: 'https://res.cloudinary.com/x/image/upload/v1/hers.jpg', approval_state: 'approved' }] };
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): "refused" now means HELD by the safety check (the only picture her own
+  // pages withhold); the rows carry their switch-day safety_state beside the old column.
+  const PF = { vendor_portfolio: [{ vendor_id: 'v1', image_url: 'https://res.cloudinary.com/x/image/upload/v1/me.jpg', approval_state: 'approved', safety_state: 'passed' }, { vendor_id: 'v1', image_url: 'https://res.cloudinary.com/x/image/upload/v1/no.jpg', approval_state: 'rejected', safety_state: 'held' }, { vendor_id: 'v2', image_url: 'https://res.cloudinary.com/x/image/upload/v1/hers.jpg', approval_state: 'approved', safety_state: 'passed' }] };
   const st10 = mk({ ...JSON.parse(JSON.stringify(T7)), ...PF });
   const idOk = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/me.jpg' }, now: N });
   ok(idOk.ok && idOk.paper.figures.photo_url === 'https://res.cloudinary.com/x/image/upload/v1/me.jpg', '10.4 an ID with her own portfolio photo keeps it on the paper');
   const idOther = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/hers.jpg' }, now: N });
   const idRej = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/no.jpg' }, now: N });
   const idHttp = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card', photo_url: 'http://example.com/a.jpg' }, now: N });
-  ok([idOther, idRej, idHttp].every((r) => !r.ok && r.status === 400 && r.error === 'Pick a photo from your portfolio.'), '10.5 another vendor\'s photo, a refused photo, or a non-https link is refused in plain words');
+  ok([idOther, idRej, idHttp].every((r) => !r.ok && r.status === 400 && r.error === 'Pick a photo from your portfolio.'), '10.5 another vendor\'s photo, a held photo (R-47.2), or a non-https link is refused in plain words');
   const idNone = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'id_card' }, now: N });
   const cert10 = await I.issuePaper({ supabase: st10, vendor: VEN, body: { kind: 'certificate', photo_url: 'https://res.cloudinary.com/x/image/upload/v1/me.jpg' }, now: N });
   ok(idNone.ok && idNone.paper.figures.photo_url === null && cert10.ok && cert10.paper.figures.photo_url === undefined, '10.6 the photo stays optional on the ID and never rides on a certificate');

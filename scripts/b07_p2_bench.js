@@ -370,7 +370,7 @@ section('§9 · THE SERVER CARRIES THE FLOOR (CE ruling §F)');
 {
   const sb = makeSupabase({
     vendors: [SWATI],
-    vendor_portfolio: [{ id: 'p1', vendor_id: SWATI.id, approval_state: 'approved' }],
+    vendor_portfolio: [{ id: 'p1', vendor_id: SWATI.id, approval_state: 'approved', safety_state: 'passed', discover_hidden_at: null }],   // AMENDED BY LABEL, cut 30: `approved` counts what Discover shows (R-47.2)
     vendor_discover_requests: [], muse_saves: [],
   });
   const st = await vendorDisc.getDiscoverStatus(sb, SWATI.id);

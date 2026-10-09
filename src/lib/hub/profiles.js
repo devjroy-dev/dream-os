@@ -54,19 +54,19 @@ async function ensureVendorProfile(sb, vendorId) {
 // R-47.2 (the founder, 8 Oct 2026): her pictures are hers. Any picture of hers in vendor_portfolio may go on her page,
 // in any approval state, EXCEPT one the image safety check holds. WEB-4's contract will name the held state; it is added
 // in HELD_STATES and nowhere else. Pictures in looks (vendor_look_photos) are never offered: only vendor_portfolio is read.
-const HELD_STATES = Object.freeze([]);   // the safety check's held state(s), once WEB-4's contract names them
+const HELD_STATES = Object.freeze(['held']);   // CE-47 WEB-4 cut 30 (R-47.2): pictureRules.SAFETY.HELD, read from safety_state
 const PICTURE = /^https:\/\/res\.cloudinary\.com\/[^\s]+$/;
 /** One home for "may this portfolio picture be on her page?" */
 function pictureOnPage(row) {
   // If WEB-4's contract puts the held state in a column of its own, that column is read here and only here.
-  return !!row && typeof row.image_url === 'string' && PICTURE.test(row.image_url) && !HELD_STATES.includes(row.approval_state);
+  return !!row && typeof row.image_url === 'string' && PICTURE.test(row.image_url) && !HELD_STATES.includes(row.safety_state);
 }
 const IG = /^[A-Za-z0-9._]{1,30}$/;
 const igHandle = (h) => { const x = String(h || '').replace(/^@+/, ''); return IG.test(x) ? x : null; };
 
 /** Her portfolio pictures that may go on her page, in her portfolio's order. */
 async function pagePictures(sb, vendorId) {
-  const { data, error } = await sb.from('vendor_portfolio').select('id, vendor_id, image_url, approval_state, position, created_at').eq('vendor_id', vendorId);
+  const { data, error } = await sb.from('vendor_portfolio').select('id, vendor_id, image_url, safety_state, position, created_at').eq('vendor_id', vendorId);
   if (error) throw new Error('Your portfolio could not be read. Please try again.');
   return (data || []).filter(pictureOnPage)
     .sort((x, y) => ((x.position ?? 1e9) - (y.position ?? 1e9)) || String(x.created_at || '').localeCompare(String(y.created_at || '')));
@@ -80,7 +80,7 @@ async function livePages(sb, rows) {
   if (!vids.length) return list;
   const [vr, pr] = await Promise.all([
     sb.from('vendors').select('id, business_name, city, instagram_handle').in('id', vids),
-    sb.from('vendor_portfolio').select('vendor_id, image_url, approval_state').in('vendor_id', vids),
+    sb.from('vendor_portfolio').select('vendor_id, image_url, safety_state').in('vendor_id', vids),
   ]);
   const byV = new Map(((vr && vr.data) || []).map((v) => [v.id, v]));
   const pics = new Map();

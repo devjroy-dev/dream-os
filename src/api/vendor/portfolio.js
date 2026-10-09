@@ -8,7 +8,7 @@ const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-const { generateUploadParams, registerImage, listImages, updateImage, setHeroImage, reorderImages, deleteImage, canAcceptMore } = require('../../lib/vendor/portfolio');
+const { generateUploadParams, registerImage, listImages, listNotices, markNoticeSeen, updateImage, setHeroImage, reorderImages, deleteImage, canAcceptMore } = require('../../lib/vendor/portfolio');
 
 // POST /upload-url — signed Cloudinary params for direct browser upload
 router.post('/upload-url', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
@@ -32,9 +32,14 @@ router.post('/upload-url', requireAuth, resolveVendor(), asyncHandler(async (req
 }));
 
 // POST / — register uploaded image
+// CE-47 WEB-4 cut 30 (R-47.2, the chair's ruling 5): the door passes ONLY the picture's own fields. approval_state and
+// source sent by a vendor are ignored: source is 'upload' at this door, and the state is set by the safety check.
+const PICTURE_FIELDS = ['image_url', 'caption', 'aesthetic_tags', 'is_hero', 'in_carousel'];
 router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const result   = await registerImage(supabase, req.vendor.id, req.body || {});
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const body = {}; for (const k of PICTURE_FIELDS) if (b[k] !== undefined) body[k] = b[k];
+  const result   = await registerImage(supabase, req.vendor.id, body, { source: 'upload', safetyDeps: req.app.locals.safetyDeps });
   if (!result.ok) return errRes(res, 400, result.error);
   return okRes(res, { image: result.image });
 }));
@@ -45,7 +50,16 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   const state    = (req.query.state || 'all').trim();
   const result   = await listImages(supabase, req.vendor.id, state);
   if (!result.ok) return errRes(res, 500, result.error);
-  return okRes(res, { images: result.images, total: result.total });
+  // R-47.2 (e): the notices on her portfolio (a removal for a legal reason), unseen, newest first
+  return okRes(res, { images: result.images, total: result.total, notices: await listNotices(supabase, req.vendor.id) });
+}));
+
+// PATCH /notices/:noticeId/seen — she has read a notice on her portfolio (R-47.2 (e)); it stops showing.
+router.patch('/notices/:noticeId/seen', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  if (!/^[0-9a-f-]{36}$/i.test(String(req.params.noticeId))) return errRes(res, 404, 'That was not found.');
+  const done = await markNoticeSeen(req.app.locals.supabase, req.vendor.id, req.params.noticeId);
+  if (!done) return errRes(res, 404, 'That was not found.');
+  return okRes(res, {});
 }));
 
 // PATCH /reorder — the manager's drag (TDW_07 P3).

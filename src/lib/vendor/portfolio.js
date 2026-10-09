@@ -4,6 +4,9 @@
 
 const crypto = require('crypto');
 const { signUpload, uploadUrl, nowTimestamp } = require('../cloudinarySign');
+// CE-47 WEB-4 cut 30 (R-47.2): a picture's state is read and written through these two, nowhere else.
+const PR = require('./pictureRules');
+const safety = require('./safetyCheck');
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dccso5ljv';
 const API_KEY    = process.env.CLOUDINARY_API_KEY;
@@ -155,12 +158,15 @@ async function currentOrder(supabase, vendorId) {
 }
 
 // Register a newly uploaded image.
-async function registerImage(supabase, vendorId, body) {
-  const { image_url, caption, aesthetic_tags, is_hero, in_carousel, approval_state } = body;
+// CE-47 WEB-4 cut 30 (R-47.2; the chair's ruling 5 of 8 October): the body carries ONLY the picture's own fields
+// (image_url, caption, aesthetic_tags, is_hero, in_carousel). Its source and its state are NEVER taken from the body:
+// `source` is set by the path the picture came by ('upload' unless the Instagram import says so through `internal`,
+// which no door can reach), and its state by Google's safety check, run here before the answer (pictureRules.js).
+async function registerImage(supabase, vendorId, body, internal) {
+  const { image_url, caption, aesthetic_tags, is_hero, in_carousel } = body || {};
   if (!image_url) return { ok: false, error: 'image_url is required.' };
-  // CE-47 WEB-4 cut 17 (0195): where the photograph came from. 'upload' unless the Instagram import says 'instagram'.
-  const source = body.source === undefined || body.source === null ? 'upload' : body.source;
-  if (!['upload', 'instagram'].includes(source)) return { ok: false, error: 'source must be upload or instagram.' };
+  const it = internal || {};
+  const source = it.source === 'instagram' ? 'instagram' : 'upload';
 
   // Cap site 1 — the vendor register door.
   const room = await canAcceptMore(supabase, vendorId, 1);
@@ -173,6 +179,12 @@ async function registerImage(supabase, vendorId, body) {
   // from then on the vendor's order is the vendor's.
   const position = room.count;
 
+  // R-47.2 (b): the safety check, inside the door, before the answer (4 seconds at most). The Instagram import checks
+  // in batches of 16 and hands each picture's answer in `internal.safety`. A picture it cannot check is 'unchecked':
+  // live on her own pages, not on Discover, checked again by the sweep.
+  const checked = it.safety || (await safety.check([image_url], it.safetyDeps))[0];
+  const f = safety.fieldsOf(checked) || { safety_state: PR.SAFETY.UNCHECKED };
+
   const { data: image, error } = await supabase.from('vendor_portfolio').insert({
     vendor_id:     vendorId,
     image_url,
@@ -180,16 +192,12 @@ async function registerImage(supabase, vendorId, body) {
     aesthetic_tags: aesthetic_tags || [],
     is_hero:       false,   // is_hero is written by writeOrder alone — see above
     in_carousel:   in_carousel !== false,
-    // The IG import is the only caller that passes this, and it passes 'approved'
-    // on the founder's ruling 「 b. its an incentive to finish profile fast. 」
-    // (Fork 4). Manual uploads stay 'pending'. THE ASYMMETRY IS INTENDED, NOT
-    // DRIFT: the same photo is live-on-arrival if it came from Instagram and
-    // in-review if it came from the phone. Equalizing the two needs its own
-    // future ruling; nothing here may quietly close the gap.
-    approval_state: approval_state === 'approved' ? 'approved' : 'pending',
+    // R-47.2 closed the old asymmetry (Instagram live on arrival, the phone in review): every picture is live on
+    // her own pages at once, whichever way it came. approval_state is no longer written (history, read by nothing).
+    ...f,
     source,
     position,
-  }).select().single();
+  }).select(PR.VENDOR_PORTFOLIO_COLS).single();
 
   if (error) return { ok: false, error: error.message };
 
@@ -198,27 +206,45 @@ async function registerImage(supabase, vendorId, body) {
     const cur = await currentOrder(supabase, vendorId);
     if (cur.ok) await writeOrder(supabase, vendorId, [image.id, ...cur.ids.filter(id => id !== image.id)]);
   }
-  return { ok: true, image };
+  return { ok: true, image: PR.vendorPicture(image) };
 }
 
 // List portfolio images.
+// CE-47 WEB-4 cut 30 (R-47.2): her list carries each picture's state in her words (pictureRules.vendorPicture):
+// shown_on_her_pages, shown_on_discover and one `notice` line, never approval_state or the old rejection reason.
+// `state` filters: 'all', 'held', 'hidden' (hidden from Discover), 'shown'.
 async function listImages(supabase, vendorId, state = 'all') {
   let q = supabase.from('vendor_portfolio')
-    .select('id, image_url, caption, aesthetic_tags, is_hero, in_carousel, approval_state, rejection_reason, created_at, position')
+    .select(PR.VENDOR_PORTFOLIO_COLS)
     .eq('vendor_id', vendorId)
     // TDW_07 P3: position is the order. created_at is the deterministic tie-break
     // for rows that share one (a hand-written row, a race) — never the authority.
     .order('position',   { ascending: true })
     .order('created_at', { ascending: false });
 
-  if (state !== 'all') q = q.eq('approval_state', state);
+  if (state === 'held') q = q.eq('safety_state', PR.SAFETY.HELD);
+  else if (state === 'hidden') q = q.not('discover_hidden_at', 'is', null);
+  else if (state === 'shown') q = PR.herPagesFilter(q);
 
   const { data, error } = await q;
   if (error) return { ok: false, error: error.message };
-  return { ok: true, images: data || [], total: (data || []).length };
+  const images = (data || []).map(PR.vendorPicture);
+  return { ok: true, images, total: images.length };
 }
 
-// Update image metadata (caption, tags, hero, carousel). approval_state unchanged.
+/** R-47.2 (e): what she is told on her portfolio (a removal for a legal reason), newest first, the unseen ones. */
+async function listNotices(supabase, vendorId) {
+  const { data, error } = await supabase.from('picture_notices').select('id, line, created_at')
+    .eq('vendor_id', vendorId).is('seen_at', null).order('created_at', { ascending: false }).limit(20);
+  return error ? [] : (data || []);
+}
+async function markNoticeSeen(supabase, vendorId, noticeId) {
+  const { data, error } = await supabase.from('picture_notices').update({ seen_at: new Date().toISOString() })
+    .eq('id', noticeId).eq('vendor_id', vendorId).is('seen_at', null).select('id');
+  return !error && Array.isArray(data) && data.length > 0;
+}
+
+// Update image metadata (caption, tags, hero, carousel). Its state is never changed here.
 async function updateImage(supabase, vendorId, imageId, body) {
   const allowed = {};
   if (body.caption      !== undefined) allowed.caption       = body.caption;
@@ -234,11 +260,11 @@ async function updateImage(supabase, vendorId, imageId, body) {
   const { data, error } = await supabase.from('vendor_portfolio')
     .update(allowed)
     .eq('id', imageId).eq('vendor_id', vendorId)
-    .select().single();
+    .select(PR.VENDOR_PORTFOLIO_COLS).single();
 
   if (error) return { ok: false, error: error.message };
   if (!data) return { ok: false, error: 'Image not found.' };
-  return { ok: true, image: data };
+  return { ok: true, image: PR.vendorPicture(data) };
 }
 
 // Set as cover — moves the row to position 0 through the one hand, which also
@@ -256,9 +282,9 @@ async function setHeroImage(supabase, vendorId, imageId) {
   if (!wrote.ok) return { ok: false, error: wrote.error };
 
   const { data } = await supabase.from('vendor_portfolio')
-    .select('id, image_url, caption, aesthetic_tags, is_hero, in_carousel, approval_state, rejection_reason, created_at, position')
+    .select(PR.VENDOR_PORTFOLIO_COLS)
     .eq('id', imageId).eq('vendor_id', vendorId).maybeSingle();
-  return { ok: true, image: data };
+  return { ok: true, image: PR.vendorPicture(data) };
 }
 
 // Reorder — the manager's drag. Takes the vendor's FULL id list in the order they
@@ -307,15 +333,17 @@ async function deleteImage(supabase, vendorId, imageId) {
 }
 
 // Portfolio summary counts — used by discover request validation.
+// CE-47 WEB-4 cut 30 (R-47.2): `approved` now counts the pictures DISCOVER shows (passed, not hidden), the number the
+// admin's Discover screen has always shown beside the total; `held` and `hidden` replace pending and rejected.
 async function portfolioSummary(supabase, vendorId) {
   const { data } = await supabase.from('vendor_portfolio')
-    .select('approval_state').eq('vendor_id', vendorId);
+    .select('safety_state, discover_hidden_at').eq('vendor_id', vendorId);
   const rows = data || [];
   return {
     total:    rows.length,
-    approved: rows.filter(r => r.approval_state === 'approved').length,
-    pending:  rows.filter(r => r.approval_state === 'pending').length,
-    rejected: rows.filter(r => r.approval_state === 'rejected').length,
+    approved: rows.filter(PR.onDiscover).length,
+    held:     rows.filter(r => r.safety_state === PR.SAFETY.HELD).length,
+    hidden:   rows.filter(r => Boolean(r.discover_hidden_at)).length,
   };
 }
 
@@ -324,6 +352,8 @@ module.exports = {
   deleteFromCloudinary,   // F-07.12 — the export that was missing
   registerImage,
   listImages,
+  listNotices,
+  markNoticeSeen,
   updateImage,
   setHeroImage,
   reorderImages,

@@ -172,7 +172,8 @@ section('§2 · POSITION IS THE ORDER (Fork 1(a))');
   const reg = await P.registerImage(db, V, { image_url: 'https://res.cloudinary.com/x/image/upload/v1/new.jpg' });
   ok('§2.1 a new photo APPENDS at position = count', reg.ok && reg.image.position === 3, JSON.stringify(reg.image && reg.image.position));
   ok('§2.2 a new photo never seizes the cover', reg.image.is_hero === false);
-  ok('§2.3 and it lands pending, not approved', reg.image.approval_state === 'pending');
+  /* AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2): no approval step; a new picture is on her pages at once (unchecked here: no Google key in the bench) */
+  ok('§2.3 and it is live on her pages at once, with no approval state on her wire', reg.image.approval_state === undefined && reg.image.shown_on_her_pages === true && db.__store.vendor_portfolio.slice(-1)[0].approval_state === undefined);
 }
 {
   const db = makeDb([photo(1), photo(2), photo(3)]);
@@ -304,21 +305,24 @@ ok('§8.2 an Instagram CDN url is NOT', IG.isEstateUrl('https://scontent.cdninst
     /Mirror produced a non-estate URL; refused/.test(src));
 }
 
-section('§9 · FORK 4(b) — IMPORTED ROWS LAND APPROVED, MANUAL STAYS PENDING');
+// AMENDED BY LABEL, CE-47 WEB-4 cut 30: R-47.2 (the founder's rule of 8 October 2026) CLOSED Fork 4(b)'s asymmetry. Every
+// picture is live on her own pages at once, whichever door it came by; the body can carry neither a state nor a source.
+section('§9 · R-47.2 — EVERY DOOR LIVE AT ONCE; NOTHING SMUGGLED THROUGH THE BODY (was Fork 4(b))');
 {
   const db = makeDb([]);
   const manual = await P.registerImage(db, V, { image_url: 'https://res.cloudinary.com/x/image/upload/v1/m.jpg' });
-  const imported = await P.registerImage(db, V, { image_url: 'https://res.cloudinary.com/x/image/upload/v1/i.jpg', approval_state: 'approved' });
-  ok('§9.1 the manual door still lands pending', manual.image.approval_state === 'pending');
-  ok('§9.2 the import door lands approved — the founder\'s incentive, live on arrival',
-    imported.image.approval_state === 'approved');
-  const bogus = await P.registerImage(db, V, { image_url: 'https://res.cloudinary.com/x/image/upload/v1/b.jpg', approval_state: 'rejected' });
-  ok('§9.3 no other value can be smuggled through the field', bogus.image.approval_state === 'pending');
+  const imported = await P.registerImage(db, V, { image_url: 'https://res.cloudinary.com/x/image/upload/v1/i.jpg' }, { source: 'instagram' });
+  ok('§9.1 the manual door is live on her pages at once', manual.image.shown_on_her_pages === true && db.__store.vendor_portfolio[0].source === 'upload');
+  ok('§9.2 the import door is live on her pages at once, its source instagram (through the internal argument only)',
+    imported.image.shown_on_her_pages === true && db.__store.vendor_portfolio[1].source === 'instagram');
+  const bogus = await P.registerImage(db, V, { image_url: 'https://res.cloudinary.com/x/image/upload/v1/b.jpg', approval_state: 'approved', source: 'instagram', safety_state: 'passed' });
+  const row = db.__store.vendor_portfolio[2];
+  ok('§9.3 no state and no source can be smuggled through the body', row.approval_state === undefined && row.source === 'upload' && row.safety_state === 'unchecked');
 }
 {
   const src = fs.readFileSync(path.join(ROOT, 'src/lib/vendor/igImport.js'), 'utf8');
-  ok('§9.4 the intended asymmetry is stated AT THE WRITE SITE, as ruled',
-    /ASYMMETRY WITH THE MANUAL PATH IS INTENDED, NOT DRIFT/.test(src));
+  ok('§9.4 the closing of the old asymmetry is stated AT THE WRITE SITE (R-47.2)',
+    /the old Fork 4 asymmetry,\s+(\/\/\s*)?Instagram live and the phone in review,\s+(\/\/\s*)?is closed by the founder's rule/.test(src));
 }
 
 section('§10 · THE FEED (Fork 1(a) invisible-migration + Fork 7(b))');
@@ -353,8 +357,10 @@ section('§10 · THE FEED (Fork 1(a) invisible-migration + Fork 7(b))');
 }
 {
   const collab = codeOf('src/api/vendor/collab.js');
-  ok('§10.6 the fourth is_hero consumer (collab hero_photo) is byte-untouched',
-    /p\.approval_state === 'approved' && p\.is_hero/.test(collab));
+  // AMENDED BY LABEL, CE-47 WEB-4 cut 30 (R-47.2; the chair ruled collab.js :461 into cut 30): the one line moves from
+  // approval_state to the rule file's onHerPages; is_hero is still the hero test.
+  ok('§10.6 the fourth is_hero consumer (collab hero_photo) reads the rule file and is_hero (R-47.2 cut 30)',
+    /pictureRules'\)\.onHerPages\(p\) && p\.is_hero/.test(collab) && !/approval_state/.test(collab));
 }
 
 section('§11 · CAP SITE 3 + 4 ARE WIRED AT THEIR DOORS');
@@ -386,7 +392,7 @@ console.log('    M-7  portfolio.js   deleteFromCloudinary off the exports  ⇒ �
 console.log('    M-8  portfolio.js   the F-07.14 warn line deleted         ⇒ §7.1 RED');
 console.log('    M-9  igImport.js    isEstateUrl returns true always       ⇒ §8.2 RED');
 console.log('    M-10 igImport.js    the seam returns [] instead of refusing  ⇒ §8.3 RED  [P4a labeled amendment]');
-console.log('    M-11 portfolio.js   approval_state passed through raw     ⇒ §9.3 RED');
+console.log('    M-11 portfolio.js   source taken from the body (cut 30)    ⇒ §9.3 RED');
 console.log('    M-12 couple/discover.js  order reverted to is_hero desc   ⇒ §10.1/§10.2 RED');
 console.log('─'.repeat(72));
 

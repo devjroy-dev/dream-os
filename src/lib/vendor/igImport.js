@@ -7,6 +7,7 @@
 const crypto = require('crypto');
 const { signUpload, uploadUrl, nowTimestamp } = require('../cloudinarySign');
 const { canAcceptMore, registerImage, MAX_PORTFOLIO_IMAGES } = require('./portfolio');
+const safety = require('./safetyCheck');   // CE-47 WEB-4 cut 30 (R-47.2)
 // TDW_07 P4a: the wire constants live in igOAuth.js and are IMPORTED, never
 // re-declared. GRAPH_HOST in two files would be the F-05.20 class in miniature.
 const { GRAPH_HOST, IG_CALLBACK_PATH } = require('./igOAuth');
@@ -222,7 +223,7 @@ function isEstateUrl(url) {
 // Partial success is a FIRST-CLASS outcome, not an error: nine of twelve landing
 // is nine photos the vendor did not have to upload, and copy H9 tells them the
 // truth about the other three.
-async function importSelected(supabase, vendorId, sourceUrls) {
+async function importSelected(supabase, vendorId, sourceUrls, deps) {
   if (!Array.isArray(sourceUrls) || sourceUrls.length === 0) {
     return { ok: false, error: 'No photos selected.' };
   }
@@ -241,27 +242,22 @@ async function importSelected(supabase, vendorId, sourceUrls) {
   const imported = [];
   const failed   = [];
 
+  // CE-47 WEB-4 cut 30 (R-47.2): every imported picture is live on her own pages at once (the old Fork 4 asymmetry,
+  // Instagram live and the phone in review, is closed by the founder's rule: both are live). Google's safety check runs
+  // on the mirrored pictures in batches of 16 before any row is written; a flagged picture is 'held', one that cannot
+  // be checked is 'unchecked' (the sweep checks it again). source 'instagram' is passed through `internal`, which no
+  // door can reach.
+  const mirrored = [];
   for (const src of accepted) {
     const m = await mirrorOne(vendorId, src);
     if (!m.ok) { failed.push({ source: src, error: m.error }); continue; }
-
-    // FORK 4, FOUNDER-RULED (b): imported rows land APPROVED.
-    // His words: 「 b. its an incentive to finish profile fast. 」 The vendor's
-    // photos are live on Discover the moment the import finishes, which is the
-    // whole promise of "connect IG, pick your 20".
-    //
-    // THE ASYMMETRY WITH THE MANUAL PATH IS INTENDED, NOT DRIFT. A photo the
-    // vendor uploads from their phone still lands 'pending' and waits for the
-    // admin queue; the same photo arriving from Instagram is live immediately.
-    // Copy B2 and copy H8 say both of those things out loud, and the founder
-    // confirmed he wants the difference VISIBLE 「 3. visible 」. Equalizing the
-    // two doors needs its own future ruling — nothing here may quietly close it.
-    const reg = await registerImage(supabase, vendorId, {
-      image_url: m.image_url,
-      approval_state: 'approved',
-      source: 'instagram',   // CE-47 WEB-4 cut 17 (0195): her own Instagram photograph
-    });
-    if (!reg.ok) { failed.push({ source: src, error: reg.error }); continue; }
+    mirrored.push({ src, url: m.image_url });
+  }
+  const checks = await safety.check(mirrored.map((x) => x.url), deps && deps.safetyDeps);
+  for (let i = 0; i < mirrored.length; i += 1) {
+    const reg = await registerImage(supabase, vendorId, { image_url: mirrored[i].url },
+      { source: 'instagram', safety: checks[i] });   // CE-47 WEB-4 cut 17 (0195): her own Instagram photograph
+    if (!reg.ok) { failed.push({ source: mirrored[i].src, error: reg.error }); continue; }
     imported.push(reg.image);
   }
 
