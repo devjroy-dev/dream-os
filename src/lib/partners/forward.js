@@ -9,6 +9,7 @@ const { formatRs, formatDateLong } = require('../format');
 const { rolesLine, PAY_WORD } = require('../collab/social');   // CLB's one home of trade and pay words
 const links = require('./links');
 const { isCollabRole } = require('../collab/roles');
+const { roleWord } = require('./words');   // A2-4: the role in words for the hand message
 
 const PUBLIC_BASE = 'https://thedreamwedding.in';
 // The link token is DERIVED (HMAC of the recipient row's id under PARTNER_SESSION_SECRET with its own 'forward:' label), so
@@ -57,11 +58,22 @@ function vendorFace(vendor, request) {
   return { name: `@${request.outside_handle}`, trade: 'wedding vendor', instagram_url: links.instagramUrl(request.outside_handle), instagram_handle: request.outside_handle };
 }
 
-/** The message the admin copies (by hand). Plain, one paragraph, the link last. */
-function messageFor({ contactName, face, request, token }) {
-  const pay = PAY_WORD[request.pay_kind] || 'Paid';
-  return `Hello ${contactName}. ${face.name}, ${aOrAn(face.trade)} ${face.trade} on The Dream Wedding, needs ${aOrAn(request.role)} ${request.role} in ${request.city} on ${formatDateLong(request.event_date)}. `
-    + `Budget Rs ${formatRs(request.budget_from)} to Rs ${formatRs(request.budget_to)}. ${pay}. See the request and answer here: ${requestUrl(token)}`;
+/** A2-4 · THE HAND MESSAGE, version A, the founder's words, approved 8 Oct 2026, word for word. It is sent by a person,
+ * from the admin's own WhatsApp or Instagram. {sender} is the first name the admin types on the Forward page (there is no
+ * name in the admin session); without it NO message is made (null), so the message never has a gap. */
+const SENDER = /^[A-Za-z][A-Za-z .'-]{0,29}$/;
+const NEED_SENDER = 'Write your first name before you make the messages. TDW puts it in each message.';
+const cleanSender = (s) => { const t = typeof s === 'string' ? s.trim().replace(/\s+/g, ' ') : ''; return SENDER.test(t) ? t : null; };
+function needsWords(role) {
+  const w = isCollabRole(role) ? roleWord(role) : String(role || '').trim();
+  return /^(a|an|\d+)\s/i.test(w) ? w : `${aOrAn(w)} ${w}`;
+}
+function messageFor({ contactName, face, request, token, sender }) {
+  const s = cleanSender(sender);
+  if (!s) return null;
+  return `Hi ${contactName}, this is ${s} from The Dream Wedding. One of our vendors, ${face.name}, is looking for ${needsWords(request.role)} `
+    + `for a shoot on ${formatDateLong(request.event_date)} in ${request.city}, and I thought of you. The details are here, and you can suggest `
+    + `someone in a minute: ${requestUrl(token)}\nHappy to answer anything here on WhatsApp too.`;
 }
 
 /** The request link page's data. No phone, no email, by construction. */
@@ -72,4 +84,4 @@ function requestPage({ face, request }) {
 }
 
 const threadsUrl = (handle) => { const h = links.normalizeIgHandle(handle); return h ? `https://www.threads.com/@${h}` : null; };
-module.exports = { PUBLIC_BASE, tokenFor, threadsUrl, tokenHash, requestUrl, tradeWord, validateRequest, vendorFace, messageFor, requestPage };
+module.exports = { PUBLIC_BASE, tokenFor, threadsUrl, tokenHash, requestUrl, tradeWord, validateRequest, vendorFace, messageFor, requestPage, cleanSender, needsWords, NEED_SENDER };

@@ -15,6 +15,8 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const conns = require('../../lib/partners/connections');
 const calls = require('../../lib/partners/calls');
+const wa = require('../../lib/partners/wa');   // A2-4
+const { formatDateLong } = require('../../lib/format');
 const router = express.Router();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REASONS = ['fake', 'asked_for_money', 'unsafe_or_rude', 'other'];
@@ -32,9 +34,12 @@ router.post('/partner-contact/:interest_id', requireAuth, resolveVendor(), async
   const sb = req.app.locals.supabase;
   const r = await rowOnHerCall(sb, req.vendor.id, req.params.interest_id);
   if (!r) return errRes(res, 404, MISS);
-  const { data: o } = await sb.from('partner_orgs').select('id, name, check_state, calls_email, whatsapp_opt, whatsapp_phone').eq('id', r.partner_id).maybeSingle();
+  const { data: o } = await sb.from('partner_orgs').select('id, name, check_state, calls_email, whatsapp_opt, whatsapp_phone, whatsapp_opt_at, send_state, paused_until').eq('id', r.partner_id).maybeSingle();
   if (!o || o.check_state === 'blocked') return errRes(res, 404, MISS);
-  await conns.record(sb, { partnerId: o.id, kind: 'contact', refId: r.post_id, vendorId: req.vendor.id });
+  const rec = await conns.record(sb, { partnerId: o.id, kind: 'contact', refId: r.post_id, vendorId: req.vendor.id });
+  // A2-4: on a NEW pick only, the partner hears it on WhatsApp (tdw_partner_picked), if it said yes and every gate holds.
+  // It never delays or blocks her answer: the notice runs after it, and any failure is only logged.
+  if (rec && !rec.repeat) setImmediate(() => { notifyPickedFor(sb, o, r, req.vendor).catch((e) => console.warn('[partners] picked notice:', e && e.message)); });
   const token = calls.tokenFor(r.send_id); const link = token ? calls.callUrl(token) : null;
   const text = `Hello ${o.name}. I am writing about ${r.display_name}, whom you suggested for my collab call on The Dream Wedding.${link ? ` You can see the call here: ${link}` : ''}`;
   if (o.whatsapp_opt && o.whatsapp_phone && /^\+[0-9]{8,15}$/.test(o.whatsapp_phone)) {
@@ -43,6 +48,12 @@ router.post('/partner-contact/:interest_id', requireAuth, resolveVendor(), async
   if (o.calls_email) return okRes(res, { kind: 'email', href: `mailto:${o.calls_email}?subject=${encodeURIComponent(`About ${r.display_name}, for my collab call`)}&body=${encodeURIComponent(text)}`, partner: o.name });
   return okRes(res, { kind: 'none', href: null, partner: o.name, line: `${o.name} has not yet given TDW a way to contact it. TDW has not shared your request with anyone else.` });
 }));
+
+async function notifyPickedFor(sb, o, r, vendor) {
+  const { data: post } = await sb.from('collab_posts').select('event_date').eq('id', r.post_id).maybeSingle();
+  return wa.notifyPicked(sb, { org: o, vendorName: vendor.business_name || 'A vendor on The Dream Wedding', person: r.display_name,
+    dateWords: post && post.event_date ? formatDateLong(post.event_date) : 'the date on the call' }, module.exports._deps || {});
+}
 
 router.post('/partner-report', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const sb = req.app.locals.supabase; const b = req.body || {};
@@ -55,3 +66,4 @@ router.post('/partner-report', requireAuth, resolveVendor(), asyncHandler(async 
   return okRes(res, { line: 'Thank you. An admin at TDW will look at your report.' });
 }));
 module.exports = router;
+module.exports.notifyPickedFor = notifyPickedFor;   // benches only

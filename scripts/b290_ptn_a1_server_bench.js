@@ -1,6 +1,6 @@
 'use strict';
 // scripts/b290_ptn_a1_server_bench.js · CE-47 · PTN-A1 · rung b290 · the partner lane's server half.
-// R-47.1 (the founder's rule, 8 Oct 2026), amended by label at PTN-A2-3 (r3's rewrite, carried): every pinned line a partner, vendor or admin reads now
+// R-47.1 (the founder's rule, 8 Oct 2026), amended by label at PTN-A2-3 (r3's rewrite, carried) and at PTN-A2-4 (6.5, 6.6): every pinned line a partner, vendor or admin reads now
 // carries the rewritten words. The old line and the new line are side by side in docs/handovers/TDW_CE47_PTN_A2_3.md.
 // Holds: the two migrations (RLS, grants, no partner price column, "she asked" required); the link rule (handles through
 // the ONE normaliser, websites http(s) only, ready addresses); the partner session (its own secret; a circle credential
@@ -163,9 +163,11 @@ if (MUT) {
   ok(fwd.validateRequest({ ...base, asked: true, budget_to: 100 }).ok === false, '6.3 budget to below from is refused');
   ok(fwd.validateRequest({ asked: true, outside_handle: 'aanya.mua', outside_phone: '98111', role: 'model', city: 'x', event_date: '2026-10-18', budget_from: 1, budget_to: 2, pay_kind: 'paid' }).ok === false, '6.4 an outside vendor needs a full phone');
   const face = fwd.vendorFace({ business_name: 'Aanya Makeup Studio', category: 'makeup', instagram_handle: 'aanya.mua' }, base);
-  const msg = fwd.messageFor({ contactName: 'Model Connect', face, request: base, token: 'TOKEN' });
-  ok(msg === 'Hello Model Connect. Aanya Makeup Studio, a makeup artist on The Dream Wedding, needs a model in Delhi NCR on 18 October 2026. Budget Rs 3,000 to Rs 5,000. Paid. See the request and answer here: https://thedreamwedding.in/request/TOKEN', '6.5 the message, word for word', msg);
-  ok(/Credit only\./.test(fwd.messageFor({ contactName: 'X', face, request: { ...base, pay_kind: 'credit_only' }, token: 't' })), '6.6 "Credit only" (CLB\'s word)');
+  // Amended by label at PTN-A2-4: the hand message is now version A, the founder's words of 8 Oct 2026, with the admin's
+  // first name ({sender}); version A names no budget and no pay, so 6.6 now asks that no message is made without a name.
+  const msg = fwd.messageFor({ contactName: 'Model Connect', face, request: base, token: 'TOKEN', sender: 'Dev' });
+  ok(msg === 'Hi Model Connect, this is Dev from The Dream Wedding. One of our vendors, Aanya Makeup Studio, is looking for a model for a shoot on 18 October 2026 in Delhi NCR, and I thought of you. The details are here, and you can suggest someone in a minute: https://thedreamwedding.in/request/TOKEN\nHappy to answer anything here on WhatsApp too.', '6.5 the message, word for word (version A, amended at A2-4)', msg);
+  ok(fwd.messageFor({ contactName: 'X', face, request: base, token: 't' }) === null, '6.6 no first name, no message (amended at A2-4)');
   const page = fwd.requestPage({ face: fwd.vendorFace(null, { outside_handle: 'aanya.mua', outside_phone: '+919811100007' }), request: { ...base, outside_phone: '+919811100007', note: 'Half a day.' } });
   ok(!/9811100007|\+91|phone":|email/.test(JSON.stringify(page).replace(page.phone_line, '')), '6.7 the request page carries no phone or email', JSON.stringify(page));
   ok(page.vendor.instagram_url === 'https://www.instagram.com/aanya.mua/' && page.date_words === '18 October 2026', '6.8 the page links her Instagram and writes the full month');

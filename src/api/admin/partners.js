@@ -9,6 +9,8 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const orgs = require('../../lib/partners/orgs');
 const conns = require('../../lib/partners/connections');
 const contacts = require('../../lib/partners/contacts');
+const wa = require('../../lib/partners/wa');   // A2-4
+const { formatDateLong } = require('../../lib/format');
 const fwd = require('../../lib/partners/forward');
 const { hiddenByReports } = require('../../lib/partners/reports');
 const seams = require('../../lib/partners/seams');
@@ -48,7 +50,7 @@ router.patch('/contacts/:id', asyncHandler(async (req, res) => {
 }));
 
 // ── Forward a request (by hand) ─────────────────────────────────────────────────────────────────────────────
-async function recipientsOf(supabase, requestId) {
+async function recipientsOf(supabase, requestId, sender) {   // A2-4: sender, the admin's first name, typed on the Forward page
   const { data: q } = await supabase.from('forward_requests').select('id, vendor_id, outside_handle, outside_phone, role, city, event_date, budget_from, budget_to, pay_kind, note, created_at').eq('id', requestId).maybeSingle();
   if (!q) return null;
   const { data: v } = q.vendor_id ? await supabase.from('vendors').select('business_name, category, instagram_handle').eq('id', q.vendor_id).maybeSingle() : { data: null };
@@ -61,10 +63,11 @@ async function recipientsOf(supabase, requestId) {
     const c = (cs || []).find((x) => x.id === r.contact_id) || {};
     const token = fwd.tokenFor(r.id);
     return { id: r.id, contact: contacts.contactShape(c, c.phone && stopped.has(c.phone)), sent_at: r.sent_at, sent_by: r.sent_by,
-      link: token ? fwd.requestUrl(token) : null, message: token ? fwd.messageFor({ contactName: c.name, face, request: q, token }) : null,
+      link: token ? fwd.requestUrl(token) : null, message: token ? fwd.messageFor({ contactName: c.name, face, request: q, token, sender }) : null,
       instagram_url: contacts.contactShape(c, false).instagram_url, threads_url: fwd.threadsUrl(c.instagram_handle) };
   });
-  return { request: { id: q.id, vendor: face, role: q.role, city: q.city, event_date: q.event_date, budget_from: q.budget_from, budget_to: q.budget_to, pay_kind: q.pay_kind, note: q.note, created_at: q.created_at }, recipients };
+  return { request: { id: q.id, vendor: face, role: q.role, city: q.city, event_date: q.event_date, budget_from: q.budget_from, budget_to: q.budget_to, pay_kind: q.pay_kind, note: q.note, created_at: q.created_at }, recipients,
+    need_sender: fwd.cleanSender(sender) ? null : fwd.NEED_SENDER };
 }
 
 router.get('/forward', asyncHandler(async (req, res) => {
@@ -102,11 +105,15 @@ router.post('/forward', asyncHandler(async (req, res) => {
     if (rErr) continue;
     await supabase.from('forward_recipients').update({ token_hash: fwd.tokenHash(fwd.tokenFor(r.id)) }).eq('id', r.id);
   }
-  return okRes(res, await recipientsOf(supabase, q.id));
+  const out = await recipientsOf(supabase, q.id, (req.body || {}).sender);
+  // A2-4: a vendor on TDW hears on WhatsApp that her request went out (tdw_collab_request_sent, the vendor line). The admin
+  // reads, in one line, whether she was told and why not. A failure never undoes the request.
+  out.vendor_notice = v.row.vendor_id ? await tellVendor(supabase, v.row, ids.length) : { sent: false, line: FWD_WORDS.outside };
+  return okRes(res, out);
 }));
 router.get('/forward/:id', asyncHandler(async (req, res) => {
   if (!UUID.test(req.params.id)) return errRes(res, 404, 'This request does not exist.');
-  const out = await recipientsOf(req.app.locals.supabase, req.params.id);
+  const out = await recipientsOf(req.app.locals.supabase, req.params.id, (req.query || {}).sender);
   if (!out) return errRes(res, 404, 'This request does not exist.');
   return okRes(res, out);
 }));
@@ -117,6 +124,25 @@ router.post('/forward/recipients/:rid/sent', asyncHandler(async (req, res) => {
   if (error) return errRes(res, 500, 'TDW could not save this. Please try again.');
   return okRes(res, { sent_at: sent });
 }));
+
+const FWD_WORDS = Object.freeze({
+  told: 'TDW told the vendor on WhatsApp that her request has gone to partners.',
+  outside: 'This vendor is not on TDW, so TDW did not message her. Tell her yourself.',
+  window: 'TDW did not message the vendor, because TDW sends WhatsApp messages only between 9 am and 8 pm.',
+  notOpen: 'TDW did not message the vendor, because Meta has not approved the message yet.',
+  noPhone: 'TDW did not message the vendor, because her account has no phone number.',
+  failed: 'TDW could not message the vendor on WhatsApp. Tell her yourself.',
+});
+async function tellVendor(supabase, row, count) {
+  try {
+    const { data: ven } = await supabase.from('vendors').select('id, user_id').eq('id', row.vendor_id).maybeSingle();
+    const { data: u } = ven && ven.user_id ? await supabase.from('users').select('phone').eq('id', ven.user_id).maybeSingle() : { data: null };
+    const r = await wa.notifyRequestSent(supabase, { phone: u && u.phone, needs: fwd.needsWords(row.role), city: row.city,
+      dateWords: formatDateLong(row.event_date), count }, module.exports._deps || {});
+    if (r.sent) return { sent: true, line: FWD_WORDS.told };
+    return { sent: false, line: r.why === 'window' ? FWD_WORDS.window : r.why === 'not_open' ? FWD_WORDS.notOpen : r.why === 'no_phone' ? FWD_WORDS.noPhone : FWD_WORDS.failed };
+  } catch (e) { console.warn('[partners] request notice:', e && e.message); return { sent: false, line: FWD_WORDS.failed }; }
+}
 
 // ── Partners ────────────────────────────────────────────────────────────────────────────────────────────────
 async function reportsFor(supabase, partnerIds) {

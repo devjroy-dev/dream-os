@@ -1,0 +1,15 @@
+# scripts/floor-manifest-ptn-a2-4.txt
+# TDW CE-47 · PTN-A2-4 (dream-os, base 5058d8c) · the delivery's own file table [F-14.16].
+# Every path this ZIP writes, and nothing else. No migration (0219 is on main and applied), no Railway value required.
+docs/TEMPLATES.md
+docs/handovers/TDW_CE47_PTN_A2_4.md
+scripts/b290_ptn_a1_server_bench.js
+scripts/b298_ptn_a2_3_whatsapp_bench.js
+scripts/b299_ptn_a2_4_notices_bench.js
+scripts/floor-manifest-ptn-a2-4.txt
+scripts/ptn_a2_4.sha256
+src/api/admin/partners.js
+src/api/vendor/partnerContact.js
+src/lib/partners/forward.js
+src/lib/partners/wa.js
+src/lib/templates.js

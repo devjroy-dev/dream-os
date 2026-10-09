@@ -85,8 +85,8 @@ const typed = (code) => { const e = new Error(`refused ${code} for +91 98111 000
     collab_request_sent: 'Your request for {{1}} in {{2}} on {{3}} has gone to {{4}} partners. When someone is suggested, you will see it on your call in The Dream Wedding.',
   };
   const NAMES = { partner_call: 'tdw_partner_call', partner_picked: 'tdw_partner_picked', collab_request_sent: 'tdw_collab_request_sent' };
-  ok(Object.keys(FILED).every((k) => T.TEMPLATES[k] && T.TEMPLATES[k].body === FILED[k] && T.TEMPLATES[k].name === NAMES[k] && T.TEMPLATES[k].line === 'marketing' && T.TEMPLATES[k].category === 'UTILITY' && T.isApproved(k)),
-    '1.1 the three filed templates: names, bodies byte for byte as filed, Utility, the marketing line, approved');
+  ok(Object.keys(FILED).every((k) => T.TEMPLATES[k] && T.TEMPLATES[k].body === FILED[k] && T.TEMPLATES[k].name === NAMES[k] && T.TEMPLATES[k].line === (k === 'collab_request_sent' ? 'vendor' : 'marketing') && T.TEMPLATES[k].category === 'UTILITY' && T.isApproved(k)),
+    '1.1 the three filed templates: names, bodies byte for byte as filed, Utility, approved; the partners\' two from the marketing line, the vendor\'s notice from the vendor line (amended by label at A2-4)');
   const pl = T.buildTemplatePayload('partner_call', { partner: 'Studio Noor', vendor: 'Aanya Makeup Studio', needs: '2 models', date: '18 October 2026', city: 'Delhi NCR', code: 'TOKEN32' });
   const btn = pl.components.find((c) => c.type === 'button');
   ok(btn && btn.sub_type === 'url' && btn.parameters[0].text === 'TOKEN32' && T.TEMPLATES.partner_call.button.base === 'https://thedreamwedding.in/partner/call/', '1.2 the button takes the token as its suffix, never the full address', JSON.stringify(btn));

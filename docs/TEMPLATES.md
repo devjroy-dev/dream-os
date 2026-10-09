@@ -520,14 +520,15 @@ dynamic suffix is the call's token; the sample filed was a full link with a made
 ### 19 · `partner_picked` · UTILITY (filed) · marketing line · Meta name **`tdw_partner_picked`**
 **Added CE-47 PTN-A2-3 (8 Oct 2026).** Filed and approved as Utility on 8 Oct 2026, ID **`1144140224837871`**. To a
 partner when a vendor wants to talk about someone it suggested. Variables: `{{1}}` the vendor, `{{2}}` the person
-suggested, `{{3}}` the date. Registered; no sender yet.
+suggested, `{{3}}` the date. A2-4 sends it at the vendor's Contact door, on a new pick only, to a partner that said yes.
 
 > Update on your suggestion: {{1}} wants to talk about {{2}} for the shoot on {{3}}. They will contact you directly. TDW takes no fee and has no part in any fee.
 
-### 20 · `collab_request_sent` · UTILITY (filed) · marketing line · Meta name **`tdw_collab_request_sent`**
+### 20 · `collab_request_sent` · UTILITY (filed) · vendor line · Meta name **`tdw_collab_request_sent`**
 **Added CE-47 PTN-A2-3 (8 Oct 2026).** Filed and approved as Utility on 8 Oct 2026, ID **`1665884328396587`** (the
 founder renamed it from tdw_request_sent before filing). To the vendor when TDW forwards her request. Variables: `{{1}}`
-what she needs, `{{2}}` the city, `{{3}}` the date, `{{4}}` how many partners. Registered; no sender yet.
+what she needs, `{{2}}` the city, `{{3}}` the date, `{{4}}` how many partners. A2-4 sends it from the VENDOR line
+(she is a vendor; her reply meets the vendor lane), at the admin's forward door, to a vendor on TDW only.
 
 > Your request for {{1}} in {{2}} on {{3}} has gone to {{4}} partners. When someone is suggested, you will see it on your call in The Dream Wedding.
 

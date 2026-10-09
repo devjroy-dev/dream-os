@@ -1612,11 +1612,13 @@ const TEMPLATES = {
       'TDW takes no fee and has no part in any fee.',
     status: 'approved',
   },
+  // A2-4: to the VENDOR, so from the vendor line (her replies meet the vendor lane she already uses). Templates live on
+  // the WABA, so the line is the sender's choice; the filed body is unchanged.
   collab_request_sent: {
     key: 'collab_request_sent',
     name: 'tdw_collab_request_sent',
     language: TEMPLATE_LANGUAGE,
-    line: 'marketing',
+    line: 'vendor',
     category: 'UTILITY',
     variables: ['needs', 'city', 'date', 'count'],
     body:
