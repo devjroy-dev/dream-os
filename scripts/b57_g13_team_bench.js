@@ -389,7 +389,8 @@ asyncCells.push(async () => {
     params: { id: 'w1' },
     vendor: { id: 'v-dev440', routing_handle: 'DEV440', business_name: 'Dev Roy Photography' },
     app: { locals: { logger: { error() {} }, supabase: {
-      from() { return { select() { return this; }, eq() { return this; },
+      /* AMENDED BY LABEL, UX-S1 P4: getForOwner now filters deleted_at, so the stub query takes .is() */
+      from() { return { select() { return this; }, eq() { return this; }, is() { return this; },
         maybeSingle: async () => ({ data: wedding, error: null }) }; },
       storage: { from() { return {
         upload: async () => ({ error: { message: 'stub-bucket' } }),

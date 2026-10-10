@@ -65,9 +65,11 @@ ok(() => Object.entries(L.LIMITS).filter(([, d]) => d.lines === 1).every(([k]) =
 ok(() => L.field('look_title', 'श'.repeat(60)).ok && !L.field('look_title', 'श'.repeat(61)).ok && L.field('look_title', '💍'.repeat(60)).ok, '4.3 characters are counted as a person counts them (Devanagari, emoji once each)');
 ok(() => !L.field('look_title', '   ').ok && L.field('intro', '   ').ok && L.field('intro', '   ').value === null, '4.4 a required field refuses blank; an optional one reads blank as empty');
 ok(() => L.list('announcement', ['a', 'b', 'c', 'd']).ok && !L.list('announcement', ['a', 'b', 'c', 'd', 'e']).ok && JSON.stringify(L.list('category', [' Bridal ', '', 'Reception']).value) === '["Bridal","Reception"]', '4.5 lists hold their count; blanks are dropped, items trimmed');
-const FP = [['Rs 45,000', true, 45000], ['From Rs 1,50,000', true, 150000], ['Rs 500', true, 500], ['On request', true, null], ['', true, null],
-  ['45k', false], ['Rs 45K', false], ['₹45,000', false], ['Rs 4.5 lakh', false], ['Rs 2 Cr', false], ['Rs 45000', false], ['Rs 450,000', false], ['45,000', false], ['Rs. 45,000', false], ['INR 45,000', false], ['Rs 45,000 to Rs 60,000', false], ['About 45', false]];
-ok(() => FP.every(([t, good, rs]) => { const r = L.fromPrice(t); return r.ok === good && (!good || r.rupees === rs) && (good || r.error === 'Write the price as Rs 45,000.'); }), '4.6 the from price: the house form only; K, L, Cr, the rupee sign, western grouping and bare figures refused', FP.filter(([t, g]) => L.fromPrice && L.fromPrice(t).ok !== g).map(([t]) => t).join(' | '));
+const FP = [['Rs 45,000', true, 45000, 'Rs 45,000'], ['From Rs 1,50,000', true, 150000, 'From Rs 1,50,000'], ['Rs 500', true, 500, 'Rs 500'], ['On request', true, null, 'On request'], ['', true, null, null],
+  ['45000', true, 45000, 'Rs 45,000'], ['45,000', true, 45000, 'Rs 45,000'], ['50k', true, 50000, 'Rs 50,000'], ['50 K', true, 50000, 'Rs 50,000'], ['1.5 lakh', true, 150000, 'Rs 1,50,000'], ['2 lakhs', true, 200000, 'Rs 2,00,000'], ['1 cr', true, 10000000, 'Rs 1,00,00,000'],
+  ['Rs. 50000', true, 50000, 'Rs 50,000'], ['Rs50000', true, 50000, 'Rs 50,000'], ['INR 50000', true, 50000, 'Rs 50,000'], ['₹50,000', true, 50000, 'Rs 50,000'], ['Rs 45K', true, 45000, 'Rs 45,000'],
+  ['40,000 to 60,000', false], ['Rs 45,000 to Rs 60,000', false], ['About 45', false], ['3 hours', false]];
+ok(() => FP.every(([t, good, rs, tx]) => { const r = L.fromPrice(t); return r.ok === good && (!good || (r.rupees === rs && r.text === tx)) && (good || r.error === 'Write one price, for example 50,000 or 50k.'); }), '4.6 the from price: any common form accepted and stored as "Rs 50,000"; two figures and digits that are not a price refused', FP.filter(([t, g]) => L.fromPrice && L.fromPrice(t).ok !== g).map(([t]) => t).join(' | '));
 ok(() => L.priceWarning(['Bridal from Rs 45,000'], false) === 'Your prices are hidden on your page, but this text has a price in it, and that price will show.' && L.priceWarning(['Bridal from Rs 45,000'], true) === null && L.priceWarning(['No figures here'], false) === null, '4.7 Q5: a figure in her words is warned about only when her page hides rates, and never refused');
 ok(() => L.slugFrom('The Émerald Bride!', []) === 'the-emerald-bride' && L.slugFrom('The Emerald Bride', ['the-emerald-bride']) === 'the-emerald-bride-2' && L.slugFrom('!!!', []) === 'look' && L.SLUG.test(L.slugFrom('x'.repeat(200), [])), '4.8 slugs: plain, unique per vendor, never empty, always inside the column\'s CHECK');
 ok(() => JSON.stringify(L.focal({ x: 120, y: -3 })) === '{"x":100,"y":0}' && JSON.stringify(L.focal(null)) === '{"x":50,"y":50}' && L.focal({ x: '33.333' }).x === 33.33, '4.9 focal points clamp to 0..100; absent or broken reads the centre');
@@ -158,8 +160,8 @@ ok(() => !m6.absent && m6.creditFor('signature', { credit_shown: false }) === fa
 const LM = 'src/lib/site/limits.js';
 const m7 = mutate(LM, "if (chars(s) > L.max) return", 'if (false) return');
 ok(() => !m7.absent && m7.field('look_title', 'a'.repeat(61)).ok === true, '9.7 the maximum check removed: a 61-character title saves (4.1 reddens)');
-const m8 = mutate(LM, "|| /\\d\\s*(k|l|lakh|lakhs|lac|cr|crore)\\b/i.test(t)", '');
-ok(() => !m8.absent && m8.fromPrice('Rs 45K').ok === true, '9.8 the K/L/Cr refusal removed: "Rs 45K" saves (4.6 reddens)');
+const m8 = mutate(LM, "found.length !== 1 ||", "found.length < 1 ||");
+ok(() => !m8.absent && m8.fromPrice('40,000 to 60,000').ok === true, '9.8 the two-figure refusal removed: "40,000 to 60,000" saves (4.6 reddens)');
 const CM = 'src/lib/site/contrast.js';
 const m9 = mutate(CM, "const [mv, other] = side === 'fill' ? [bgK, fgK] : [fgK, bgK];", 'const [mv, other] = [fgK, bgK];');
 ok(() => !m9.absent && m9.gatePalette({ ground: '#ffffff', accent: '#bbbbbb', on_accent: '#ffffff' }, {}).roles.on_accent !== '#ffffff', '9.9 labels moved instead of fills: a white button label turns dark (2.7 reddens)');

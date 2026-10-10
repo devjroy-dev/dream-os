@@ -6,8 +6,8 @@
 // characters as a person counts them (code points, so a Devanagari or emoji character counts once), after trimming.
 // The migration mirrors the fixed-column limits as CHECKs; the doors (cut 3) refuse with the line `tooLong` makes.
 //
-// Prices (the chair's rulings of 30 September 2026): a look's from-price is free text in the money register only
-// ("Rs 45,000"; never K, L, Cr or the rupee sign), and a figure in her own free text is NOT refused: when her page is
+// Prices (the chair's rulings of 30 September 2026, as amended by UX-S1 of 11 October 2026): a look's from-price is free text that
+// holds one figure in any common form (45000, 50k, 1.5 lakh, Rs 50,000, the rupee sign); it is stored in the house form "Rs 50,000". And a figure in her own free text is NOT refused: when her page is
 // set to hide rates (vendors.rate_display false) she gets a gentle warning at save (Q5).
 //
 // Wording: every line here that she can read is listed for the founder's veto through the chair (R-45.30).
@@ -75,7 +75,7 @@ const LINES = Object.freeze({
   empty: (label) => `${label} cannot be empty.`,
   oneLine: (label) => `${label} must be on one line.`,
   tooMany: (label, n) => `You can add up to ${n}.`,
-  priceForm: 'Write the price as Rs 45,000.',
+  priceForm: 'Write one price, for example 50,000 or 50k.',
   priceHidden: 'Your prices are hidden on your page, but this text has a price in it, and that price will show.',
 });
 
@@ -103,25 +103,46 @@ function list(key, arr) {
   return { ok: true, value: out, error: null };
 }
 
+// CE-47 UX-S1 P1: the form she types is not refused; the house form is stored. One price token: an optional Rs, Rs., Rs.,
+// INR or rupee sign, a figure (commas allowed, one decimal point), and an optional unit (k, l, lakh, lakhs, lac, lacs, cr, crore, crores).
+const PRICE_TOKEN = /(?:(rs\.?|inr|₹)\s*)?(\d+(?:,\d+)*(?:\.\d+)?)(?:\s*(lakhs?|lacs?|crores?|cr|k|l)(?![A-Za-z0-9]))?(?![A-Za-z0-9.]\d)/gi;
+const UNIT = { k: 1000, l: 100000, lakh: 100000, lakhs: 100000, lac: 100000, lacs: 100000, cr: 10000000, crore: 10000000, crores: 10000000 };
+
+/** The house form: "Rs " and Indian grouping, e.g. Rs 1,50,000. */
+function houseForm(n) {
+  const s = String(n);
+  if (s.length <= 3) return `Rs ${s}`;
+  return `Rs ${s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${s.slice(-3)}`;
+}
+
 /**
- * A look's from price. Free text, in the house form only when it holds a figure: "Rs 45,000", "From Rs 1,50,000".
- * Refused: the rupee sign, and K, L, lakh, lac, Cr or crore after a number. Returns { ok, text, rupees, error }.
+ * A look's from price. Free text that holds at most one figure. The figure may be written as 45000, 45,000, 50k, 50 K,
+ * 1.5 lakh, 2 lakhs, 1 cr, Rs 50,000, Rs. 50000, Rs50000, INR 50000 or the rupee sign; it is stored as "Rs 50,000"
+ * with the whole rupees as the number. Refused: two figures in one price, and digits that are not a price.
+ * Words with no figure ("On request") are kept as written. Returns { ok, text, rupees, error }.
  */
 function fromPrice(v) {
+  const bad = (error) => ({ ok: false, text: null, rupees: null, error });
   const r = field('from_price', v);
-  if (!r.ok) return { ok: false, text: null, rupees: null, error: r.error };
+  if (!r.ok) return bad(r.error);
   if (r.value === null) return { ok: true, text: null, rupees: null, error: null };
   const t = r.value;
-  if (/₹|\binr\b/i.test(t) || /\d\s*(k|l|lakh|lakhs|lac|cr|crore)\b/i.test(t)) return { ok: false, text: null, rupees: null, error: LINES.priceForm };
-  const figs = figuresIn(t);
-  if (figs.length > 1) return { ok: false, text: null, rupees: null, error: LINES.priceForm };
-  if (figs.length === 1) {
-    // The house form: "Rs" then Indian grouping. A bare "45000" or "Rs.45000" is refused rather than rewritten.
-    if (!/\bRs (\d{1,2}(,\d{2})*,\d{3}|\d{1,3})(?![,.\d])/.test(t)) return { ok: false, text: null, rupees: null, error: LINES.priceForm };
-    return { ok: true, text: t, rupees: figs[0], error: null };
-  }
-  if (/\d/.test(t)) return { ok: false, text: null, rupees: null, error: LINES.priceForm };
-  return { ok: true, text: t, rupees: null, error: null };
+  if (!/\d/.test(t)) return { ok: true, text: t, rupees: null, error: null };
+  const found = [];
+  const rest = t.replace(PRICE_TOKEN, (m, cur, num, unit, off) => {
+    const n = Number(num.replace(/,/g, ''));
+    const rupees = Math.round(n * (unit ? UNIT[unit.toLowerCase()] : 1));
+    const bare = !cur && !unit;
+    const whole = off === 0 && m.length === t.length;
+    if (!Number.isFinite(rupees) || rupees <= 0 || rupees > 99999999999 || (bare && rupees < 1000 && !whole)) return m;
+    found.push({ rupees, start: off, end: off + m.length });
+    return '\u0000'.repeat(m.length);
+  });
+  if (found.length !== 1 || /\d/.test(rest)) return bad(LINES.priceForm);
+  const f = found[0];
+  const text = `${t.slice(0, f.start)}${houseForm(f.rupees)}${t.slice(f.end)}`;
+  if (chars(text) > LIMITS.from_price.max) return bad(LINES.tooLong(LIMITS.from_price.label, LIMITS.from_price.max));
+  return { ok: true, text, rupees: f.rupees, error: null };
 }
 
 /** Q5: a figure in her own words while her page hides rates earns a warning, never a refusal. */

@@ -251,11 +251,11 @@ async function lifecycleCell(mod) {
 
   sec('4  F-44.30: the door\'s own number, never "Invoice"');
   const invCall = { name: 'dear_donna_talk', donna_calls: [{ name: 'donna_invoice_pdf', input: { binder_id: 'b-1' }, result: 'Invoice document requested for record 11111111-2222-3333-4444-555555555555 it is being prepared and will appear in the invoices list.' }] };
-  const witnessCell = (w) => { const lines = w(V.id, { tool_calls: [invCall] }, [{ invoice_number: 'TDW/DEV440/17', binder_id: 'b-1', client: 'Meera' }]); return lines.length === 1 && lines[0] === 'Invoice minted: TDW/DEV440/17'; };
+  const witnessCell = (w) => { const lines = w(V.id, { tool_calls: [invCall] }, [{ invoice_number: 'TDW/DEV440/17', binder_id: 'b-1', client: 'Meera' }]); return lines.length === 1 && lines[0] === 'Invoice raised: TDW/DEV440/17'; };
   T('4.1 the stored line names TDW/DEV440/17', witnessCell(chat.donnaWitnessLines));
   const UC = require(P('src/lib/undoContract.js'));
   const beat = UC.deriveFiling(V.id, 'donna_invoice_pdf', { binder_id: 'b-1' }, invCall.donna_calls[0].result);
-  T('4.2 a live beat, before the door has made it, names no number and never the word "Invoice"', beat.summary === 'Invoice minted');
+  T('4.2 a live beat, before the door has made it, names no number and never the word "Invoice"', beat.summary === 'Invoice raised');
   T('4.3 and claims no undo on a binder id (it pointed at /invoices/<binder id>/cancel)', !beat.undo && beat.record_ref && beat.record_ref.id === 'b-1');
   const baseUC = atBase('src/lib/undoContract.js');
   T(`4.4 (fixed history: ${BASE.slice(0, 7)} printed "Invoice minted: Invoice")${baseMissing ? ' MISSING ' + BASE : ''}`, !!baseUC
@@ -300,7 +300,7 @@ async function lifecycleCell(mod) {
     "line_key: full ? 'D4' : 'D3'", "line_key: full ? 'D3' : 'D4'"))) === false);
   const regexBack = mutated('src/lib/undoContract.js', "const num = door && door.invoice_number ? String(door.invoice_number) : '';",
     "const num = (String(result || '').match(/INV[-\\w]+/i) || [])[0] || '';");
-  T('6.3 M3 the regex restored reddens F-44.30\'s cell', regexBack.deriveFiling(V.id, 'donna_invoice_pdf', { binder_id: 'b-1' }, invCall.donna_calls[0].result).summary !== 'Invoice minted');
+  T('6.3 M3 the regex restored reddens F-44.30\'s cell', regexBack.deriveFiling(V.id, 'donna_invoice_pdf', { binder_id: 'b-1' }, invCall.donna_calls[0].result).summary !== 'Invoice raised');
   const m4 = mutated('src/lib/vendor/handResult.js', "donna_milestone_paid: Object.freeze(['D3',", "donna_milestone_paid: Object.freeze(['D9', 'D3',");
   T('6.4 M4 a hand allowed a key that names no byte reddens 1.2', keysExist(m4) === false);
 

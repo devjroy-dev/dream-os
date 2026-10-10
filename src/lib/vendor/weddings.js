@@ -130,25 +130,75 @@ const PHOTO_COLS =
 
 // ── READS ───────────────────────────────────────────────────────────────────
 
+// UX-S1 P4 · A DELETED PAGE (weddings.deleted_at, set by deleteWedding) IS NOT IN HER ROOM. Every owner read goes through
+// `liveOnly`: it asks for rows with deleted_at null; if the column is not there yet (the migration has not run), the same read
+// runs without the filter, so her room never breaks on the order of deployment. A page that was deleted is also set back to
+// draft in the same write, so every public reader (they all require visibility 'published') drops it at once.
+const missingColumn = (error) => !!error && (error.code === '42703' || /deleted_at/i.test(String(error.message || '')));
+async function liveOnly(build) {
+  const first = await build(true);
+  if (first && first.error && missingColumn(first.error)) return build(false);
+  return first;
+}
+
 async function listForOwner(supabase, ownerVendorId) {
-  const { data, error } = await supabase
-    .from('weddings')
-    .select(WEDDING_COLS)
-    .eq('owner_vendor_id', ownerVendorId)
-    .order('created_at', { ascending: false });
+  const { data, error } = await liveOnly((live) => {
+    const q = supabase.from('weddings').select(WEDDING_COLS).eq('owner_vendor_id', ownerVendorId);
+    return (live ? q.is('deleted_at', null) : q).order('created_at', { ascending: false });
+  });
   if (error) throw error;
   return data || [];
 }
 
 async function getForOwner(supabase, ownerVendorId, weddingId) {
+  const { data, error } = await liveOnly((live) => {
+    const q = supabase.from('weddings').select(WEDDING_COLS).eq('owner_vendor_id', ownerVendorId).eq('id', weddingId);
+    return (live ? q.is('deleted_at', null) : q).maybeSingle();
+  });
+  if (error) throw error;
+  return data || null;
+}
+
+/**
+ * DELETE A WEDDING PAGE (soft) — UX-S1 P4 (a). The row stays; deleted_at is set and visibility goes back to 'draft' in ONE
+ * write, so the page leaves her public site at once (every public reader requires visibility = 'published'). couple_consent
+ * is left as it was. Scoped by owner. Returns the row, or null when she has no such live page. A missing column throws.
+ */
+async function deleteWedding(supabase, { ownerVendorId, weddingId }) {
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('weddings')
-    .select(WEDDING_COLS)
+    .update({ deleted_at: now, visibility: 'draft', updated_at: now })
     .eq('owner_vendor_id', ownerVendorId)
     .eq('id', weddingId)
+    .is('deleted_at', null)
+    .select(WEDDING_COLS)
     .maybeSingle();
   if (error) throw error;
   return data || null;
+}
+
+/**
+ * IS THIS STORED PICTURE STILL HELD ELSEWHERE? — UX-S1 P4 (b). Removing a photograph from a wedding page removes only its
+ * link. The stored picture is destroyed only when nothing else of hers holds it: not her portfolio, not another wedding
+ * page, not a look. Returns the place that holds it ('portfolio' | 'wedding_page' | 'look'), 'unknown' when a read failed
+ * (never destroy on doubt), or null. A picture is the same picture when its address is equal or carries the same public_id.
+ */
+async function pictureHeldElsewhere(supabase, { vendorId, photo }) {
+  try {
+    const url = String((photo && photo.url) || ''); const pid = String((photo && photo.public_id) || '');
+    const same = (u) => { const x = String(u || ''); return !!x && (x === url || (pid.length > 0 && x.includes(pid))); };
+    const [pf, wp, lk] = await Promise.all([
+      supabase.from('vendor_portfolio').select('image_url').eq('vendor_id', vendorId),
+      pid ? supabase.from('wedding_photos').select('id').eq('public_id', pid) : Promise.resolve({ data: [], error: null }),
+      supabase.from('vendor_look_photos').select('image_url').eq('vendor_id', vendorId),
+    ]);
+    if (pf.error || wp.error || lk.error) return 'unknown';
+    if ((pf.data || []).some((r) => same(r.image_url))) return 'portfolio';
+    if ((wp.data || []).length > 0) return 'wedding_page';
+    if ((lk.data || []).some((r) => same(r.image_url))) return 'look';
+    return null;
+  } catch (_e) { return 'unknown'; }
 }
 
 /**
@@ -868,6 +918,7 @@ module.exports = {
   WEDDING_COLS, CREDIT_COLS_OWNER, PHOTO_COLS,
   slugify, uniqueSlug,
   listForOwner, getForOwner, creditsFor, photosFor,
+  deleteWedding, pictureHeldElsewhere,
   createWedding, addCredit, publishWedding, addPhoto, deletePhoto,
   resolveCoupleForEvent, consentSeedFor,
   mintConsentToken, restoreConsentToken, findWeddingByConsentToken, setConsentByToken,

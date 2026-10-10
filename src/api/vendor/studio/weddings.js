@@ -9,6 +9,8 @@
 //   POST /:id/publish             — publish (R-G11.20: delivered_at lands here)
 //   POST /:id/upload-url          — signed Cloudinary params (R-G11.17)
 //   POST /:id/photos              — record an uploaded photo
+//   DELETE /:id                   — UX-S1 P4: delete a page she owns (soft; it leaves her public site at once)
+//   DELETE /:id/photos/:photoId   — remove a photograph from the page (the stored picture goes only when nothing else holds it)
 //   POST /:id/cards               — G1.3: render the tent card + insert (R-G13.7)
 //   GET  /reel-probe              — G1.3: what the RUNNING SERVICE can do (R-G13.10)
 //
@@ -382,6 +384,20 @@ router.post('/:id/photos', ...mw, asyncHandler(async (req, res) => {
   return okRes(res, { photo });
 }));
 
+// DELETE /:id — UX-S1 P4 (a) · delete a wedding page she owns. SOFT: weddings.deleted_at is set and the page goes back to
+// 'draft' in one write, so it leaves her public site at once and out of her room. Her photographs, credits and the stored
+// pictures are not touched. A page that is not hers, or already deleted, is a 404. Body: none.
+router.delete('/:id', ...mw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const wedding  = await W.getForOwner(supabase, req.vendor.id, req.params.id);
+  if (!wedding) return errRes(res, 404, 'Not found.');
+  let gone = null;
+  try { gone = await W.deleteWedding(supabase, { ownerVendorId: req.vendor.id, weddingId: wedding.id }); }
+  catch (e) { console.error('[DELETE /studio/weddings/:id]', e && e.message); return errRes(res, 500, 'Could not delete this page.'); }
+  if (!gone) return errRes(res, 404, 'Not found.');
+  return okRes(res, { deleted: true, wedding: { id: gone.id, slug: gone.slug, title: gone.title, visibility: gone.visibility } });
+}));
+
 // DELETE /:id/photos/:photoId — R-G12.12
 //
 // ⚠ THE ROW GOES FIRST AND THE ASSET SECOND, AND THE ORDER IS THE RULING.
@@ -418,6 +434,11 @@ router.delete('/:id/photos/:photoId', ...mw, asyncHandler(async (req, res) => {
   // fires and reads nothing back inside a bare catch, so a 401, a 404 and a
   // success are byte-indistinguishable to it; that is fit for an admin looking
   // at the screen and unfit for a report a vendor reads.
+  // UX-S1 P4 (b) · the row above was only the LINK. The stored picture is destroyed only when nothing else of hers holds it:
+  // the same picture in her portfolio (or on another page, or in a look) keeps it. A read that fails keeps it as well.
+  const heldBy = await W.pictureHeldElsewhere(supabase, { vendorId: req.vendor.id, photo });
+  if (heldBy) return okRes(res, { photo, asset: { ok: true, kept: true, held_by: heldBy } });
+
   const { destroyVerified } = require('../../../lib/admin/cloudinary');
   const asset = await destroyVerified(photo.public_id);
 

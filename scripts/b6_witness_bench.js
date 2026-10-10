@@ -112,7 +112,7 @@ const NARRATED_TURN = {
 
 const filedLines = donnaWitnessLines(VENDOR, FILED_TURN);
 ok(filedLines.length === 1, 'the FILED turn yields exactly ONE witness line (the lead hand; her voice and the find are not hands)');
-ok(filedLines[0] === 'Lead filed: Tara Door Test', 'the line is deriveFiling\'s own summary, verbatim: "Lead filed: Tara Door Test"');
+ok(filedLines[0] === 'Enquiry added: Tara Door Test', 'the line is deriveFiling\'s own summary, verbatim: "Enquiry added: Tara Door Test"');
 
 const narratedLines = donnaWitnessLines(VENDOR, NARRATED_TURN);
 ok(narratedLines.length === 0, 'the NARRATED turn yields ZERO witness lines — nothing fired, nothing is witnessed');
@@ -128,7 +128,7 @@ const tailNarrated = composedTail({ witnessed: narratedLines, documents: [], boo
   await persistComposedReply(mkReq(sinkB), NARRATED_TURN, tailNarrated);
 
   ok(sinkA.length === 1, 'the FILED turn patches its row (one UPDATE)');
-  ok(sinkA[0] && sinkA[0].content === `${FILED_TURN.reply}\n\nLead filed: Tara Door Test`,
+  ok(sinkA[0] && sinkA[0].content === `${FILED_TURN.reply}\n\nEnquiry added: Tara Door Test`,
      'THE CURE, ASSERTED: the filed turn REPLAYS WITNESSED — prose + the hand\'s own line');
   ok(sinkB.length === 0,
      'THE ASYMMETRY, ASSERTED: the narrated turn REPLAYS BARE — no tail, so persistComposedReply writes NOTHING and the row stays the prose alone');
@@ -138,7 +138,7 @@ const tailNarrated = composedTail({ witnessed: narratedLines, documents: [], boo
   // saved: result.reply, bare. Before this cure the filed row was that too.
   const filedRow    = sinkA.length ? sinkA[0].content : null;
   const narratedRow = sinkB.length ? sinkB[0].content : NARRATED_TURN.reply;
-  ok(filedRow !== null && /Lead filed/.test(filedRow) && !/Lead filed/.test(narratedRow) && filedRow !== narratedRow,
+  ok(filedRow !== null && /Enquiry added/.test(filedRow) && !/Enquiry added/.test(narratedRow) && filedRow !== narratedRow,
      'THE FINDING, REVERSED: the two rows are no longer the same kind of artifact — the filed one carries its hand, the narrated one cannot (F-04.41, lead plane)');
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -194,7 +194,7 @@ const tailNarrated = composedTail({ witnessed: narratedLines, documents: [], boo
       { name: 'donna_lead', input: { name: 'X' }, result: 'ERROR: insert failed (23505 duplicate key)' },
     ] },
   ] };
-  ok(donnaWitnessLines(VENDOR, ERROR_TURN)[0] === "That didn't land — nothing was changed.",
+  ok(donnaWitnessLines(VENDOR, ERROR_TURN)[0] === "That did not go through. Nothing was changed.",
      'an ERRORED hand persists its HONEST FAILURE line (F3\'s sentence, deriveFiling\'s own) — the optimistic prose no longer stands alone on refresh [DISCLOSED extension]');
 
   // The firewall: a vendor-named lead cannot smuggle an internal name into storage.
@@ -204,7 +204,7 @@ const tailNarrated = composedTail({ witnessed: narratedLines, documents: [], boo
     ] },
   ] };
   const scrubbedTail = composedTail({ witnessed: donnaWitnessLines(VENDOR, SCRUB_TURN), documents: [], booked: [], refused: [], mutated: [], advised: [], blocked: [], unblocked: [] });
-  ok(scrubbedTail === '\n\n' + scrubText('Lead filed: Donna'),
+  ok(scrubbedTail === '\n\n' + scrubText('Enquiry added: Donna'),
      'the stored line goes through the REAL scrubText — blockLines\' own reason: a lead name is free text (copy law\'s storage clause)');
 
   // ═════════════════════════════════════════════════════════════════════════

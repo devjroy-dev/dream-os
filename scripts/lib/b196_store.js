@@ -77,7 +77,7 @@ function makeStore(seed) {
         const key = st.onConflict; const p = st.payload; const ex = rows.find((r) => r[key] === p[key]);
         if (ex) Object.assign(ex, p); else rows.push(Object.assign({ id: crypto.randomUUID() }, p)); out = [];
       } else if (st.op === 'delete') {
-        const keep = rows.filter((r) => !match(r)); out = []; t[name] = keep;
+        const keep = rows.filter((r) => !match(r)); out = st.returning ? rows.filter((r) => match(r)).map((r) => project(r, st.returning)) : []; t[name] = keep;   // UX-S1 P4: a delete answers its rows when .select() follows it
       }
       if (st.op === 'select' && st.countOpt) return { data: st.countOpt.head ? null : out, count: out.length, error: null };   // cut 9
       if (st.single === 'maybe') return { data: out[0] || null, error: out.length > 1 ? { message: 'many' } : null };

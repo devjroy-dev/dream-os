@@ -252,6 +252,7 @@ const TESTIMONIALS_SELECT = 'author, body, occasion, event_month, place, video_u
 const FAQ_SELECT       = 'question, answer, position, deleted_at';
 const siteCardLib      = require('../../lib/site/siteCard');
 const PR = require('../../lib/vendor/pictureRules');   // CE-47 WEB-4 cut 30 (R-47.2): the one home for a picture's state
+const examplesLib      = require('../../lib/site/examples');   // UX-S1 P3 · TDW's example pictures, preview only
 const previewLib       = require('../../lib/site/preview');   // CE-47 WEB-4 cut 5 · her draft, to her room's token only
 const DOMAIN_SELECT    = 'domain, status';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
@@ -676,6 +677,7 @@ router.get('/:code', async (req, res) => {
       // paid vendor's card skips every site read (sections, pages, looks, collections, testimonials, questions).
       if (styles && !previewOn && !(siteRow && siteRow.published_at)) styles = false;
       const safe = async (q) => { try { const { data, error } = await q; return !error && Array.isArray(data) ? data : []; } catch (_e) { return []; } };
+      let examplePortfolio = null;   // UX-S1 P3
       let ex = { sections: [], pages: [], looks: [], lookPhotos: [], collections: [], collectionLooks: [], testimonials: [], faq: [] };
       if (styles) {
         // CE-47's cure 1 (r2): the independent reads run TOGETHER, in two stages, not nine in a row. Stage 1: her
@@ -708,6 +710,12 @@ router.get('/:code', async (req, res) => {
           colIds.length ? safe(supabase.from('vendor_collection_looks').select('collection_id, look_id, position').in('collection_id', colIds)) : Promise.resolve([]),
         ]);
         if (styles) ex = { sections, pages, looks, lookPhotos, collections, collectionLooks, testimonials, faq };
+        // UX-S1 P3 · the style preview with TDW's example pictures: ONLY with a verified preview token AND examples=1 AND
+        // no pictures of her own on this page. A public page (no verified token) never reaches this line's condition.
+        if (styles && previewOn && req.query.examples === '1') {
+          const si = examplesLib.standIns(siteCardLib.SITE_BASE, rows, lookPhotos);
+          if (si) { examplePortfolio = si.portfolio; ex = Object.assign({}, ex, { looks: si.looks, lookPhotos: si.lookPhotos }); }
+        }
       }
       let liveDomain = null;
       try {
@@ -757,7 +765,7 @@ router.get('/:code', async (req, res) => {
             const classic = publicPackages(pkgRows, v.rate_display);
             if (!styles) return { packages: classic, site: siteFor(v.tier, v.category, siteRow, liveDomain), eliza: siteCardLib.elizaFor(v.tier) };
             const sc = siteCardLib.siteCard({ tier: v.tier, category: v.category, businessName: v.business_name, handle: v.routing_handle,
-              meta: metaFor(v), rateDisplay: v.rate_display, rateMin: v.rate_min, liveDomain, siteRow, portfolio: rows, packages: classic, ...ex });
+              meta: metaFor(v), rateDisplay: v.rate_display, rateMin: v.rate_min, liveDomain, siteRow, portfolio: examplePortfolio || rows, packages: classic, ...ex });
             return { packages: sc.packages, site: sc.site, looks: sc.looks, collections: sc.collections, testimonials: sc.testimonials, faq: sc.faq, eliza: sc.eliza };
           })(),
         }),

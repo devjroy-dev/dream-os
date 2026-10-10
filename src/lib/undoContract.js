@@ -28,7 +28,7 @@ function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-V
   if (r.startsWith('ERROR')) {
     return {
       kind: 'error',
-      summary: "That didn't land — nothing was changed.",
+      summary: "That did not go through. Nothing was changed.",
       retryable: true,
     };
   }
@@ -39,16 +39,16 @@ function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-V
       const nm = (r.match(/name=([^,]+),/) || [])[1];
       return {
         kind: 'write',
-        summary: `Lead filed${nm && nm !== 'unknown' ? `: ${nm}` : ''}`,
+        summary: `Enquiry added${nm && nm !== 'unknown' ? `: ${nm}` : ''}`,
         record_ref: ref('typed', created[1]),
         undo: { method: 'DELETE', path: `/api/v2/vendor/leads/${created[1]}` },
       };
     }
     const updated = r.match(/Updated existing lead "([^"]*)" \(id=([0-9a-f-]{36})\)/i);
     if (updated) {
-      return { kind: 'write', summary: `Lead updated: ${updated[1]}`, record_ref: ref('typed', updated[2]) };
+      return { kind: 'write', summary: `Enquiry updated: ${updated[1]}`, record_ref: ref('typed', updated[2]) };
     }
-    return { kind: 'write', summary: 'Lead filed' };
+    return { kind: 'write', summary: 'Enquiry added' };
   }
 
   if (name === 'donna_client') {
@@ -57,12 +57,12 @@ function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-V
       const client = (r.match(/client[= ]"?([^".\n]+)/i) || [])[1];
       return {
         kind: 'write',
-        summary: `Binder opened${client ? `: ${client.trim()}` : ''}`,
+        summary: `Client added${client ? `: ${client.trim()}` : ''}`,
         record_ref: ref('records', m[1]),
         undo: { method: 'POST', path: `/api/v2/vendor/binders/${vendorId}/${m[1]}/hide` },
       };
     }
-    return { kind: 'write', summary: 'Binder updated' };
+    return { kind: 'write', summary: 'Client updated' };
   }
 
   if (name === 'donna_money_edit') {
@@ -76,7 +76,7 @@ function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-V
     const hasPrior = Object.values(prior).some((v) => v !== undefined && v !== '');
     return {
       kind: 'write',
-      summary: 'Money corrected',
+      summary: 'Amount corrected',
       record_ref: ref('records', id),
       ...(id && hasPrior ? { undo: { method: 'POST', path: `/api/v2/vendor/binders/${vendorId}/${id}/money-edit`, body: prior } } : {}),
     };
@@ -85,7 +85,7 @@ function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-V
   if (name === 'donna_money') {
     const id = (input && input.binder_id) || (r.match(UUID) || [])[0];
     const amt = (r.match(/Rs [\d,]+/) || [])[0];
-    return { kind: 'write', summary: `Money filed${amt ? `: ${amt}` : ''}`, record_ref: ref('records', id) };
+    return { kind: 'write', summary: `Payment recorded${amt ? `: ${amt}` : ''}`, record_ref: ref('records', id) };
   }
 
   // CE-44 LC-Victor P4a · F-44.30 CURED. This branch used to run `/INV[-\w]+/i` over the ENGINE's
@@ -101,7 +101,7 @@ function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-V
     const binderId = input && input.binder_id;
     return {
       kind: 'write',
-      summary: `Invoice minted${num ? `: ${num}` : ''}`,
+      summary: `Invoice raised${num ? `: ${num}` : ''}`,
       ...(invoiceId
         ? { record_ref: ref('typed', invoiceId), undo: { method: 'PATCH', path: `/api/v2/vendor/invoices/${invoiceId}/cancel` } }
         : (binderId ? { record_ref: ref('records', binderId) } : {})),
@@ -111,8 +111,8 @@ function deriveFiling(vendorId, name, input, result, door) { // door: CE-44 LC-V
 
   // Everything else: a witnessed write worth a chip, no undo claimed.
   const id = (input && input.binder_id) || (r.match(UUID) || [])[0];
-  const VERB = { donna_note: 'Note filed', donna_note_append: 'Note added', donna_date: 'Date set', donna_phone: 'Phone filed', donna_stage: 'Stage moved', donna_edit: 'Binder edited', donna_hide: 'Binder archived', donna_doc: 'Document linked' };
-  return { kind: 'write', summary: VERB[name] || 'Filed', record_ref: ref('records', id) };
+  const VERB = { donna_note: 'Note added', donna_note_append: 'Note added', donna_date: 'Date set', donna_phone: 'Phone number added', donna_stage: 'Stage changed', donna_edit: 'Client updated', donna_hide: 'Client hidden', donna_doc: 'Document linked' };
+  return { kind: 'write', summary: VERB[name] || 'Saved', record_ref: ref('records', id) };
 }
 
 module.exports = { deriveFiling };

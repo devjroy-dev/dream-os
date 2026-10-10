@@ -49,6 +49,7 @@ function makeDb(tables) {
       const api = {
         select() { return api; },
         eq(col, val) { rows = rows.filter((r) => r[col] === val); return api; },
+        is(col, val) { rows = rows.filter((r) => (r[col] === undefined ? null : r[col]) === val); return api; },   // AMENDED BY LABEL (CE-47, UX-S1 P4): weddings.js reads live pages with .is('deleted_at', null)
         order(col, opts) { orders.push([col, !opts || opts.ascending !== false]); return api; },
         then(resolve) {
           const sorted = rows.slice().sort((a, b) => {

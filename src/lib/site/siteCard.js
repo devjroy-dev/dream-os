@@ -48,7 +48,8 @@ function photoOf(row) {
   if (!HTTPS.test(url)) return null;
   const fp = limits.focal({ x: r.focal_portrait_x, y: r.focal_portrait_y });
   const fl = limits.focal({ x: r.focal_landscape_x, y: r.focal_landscape_y });
-  return { url, w: num(r.width), h: num(r.height), focal_portrait: fp, focal_landscape: fl, alt: text('photo_alt', r.alt), caption: text('photo_caption', r.caption) };
+  return { url, w: num(r.width), h: num(r.height), focal_portrait: fp, focal_landscape: fl, alt: text('photo_alt', r.alt), caption: text('photo_caption', r.caption),
+    ...(r.example === true ? { example: true, mark: 'TDW' } : {}) };   // UX-S1 P3: TDW's own example pictures carry the mark
 }
 
 /** Group the look photos on her pages by look, in their own order. */
